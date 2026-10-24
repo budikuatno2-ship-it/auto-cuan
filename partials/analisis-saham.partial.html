@@ -677,52 +677,20 @@
             </div>
         </section>
 
-        <!-- TAB 2: BANDARMOLOGI & AKUMULASI BROKER -->
-        <section id="panel-tab-bandarmologi" class="analisis-tab-panel" style="display:none">
-            <div class="unified-card p-3.5 sm:p-4">
-                <!-- Bandarmologi Search & Sync Bar -->
-                <div id="bandarSearchBarContainer" class="mb-4 pb-3 border-b border-dark-600/40">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
-                            <div class="relative flex-1 min-w-[200px]">
-                                <input id="bandarTickerSearchInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, BMRI..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-full px-4 py-2 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide uppercase font-mono" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event))){handleIndependentTabSearch('bandarmologi', this.value)}">
-                            </div>
-                            <button type="button" onclick="handleIndependentTabSearch('bandarmologi', document.getElementById('bandarTickerSearchInput').value)" class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition shrink-0">Cari</button>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <span class="text-xs text-gray-400">Aktif:</span>
-                            <span id="bandarActiveTickerTag" class="text-xs font-mono px-2.5 py-1 rounded-lg bg-dark-700/80 text-emerald-300 border border-emerald-500/30 font-bold">BBCA</span>
-                        </div>
-                    </div>
-                    <!-- Quick Ticker Chips -->
-                    <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-                        <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BBCA')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BBRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BMRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'TLKM')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'ASII')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BREN')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BREN</button>
-                    </div>
+        <!-- TAB 2: BANDARMOLOGI & AKUMULASI BROKER (canvas Bandarmologi.dc.html) -->
+        <section id="panel-tab-bandarmologi" class="analisis-tab-panel ac-ui-v2" data-ac-ui="v2" style="display:none">
+            <div class="ph rise d0" style="margin-bottom:16px">
+                <div>
+                    <h1 class="page-title">Bandarmologi</h1>
+                    <p>Siapa yang membeli, siapa yang melepas, dan seberapa terkonsentrasi transaksinya.</p>
                 </div>
-
-                <!-- Sub-Tab Switcher: Broker Summary vs Akumulasi Broker -->
-                <div class="flex items-center gap-1 bg-dark-800 p-1 rounded-xl border border-dark-600/50 text-xs mb-4 w-fit">
-                    <button id="subTabBrokerSummary" type="button" onclick="BandarmologiRuntime.setBandarSection('summary')" class="px-3.5 py-1.5 rounded-lg transition bg-emerald-500 text-dark-900 shadow-sm font-bold flex items-center gap-1.5" aria-selected="true">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
-                        <span>Broker Summary</span>
-                    </button>
-                    <button id="subTabAkumulasiBroker" type="button" onclick="BandarmologiRuntime.setBandarSection('akumulasi')" class="px-3.5 py-1.5 rounded-lg transition text-gray-400 hover:text-white font-medium flex items-center gap-1.5" aria-selected="false">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg>
-                        <span>Akumulasi Broker</span>
-                    </button>
+                <div class="segx n2" role="group" aria-label="Tampilan Bandarmologi">
+                    <span class="ind k0" id="bandarViewInd"></span>
+                    <button type="button" id="subTabBrokerSummary" onclick="BandarmologiRuntime.setBandarSection('summary')" class="on" aria-selected="true">Broker Summary</button>
+                    <button type="button" id="subTabAkumulasiBroker" onclick="BandarmologiRuntime.setBandarSection('akumulasi')" aria-selected="false">Akumulasi Broker</button>
                 </div>
-
-                <!-- Smart Broker Summary 2-Column (Fase 7) -->
-                <div id="smartBrokerSummaryContainer" class="mb-4"></div>
-
-                <div id="bandarmologiContent"></div>
             </div>
+            <div id="bandarmologiContent"></div>
         </section>
 
         <!-- TAB MANDIRI: SINYAL INTELIJEN BANDAR & MARKET SCREENER -->

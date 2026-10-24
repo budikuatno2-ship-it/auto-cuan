@@ -355,9 +355,9 @@
 
     var pHeader = byId('analisisChartHeader');
     var pSubtabWrap = byId('analisisChartSubtabWrap');
-    if (pHeader) pHeader.style.display = (parentTab === 'market-structure' || parentTab === 'ranking') ? 'none' : 'block';
+    if (pHeader) pHeader.style.display = (parentTab === 'market-structure' || parentTab === 'ranking' || parentTab === 'bandarmologi') ? 'none' : 'block';
     if (pSubtabWrap) pSubtabWrap.style.display = (parentTab === 'analisis-chart') ? 'flex' : 'none';
-    if ((parentTab === 'market-structure' || parentTab === 'ranking') && typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+    if ((parentTab === 'market-structure' || parentTab === 'ranking' || parentTab === 'bandarmologi') && typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
 

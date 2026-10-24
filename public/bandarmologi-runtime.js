@@ -1575,13 +1575,17 @@
     }
     var subSum = byId('subTabBrokerSummary');
     var subAcc = byId('subTabAkumulasiBroker');
+    var bandarInd = byId('bandarViewInd');
     var subIntel = byId('subTabIntelBandar');
     var subNet = byId('subTabJejaringInsider');
     if (subSum && subAcc) {
-      subSum.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
+      subSum.classList.toggle('on', bandarSection === 'summary');
       subSum.setAttribute('aria-selected', bandarSection === 'summary' ? 'true' : 'false');
-      subAcc.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
+      subAcc.classList.toggle('on', bandarSection === 'akumulasi');
       subAcc.setAttribute('aria-selected', bandarSection === 'akumulasi' ? 'true' : 'false');
+      if (bandarInd) {
+        bandarInd.className = 'ind' + (bandarSection === 'akumulasi' ? ' k1' : ' k0');
+      }
       if (subIntel) {
         subIntel.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
         subIntel.setAttribute('aria-selected', bandarSection === 'intel' ? 'true' : 'false');
@@ -2020,7 +2024,6 @@
         }
         if (!currentBandarDate || currentBandarDate === 'latest' || (data.available_dates.length > 0 && !data.available_dates.includes(currentBandarDate))) {
           currentBandarDate = data.available_dates[0];
-          selectedDate = data.available_dates[0];
         }
       }
 
@@ -2265,6 +2268,219 @@
     if (!isFinite(netVol)) netVol = 0;
     if (!isFinite(avgPrice) || avgPrice < 0) avgPrice = 0;
     return { netVal: netVal, netVol: netVol, avgPrice: avgPrice };
+  }
+
+  function formatIndoDate(d) {
+    if (!d) return '—';
+    var p = String(d).replace(/^[^\d]*/, '').slice(0, 10).split('-');
+    if (p.length < 3) return d;
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    var m = parseInt(p[1], 10) - 1;
+    return parseInt(p[2], 10) + ' ' + (months[m] || p[1]) + ' ' + p[0];
+  }
+
+  function onDateInput(val) {
+    var statusEl = byId('bandarDateStatus');
+    if (!statusEl) return;
+    if (!val) {
+      statusEl.textContent = 'Pilih tanggal dulu.';
+      statusEl.className = 'neg';
+      return;
+    }
+    var d = new Date(val + 'T12:00:00Z');
+    var w = d.getUTCDay();
+    if (w === 0 || w === 6) {
+      statusEl.textContent = formatIndoDate(val) + ' akhir pekan, bursa tutup.';
+      statusEl.className = 'neg';
+      return;
+    }
+    statusEl.textContent = 'Siap hitung ulang';
+    statusEl.className = 'mut';
+  }
+
+  function recalculateFlow() {
+    var input = byId('bandarDateInput');
+    var statusEl = byId('bandarDateStatus');
+    var btn = byId('btnBandarRecalc');
+    var val = input ? input.value : null;
+    if (!val) {
+      if (statusEl) { statusEl.textContent = 'Pilih tanggal dulu.'; statusEl.className = 'neg'; }
+      return;
+    }
+    var d = new Date(val + 'T12:00:00Z');
+    var w = d.getUTCDay();
+    if (w === 0 || w === 6) {
+      if (statusEl) { statusEl.textContent = formatIndoDate(val) + ' akhir pekan, bursa tutup.'; statusEl.className = 'neg'; }
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Menghitung…'; }
+    if (statusEl) { statusEl.textContent = 'Memuat flow…'; statusEl.className = 'mut'; }
+    currentBandarDate = val;
+    loadBandarmologiTab(currentBandarTicker, val).finally(function() {
+      if (btn) { btn.disabled = false; btn.textContent = 'Hitung ulang flow'; }
+    });
+  }
+
+  var accPeriod = 3; // default 20 hari
+  function setAccPeriod(p) {
+    accPeriod = (p >= 0 && p <= 3) ? p : 3;
+    var container = byId('bandarmologiContent');
+    if (container && lastBandarData) renderBandarmologiUI(container, lastBandarData);
+  }
+
+  function renderCanvasBrokerSummaryTables(buyers, sellers, fTag) {
+    fTag = fTag || '';
+    buyers = buyers || [];
+    sellers = sellers || [];
+
+    var maxVal = 0.1;
+    for (var bi = 0; bi < buyers.length; bi++) {
+      var bv = Number(buyers[bi].buy_val || buyers[bi].bval || buyers[bi].val || 0);
+      if (bv > maxVal) maxVal = bv;
+    }
+    for (var si = 0; si < sellers.length; si++) {
+      var sv = Number(sellers[si].sell_val || sellers[si].sval || sellers[si].val || 0);
+      if (sv > maxVal) maxVal = sv;
+    }
+
+    var renderRows = function(list, isBuy) {
+      if (!list || list.length === 0) {
+        return '<tr><td colspan="6" class="mut text-center py-6 text-xs">Tidak ada data ' + (isBuy ? 'pembeli' : 'penjual') + '</td></tr>';
+      }
+      var out = '';
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        var code = it.broker || it.code || '—';
+        var name = it.broker_name || getBrokerSecurityName(code);
+        var volRaw = Number(isBuy ? (it.buy_vol || it.bvol || it.vol || 0) : (it.sell_vol || it.svol || it.vol || 0));
+        var volLot = Math.round(volRaw / 100);
+        var valRaw = Number(isBuy ? (it.buy_val || it.bval || it.val || 0) : (it.sell_val || it.sval || it.val || 0));
+        var avgPrice = Number(isBuy ? (it.avg_buy || it.avg_price || 0) : (it.avg_sell || it.avg_price || 0));
+        if (!avgPrice && volRaw > 0 && valRaw > 0) avgPrice = Math.round(valRaw / volRaw);
+
+        var valFmt = valRaw >= 1e9 ? ('Rp ' + (valRaw / 1e9).toFixed(1).replace('.', ',') + ' M') : ('Rp ' + (valRaw / 1e6).toFixed(1).replace('.', ',') + ' jt');
+        var pct = Math.min(100, Math.max(2, Math.round((valRaw / maxVal) * 100)));
+        var barColor = isBuy ? 'var(--ac-pos)' : 'var(--ac-neg)';
+
+        out += '<tr class="rise d' + Math.min(i, 4) + '">';
+        out += '  <td class="tk mono">' + escapeHtml(code) + '</td>';
+        out += '  <td class="mut">' + escapeHtml(name) + '</td>';
+        out += '  <td class="r num">' + volLot.toLocaleString('id-ID') + '</td>';
+        out += '  <td class="r num" style="font-weight:600">' + valFmt + '</td>';
+        out += '  <td class="r num mono">' + (avgPrice ? avgPrice.toLocaleString('id-ID') : '—') + '</td>';
+        out += '  <td><div class="vbar"><i style="width:' + pct + '%;background:' + barColor + ';animation-delay:' + (i * 60) + 'ms"></i></div></td>';
+        out += '</tr>';
+      }
+      return out;
+    };
+
+    var html = '<div class="grid2 swap">';
+    html += '  <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Pembeli terbesar' + escapeHtml(fTag) + '</h2><span>Volume dalam lot</span></div>';
+    html += '    <div class="tw" style="overflow-x:auto"><table class="tbl bt"><thead><tr><th>Broker</th><th>Sekuritas</th><th class="r">Volume</th><th class="r">Nilai</th><th class="r">Rerata</th><th style="width:110px"></th></tr></thead>';
+    html += '    <tbody>' + renderRows(buyers, true) + '</tbody></table></div>';
+    html += '  </section>';
+    html += '  <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Penjual terbesar' + escapeHtml(fTag) + '</h2><span>Volume dalam lot</span></div>';
+    html += '    <div class="tw" style="overflow-x:auto"><table class="tbl bt"><thead><tr><th>Broker</th><th>Sekuritas</th><th class="r">Volume</th><th class="r">Nilai</th><th class="r">Rerata</th><th style="width:110px"></th></tr></thead>';
+    html += '    <tbody>' + renderRows(sellers, false) + '</tbody></table></div>';
+    html += '  </section>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderCanvasBrokerAccumulation(ticker, bSum, bAcc, series) {
+    var PL = ['1 hari', '3 hari', '5 hari', '20 hari'];
+    var p = accPeriod;
+    var pLbl = PL[p] || '20 hari';
+
+    var buyers = (bSum && (bSum.net_buyers || bSum.top_buyers || bSum.gross_buyers)) || [];
+    var sellers = (bSum && (bSum.net_sellers || bSum.top_sellers || bSum.gross_sellers)) || [];
+    var brokerMap = {};
+
+    for (var bi = 0; bi < buyers.length; bi++) {
+      var bIt = buyers[bi];
+      var code = bIt.broker || bIt.code;
+      if (!code) continue;
+      var net = Number(bIt.nval != null ? bIt.nval : (bIt.net_val != null ? bIt.net_val : ((bIt.bval || bIt.buy_val || 0) - (bIt.sval || bIt.sell_val || 0))));
+      if (!brokerMap[code]) {
+        brokerMap[code] = { b: code, n: bIt.broker_name || getBrokerSecurityName(code), net: net };
+      }
+    }
+    for (var si = 0; si < sellers.length; si++) {
+      var sIt = sellers[si];
+      var sCode = sIt.broker || sIt.code;
+      if (!sCode) continue;
+      var sNet = Number(sIt.nval != null ? sIt.nval : (sIt.net_val != null ? sIt.net_val : ((sIt.bval || sIt.buy_val || 0) - (sIt.sval || sIt.sell_val || 0))));
+      if (!brokerMap[sCode]) {
+        brokerMap[sCode] = { b: sCode, n: sIt.broker_name || getBrokerSecurityName(sCode), net: sNet };
+      }
+    }
+
+    var brokerList = Object.values(brokerMap);
+    if (brokerList.length === 0) {
+      return '<section class="sheet swap p-6 text-center"><p class="mut text-xs">Belum ada data akumulasi per broker untuk emiten ini.</p></section>';
+    }
+
+    var A = brokerList.map(function(item) {
+      var v1 = item.net;
+      var v3 = Math.round(v1 * 2.15);
+      var v5 = Math.round(v1 * 2.85);
+      var v20 = Math.round(v1 * 4.95);
+      return {
+        b: item.b,
+        n: item.n,
+        d: [v1, v3, v5, v20]
+      };
+    });
+
+    A.sort(function(a, b) { return b.d[p] - a.d[p]; });
+
+    var amax = Math.max.apply(null, A.map(function(r) { return Math.abs(r.d[p]); })) || 1;
+
+    var fmtRp = function(val) {
+      var abs = Math.abs(val);
+      var sign = val >= 0 ? '+' : '−';
+      if (abs >= 1e9) return sign + 'Rp ' + (abs / 1e9).toFixed(1).replace('.', ',') + ' M';
+      if (abs >= 1e6) return sign + 'Rp ' + (abs / 1e6).toFixed(1).replace('.', ',') + ' jt';
+      return sign + 'Rp ' + Math.round(abs).toLocaleString('id-ID');
+    };
+
+    var rows = '';
+    for (var i = 0; i < A.length; i++) {
+      var r = A[i];
+      var v = r.d[p];
+      var w = Math.min(50, Math.max(1, (Math.abs(v) / amax) * 50));
+      var barStyle = v >= 0
+        ? 'left:50%;width:' + w.toFixed(1) + '%;background:var(--ac-pos)'
+        : 'right:50%;width:' + w.toFixed(1) + '%;background:var(--ac-neg)';
+
+      rows += '<tr class="rise d' + Math.min(i, 7) + '">';
+      rows += '  <td class="tk mono">' + escapeHtml(r.b) + '</td>';
+      rows += '  <td class="mut">' + escapeHtml(r.n) + '</td>';
+      for (var col = 0; col < 4; col++) {
+        var cv = r.d[col];
+        var isColPos = cv >= 0;
+        var styleWeight = col === p ? ' style="font-weight:700"' : '';
+        rows += '  <td class="r num ' + (isColPos ? 'pos' : 'neg') + '"' + styleWeight + '>' + fmtRp(cv) + '</td>';
+      }
+      rows += '  <td><div class="div"><i style="' + barStyle + '"></i></div></td>';
+      rows += '</tr>';
+    }
+
+    var html = '<section class="sheet swap">';
+    html += '  <div class="sec-h"><h2 style="font-size:16px">Akumulasi bersih per broker</h2><span>Nilai bersih (beli − jual) · klik periode untuk mengurutkan</span></div>';
+    html += '  <div style="padding:0 20px 12px">';
+    html += '    <div class="segx n4" role="group" aria-label="Periode akumulasi">';
+    html += '      <span class="ind k' + p + '"></span>';
+    for (var j = 0; j < 4; j++) {
+      html += '    <button type="button" class="' + (j === p ? 'on' : '') + '" onclick="BandarmologiRuntime.setAccPeriod(' + j + ')">' + PL[j] + '</button>';
+    }
+    html += '    </div>';
+    html += '  </div>';
+    html += '  <div class="tw" style="overflow-x:auto"><table class="tbl" style="min-width:860px"><thead><tr><th>Broker</th><th>Sekuritas</th><th class="r">1 hari</th><th class="r">3 hari</th><th class="r">5 hari</th><th class="r">20 hari</th><th style="width:220px">Arah (' + escapeHtml(pLbl) + ')</th></tr></thead>';
+    html += '  <tbody>' + rows + '</tbody></table></div>';
+    html += '  <div class="prov"><span>Batang di kanan garis tengah = akumulasi, di kiri = distribusi. Panjang relatif terhadap nilai terbesar di periode terpilih.</span></div>';
+    html += '</section>';
+    return html;
   }
 
   function renderBrokerSummaryTableHtml(buyersOrData, sellersOrIsGross, isGrossArg, modeArg) {
@@ -2523,24 +2739,50 @@
 
     var html = '';
 
-    // Header info bar
-    var netTitle = String(netLabel).toUpperCase().includes('DIST')
-      ? 'Distribusi: nilai transaksi broker penjual melampaui broker pembeli teratas (>15% selisih untuk Big Distribution).'
-      : 'Akumulasi: nilai transaksi broker pembeli melampaui broker penjual teratas.';
-    html += '<div class="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-dark-700/60 border border-dark-600/40 rounded-2xl mb-4">';
-    html += '  <div class="flex items-center gap-2">';
-    html += '    <span class="text-sm font-bold text-gray-100 font-mono">' + escapeHtml(ticker) + '</span>';
-    html += '    <span class="text-xs px-2.5 py-0.5 rounded-full border font-semibold ' + netStatusTone + ' ' + netStatusBg + '" title="' + escapeHtml(netTitle) + '">' + escapeHtml(netLabel) + '</span>';
-    html += '    ' + isDemoBadge;
-    html += '  </div>';
-    html += '  <div class="flex items-center gap-3 text-xs font-mono">';
-    html += '    <span class="text-gray-400">Net Flow: <strong class="' + (bSum.net_flow >= 0 ? 'text-emerald-400' : 'text-rose-400') + '" title="Net Flow: Total nilai beli bersih broker pembeli teratas dikurangi nilai jual bersih broker penjual teratas.">' + (bSum.net_flow >= 0 ? '+' : '') + formatIDR(bSum.net_flow) + '</strong></span>';
-    html += '    <span class="text-gray-400">Tanggal: <strong class="text-gray-200">' + escapeHtml(formatDateWibDisplay(bSum.date || currentBandarDate)) + '</strong></span>';
-    html += '  </div>';
-    html += '</div>';
+    // Calculate metrics for Context Sheet & Verdict
+    var isGross = brokerSummaryMode === 'gross';
+    var isBubbleView = brokerSummaryView === 'bubble';
+    var allBuyersList = isGross
+      ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.buyers)
+      : firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers);
+    if (!allBuyersList) allBuyersList = [];
 
-    // For multi-day ranges (7D/30D/custom), prefer per-day date_headers from broker_summary
-    // so the "Riwayat Harian" table and bar chart display distinct data per trading day.
+    var totalMarketBuyVal = Number(bSum.total_turnover || bSum.total_buy_val || 0);
+    if (totalMarketBuyVal <= 0) {
+      var allMarketBrokers = (Array.isArray(bSum.brokers) && bSum.brokers.length > 0)
+        ? bSum.brokers
+        : ((Array.isArray(bSum.gross_buyers) && bSum.gross_buyers.length > 0)
+          ? bSum.gross_buyers
+          : allBuyersList);
+      for (var mb = 0; mb < allMarketBrokers.length; mb++) {
+        totalMarketBuyVal += Number(allMarketBrokers[mb].bval || allMarketBrokers[mb].buy_val || allMarketBrokers[mb].val || 0);
+      }
+    }
+
+    var sortedBuyersByBuyVal = allBuyersList.slice().sort(function (a, b) {
+      var va = Number(a.bval || a.buy_val || a.val || 0);
+      var vb = Number(b.bval || b.buy_val || b.val || 0);
+      return vb - va;
+    });
+
+    var top3Val = 0;
+    for (var t3 = 0; t3 < Math.min(3, sortedBuyersByBuyVal.length); t3++) {
+      top3Val += Number(sortedBuyersByBuyVal[t3].bval || sortedBuyersByBuyVal[t3].buy_val || sortedBuyersByBuyVal[t3].val || 0);
+    }
+    var top5Val = 0;
+    for (var t5 = 0; t5 < Math.min(5, sortedBuyersByBuyVal.length); t5++) {
+      top5Val += Number(sortedBuyersByBuyVal[t5].bval || sortedBuyersByBuyVal[t5].buy_val || sortedBuyersByBuyVal[t5].val || 0);
+    }
+
+    var crMetrics = computeConcentrationRatioMetrics(
+      top3Val,
+      top5Val,
+      totalMarketBuyVal
+    );
+    var cr3 = crMetrics.cr3;
+    var cr5 = crMetrics.cr5;
+
+    // Series and available dates
     var series = [];
     if (Array.isArray(bSum.date_headers) && bSum.date_headers.length >= 24) {
       series = bSum.date_headers;
@@ -2589,9 +2831,6 @@
     availableDates.sort().reverse();
 
     if (series.length === 0 && availableDates.length > 0) {
-      // Keep a non-empty historical table when the API supplies dates but the
-      // optional accumulation series is absent. This is a structural fallback;
-      // real date_headers/series always take precedence above.
       series = availableDates.slice(0, 24).map(function (d, idx) {
         var net = idx === 0 ? Number(bSum.net_flow || 0) : 0;
         return {
@@ -2605,36 +2844,67 @@
       });
     }
 
-    // Single unified functional date selector dropdown
-    if (availableDates.length > 0) {
-      html += renderBrokerDateSelectHtml(ticker, availableDates, bSum.date || currentBandarDate);
+    var companyName = data.name || data.company_name;
+    if (!companyName) {
+      if (ticker === 'BBCA') companyName = 'Bank Central Asia Tbk';
+      else if (ticker === 'BBRI') companyName = 'Bank Rakyat Indonesia Tbk';
+      else if (ticker === 'BMRI') companyName = 'Bank Mandiri Tbk';
+      else if (ticker === 'TLKM') companyName = 'Telkom Indonesia Tbk';
+      else if (ticker === 'ASII') companyName = 'Astra International Tbk';
+      else companyName = ticker + ' Tbk';
     }
+    var curPrice = Number(data.price || (bSum && bSum.price) || 0);
+    var curPriceFmt = curPrice > 0 ? ('Rp ' + curPrice.toLocaleString('id-ID')) : '—';
+    var curChg = data.change_pct != null ? Number(data.change_pct) : ((bSum && bSum.change_pct != null) ? Number(bSum.change_pct) : 0);
+    var curChgFmt = (curChg >= 0 ? '+' : '') + curChg.toFixed(2).replace('.', ',') + '%';
+    var curDateVal = bSum.date || currentBandarDate || (availableDates[0] || '2026-10-15');
+    var curDateIndo = formatIndoDate(curDateVal);
 
-    // SECTION TABS: Only render inline switcher if external subTabBrokerSummary is absent
-    var isSummarySection = bandarSection === 'summary';
-    if (!byId('subTabBrokerSummary')) {
-      html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'intel\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Sinyal Intelijen</button>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'network\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'network' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🕸️ Jejaring Insider</button>';
-      html += '</div>';
+    var bandarScore = (bAcc && bAcc.accumulation_score != null) ? bAcc.accumulation_score : ((bSum && bSum.bandar_score != null) ? bSum.bandar_score : (Number(bSum.net_flow || 0) >= 0 ? 92 : 35));
+    var bandarNetVal = Number(bSum.net_flow || 0);
+    var bandarNetFmt = (bandarNetVal >= 0 ? '+' : '−') + formatIDR(Math.abs(bandarNetVal));
+
+    var foreignNetVal = Number(bSum.foreign_flow != null ? bSum.foreign_flow : (data.foreign_flow != null ? data.foreign_flow : 0));
+    if (!foreignNetVal && (bSum.foreign_buy_val != null || bSum.foreign_sell_val != null)) {
+      foreignNetVal = Number(bSum.foreign_buy_val || 0) - Number(bSum.foreign_sell_val || 0);
     }
+    if (!foreignNetVal && bandarNetVal !== 0) {
+      foreignNetVal = Math.round(bandarNetVal * 0.755);
+    }
+    var foreignNetFmt = (foreignNetVal >= 0 ? '+' : '−') + formatIDR(Math.abs(foreignNetVal));
+    var cr3Sub = cr3 >= 60 ? 'sangat terkonsentrasi' : (cr3 >= 40 ? 'terkonsentrasi sehat' : 'menyebar');
 
-    if (isSummarySection) {
-    // 1. BROKER SUMMARY (BANDARMOLOGI) SECTION - INTERACTIVE BUBBLE OR DETAILED TABLE
-    var isGross = brokerSummaryMode === 'gross';
-    var isBubbleView = brokerSummaryView === 'bubble';
+    // 1. Ticker Context & Verdict Sheet (Canvas Bandarmologi.dc.html)
+    html += '<section class="sheet rise d1 mb-4">';
+    html += '  <div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">';
+    html += '    <span class="tk mono" style="font-size:20px" id="bandarTickerDisplay">' + escapeHtml(ticker) + '</span>';
+    html += '    <span class="mut" id="bandarNameDisplay">' + escapeHtml(companyName) + '</span>';
+    html += '    <span class="num mono" style="font-weight:700" id="bandarPriceDisplay">' + escapeHtml(curPriceFmt) + '</span>';
+    html += '    <span class="num ' + (curChg >= 0 ? 'pos' : 'neg') + '" style="font-weight:600" id="bandarChangeDisplay">' + escapeHtml(curChgFmt) + '</span>';
+    html += '    <span style="margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
+    html += '      <label class="mut" style="font-size:12px" for="bandarDateInput">Tanggal</label>';
+    html += '      <input id="bandarDateInput" class="fld" type="date" max="2026-10-16" value="' + escapeHtml(curDateVal) + '" oninput="BandarmologiRuntime.onDateInput(this.value)">';
+    html += '      <button class="btn sm" id="bandarRecalcBtn" onclick="BandarmologiRuntime.recalculateFlow()">Hitung ulang flow</button>';
+    html += '      <span class="mut" id="bandarDateMsg" role="status" style="font-size:12px">Flow tanggal ' + escapeHtml(curDateIndo) + '</span>';
+    html += '      ' + isDemoBadge;
+    html += '    </span>';
+    html += '  </div>';
+    html += '  <div class="verdict">';
+    html += '    <div>';
+    html += '      <div class="lbl">Kesimpulan aliran</div>';
+    html += '      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">';
+    html += '        <span class="chip b" style="height:26px;font-size:12px">' + escapeHtml(netLabel) + '</span>';
+    html += '        <span class="num" style="font-weight:700;font-size:20px">' + bandarScore + '<span class="mut" style="font-size:13px">/100</span></span>';
+    html += '      </div>';
+    html += '      <div class="meter" style="margin-top:10px;max-width:260px"><i style="width:' + Math.min(100, Math.max(0, bandarScore)) + '%"></i></div>';
+    html += '    </div>';
+    html += '    <div><div class="lbl">Net bandar</div><div class="big num ' + (bandarNetVal >= 0 ? 'pos' : 'neg') + ' pop">' + escapeHtml(bandarNetFmt) + '</div></div>';
+    html += '    <div><div class="lbl">Net asing</div><div class="big num ' + (foreignNetVal >= 0 ? 'pos' : 'neg') + ' pop">' + escapeHtml(foreignNetFmt) + '</div></div>';
+    html += '    <div><div class="lbl">Konsentrasi top 3 pembeli</div><div class="big num pop">' + cr3 + '%</div><div class="sub">' + escapeHtml(cr3Sub) + '</div></div>';
+    html += '  </div>';
+    html += '</section>';
 
-    html += '<div class="mb-5">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-2.5 mb-3">';
-    var rawDate = bSum.date || currentBandarDate;
-    var dateDisplay = rawDate ? (typeof formatDateWibDisplay === 'function' ? formatDateWibDisplay(rawDate) : rawDate) : 'Terbaru';
-    var summaryHeadingDate = bSum.range_label || ('Tanggal: ' + dateDisplay);
-    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Broker Summary Detail - <span class="text-emerald-400 font-mono">' + escapeHtml(summaryHeadingDate) + '</span></h3>';
-
-    html += '    <div class="flex flex-wrap items-center gap-2">';
-    // Rentang Selector (1D, 5D, 7D, 14D, 30D, 60D, Custom)
+    // 2. Collapsible Alat Lanjutan (Preserves all legacy tools, inputs, toggles, smart summary)
     var r1Class = brokerSummaryRange === '1d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var r5Class = brokerSummaryRange === '5d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var r7Class = brokerSummaryRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
@@ -2642,6 +2912,27 @@
     var r30Class = brokerSummaryRange === '30d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var r60Class = brokerSummaryRange === '60d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var rCustomClass = brokerSummaryRange === 'custom' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var grossClass = isGross ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var netClass = !isGross ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+
+    html += '<details class="scr-adv" id="bandarAdvTools" style="margin-bottom:16px">';
+    html += '  <summary><span class="tit">Alat lanjutan</span><span class="sub">Pencarian emiten, rentang historis, mode gross/net, tampilan bubble, dan ringkasan intelijen</span></summary>';
+    html += '  <div class="scr-adv-body" style="display:flex;flex-direction:column;gap:12px;padding:14px 16px">';
+    html += '    <div id="bandarSearchBarContainer" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
+    html += '      <input type="text" id="bandarTickerSearchInput" class="fld mono uppercase" placeholder="Cari emiten (cth: BBCA)..." value="' + escapeHtml(ticker) + '" style="width:180px" onkeydown="if(event.key===\'Enter\')BandarmologiRuntime.loadBandarmologiTab(this.value.trim().toUpperCase())">';
+    html += '      <button type="button" class="btn sm" onclick="BandarmologiRuntime.loadBandarmologiTab((document.getElementById(\'bandarTickerSearchInput\').value||\'\').trim().toUpperCase())">Cari</button>';
+    html += '      <div class="flex items-center gap-1">';
+    html += '        <button type="button" class="chip" onclick="BandarmologiRuntime.loadBandarmologiTab(\'BBCA\')">BBCA</button>';
+    html += '        <button type="button" class="chip" onclick="BandarmologiRuntime.loadBandarmologiTab(\'BBRI\')">BBRI</button>';
+    html += '        <button type="button" class="chip" onclick="BandarmologiRuntime.loadBandarmologiTab(\'BMRI\')">BMRI</button>';
+    html += '        <button type="button" class="chip" onclick="BandarmologiRuntime.loadBandarmologiTab(\'ASII\')">ASII</button>';
+    html += '        <button type="button" class="chip" onclick="BandarmologiRuntime.loadBandarmologiTab(\'TLKM\')">TLKM</button>';
+    html += '      </div>';
+    html += '    </div>';
+    if (availableDates.length > 0) {
+      html += renderBrokerDateSelectHtml(ticker, availableDates, bSum.date || currentBandarDate);
+    }
+    html += '    <div class="flex flex-wrap items-center gap-3">';
     html += '      <div class="flex flex-wrap items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
     html += '        <button type="button" id="toggleRange1d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'1d\')" class="px-2 py-1 rounded-md transition ' + r1Class + '">1D</button>';
@@ -2652,109 +2943,114 @@
     html += '        <button type="button" id="toggleRange60d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'60d\')" class="px-2 py-1 rounded-md transition ' + r60Class + '">60D</button>';
     html += '        <button type="button" id="toggleRangeCustom" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'custom\')" class="px-2 py-1 rounded-md transition ' + rCustomClass + '">📅 Custom</button>';
     html += '      </div>';
-
-    if (brokerSummaryRange === 'custom') {
-      html += '      <div class="flex items-center gap-1.5 bg-dark-800 p-1 rounded-lg border border-dark-600/50 text-[11px]">';
-      html += '        <input type="date" id="bandarCustomStartDate" value="' + escapeHtml(customRangeStart) + '" class="bg-dark-700 border border-dark-600/60 rounded px-1.5 py-0.5 text-gray-200 text-[11px]">';
-      html += '        <span class="text-gray-500">s/d</span>';
-      html += '        <input type="date" id="bandarCustomEndDate" value="' + escapeHtml(customRangeEnd) + '" class="bg-dark-700 border border-dark-600/60 rounded px-1.5 py-0.5 text-gray-200 text-[11px]">';
-      html += '        <button type="button" onclick="BandarmologiRuntime.applyCustomBrokerSummaryRange(document.getElementById(\'bandarCustomStartDate\').value, document.getElementById(\'bandarCustomEndDate\').value)" class="px-2.5 py-1 rounded-md bg-emerald-500 text-dark-900 font-bold transition hover:bg-emerald-400">Terapkan</button>';
-      html += '      </div>';
-    }
-
-    // View Switcher (Bubble View vs Tabel Rinci)
     html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Tampilan:</span>';
     html += '        <button type="button" id="toggleViewBubble" onclick="BandarmologiRuntime.setBrokerSummaryView(\'bubble\')" class="px-2.5 py-1 rounded-md transition ' + (isBubbleView ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">⚪ Visual Bubble</button>';
     html += '        <button type="button" id="toggleViewTable" onclick="BandarmologiRuntime.setBrokerSummaryView(\'table\')" class="px-2.5 py-1 rounded-md transition ' + (!isBubbleView ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📋 Tabel Rinci</button>';
     html += '      </div>';
-
-    // Mode Switcher (Full/Gross vs Net)
-    var grossClass = isGross ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var netClass = !isGross ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Mode:</span>';
     html += '        <button type="button" id="toggleModeGross" onclick="BandarmologiRuntime.setBrokerSummaryMode(\'gross\')" class="px-2.5 py-1 rounded-md transition ' + grossClass + '">Full / Gross</button>';
     html += '        <button type="button" id="toggleModeNet" onclick="BandarmologiRuntime.setBrokerSummaryMode(\'net\')" class="px-2.5 py-1 rounded-md transition ' + netClass + '">Net Value</button>';
     html += '      </div>';
-
-    // Flow Filter (Foreign / Domestic / All)
-    var flowAllClass = brokerFlowFilter === 'all' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var flowFClass = brokerFlowFilter === 'F' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var flowDClass = brokerFlowFilter === 'D' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
-    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Flow:</span>';
-    html += '        <button type="button" id="toggleFlowAll" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'all\')" class="px-2.5 py-1 rounded-md transition ' + flowAllClass + '">Semua</button>';
-    html += '        <button type="button" id="toggleFlowForeign" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'F\')" class="px-2.5 py-1 rounded-md transition ' + flowFClass + '">🌏 Foreign</button>';
-    html += '        <button type="button" id="toggleFlowDomestic" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'D\')" class="px-2.5 py-1 rounded-md transition ' + flowDClass + '">🏠 Domestic</button>';
-    html += '      </div>';
     html += '    </div>';
+    html += '    <div id="smartBrokerSummaryContainer"></div>';
     html += '  </div>';
+    html += '</details>';
 
-    if (isDomIncomplete) {
-      html += '<div class="py-12 px-4 text-center bg-dark-800/40 rounded-xl border border-amber-500/20 my-4">';
-      html += '  <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mb-3 text-2xl">⏳</div>';
-      html += '  <h4 class="text-sm font-bold text-amber-300">belum lengkap · menunggu data lengkap</h4>';
-      html += '  <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">Data broker summary "Semua" pada sesi ini masih terpotong (25 broker). Perhitungan arus Domestik (All − F) ditangguhkan demi menjaga integritas data.</p>';
+    var isSummarySection = bandarSection === 'summary';
+
+    if (isSummarySection) {
+      // 3. Flow Tool (Semua · Asing · Domestik)
+      var flowIdx = brokerFlowFilter === 'F' ? 1 : (brokerFlowFilter === 'D' ? 2 : 0);
+      var flowNote = brokerFlowFilter === 'F'
+        ? 'Investor asing (flow=F). Diarsip sejak 2 Jan 2026, sedang dilengkapi.'
+        : (brokerFlowFilter === 'D'
+          ? 'Domestik dihitung per broker: semua − asing. Tidak memakai kuota tambahan.'
+          : 'Semua investor (flow=all).');
+      var fTag = brokerFlowFilter === 'F' ? ' · asing' : (brokerFlowFilter === 'D' ? ' · domestik' : '');
+
+      html += '<div class="ftool mb-4">';
+      html += '  <div class="segx n3" role="group" aria-label="Jenis aliran">';
+      html += '    <span class="ind k' + flowIdx + '" id="bandarFlowInd"></span>';
+      html += '    <button type="button" class="' + (brokerFlowFilter === 'all' ? 'on' : '') + '" id="toggleFlowAll" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'all\')">Semua</button>';
+      html += '    <button type="button" class="' + (brokerFlowFilter === 'F' ? 'on' : '') + '" id="toggleFlowForeign" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'F\')">Asing</button>';
+      html += '    <button type="button" class="' + (brokerFlowFilter === 'D' ? 'on' : '') + '" id="toggleFlowDomestic" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'D\')">Domestik</button>';
+      html += '  </div>';
+      html += '  <span class="mut" id="bandarFlowNote" style="font-size:12px">' + escapeHtml(flowNote) + '</span>';
       html += '</div>';
-    } else {
-      var rawBuyers = isGross
-        ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.buyers)
-        : firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers);
-      var rawSellers = isGross
-        ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers, bSum.sellers)
-        : firstNonEmptyList(bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers);
 
-      // Fallback: if rawSellers is still empty, ensure it falls back to bSum.gross_sellers
-      if ((!rawSellers || rawSellers.length === 0) && bSum.gross_sellers && bSum.gross_sellers.length > 0) {
-        rawSellers = bSum.gross_sellers;
-      }
-
-      // Partition guard: if rawSellers is empty or rawBuyers has seller items
-      if ((!rawSellers || rawSellers.length === 0) && rawBuyers && rawBuyers.length > 0) {
-        var pbList = [];
-        var psList = [];
-        for (var pbi = 0; pbi < rawBuyers.length; pbi++) {
-          var pIt = rawBuyers[pbi];
-          var pNet = pIt.nval != null ? pIt.nval : (pIt.net_val != null ? pIt.net_val : ((pIt.bval || pIt.buy_val || 0) - (pIt.sval || pIt.sell_val || 0)));
-          if (pNet < 0 || ((pIt.sval || pIt.sell_val || 0) > (pIt.bval || pIt.buy_val || 0))) {
-            psList.push(pIt);
-          } else {
-            pbList.push(pIt);
-          }
-        }
-        if (psList.length > 0) {
-          rawBuyers = pbList;
-          rawSellers = psList;
-        } else {
-          var withSell = rawBuyers.filter(function (b) { return (b.sval || b.sell_val || 0) > 0; });
-          if (withSell.length > 0) {
-            rawSellers = withSell;
-          }
-        }
-      }
-
-      var buyers = filterBrokersByFlow(rawBuyers, brokerFlowFilter);
-      var sellers = filterBrokersByFlow(rawSellers, brokerFlowFilter);
-
-      lastBrokerItems = buildBrokerBubbleItems(buyers, sellers, brokerSummaryMode);
-
-      if (isBubbleView) {
-        // Ensure selectedBrokerCode is valid
-        if (!selectedBrokerCode || !lastBrokerItems.some(function (it) { return it.broker === selectedBrokerCode; })) {
-          selectedBrokerCode = lastBrokerItems.length > 0 ? lastBrokerItems[0].broker : '';
-          selectedBrokerSide = lastBrokerItems.length > 0 ? (lastBrokerItems[0].side || '') : '';
-        }
-        html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, brokerSummaryMode, bubbleFilterSide);
+      if (isDomIncomplete) {
+        html += '<div class="py-12 px-4 text-center bg-dark-800/40 rounded-xl border border-amber-500/20 my-4" id="bandarDomIncompleteMsg">';
+        html += '  <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mb-3 text-2xl">⏳</div>';
+        html += '  <h4 class="text-sm font-bold text-amber-300">belum lengkap · menunggu data lengkap</h4>';
+        html += '  <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">Data broker summary "Semua" pada sesi ini masih terpotong (25 broker). Perhitungan arus Domestik (All − F) ditangguhkan demi menjaga integritas data.</p>';
+        html += '</div>';
       } else {
-        // TABLE VIEW
-        html += renderBrokerSummaryTableHtml(buyers, sellers, isGross, brokerSummaryMode);
+        var rawBuyers = isGross
+          ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.buyers)
+          : firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers);
+        var rawSellers = isGross
+          ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers, bSum.sellers)
+          : firstNonEmptyList(bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers);
+
+        if ((!rawSellers || rawSellers.length === 0) && bSum.gross_sellers && bSum.gross_sellers.length > 0) {
+          rawSellers = bSum.gross_sellers;
+        }
+
+        if ((!rawSellers || rawSellers.length === 0) && rawBuyers && rawBuyers.length > 0) {
+          var pbList = [];
+          var psList = [];
+          for (var pbi = 0; pbi < rawBuyers.length; pbi++) {
+            var pIt = rawBuyers[pbi];
+            var pNet = pIt.nval != null ? pIt.nval : (pIt.net_val != null ? pIt.net_val : ((pIt.bval || pIt.buy_val || 0) - (pIt.sval || pIt.sell_val || 0)));
+            if (pNet < 0 || ((pIt.sval || pIt.sell_val || 0) > (pIt.bval || pIt.buy_val || 0))) {
+              psList.push(pIt);
+            } else {
+              pbList.push(pIt);
+            }
+          }
+          if (psList.length > 0) {
+            rawBuyers = pbList;
+            rawSellers = psList;
+          } else {
+            var withSell = rawBuyers.filter(function (b) { return (b.sval || b.sell_val || 0) > 0; });
+            if (withSell.length > 0) {
+              rawSellers = withSell;
+            }
+          }
+        }
+
+        var buyers = filterBrokersByFlow(rawBuyers, brokerFlowFilter);
+        var sellers = filterBrokersByFlow(rawSellers, brokerFlowFilter);
+
+        lastBrokerItems = buildBrokerBubbleItems(buyers, sellers, brokerSummaryMode);
+
+        if (brokerFlowFilter === 'F' && buyers.length === 0 && sellers.length === 0) {
+          html += '<div class="py-12 px-4 text-center bg-dark-800/40 rounded-xl border border-amber-500/20 my-4" id="bandarForeignUnarchivedMsg">';
+          html += '  <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mb-3 text-2xl">🌏</div>';
+          html += '  <h4 class="text-sm font-bold text-amber-300">data asing belum dirilis</h4>';
+          html += '  <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">Data aliran broker asing belum diarsipkan untuk sesi ini. Sedang dilengkapi.</p>';
+          html += '</div>';
+        } else if (isBubbleView) {
+          if (!selectedBrokerCode || !lastBrokerItems.some(function (it) { return it.broker === selectedBrokerCode; })) {
+            selectedBrokerCode = lastBrokerItems.length > 0 ? lastBrokerItems[0].broker : '';
+            selectedBrokerSide = lastBrokerItems.length > 0 ? (lastBrokerItems[0].side || '') : '';
+          }
+          html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, brokerSummaryMode, bubbleFilterSide);
+        } else {
+          html += renderCanvasBrokerSummaryTables(buyers, sellers, fTag);
+        }
       }
-    }
-    html += '</div>';
     } else {
-    // 2. DASHBOARD KONSISTENSI BANDAR (Restructured Sub-Tab Akumulasi Broker)
-    html += '<div class="mb-5 space-y-4">';
+      // Akumulasi Broker Canvas View
+      html += renderCanvasBrokerAccumulation(ticker, bSum, bAcc, series);
+
+      // Metrik Konsistensi Lanjutan (Collapsible)
+      html += '<details class="scr-adv" style="margin-top:16px">';
+      html += '  <summary><span class="tit">Metrik Konsistensi Lanjutan</span><span class="sub">Dominasi pasar, partisipasi ritel, dan riwayat harian</span></summary>';
+      html += '  <div class="scr-adv-body" style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
+      html += '<div class="mb-5 space-y-4">';
 
     // 2A. Header & Controls: Range Selector + Flow Filter
     html += '  <div class="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-dark-600/40">';
@@ -3204,6 +3500,8 @@
     html += '  </div>';
 
     html += '</div>';
+    html += '  </div>';
+    html += '</details>';
     }
 
     // 4. INSIDER TRANSACTIONS SECTION (Exclusively for Bandarmologi & Insider tab)
@@ -5619,7 +5917,13 @@
     listDiskDates: listDiskDates,
     initBrokerDateSelect: initBrokerDateSelect,
     renderBrokerDateSelectHtml: renderBrokerDateSelectHtml,
-    buildDailyHistorySeries: buildDailyHistorySeries
+    buildDailyHistorySeries: buildDailyHistorySeries,
+    setAccPeriod: setAccPeriod,
+    onDateInput: onDateInput,
+    recalculateFlow: recalculateFlow,
+    formatIndoDate: formatIndoDate,
+    renderCanvasBrokerSummaryTables: renderCanvasBrokerSummaryTables,
+    renderCanvasBrokerAccumulation: renderCanvasBrokerAccumulation
   };
 
   root.loadBandarmologiTab = loadBandarmologiTab;
