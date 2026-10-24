@@ -161,6 +161,7 @@
   "test/broker-summary-gross-buyers.test.js",
   "test/broker-summary-net-sellers.test.js",
   "test/broksum-domestic-guard.test.js",
+  "test/broksum-flow-missing-foreign.test.js",
   "test/broksum-flow.test.js",
   "test/broksum-validator.test.js",
   "test/budi-admin-compatibility.test.js",
