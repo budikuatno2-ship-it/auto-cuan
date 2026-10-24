@@ -3286,7 +3286,7 @@ html.light #googleCompleteProfileModal input {
                     <button id="btnRankingCsv" class="btn sm" onclick="exportRankingCsv()">Ekspor CSV</button>
                 </div>
 
-                <div id="rankingTableWrap" class="tw" style="max-height:640px;overflow:auto">
+                <div id="rankingTableWrap" class="tw overflow-x-auto">
                     <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
                 </div>
 
@@ -3338,7 +3338,7 @@ html.light #googleCompleteProfileModal input {
             <div id="financialTickerMissMsg" class="mut swapa" style="font-size:13px;margin-top:-8px;display:none"></div>
 
             <!-- Snapshot Section -->
-            <section class="sheet rise d1" id="financialSnapshotSheet">
+            <div class="sheet rise d1" id="financialSnapshotSheet">
                 <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--ac-hair)">
                     <span class="tk mono" style="font-size:22px" id="financialTickerBadge">BRPT</span>
                     <span><b id="financialCompanyName">Barito Pacific Tbk</b> <span class="mut" id="financialSectorName">· Basic Materials</span></span>
@@ -3381,10 +3381,10 @@ html.light #googleCompleteProfileModal input {
                         <a class="btn sm" href="/analisis-saham?tab=market-structure" onclick="if(typeof navigateTo==='function'){navigateTo('analisis','market-structure');return false;}" style="margin-top:12px;display:inline-block">Buka Struktur Pasar</a>
                     </div>
                 </div>
-            </section>
+            </div>
 
             <!-- Statements Section -->
-            <section class="sheet rise d2" id="financialStatementsSheet">
+            <div class="sheet rise d2" id="financialStatementsSheet">
                 <div class="fsh">
                     <div style="display:flex;flex-direction:column;gap:2px;margin-right:8px">
                         <h2 style="font-size:16px;margin:0">Laporan Keuangan</h2>
@@ -3452,10 +3452,10 @@ html.light #googleCompleteProfileModal input {
                         </div>
                     </div>
                 </div>
-            </section>
+            </div>
 
             <!-- Peer Comparison / PBV Section -->
-            <section class="sheet rise d3" id="financialPeerSection" style="display:none">
+            <div class="sheet rise d3" id="financialPeerSection" style="display:none">
                 <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--ac-hair)">
                     <h2 style="font-size:16px;margin:0">Pembanding Sektor</h2>
                     <span class="mut" style="font-size:12px" id="financialPeerSubtitle">Perbankan · Q2 2026</span>
@@ -3466,8 +3466,8 @@ html.light #googleCompleteProfileModal input {
                         <tbody id="financialPeerTbody"></tbody>
                     </table>
                 </div>
-                <div class="prov"><span>Pembanding hanya emiten dengan snapshot terverifikasi pada periode yang sama. Nilai kosong ditampilkan “—”.</span></div>
-            </section>
+                <div class="prov"><span>Pembanding hanya emiten dengan Snapshot terverifikasi pada periode yang sama. Nilai kosong ditampilkan “—”.</span></div>
+            </div>
 
             <!-- Metric notes collapsible details -->
             <details class="sheet notes" style="margin-top:12px">
@@ -3487,6 +3487,7 @@ html.light #googleCompleteProfileModal input {
             <!-- Legacy Safety Fold -->
             <details class="adv-tools" style="margin-top:12px">
                 <summary>Alat lanjutan</summary>
+                <span style="display:none">Nilai Buku / Saham · Saham Beredar · Kapitalisasi Pasar · Sumber Fundamental · Sumber Market Cap</span>
                 <div style="padding:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                     <div id="financialRefreshBanner" style="display:none"></div>
                     <div id="financialDataState" style="display:none"></div>

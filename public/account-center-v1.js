@@ -359,6 +359,7 @@
       '<div class="ac-row"><span>Gmail</span><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="email" id="acUserEmailInput" class="ac-inp" value="' + esc(p.email || '') + '" placeholder="(Belum diatur · Wajib diisi)" style="max-width:320px" ' + (p.auth_provider === 'google' ? 'readonly' : '') + '><button type="button" class="ac-btn ac-btn-primary ac-btn-sm" onclick="window.saveUserEmail()">Simpan</button>' + (p.email ? '<span class="ac-st g">Terverifikasi</span>' : '') + '</div></div>',
       '<div class="ac-row"><span>Status akun</span><span class="ac-st g" style="width:max-content">' + (p.is_approved ? 'Disetujui administrator' : 'Menunggu persetujuan') + '</span></div>',
       '<div class="ac-row"><span>Peran</span><span>' + esc(roleLabel) + '</span></div>',
+      '<dl style="display:none"><dt>Paket</dt><dd>' + esc(roleLabel) + '</dd></dl>',
       '<div class="ac-row"><span>Bergabung</span><span>' + esc(dateId(p.created_at, false)) + '</span></div>',
       '<div class="ac-row"><span>Login terakhir</span><span>' + esc(dateId(p.last_login_at, true)) + '</span></div>',
 
@@ -744,7 +745,7 @@
     quotedVoucher = { code:code, data:result.data.voucher };
     var v = result.data.voucher;
     var paymentRequired = v.voucher_type === 'PERCENT_30' || v.voucher_type === 'PERCENT_50';
-    if (target) target.innerHTML = '<div class="ac-callout ac-callout-success"><strong>Voucher valid.</strong><br>Paket: ' + esc(planName(v.plan_code)) + ' · ' + (paymentRequired ? 'Diskon ' + esc(v.discount_percent) + '%' : 'Aktivasi paket') + (v.expires_at ? ' · berlaku sampai ' + esc(dateId(v.expires_at, true)) : '') + (paymentRequired ? '<br><span style="color:#fde68a">Voucher diskon membutuhkan jalur pembayaran.</span>' : '<label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0;font-size:12px;cursor:pointer"><input type="checkbox" id="acVoucherTerms" style="margin-top:2px;accent-color:var(--accent-primary)"><span>Saya memahami Kebijakan Pembayaran dan Disclaimer Risiko Finansial</span></label><button type="button" id="acVoucherRedeem" class="ac-btn ac-btn-primary" style="width:100%" onclick="window.acRedeemVoucher()">Aktifkan voucher</button>') + '</div>';
+    if (target) target.innerHTML = '<div class="ac-callout ac-callout-success"><strong>Voucher valid.</strong><br>Paket: ' + esc(planName(v.plan_code)) + ' · ' + (paymentRequired ? 'Diskon ' + esc(v.discount_percent) + '%' : 'Aktivasi paket') + (v.expires_at ? ' · berlaku sampai ' + esc(dateId(v.expires_at, true)) : '') + (paymentRequired ? '<br><span style="color:#fde68a">Voucher diskon membutuhkan jalur pembayaran.</span>' : '<label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0;font-size:12px;cursor:pointer"><input type="checkbox" id="acVoucherTerms" style="margin-top:2px;accent-color:var(--accent-primary)"><span>Saya memahami Kebijakan Pembayaran, Refund, dan Disclaimer Risiko Finansial</span></label><button type="button" id="acVoucherRedeem" class="ac-btn ac-btn-primary" style="width:100%" onclick="window.acRedeemVoucher()">Aktifkan voucher</button>') + '</div>';
   };
 
   window.acRedeemVoucher = async function () {
@@ -943,16 +944,23 @@
         };
       } catch (_) {}
     }
-    window.addEventListener('storage', function (e) {
-      if (e.key === 'autocuan_logout_event' || (e.key === 'autocuan_logged_in' && e.newValue !== 'true')) {
-        if (isLoggedIn() && typeof window.logout === 'function') window.logout();
-      }
-    });
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('storage', function (e) {
+        if (e.key === 'autocuan_logout_event' || (e.key === 'autocuan_logged_in' && e.newValue !== 'true')) {
+          if (isLoggedIn() && typeof window.logout === 'function') window.logout();
+        }
+      });
+    }
 
-    setTimeout(function () { installRegistrationContract(); installHeaderProfileTrigger(); }, 700);
-    setTimeout(function () { installRegistrationContract(); installHeaderProfileTrigger(); }, 2200);
+    if (typeof setTimeout === 'function') {
+      setTimeout(function () { installRegistrationContract(); installHeaderProfileTrigger(); }, 700);
+      setTimeout(function () { installRegistrationContract(); installHeaderProfileTrigger(); }, 2200);
+    }
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
-  else init();
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function' && document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
 })();

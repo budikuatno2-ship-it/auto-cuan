@@ -2208,20 +2208,63 @@
     }
   }
 
-  function renderFinancialFundamental() {
-    var ticker = (financialState.t || 'BRPT').toUpperCase();
+  function renderFinancialFundamental(ticker, f, price) {
+    ticker = (ticker || financialState.t || 'BRPT').toUpperCase();
+    var cached = financialCache[ticker] || {};
+    f = f || cached.fundamental || {};
+    price = price || cached.price || null;
+
+    researchText('financialTickerBadge', ticker);
+    researchText('financialPbv', researchHasNumber(f.pbv) ? researchNumber(f.pbv, 2) + 'x' : '—');
+    var referencePrice = researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan —';
+    if (price && price.last_price_as_of) referencePrice += ' · ' + price.last_price_as_of;
+    if (price && price.last_price_source) referencePrice += ' · ' + price.last_price_source;
+    if (price && price.freshness === 'stale') referencePrice += ' · Data historis';
+    researchText('financialPbvPrice', referencePrice);
+    researchText('financialBvps', researchHasNumber(f.book_value_per_share) ? researchIdr(f.book_value_per_share) : '—');
+    researchText('financialShares', researchHasNumber(f.shares_outstanding) ? researchCompact(f.shares_outstanding) : '—');
+    researchText('financialMarketCap', researchHasNumber(f.market_cap) ? researchIdr(f.market_cap) : '—');
+    researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'As of ' + f.market_cap_as_of : 'Belum tersedia');
+    researchText('financialPeriod', f.fundamental_period || 'Belum tersedia');
+    researchText('financialPeriodHero', f.fundamental_period ? 'Periode ' + f.fundamental_period : 'Periode belum tersedia');
+    researchText('financialSource', f.fundamental_source || 'Belum tersedia');
+    researchText('financialMarketCapSource', f.market_cap_source || 'Belum tersedia');
+    researchText('financialUpdatedAt', f.fundamental_updated_at || 'Belum tersedia');
+
+    var coverageValues = [f.pbv, f.book_value_per_share, f.shares_outstanding, f.market_cap];
+    var coverageCount = coverageValues.reduce(function (count, value) {
+      return count + (researchHasNumber(value) ? 1 : 0);
+    }, 0);
+    researchText('financialCoverage', coverageCount + ' / 4');
+    var coverageBar = byId('financialCoverageBar');
+    if (coverageBar && coverageBar.style && coverageBar.style.setProperty) {
+      coverageBar.style.setProperty('--ac-financial-coverage', (coverageCount * 25) + '%');
+    }
+
+    var allUnavailEl = byId('financialAllUnavailableState');
+    var metricGrid = byId('financialMetricGrid');
+    if (coverageCount === 0) {
+      if (allUnavailEl) allUnavailEl.hidden = false;
+      if (metricGrid) metricGrid.hidden = true;
+    } else {
+      if (allUnavailEl) allUnavailEl.hidden = true;
+      if (metricGrid) metricGrid.hidden = false;
+    }
+
     var meta = FINANCIAL_META[ticker];
 
     // Update Ticker chips
-    ['BRPT', 'BBCA', 'BBRI', 'BMRI', 'GOTO'].forEach(function(code) {
-      var btns = document.querySelectorAll('#financialPopularChips button');
-      btns.forEach(function(b) {
-        if (b.textContent.trim() === code) {
-          if (code === ticker) b.classList.add('on');
-          else b.classList.remove('on');
-        }
+    if (typeof document.querySelectorAll === 'function') {
+      ['BRPT', 'BBCA', 'BBRI', 'BMRI', 'GOTO'].forEach(function(code) {
+        var btns = document.querySelectorAll('#financialPopularChips button');
+        btns.forEach(function(b) {
+          if (b && b.textContent.trim() === code && b.classList) {
+            if (code === ticker) b.classList.add('on');
+            else b.classList.remove('on');
+          }
+        });
       });
-    });
+    }
 
     var snapshotSheet = byId('financialSnapshotSheet');
     var snapshotBody = byId('financialSnapshotBody');
@@ -2334,7 +2377,7 @@
     if (catInd) catInd.className = 'ind k' + tabIdx;
     for (var i = 0; i < 4; i++) {
       var cBtn = byId('finCat' + i);
-      if (cBtn) {
+      if (cBtn && cBtn.classList) {
         if (i === tabIdx) cBtn.classList.add('on');
         else cBtn.classList.remove('on');
       }
@@ -2344,7 +2387,7 @@
     if (freqInd) freqInd.className = 'ind k' + fr;
     for (var j = 0; j < 2; j++) {
       var fBtn = byId('finFreq' + j);
-      if (fBtn) {
+      if (fBtn && fBtn.classList) {
         if (j === fr) fBtn.classList.add('on');
         else fBtn.classList.remove('on');
       }
@@ -2549,7 +2592,7 @@
     var bw = Math.min(46, slot * 0.56);
 
     var zeroLine = byId('financialZeroLine');
-    if (zeroLine) {
+    if (zeroLine && typeof zeroLine.setAttribute === 'function') {
       zeroLine.setAttribute('y1', zy.toFixed(1));
       zeroLine.setAttribute('y2', zy.toFixed(1));
     }
@@ -2697,6 +2740,7 @@
   };
 
   async function loadFinancialStructureTab(tabName, rawTicker) {
+    var generation = ++researchGeneration;
     var ticker = researchTicker(rawTicker || (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker) || 'BRPT');
     if (!ticker) return;
 
@@ -2705,20 +2749,86 @@
       return root.loadStrukturPasarUniverse(ticker);
     }
 
-    if (isFinancial && financialSnapshotCache[ticker]) {
-      // cached snapshot available
-    }
-
+    root.activeTicker = ticker;
     if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
       root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false, skipFinancialSync: true });
-    } else {
-      root.activeTicker = ticker;
     }
     var financialInput = byId('financialTickerInput');
     if (financialInput) financialInput.value = ticker;
 
     financialState.t = ticker;
-    renderFinancialFundamental();
+
+    var state = byId('financialDataState');
+    var content = byId('financialDataContent');
+    var refreshBanner = byId('financialRefreshBanner');
+    var allUnavailEl = byId('financialAllUnavailableState');
+
+    var cachedFundamental = financialCache[ticker];
+    if (cachedFundamental) {
+      renderFinancialFundamental(ticker, cachedFundamental.fundamental, cachedFundamental.price);
+      financialRenderedTicker = ticker;
+      if (state) state.hidden = true;
+      if (content) content.hidden = false;
+      if (refreshBanner) {
+        refreshBanner.hidden = false;
+        refreshBanner.innerHTML = '<span class="ac-refresh-banner-text"><span class="spinner-sm"></span> Memperbarui data fundamental ' + escapeHtml(ticker) + '…</span>';
+      }
+    } else {
+      financialRenderedTicker = null;
+      if (content) content.hidden = true;
+      if (allUnavailEl) allUnavailEl.hidden = true;
+      if (refreshBanner) refreshBanner.hidden = true;
+      if (state) {
+        state.hidden = false;
+        state.textContent = 'Memuat ' + ticker + '…';
+      }
+    }
+
+    try {
+      var response = await fetch('/api/quote?action=financial-snapshot&ticker=' + encodeURIComponent(ticker), {
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
+      var payload = await response.json().catch(function () { return {}; });
+      if (generation !== researchGeneration) return;
+      if (!response.ok || !payload.success || !payload.snapshot || !payload.snapshot.fundamental) {
+        throw new Error(payload.error || 'Data belum tersedia.');
+      }
+
+      var ctx = payload.snapshot;
+      var f = ctx.fundamental || {};
+
+      financialCache[ticker] = ctx;
+      financialRenderedTicker = ticker;
+      renderFinancialFundamental(ticker, f, ctx.price);
+
+      if (state) state.hidden = true;
+      if (refreshBanner) refreshBanner.hidden = true;
+      if (content) {
+        content.hidden = false;
+        if (root.AutoCuanFinalUiux && typeof root.AutoCuanFinalUiux.enterPanel === 'function') {
+          root.AutoCuanFinalUiux.enterPanel(content);
+        }
+      }
+    } catch (error) {
+      if (generation !== researchGeneration) return;
+      if (financialRenderedTicker === ticker && financialCache[ticker]) {
+        if (content) content.hidden = false;
+        if (refreshBanner) {
+          refreshBanner.hidden = false;
+          refreshBanner.innerHTML = '<span class="ac-refresh-banner-text is-error">Gagal memperbarui: ' + escapeHtml((error && error.message) || 'Koneksi terputus') + '. Menampilkan data tersimpan.</span>';
+        } else if (state) {
+          state.hidden = false;
+          state.textContent = 'Gagal memperbarui. Menampilkan data tersimpan.';
+        }
+      } else {
+        if (state) {
+          state.hidden = false;
+          state.textContent = (error && error.message) || 'Gagal memuat data.';
+        }
+        if (content) content.hidden = true;
+      }
+    }
   }
   root.loadFinancialStructureTab = loadFinancialStructureTab;
 

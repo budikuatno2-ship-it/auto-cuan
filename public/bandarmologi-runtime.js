@@ -2425,7 +2425,7 @@
     var A = brokerList.map(function(item) {
       var v1 = item.net;
       var v3 = Math.round(v1 * 2.15);
-      var v5 = Math.round(v1 * 2.85);
+      var v5 = Math.round(v1 * (285 / 100));
       var v20 = Math.round(v1 * 4.95);
       return {
         b: item.b,

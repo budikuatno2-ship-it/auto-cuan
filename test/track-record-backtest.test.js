@@ -234,8 +234,8 @@ test('renderBacktestTradeTable outputs detailed 10-column table format', () => {
   assert.ok(domTbody.innerHTML.includes('Rp 10.160.000'));
 });
 
-test('API endpoint count is maintained and includes admin-notes', () => {
+test('API endpoint count is maintained (13 Vercel functions budget)', () => {
   const apiDir = path.resolve(__dirname, '..', 'api');
   const files = fs.readdirSync(apiDir).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 14, 'api/ must contain exactly 14 endpoints (13 existing + admin-notes)');
+  assert.equal(files.length, 13, 'api/ must strictly contain 13 endpoints (with admin-notes rewritten to sector-hot)');
 });
