@@ -99,9 +99,46 @@ Kelompok 7 menyelesaikan 4 halaman terakhir dari keseluruhan 23 halaman proyek R
 
 ---
 
-## 4. Instruksi Langkah Selanjutnya (Untuk Pengguna / Pemilik Proyek)
+## 4. Penyempurnaan Akhir: Kesiapan Produksi Web (T4, F8, T8)
 
-Sesuai instruksi penahanan pengiriman (HOLD PUSH):
-- Commit Kelompok 7 **belum di-push ke remote** dan tersimpan aman di branch lokal `redesign/v2`.
-- Tidak ada push atau merge ke `origin/feat/daytrade-screener-v1` atau `origin/main`.
-- Menunggu persetujuan pengguna sebelum melakukan `git push origin redesign/v2` atau membuka penggabungan PR #910.
+1. **Tugas T4 — Sisa Fitur §5a Analisis & Chart:**
+   - Menambahkan kerucut rentang wajar 10 hari (`drawStockCone`) di `public/analisis-v2.js`, aktif HANYA untuk horizon Scalping dan Swing; secara eksplisit dibersihkan/dinonaktifkan untuk Investor.
+   - Menambahkan layer Tekanan Broker (`bandar_tekanan_broker`) dan Harga rata-rata bandar (`bandar_avg_price`) ke dalam `LAYER_GROUPS[2]` dan `STOCK_ONLY_LAYERS` di `public/chart-workstation.js`.
+   - Menerapkan penanganan status jujur di `public/market-feature-runtime.js` & `public/chart-workstation.js`: jika seri broksum harian belum tersedia/bolong, menampilkan label `"Belum tersedia (menunggu kelengkapan seri broker harian)"` tanpa mengarang angka atau menyebabkan error rendering chart.
+   - Mempertahankan kesiapan sisi klien untuk bar hari ini (`provisional: true`, `updatedAt`, `series.update()`) secara utuh.
+   - Unit test: `test/redesign-v2-t4-analisis.test.js` (4/4 lolos).
+   - Commit: `e6c3eefd`.
+
+2. **Kesiapan Produksi Web — Self-Host Vendor & Anti-CSP Block (F8):**
+   - Mengunduh dan menempatkan pustaka vendor ke `public/vendor/`:
+     - `lightweight-charts.standalone.production.js` (160 KB, v4.1.1)
+     - `jspdf.umd.min.js` (365 KB, v2.5.2)
+     - `jspdf.plugin.autotable.min.js` (38 KB, v3.8.2)
+   - Membuat script sinkron anti-kedip `public/theme-boot.js` di `<head>` untuk kesiapan penegakan CSP tanpa resiko flash tema.
+   - Mengalihkan loader pustaka di `public/market-feature-runtime.js` dan `public/index.html` ke jalur lokal `/vendor/...`.
+   - Mengganti seluruh tautan Google Fonts eksternal di halaman mandiri (`admin-console.html`, `ketentuan.html`, `maintenance.html`, `pattern-radar.html`) dengan stylesheet lokal `/fonts/ac-fonts.css` dan `<script src="/theme-boot.js"></script>`.
+   - Memastikan **0 permintaan runtime ke CDN luar** (`unpkg.com`, `cdnjs.cloudflare.com`, `cdn.jsdelivr.net`, `fonts.googleapis.com`).
+   - Unit test: `test/redesign-v2-vendor-csp.test.js` (5/5 lolos).
+   - Commit: `659596ec`.
+
+3. **Tugas T8 Sisa — Screener Print Stylesheet & Halaman 404:**
+   - Menambahkan aturan `@media print` komprehensif di `public/ac-v2.css`:
+     - Menyembunyikan elemen non-cetak: sidebar, topbar, running text/marquee, tombol aksi, filter bar, dan maskot Si Mata.
+     - Melebarkan kontainer tabel (`#page-screener`, `#screenerTableWrap`, `table`) menjadi 100% lebar cetak tanpa pemotongan atau scrollbar.
+     - Menjaga keterbacaan angka berformat Geist Mono dengan `tabular-nums` dan kontras teks tinggi di atas kertas putih.
+     - Menyediakan header cetak khusus `.scr-print-meta` dengan hook timestamp data pasar asli via event listener `beforeprint` di `public/market-feature-runtime.js`.
+   - Memperbarui `public/404.html` agar selaras dengan bahasa desain v2:
+     - Menggunakan arsitektur layout `.stage`, `.card.dlg`, token semantik `ac-v2.css`, dan font lokal `/fonts/ac-fonts.css`.
+     - Menyediakan judul resmi *"Halaman ini tidak ada di radar"* dan navigasi pemulihan yang jelas (Buka Dashboard, Kembali ke Beranda, Trust Center, Ketentuan).
+     - Menjaga kontrak keamanan ketat: tanpa script tag (`<script>`) dan tanpa tautan aset eksternal.
+   - Unit test: `test/redesign-v2-print-404.test.js` (3/3 lolos).
+   - Commit: `dc5d344a`.
+
+---
+
+## 5. Instruksi Langkah Selanjutnya (Untuk Pengguna / Pemilik Proyek)
+
+Sesuai instruksi penahanan pengiriman (HOLD PUSH & HOLD FETCH/MERGE):
+- Seluruh commit baru tersimpan aman secara **MURNI LOKAL** di branch `redesign/v2`.
+- Tidak ada push, fetch, atau merge ke branch `origin/feat/daytrade-screener-v1` maupun `origin/main` selama tim backend (Roo Code) menyelesaikan tugasnya.
+- Menunggu aba-aba pengguna setelah pekerjaan Roo Code selesai untuk sinkronisasi upstream dan push cadangan `redesign/v2`.
