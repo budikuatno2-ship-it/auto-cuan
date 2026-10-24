@@ -280,6 +280,7 @@
   "test/daytrade-swing-konglo-trade-plan-v2-persistence.test.js",
   "test/daytrade-telegram-actionable-dead-sort-regression.test.js",
   "test/daytrade-trade-plan-v2-intraday-anchor.test.js",
+  "test/daytrade-ui-trade-date.test.js",
   "test/daytrade-universe-recovery.test.js",
   "test/daytrade-v7-engine-integrity.test.js",
   "test/daytrade-volume-pace-recall-v7.test.js",
