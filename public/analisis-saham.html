@@ -357,197 +357,200 @@
 
         <!-- ===== FINANCIAL / FUNDAMENTAL ===== -->
         <section id="panel-tab-financial" class="analisis-tab-panel" style="display:none" data-ac-ui="v2">
-            <div class="ac-financial-container ac-surface-bounded">
-                <header class="ac-financial-header" style="display: none;" aria-hidden="true">
-                    <div>
-                        <div class="ac-provenance-row" style="margin-bottom: 2px;">
-                            <span class="ac-provenance-item">
-                                <span class="ac-provenance-label">Lensa Riset:</span>
-                                <span class="ac-provenance-value">Fundamental</span>
-                            </span>
-                        </div>
-                        <h2 class="ac-financial-title">Financial</h2>
-                        <p class="ac-financial-subtitle">Snapshot rasio dan nilai buku dari laporan keuangan resmi emiten. Nilai tidak tersedia tetap kosong tanpa asumsi.</p>
-                    </div>
-                    <div class="ac-financial-ticker-bar">
-                        <label class="sr-only" for="financialTickerInput">Ticker Saham</label>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <input id="financialTickerInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" placeholder="BBCA" class="ac-input uppercase" style="width: 110px; font-weight: 700; font-family: var(--ac-font-mono, monospace);" onkeydown="if(event.key==='Enter'&&!event.isComposing){loadFinancialStructureTab('financial', this.value)}">
-                            <button type="button" class="ac-btn ac-btn-primary" onclick="loadFinancialStructureTab('financial', document.getElementById('financialTickerInput').value)" style="min-height: 36px; font-size: 13px;">Muat</button>
-                        </div>
-                    </div>
-                </header>
-
-                <!-- Refresh Banner -->
-                <div id="financialRefreshBanner" class="ac-refresh-banner" role="status" aria-live="polite" hidden></div>
-
-                <!-- Initial Prompt State -->
-                <div id="financialDataState" class="ac-financial-state-box">
-                    <span class="ac-status-dot ac-status-dot--neutral" aria-hidden="true"></span>
-                    <span id="financialStateText">Pilih atau masukkan ticker untuk membuka snapshot fundamental resmi emiten.</span>
+            <div class="ph rise d0">
+                <div>
+                    <h1>Financial</h1>
+                    <p>Snapshot valuasi dan laporan keuangan per periode. Field yang tidak ada di sumber ditampilkan “—”, bukan nol.</p>
                 </div>
-
-                <!-- Single Compact Unavailable State (§79.2) -->
-                <div id="financialDataUnavailable" class="ac-empty-state" style="padding: 24px 16px;" hidden>
-                    <svg class="ac-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    <div class="ac-empty-state__title" id="financialUnavailableTitle">Data Fundamental Belum Tersedia</div>
-                    <div class="ac-empty-state__desc" id="financialUnavailableDesc">Belum ada laporan keuangan resmi yang tersimpan untuk emiten ini. Auto-Cuan tidak membuat rasio sintetis saat sumber data belum tersedia.</div>
-                    <div id="financialAllUnavailableState" class="ac-empty-state ac-financial-all-unavailable" role="status" hidden></div>
-                </div>
-
-                <!-- Verified Snapshot Content -->
-                <div id="financialDataContent" class="ac-financial-content-wrap" hidden>
-                    <!-- Ticker Context Sub-header -->
-                    <div class="ac-financial-ticker-context">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span id="financialTickerBadge" class="ac-financial-symbol">BBCA</span>
-                            <span id="financialCompanyName" class="ac-financial-company-name">-</span>
-                        </div>
-                        <div class="ac-provenance-row" style="font-size: 11.5px;">
-                            <span class="ac-provenance-item">
-                                <span class="ac-provenance-label">Status Snapshot:</span>
-                                <span class="ac-status-badge ac-status-badge--neutral" id="financialStatusBadge">Memuat...</span>
-                                <span class="sr-only">Snapshot terverifikasi</span>
-                            </span>
-                            <span class="ac-provenance-sep">·</span>
-                            <span class="ac-provenance-item">
-                                <span class="ac-provenance-label">Kelengkapan:</span>
-                                <span class="ac-num" id="financialCoverage" style="font-weight: 600;">- / 4</span>
-                            </span>
-                            <i id="financialCoverageBar" style="display: none;" aria-hidden="true"></i>
-                        </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                    <label class="search" style="width:200px">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+                        <input id="financialTickerInput" aria-label="Cari ticker" placeholder="Cari ticker…" style="border:0;outline:0;background:transparent;width:100%;font-size:13px;text-transform:uppercase" onkeydown="if(event.key==='Enter'&&!event.isComposing){selectFinancialTicker(this.value)}">
+                    </label>
+                    <span class="mut" style="font-size:12px">Populer</span>
+                    <div id="financialPopularChips" style="display:inline-flex;gap:6px">
+                        <button type="button" class="tchip on" onclick="selectFinancialTicker('BRPT')">BRPT</button>
+                        <button type="button" class="tchip" onclick="selectFinancialTicker('BBCA')">BBCA</button>
+                        <button type="button" class="tchip" onclick="selectFinancialTicker('BBRI')">BBRI</button>
+                        <button type="button" class="tchip" onclick="selectFinancialTicker('BMRI')">BMRI</button>
+                        <button type="button" class="tchip" onclick="selectFinancialTicker('GOTO')">GOTO</button>
                     </div>
-
-                    <!-- Compact Metric Strip: PBV, BVPS, Market Cap, Saham Beredar -->
-                    <div id="financialMetricGrid" class="ac-financial-metric-strip">
-                        <article class="ac-financial-metric-item">
-                            <span class="ac-financial-metric-label">Price to Book Value (PBV)</span>
-                            <strong class="ac-financial-metric-num ac-num" id="financialPbv">-</strong>
-                            <small class="ac-financial-metric-sub" id="financialPbvPrice">Harga acuan -</small>
-                        </article>
-                        <article class="ac-financial-metric-item">
-                            <span class="ac-financial-metric-label">Nilai Buku / Saham (BVPS)</span>
-                            <strong class="ac-financial-metric-num ac-num" id="financialBvps">-</strong>
-                            <small class="ac-financial-metric-sub">Nilai buku per saham</small>
-                        </article>
-                        <article class="ac-financial-metric-item">
-                            <span class="ac-financial-metric-label">Price to Earnings (PER)</span>
-                            <strong class="ac-financial-metric-num ac-num" id="financialPer">-</strong>
-                            <small class="ac-financial-metric-sub" id="financialPerSub">Rasio harga terhadap laba</small>
-                        </article>
-                        <article class="ac-financial-metric-item">
-                            <span class="ac-financial-metric-label">Debt to Equity (DER)</span>
-                            <strong class="ac-financial-metric-num ac-num" id="financialDer">-</strong>
-                            <small class="ac-financial-metric-sub" id="financialDerSub">Rasio liabilitas / ekuitas</small>
-                        </article>
-                        <article class="ac-financial-metric-item">
-                            <span class="ac-financial-metric-label">Kapitalisasi Pasar</span>
-                            <strong class="ac-financial-metric-num ac-num" id="financialMarketCap">-</strong>
-                            <small class="ac-financial-metric-sub" id="financialMarketCapAsOf">Per -</small>
-                        </article>
-                        <article class="ac-financial-metric-item">
-                            <span class="ac-financial-metric-label">Saham Beredar</span>
-                            <strong class="ac-financial-metric-num ac-num" id="financialShares">-</strong>
-                            <small class="ac-financial-metric-sub">Lembar saham tercatat</small>
-                        </article>
-                    </div>
-
-                    <!-- Provenance Row Grammar (§79.2, §97) -->
-                    <div class="ac-provenance-row ac-financial-provenance">
-                        <span class="ac-provenance-item">
-                            <span class="ac-provenance-label">Periode fundamental:</span>
-                            <span class="ac-provenance-value" id="financialPeriod">-</span>
-                        </span>
-                        <span class="ac-provenance-sep">·</span>
-                        <span class="ac-provenance-item">
-                            <span class="ac-provenance-label">Sumber Fundamental:</span>
-                            <span class="ac-provenance-value" id="financialSource">-</span>
-                        </span>
-                        <span class="ac-provenance-sep">·</span>
-                        <span class="ac-provenance-item">
-                            <span class="ac-provenance-label">Sumber Market Cap:</span>
-                            <span class="ac-provenance-value" id="financialMarketCapSource">-</span>
-                        </span>
-                        <span class="ac-provenance-sep">·</span>
-                        <span class="ac-provenance-item">
-                            <span class="ac-provenance-label">Diperbarui:</span>
-                            <span class="ac-provenance-value" id="financialUpdatedAt">-</span>
-                        </span>
-                    </div>
-
-                    <!-- Concise Supporting Trust Note -->
-                    <div class="ac-financial-note">
-                        <span style="font-weight: 600; color: var(--ac-text-secondary);">Catatan Metrik:</span>
-                        <span>PBV dan kapitalisasi pasar dihitung langsung dari data fundamental emiten dan harga penutupan acuan. Tidak ada angka estimasi atau proyeksi spekulatif.</span>
-                    </div>
-
-                    <!-- Detailed Financial Statements Section (Wave 4B, §79.2, §26) -->
-                    <section class="ac-financial-statements" id="financialStatementsSection">
-                        <div class="ac-financial-statements-toolbar">
-                            <div class="ac-financial-statements-title-wrap">
-                                <h3 class="ac-financial-statements-title">Laporan Keuangan</h3>
-                                <p class="ac-financial-statements-subtitle">Data multi-periode resmi emiten (format transparan dan konsisten).</p>
-                            </div>
-                            <div class="ac-financial-statements-controls">
-                                <!-- Local Statement Tabs (Level 2) -->
-                                <div class="ac-fin-mode-group" role="tablist" aria-label="Kategori Laporan Keuangan" id="financialStatementModeGroup">
-                                    <button type="button" role="tab" class="ac-fin-tab-btn is-active" data-statement-mode="income" aria-selected="true" tabindex="0" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setStatementMode('income')">Laba Rugi</button>
-                                    <button type="button" role="tab" class="ac-fin-tab-btn" data-statement-mode="balance" aria-selected="false" tabindex="-1" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setStatementMode('balance')">Neraca</button>
-                                    <button type="button" role="tab" class="ac-fin-tab-btn" data-statement-mode="cashflow" aria-selected="false" tabindex="-1" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setStatementMode('cashflow')">Arus Kas</button>
-                                    <button type="button" role="tab" class="ac-fin-tab-btn" data-statement-mode="ratios" aria-selected="false" tabindex="-1" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setStatementMode('ratios')">Rasio</button>
-                                </div>
-                                <!-- Local Period Toggle (Kuartalan / Tahunan) -->
-                                <div class="ac-fin-period-group" role="group" aria-label="Mode Periode Laporan" id="financialPeriodModeGroup">
-                                    <button type="button" class="ac-fin-period-btn is-active" data-period-mode="quarterly" aria-pressed="true" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setPeriodMode('quarterly')">Kuartalan</button>
-                                    <button type="button" class="ac-fin-period-btn" data-period-mode="annual" aria-pressed="false" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setPeriodMode('annual')">Tahunan</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Statement Unavailable State (Single compact state inside statement container if data absent) -->
-                        <div id="financialStatementUnavailable" class="ac-empty-state" style="padding: 24px 16px; margin-top: 10px;" hidden>
-                            <svg class="ac-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            <div class="ac-empty-state__title" id="financialStatementUnavailableTitle">Data Laba Rugi rinci belum tersedia</div>
-                            <div class="ac-empty-state__desc" id="financialStatementUnavailableDesc">Belum ada laporan rinci multi-periode untuk mode ini. Data snapshot di atas tetap aktif dan valid.</div>
-                        </div>
-
-                        <!-- Multi-Period Financial Table Container with Subtle Scroll Affordance -->
-                        <div class="ac-fin-table-scroll-container">
-                            <div class="ac-fin-scroll-hint" id="financialScrollHint" aria-hidden="true">
-                                <span class="ac-fin-scroll-hint-text">Geser untuk periode lain &rarr;</span>
-                            </div>
-                            <div class="ac-fin-table-wrap" id="financialStatementsTableWrap">
-                            <table class="ac-table ac-table--dense ac-table--financial" id="financialStatementsTable">
-                                <thead id="financialStatementsTableHead">
-                                    <!-- Populated dynamically: Komponen | Q2 2026 | Q1 2026 | ... -->
-                                </thead>
-                                <tbody id="financialStatementsTableBody">
-                                    <!-- Populated dynamically with grouped & indented financial rows -->
-                                </tbody>
-                            </table>
-                        </div>
-                        </div>
-
-                        <!-- Statements Provenance Row -->
-                        <div class="ac-provenance-row ac-financial-provenance" style="margin-top: 10px;">
-                            <span class="ac-provenance-item">
-                                <span class="ac-provenance-label">Kategori:</span>
-                                <span class="ac-provenance-value" id="financialStatementCategoryLabel">Laba Rugi</span>
-                            </span>
-                            <span class="ac-provenance-sep">·</span>
-                            <span class="ac-provenance-item">
-                                <span class="ac-provenance-label">Frekuensi:</span>
-                                <span class="ac-provenance-value" id="financialStatementFrequencyLabel">Kuartalan</span>
-                            </span>
-                            <span class="ac-provenance-sep">·</span>
-                            <span class="ac-provenance-item">
-                                <span class="ac-provenance-label">Satuan Nilai:</span>
-                                <span class="ac-provenance-value" id="financialStatementUnitLabel">Miliar IDR (kecuali rasio &amp; EPS)</span>
-                            </span>
-                        </div>
-                    </section>
                 </div>
             </div>
+
+            <div id="financialTickerMissMsg" class="mut swapa" style="font-size:13px;margin-top:-8px;display:none"></div>
+
+            <!-- Snapshot Section -->
+            <section class="sheet rise d1" id="financialSnapshotSheet">
+                <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--ac-hair)">
+                    <span class="tk mono" style="font-size:22px" id="financialTickerBadge">BRPT</span>
+                    <span><b id="financialCompanyName">Barito Pacific Tbk</b> <span class="mut" id="financialSectorName">· Basic Materials</span></span>
+                    <span class="chip" id="financialCoverageBadge" title="Kelengkapan komponen">Data Sebagian · 2/4 kategori lengkap</span>
+                    <span style="margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px" class="mut">
+                        <span id="financialUpdatingSpinner" style="display:none"><span class="spin"></span>Memperbarui, data sebelumnya tetap tampil</span>
+                        <button class="btn sm" id="btnFinancialRefresh" type="button" onclick="refreshFinancialData()">Muat ulang</button>
+                    </span>
+                </div>
+
+                <!-- Snapshot body -->
+                <div id="financialSnapshotBody">
+                    <div class="cmpl" id="financialCategoryCompleteness">
+                        <!-- Populated dynamically -->
+                    </div>
+                    <div class="strip">
+                        <div><div class="lbl">PBV</div><div class="big num pop" id="financialPbvVal">—</div><div class="sub" id="financialPbvNote">butuh Total Ekuitas, kosong di sumber</div></div>
+                        <div><div class="lbl">BVPS</div><div class="big num pop" id="financialBvpsVal">—</div><div class="sub">Nilai buku per saham</div></div>
+                        <div><div class="lbl">Kapitalisasi pasar</div><div class="big num pop" id="financialCapVal">Rp 135,5 T</div><div class="sub" id="financialCapNote">snapshot IDX · 29 Sep 2026</div></div>
+                        <div><div class="lbl">Saham beredar</div><div class="big num pop" id="financialSharesVal">93,75 M</div><div class="sub">lembar</div></div>
+                    </div>
+                    <div class="prov" id="financialSnapshotProv">
+                        <span><b>Periode terbaru</b> <span id="financialLatestPeriodVal">Q1 2026</span></span>
+                        <span><b>Sumber</b> Laporan keuangan emiten</span>
+                        <span><b>Free float</b> <span id="financialFreeFloatVal">22,33% · kepemilikan IDX 30 Sep 2026</span></span>
+                        <span><b>Diimpor</b> <span id="financialImportedVal">13 Okt 2026, 10.36 WIB</span></span>
+                    </div>
+                    <div id="financialSnapshotWarning" class="dq" style="display:none">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>
+                        <span id="financialWarningText"></span>
+                    </div>
+                </div>
+
+                <!-- Empty State for unlisted ticker -->
+                <div id="financialSnapshotEmpty" class="swap" style="display:none;padding:28px 20px;gap:14px;align-items:flex-start">
+                    <span style="width:32px;height:32px;border-radius:50%;background:var(--ac-hover);display:grid;place-items:center;flex:none" class="mut" aria-hidden="true">—</span>
+                    <div>
+                        <div style="font-weight:700" id="financialEmptyTitle">Data fundamental belum tersedia</div>
+                        <div class="mut" style="font-size:14px;max-width:640px;margin-top:4px">Sumber belum memuat snapshot maupun laporan keuangan terverifikasi untuk periode terbaru. Nilai tidak ditampilkan agar tidak terbaca sebagai nol. Coba lagi setelah pembaruan berikutnya atau lihat Struktur Pasar untuk data kepemilikan.</div>
+                        <a class="btn sm" href="/analisis-saham?tab=market-structure" onclick="if(typeof navigateTo==='function'){navigateTo('analisis','market-structure');return false;}" style="margin-top:12px;display:inline-block">Buka Struktur Pasar</a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Statements Section -->
+            <section class="sheet rise d2" id="financialStatementsSheet">
+                <div class="fsh">
+                    <div style="display:flex;flex-direction:column;gap:2px;margin-right:8px">
+                        <h2 style="font-size:16px;margin:0">Laporan Keuangan</h2>
+                        <span class="mut" style="font-size:12px" id="financialStatementsSubtitle">Barito Pacific Tbk · Kuartalan</span>
+                    </div>
+                    <div class="segx n4" role="tablist" aria-label="Kategori laporan" id="financialCategoryTabs">
+                        <span class="ind k0" id="financialCategoryTabInd"></span>
+                        <button role="tab" class="on" id="finCat0" type="button" onclick="setFinStatementCat(0)">Laba Rugi</button>
+                        <button role="tab" id="finCat1" type="button" onclick="setFinStatementCat(1)">Neraca</button>
+                        <button role="tab" id="finCat2" type="button" onclick="setFinStatementCat(2)">Arus Kas</button>
+                        <button role="tab" id="finCat3" type="button" onclick="setFinStatementCat(3)">Rasio</button>
+                    </div>
+                    <span style="flex:1"></span>
+                    <div class="segx n2" role="tablist" aria-label="Frekuensi" id="financialFreqTabs">
+                        <span class="ind k0" id="financialFreqTabInd"></span>
+                        <button role="tab" class="on" id="finFreq0" type="button" onclick="setFinStatementFreq(0)">Kuartalan</button>
+                        <button role="tab" id="finFreq1" type="button" onclick="setFinStatementFreq(1)">Tahunan</button>
+                    </div>
+                    <button class="tg" id="btnToggleEmptyRows" type="button" onclick="toggleFinEmptyRows()" aria-pressed="true"><span class="sw" aria-hidden="true"><i></i></span>Pos kosong (<span id="finEmptyRowsCount">0</span>)</button>
+                    <button class="tg" id="btnToggleYoy" type="button" onclick="toggleFinYoy()" aria-pressed="false"><span class="sw" aria-hidden="true"><i></i></span>Δ YoY</button>
+                    <button class="btn sm" type="button" onclick="exportFinancialCsv()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>CSV</button>
+                </div>
+
+                <!-- Table Container -->
+                <div class="fsw" id="financialTableWrapper">
+                    <table class="tbl fs" id="financialStatementsTable">
+                        <thead id="financialStatementsThead"></thead>
+                        <tbody id="financialStatementsTbody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Footnote bar -->
+                <div class="fsm" id="financialStatementsFootnote">
+                    <span><b>Kategori</b> <span id="finFootCat">Laba Rugi</span></span>
+                    <span><b>Frekuensi</b> <span id="finFootFreq">Kuartalan</span></span>
+                    <span><b>Satuan nilai</b> Miliar IDR (kecuali EPS &amp; rasio)</span>
+                    <span><b>Angka negatif</b> dalam (kurung)</span>
+                    <span><b>Sumber</b> Laporan keuangan emiten</span>
+                    <span class="chip b" id="finSrcChip">Data server · impor 13 Okt 2026</span>
+                </div>
+
+                <!-- Trend Bar Chart with HTML Overlay Labels (§5c) -->
+                <div class="trend" id="financialTrendContainer">
+                    <div id="financialTrendSummary">
+                        <div class="lbl" style="margin:0 0 4px">Tren baris terpilih</div>
+                        <div style="font-weight:700;font-size:15px" id="financialTrendLabel">Laba Bersih Periode Berjalan</div>
+                        <div class="mut" style="font-size:12px;margin-bottom:12px" id="financialTrendSubtitle">8 kuartal · Miliar IDR</div>
+                        <div class="tst">
+                            <div><span>Terbaru</span><b class="num" id="financialTrendLatest">—</b></div>
+                            <div><span id="financialTrendDeltaLabel">Δ YoY</span><b id="financialTrendDeltaVal" class="num">—</b></div>
+                            <div><span>Rata-rata</span><b class="num" id="financialTrendAvg">—</b></div>
+                            <div><span>Rentang</span><b class="num" id="financialTrendRange">—</b></div>
+                        </div>
+                        <p class="dim" style="font-size:12px;margin:12px 0 0">Klik baris lain di tabel untuk mengganti tren.</p>
+                    </div>
+
+                    <!-- Gw/Gov HTML overlay chart container -->
+                    <div class="gw" id="financialBarChartContainer">
+                        <svg viewBox="0 0 640 190" width="100%" role="img" aria-label="Grafik tren baris terpilih" id="financialBarSvg">
+                            <line x1="20" x2="630" y1="140" y2="140" stroke="#C9D0C9" id="financialZeroLine"/>
+                            <g id="financialSvgBarsGroup"></g>
+                        </svg>
+                        <div class="gov" aria-hidden="true" id="financialHtmlLabelsGroup">
+                            <!-- Percentage-positioned HTML labels with cqi typography -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Peer Comparison / PBV Section -->
+            <section class="sheet rise d3" id="financialPeerSection" style="display:none">
+                <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--ac-hair)">
+                    <h2 style="font-size:16px;margin:0">Pembanding Sektor</h2>
+                    <span class="mut" style="font-size:12px" id="financialPeerSubtitle">Perbankan · Q2 2026</span>
+                </div>
+                <div style="padding:16px 20px">
+                    <table class="tbl" id="financialPeerTable" style="width:100%">
+                        <thead><tr><th>Ticker</th><th class="r">PBV</th><th class="r">ROE</th><th style="width:38%"></th></tr></thead>
+                        <tbody id="financialPeerTbody"></tbody>
+                    </table>
+                </div>
+                <div class="prov"><span>Pembanding hanya emiten dengan snapshot terverifikasi pada periode yang sama. Nilai kosong ditampilkan “—”.</span></div>
+            </section>
+
+            <!-- Metric notes collapsible details -->
+            <details class="sheet notes" style="margin-top:12px">
+                <summary><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg><b>Catatan metrik · Definisi dan cara hitung</b><span class="mut" style="margin-left:auto">Standar PSAK &amp; IDX</span></summary>
+                <div class="ndef">
+                    <div><b>Kuartalan</b><span>Nilai 3 bulan berdiri sendiri, bukan kumulatif tahun berjalan. Tahunan = periode 12 bulan yang diaudit.</span></div>
+                    <div><b>Pendapatan Usaha</b><span>Sesuai pemetaan pos sumber. Untuk bank: pendapatan bunga bersih + non-bunga. Lonjakan tajam antar-periode bisa karena konsolidasi entitas anak.</span></div>
+                    <div><b>Laba Usaha</b><span>Pendapatan Usaha dikurangi Beban Usaha, sebelum pendapatan/beban lain dan pajak.</span></div>
+                    <div><b>EPS</b><span>Laba bersih yang diatribusikan ÷ saham beredar akhir periode, dalam Rupiah.</span></div>
+                    <div><b>ROE &amp; ROA</b><span>Kuartalan = laba kuartal ÷ ekuitas/aset akhir periode, tidak disetahunkan. Tahunan = laba setahun ÷ akhir tahun.</span></div>
+                    <div><b>PER &amp; PBV</b><span>Harga penutupan akhir periode ÷ EPS 4 kuartal atau BVPS. Bila ekuitas kosong di sumber, PBV, BVPS, dan PER tampil “—”.</span></div>
+                    <div><b>Δ YoY</b><span>Kuartal vs kuartal yang sama tahun lalu; tahunan vs tahun sebelumnya.</span></div>
+                    <div><b>Data hilang</b><span>Ditampilkan “—” dan tidak dihitung dalam rata-rata. Pos yang kosong di semua periode diberi label “tidak ada di sumber” dan bisa disembunyikan lewat tombol Pos kosong.</span></div>
+                </div>
+            </details>
+
+            <!-- Legacy Safety Fold -->
+            <details class="adv-tools" style="margin-top:12px">
+                <summary>Alat lanjutan</summary>
+                <div style="padding:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <div id="financialRefreshBanner" style="display:none"></div>
+                    <div id="financialDataState" style="display:none"></div>
+                    <div id="financialDataUnavailable" style="display:none"></div>
+                    <div id="financialDataContent" style="display:none"></div>
+                    <div id="financialStatementsTableWrap" style="display:none"></div>
+                    <div id="financialStatementUnavailable" style="display:none"></div>
+                    <div id="financialScrollHint" style="display:none"></div>
+                    <div id="financialStatementModeGroup" style="display:none"></div>
+                    <div id="financialPeriodModeGroup" style="display:none"></div>
+                    <span id="financialPbv" style="display:none"></span>
+                    <span id="financialBvps" style="display:none"></span>
+                    <span id="financialPer" style="display:none"></span>
+                    <span id="financialDer" style="display:none"></span>
+                    <span id="financialMarketCap" style="display:none"></span>
+                    <span id="financialShares" style="display:none"></span>
+                    <span id="financialPeriod" style="display:none"></span>
+                    <span id="financialSource" style="display:none"></span>
+                    <span id="financialUpdatedAt" style="display:none"></span>
+                </div>
+            </details>
         </section>
 
         <!-- ===== MARKET STRUCTURE / FREE FLOAT / HSC ===== -->
