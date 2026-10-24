@@ -287,7 +287,31 @@
   <main id="landingMain">
     <!-- HERO SECTION -->
     <section class="landing-hero landing-hero-editorial" aria-labelledby="landingTitle">
-      <div class="landing-container">
+      <div class="spot" id="lp-spot" aria-hidden="true"></div>
+      <div class="landing-container" style="position:relative">
+        <!-- Si Mata Mascot in Hero -->
+        <div class="mata-wrap" id="lpMataWrap">
+          <button type="button" class="mata" id="lpMataBtn" onclick="window.acPokeHeroMata()" aria-label="Si Mata, klik untuk pesan">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <g class="body">
+                <path d="M60 12c29 0 50 21 50 50 0 27-21 46-50 46S10 89 10 62 31 12 60 12z" fill="#0E1714"/>
+                <path d="M44 16l8-9 7 6 9-10" fill="none" stroke="#34D399" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                <ellipse cx="41" cy="56" rx="15" ry="17" fill="#F6F7F5"/>
+                <ellipse cx="79" cy="56" rx="15" ry="17" fill="#F6F7F5"/>
+                <g class="pupil"><circle cx="41" cy="57" r="8" fill="#13785D"/><circle cx="41" cy="57" r="4" fill="#0E1714"/><circle cx="44" cy="53.5" r="2.2" fill="#fff"/></g>
+                <g class="pupil"><circle cx="79" cy="57" r="8" fill="#13785D"/><circle cx="79" cy="57" r="4" fill="#0E1714"/><circle cx="82" cy="53.5" r="2.2" fill="#fff"/></g>
+                <ellipse cx="27" cy="80" rx="7" ry="4" fill="#34D399" opacity=".28"/>
+                <ellipse cx="93" cy="80" rx="7" ry="4" fill="#34D399" opacity=".28"/>
+                <path class="smile" d="M51 84q9 8 18 0" fill="none" stroke="#34D399" stroke-width="3.5" stroke-linecap="round"/>
+                <ellipse class="mouth" cx="60" cy="86" rx="6" ry="4.5" fill="#34D399"/>
+              </g>
+            </svg>
+          </button>
+          <div class="bub" id="lpMataBub">Riset tenang, jangan kejar harga yang sudah lari.<small>Si Mata &middot; klik aku lagi</small></div>
+          <button type="button" class="mata-x" onclick="window.acHideHeroMata()" aria-label="Sembunyikan Si Mata">&times;</button>
+        </div>
+        <button type="button" class="mata-mini" id="lpMataMini" style="display:none" onclick="window.acShowHeroMata()">Panggil Si Mata</button>
+
         <div class="landing-hero-content">
           <div class="landing-signal-line-wrap" aria-hidden="true">
             <svg class="landing-signal-line" viewBox="0 0 1000 32" fill="none" preserveAspectRatio="none">
@@ -423,6 +447,26 @@
       </div>
     </section>
 
+    <!-- FEATURE TAPE -->
+    <div class="tape" aria-label="Fitur Auto-Cuan">
+      <div class="tape-in">
+        <span>Screener 3 mode</span><span>Bandarmologi</span><span>Broker Hunter</span><span>Jejaring Insider</span><span>Chart Workstation</span><span>Rentang wajar 10 hari</span><span>Struktur pasar &amp; free float</span><span>Portfolio &amp; Risk Lab</span><span>Kelola Keuangan</span><span>Asisten AI &middot; kunci Anda</span>
+        <span>Screener 3 mode</span><span>Bandarmologi</span><span>Broker Hunter</span><span>Jejaring Insider</span><span>Chart Workstation</span><span>Rentang wajar 10 hari</span><span>Struktur pasar &amp; free float</span><span>Portfolio &amp; Risk Lab</span><span>Kelola Keuangan</span><span>Asisten AI &middot; kunci Anda</span>
+      </div>
+    </div>
+
+    <!-- STATISTICS BAR (TRUTHFUL DATA) -->
+    <div class="stats-wrap" aria-label="Angka di balik layar">
+      <div class="landing-eyebrow">ANGKA DI BALIK LAYAR &middot; BUKAN JANJI HASIL</div>
+      <div class="stats">
+        <div><b>963</b><span>emiten dengan candle harian dari sumber data bursa</span></div>
+        <div><b>500</b><span>sesi riwayat per emiten untuk chart dan indikator</span></div>
+        <div><b>2.907</b><span>sampel uji walk-forward lintas bursa untuk rentang harga</span></div>
+        <div><b>77%</b><span>harga 10 hari kemudian jatuh di rentang p10-p90 (target 80%)</span></div>
+      </div>
+      <p class="landing-hero-note" style="margin-top:14px">Sumber: cakupan candle harian bursa per 16 Okt 2026; uji walk-forward Dua Skenario v2 (seed 42, out-of-sample). Uji arah tidak lolos, karena itu yang ditampilkan hanya rentang.</p>
+    </div>
+
     <!-- SECTION 1: MARKET CONTEXT -->
     <section id="landingMarket" class="landing-section" aria-labelledby="landingMarketTitle">
       <div class="landing-container">
@@ -528,6 +572,55 @@
 
         <div class="landing-section-callout">
           <strong>Perhatian Metodologi:</strong> Hasil scan adalah titik awal penyaringan, bukan sinyal otomatis beli. Setiap saham wajib diuji batas risiko, target keuntungan, dan kesesuaian profil modal pribadi.
+        </div>
+
+        <!-- INTERACTIVE CALCULATOR (SECTION 02B) -->
+        <div style="margin-top: 36px;" id="landingCalculatorWrap">
+          <div class="landing-section-heading" style="margin-bottom: 16px;">
+            <div>
+              <p class="landing-eyebrow">02B / HITUNG SENDIRI</p>
+              <h3 style="font-size:20px;font-weight:700;color:var(--lp-text);margin:0">Ukur posisi sebelum menekan tombol beli.</h3>
+            </div>
+            <p style="font-size:13px;color:var(--lp-muted);margin:4px 0 0">Geser modal dan risiko. Jumlah lot dihitung dari jarak entry ke stop loss, lalu dicek terhadap rentang wajar 10 hari.</p>
+          </div>
+          <div class="demo">
+            <div>
+              <div class="sl">
+                <label>Modal <b id="lpCalcModalVal">Rp 100 Jt</b></label>
+                <input type="range" id="lpCalcModal" min="10" max="1000" step="10" value="100" oninput="window.acUpdateLandingCalc()" aria-label="Modal dalam juta rupiah">
+              </div>
+              <div class="sl">
+                <label>Risiko per trade <b id="lpCalcRiskVal">1,0%</b></label>
+                <input type="range" id="lpCalcRisk" min="0.25" max="3" step="0.25" value="1.0" oninput="window.acUpdateLandingCalc()" aria-label="Risiko per trade dalam persen">
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;font-size:12px;margin-top:16px;border-top:1px solid var(--lp-line);padding-top:12px">
+                <div><div style="font-size:11px;color:var(--lp-muted)">Entry</div><b style="font-family:monospace">1.210</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">SL</div><b style="font-family:monospace;color:#dc2626">1.135</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">TP1</div><b style="font-family:monospace;color:#16a34a">1.325</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">TP2</div><b style="font-family:monospace;color:#16a34a">1.420</b></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--lp-muted);font-weight:600">Jumlah lot maksimal</div>
+              <div class="big2" style="margin:4px 0"><span id="lpCalcLots">133</span> <span style="font-size:16px;color:var(--lp-muted);font-weight:500">lot</span></div>
+              <div style="font-size:12px;color:var(--lp-muted)" id="lpCalcPosMeta">Nilai posisi Rp 16.093.000 &middot; 16,1% dari modal</div>
+              <div class="fillbar"><i id="lpCalcFill" style="width:16.1%"></i></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;font-size:13px">
+                <div><div style="font-size:11px;color:var(--lp-muted)">Rugi maks bila SL kena</div><b id="lpCalcLoss" style="color:#dc2626">-Rp 997.500</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">Bila TP1 kena</div><b id="lpCalcGain" style="color:#16a34a">+Rp 1.529.500</b></div>
+              </div>
+              <div class="rng-bar" aria-label="Rentang wajar 10 hari dengan posisi entry, SL, dan target">
+                <div class="band"></div>
+                <div class="mk" style="left:8.8%"><i></i>SL 1.135</div>
+                <div class="mk up" style="left:21.9%"><i></i>Entry 1.210</div>
+                <div class="mk up" style="left:42.1%"><i></i>TP1 1.325</div>
+                <div class="mk up" style="left:58.8%"><i></i>TP2 1.420</div>
+                <div class="mk" style="left:0%"><i></i>p10 1.030</div>
+                <div class="mk" style="left:100%"><i></i>p90 1.490</div>
+              </div>
+              <p class="landing-hero-note" style="margin-top:10px">Pita = rentang wajar 10 hari BRPT (p10 1.030 - p90 1.490). Seluruh target berada di dalam pita.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -4971,6 +5064,83 @@ function closeAuthChoiceModal() {
     if (modal) modal.classList.add('hidden');
     document.documentElement.classList.remove('auth-dialog-open');
 }
+
+// ===== LANDING MATA & CALCULATOR HELPERS =====
+var _mataTips = [
+    'Riset tenang, jangan kejar harga yang sudah lari.',
+    'Stop loss adalah biaya proteksi modal, bukan kegagalan.',
+    'Konfluensi bukti: saat teknikal dan broker seirama.',
+    'Cek porsi free float sebelum masuk ukuran besar.',
+    'Data kosong ditampilkan jujur, bukan angka nol.'
+];
+var _mataTipIdx = 0;
+
+window.acPokeHeroMata = function () {
+    var btn = document.getElementById('lpMataBtn');
+    var bub = document.getElementById('lpMataBub');
+    if (!btn || !bub) return;
+    _mataTipIdx = (_mataTipIdx + 1) % _mataTips.length;
+    bub.innerHTML = _mataTips[_mataTipIdx] + '<small>Si Mata &middot; klik aku lagi</small>';
+    btn.classList.add('talk', 'boop');
+    setTimeout(function () { btn.classList.remove('talk', 'boop'); }, 700);
+};
+
+window.acHideHeroMata = function () {
+    var wrap = document.getElementById('lpMataWrap');
+    var mini = document.getElementById('lpMataMini');
+    if (wrap) wrap.style.display = 'none';
+    if (mini) mini.style.display = 'block';
+    try { localStorage.setItem('ac-mata-off', '1'); } catch (_) {}
+};
+
+window.acShowHeroMata = function () {
+    var wrap = document.getElementById('lpMataWrap');
+    var mini = document.getElementById('lpMataMini');
+    if (wrap) wrap.style.display = 'flex';
+    if (mini) mini.style.display = 'none';
+    try { localStorage.setItem('ac-mata-off', '0'); } catch (_) {}
+};
+
+window.acUpdateLandingCalc = function () {
+    var mEl = document.getElementById('lpCalcModal');
+    var rEl = document.getElementById('lpCalcRisk');
+    if (!mEl || !rEl) return;
+    var modalJt = parseFloat(mEl.value) || 100;
+    var riskPct = parseFloat(rEl.value) || 1.0;
+    var modalRp = modalJt * 1000000;
+    var riskRp = modalRp * (riskPct / 100);
+    var entry = 1210;
+    var sl = 1135;
+    var tp1 = 1325;
+    var diffSl = entry - sl;
+    var diffTp1 = tp1 - entry;
+    var shares = Math.floor(riskRp / diffSl);
+    var lots = Math.max(1, Math.floor(shares / 100));
+    var posVal = lots * 100 * entry;
+    var posPct = ((posVal / modalRp) * 100);
+    var lossVal = lots * 100 * diffSl;
+    var gainVal = lots * 100 * diffTp1;
+
+    var mVal = document.getElementById('lpCalcModalVal');
+    if (mVal) mVal.textContent = 'Rp ' + modalJt + ' Jt';
+    var rVal = document.getElementById('lpCalcRiskVal');
+    if (rVal) rVal.textContent = riskPct.toFixed(1).replace('.', ',') + '%';
+
+    var lotsEl = document.getElementById('lpCalcLots');
+    if (lotsEl) lotsEl.textContent = lots.toLocaleString('id-ID');
+    var metaEl = document.getElementById('lpCalcPosMeta');
+    if (metaEl) metaEl.textContent = 'Nilai posisi Rp ' + posVal.toLocaleString('id-ID') + ' \u00B7 ' + posPct.toFixed(1).replace('.', ',') + '% dari modal';
+    var fillEl = document.getElementById('lpCalcFill');
+    if (fillEl) fillEl.style.width = Math.min(100, posPct) + '%';
+    var lossEl = document.getElementById('lpCalcLoss');
+    if (lossEl) lossEl.textContent = '-Rp ' + lossVal.toLocaleString('id-ID');
+    var gainEl = document.getElementById('lpCalcGain');
+    if (gainEl) gainEl.textContent = '+Rp ' + gainVal.toLocaleString('id-ID');
+
+    mEl.style.setProperty('--p', ((modalJt - 10) / (1000 - 10) * 100) + '%');
+    rEl.style.setProperty('--p', ((riskPct - 0.25) / (3.0 - 0.25) * 100) + '%');
+};
+
 function showLandingPage(opts) {
     opts = opts || {};
     setTopLevelView('landing');
@@ -4978,6 +5148,14 @@ function showLandingPage(opts) {
     var landing = document.getElementById('landingPage');
     try { localStorage.removeItem('autocuan_entered_app'); } catch (_) {}
     updateLandingCtas();
+    if (window.acUpdateLandingCalc) window.acUpdateLandingCalc();
+    try {
+        var mataOff = localStorage.getItem('ac-mata-off') === '1';
+        var wrap = document.getElementById('lpMataWrap');
+        var mini = document.getElementById('lpMataMini');
+        if (wrap) wrap.style.display = mataOff ? 'none' : 'flex';
+        if (mini) mini.style.display = mataOff ? 'block' : 'none';
+    } catch (_) {}
     if (!opts.skipHistory && !(opts.duringInit && window.location.pathname === '/')) setRoute('/', !!opts.replaceHistory);
     if (!opts.keepScroll) window.scrollTo({ top: 0, behavior: opts.duringInit ? 'auto' : 'smooth' });
     if (opts.promptAuth) openAuthChoiceModal(opts.promptMessage || 'Silakan login atau daftar untuk membuka dashboard Auto-Cuan.');
