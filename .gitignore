@@ -131,3 +131,10 @@ data/deepscan-history/
 data/reports/deepscan-weekly-preparation-*.json
 data/market-subset-fixture.json
 .safe-change/
+
+# 0-byte junk shell artifacts
+console.log*
+missing*
+{console*
+{try*
+tmp_fail.log
