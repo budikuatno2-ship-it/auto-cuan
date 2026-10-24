@@ -2323,47 +2323,108 @@ html.light #googleCompleteProfileModal input {
 
 <!-- ===== PAGE: TRACK RECORD ===== -->
 <div id="page-trackrecord" class="page-content hidden flex-1 w-full mx-auto space-y-4" data-premium-page="true" data-ac-ui="v2">
-    <!-- Header Hero -> Workstation Page Header -->
-    <div class="page-header mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <!-- Canvas Page Header (TrackRecord.dc.html) -->
+    <div class="ph rise d0">
         <div>
-            <div class="ac-provenance-row mb-1">
-                <span class="ac-provenance-item">
-                    <span class="ac-provenance-label">Lensa Audit:</span>
-                    <span class="ac-provenance-value">Audit Sinyal Sistem</span>
-                </span>
-                <span class="ac-provenance-sep">·</span>
-                <span class="ac-provenance-item">
-                    <span class="ac-provenance-label">Metode:</span>
-                    <span class="ac-provenance-value">Evaluasi Berbasis Aturan</span>
-                </span>
-            </div>
-            <h1 class="page-title text-2xl font-bold text-[var(--text-primary)]">Track Record</h1>
-            <p class="page-subtitle text-xs text-[var(--text-secondary)] mt-0.5">Audit transparan hasil sinyal historis sistem (Day Trade, Swing Konglo, Swing Non-Konglo, Top 5 Radar).</p>
+            <div class="kick">Audit sinyal sistem</div>
+            <h1>Track Record</h1>
+            <p>Hasil setiap sinyal Top 5 yang dikunci Auto-Cuan, bukan imbal hasil investasi Anda. Setiap angka menyebut penyebutnya.</p>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-            <button onclick="exportTrackRecordCsv()" id="trackRecordExportBtn" class="ac-btn ac-btn-secondary inline-flex items-center gap-1.5 text-xs py-1.5 px-3" title="Export data track record ke CSV">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-                <span>Unduh CSV</span>
-            </button>
-            <button onclick="loadTrackRecord(true)" id="trackRecordRefreshBtn" class="ac-btn ac-btn-secondary inline-flex items-center gap-1.5 text-xs py-1.5 px-3">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                <span>Muat Ulang</span>
-            </button>
+        <div class="ph-act">
+            <button type="button" onclick="exportTrackRecordCsv()" id="trackRecordExportBtn" class="btn sm" title="Export data track record ke CSV">Unduh CSV</button>
+            <button type="button" onclick="loadTrackRecord(true)" id="trackRecordRefreshBtn" class="btn sm">Muat Ulang</button>
+            <span class="chip i" id="trProvenanceChip">dari 500 sinyal terakhir</span>
         </div>
     </div>
 
-    <!-- View Switcher (Rekap vs Backtesting) -->
-    <div class="flex items-center gap-2 border-b border-[var(--ac-line-hairline,#374151)] pb-2.5">
-        <button id="trViewTabTable" onclick="switchTrackRecordView('table')" class="ac-btn ac-btn-secondary is-active text-xs py-1.5 px-3 inline-flex items-center gap-1.5 font-semibold">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            <span>Rekap Sinyal Realtime</span>
-        </button>
-        <button id="trViewTabBacktest" onclick="switchTrackRecordView('backtest')" class="ac-btn ac-btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5 font-semibold">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693l-1.57-.393m15.6 0a4.5 4.5 0 01-8.8 0m0 0a4.5 4.5 0 01-6.8 0"/></svg>
-            <span>Simulasi &amp; Backtesting Strategi</span>
-            <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono">Baru</span>
-        </button>
-    </div>
+    <!-- Canvas Metrics & Composition Sheet (TrackRecord.dc.html) -->
+    <section class="sheet rise d1" aria-label="Statistik sinyal">
+        <div class="mstrip">
+            <div><div class="lbl">Sinyal dikunci</div><div class="big num pop" id="trMetricTotal">—</div></div>
+            <div><div class="lbl">Selesai dievaluasi</div><div class="big num pop" id="trMetricDone">—</div></div>
+            <div><div class="lbl">Masih aktif</div><div class="big num pop" id="trMetricAct">—</div></div>
+            <div><div class="lbl">Capai TP1 atau TP2</div><div class="big num pop pos" id="trMetricHit">—</div><div class="sub num" id="trMetricHitSub">— dari — selesai</div></div>
+            <div><div class="lbl">Kena SL</div><div class="big num pop neg" id="trMetricSl">—</div><div class="sub num" id="trMetricSlSub">— dari — selesai</div></div>
+            <div><div class="lbl">Kedaluwarsa</div><div class="big num pop" id="trMetricExp">—</div><div class="sub" id="trMetricExpSub">tanpa menyentuh level</div></div>
+        </div>
+        <div style="padding:6px 20px 16px">
+            <div class="lbl">Komposisi hasil (sinyal selesai)</div>
+            <div class="bar" id="trCompositionBar" style="height:10px;border-radius:5px" role="img" aria-label="Komposisi hasil">
+                <i id="trBarTp2" style="flex:0;background:#1C6136"></i>
+                <i id="trBarTp1" style="flex:0;background:#5FA77A"></i>
+                <i id="trBarExp" style="flex:0;background:#B7C0BC"></i>
+                <i id="trBarSl" style="flex:0;background:var(--ac-neg)"></i>
+            </div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--ac-2)">
+                <span class="pill-st" style="font-weight:500"><span class="dot" style="background:#1C6136"></span>TP2</span>
+                <span class="pill-st" style="font-weight:500"><span class="dot" style="background:#5FA77A"></span>TP1</span>
+                <span class="pill-st" style="font-weight:500"><span class="dot m"></span>Kedaluwarsa</span>
+                <span class="pill-st" style="font-weight:500"><span class="dot r"></span>Stop loss</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Canvas Signal Table Sheet (TrackRecord.dc.html) -->
+    <section class="sheet rise d2" aria-label="Tabel sinyal track record">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center" id="trFilterChips">
+                <button type="button" class="fchip on" data-tr-status="all" onclick="filterTrStatus('all')">Semua</button>
+                <button type="button" class="fchip" data-tr-status="act" onclick="filterTrStatus('act')">Aktif</button>
+                <button type="button" class="fchip" data-tr-status="hit" onclick="filterTrStatus('hit')">Capai target</button>
+                <button type="button" class="fchip" data-tr-status="sl" onclick="filterTrStatus('sl')">Stop loss</button>
+                <button type="button" class="fchip" data-tr-status="exp" onclick="filterTrStatus('exp')">Kedaluwarsa</button>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+                <input id="trSearchInputV2" placeholder="Cari ticker…" class="inp" style="height:30px;width:130px;font-family:var(--ac-font-mono);text-transform:uppercase" oninput="onTrSearchInput()">
+                <span class="mut num" id="trShownRowsCount" style="font-size:12px">0 baris</span>
+            </div>
+        </div>
+        <div class="tw">
+            <table class="tbl" id="trCanvasTable" style="min-width:980px">
+                <thead>
+                    <tr>
+                        <th>Dikunci</th>
+                        <th>Ticker</th>
+                        <th>Mode</th>
+                        <th class="r">Entry</th>
+                        <th class="r">SL</th>
+                        <th class="r">TP1</th>
+                        <th class="r">Keluar</th>
+                        <th class="r">Hasil %</th>
+                        <th class="r">Durasi</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="trCanvasTableBody">
+                    <!-- Rendered by JS -->
+                </tbody>
+            </table>
+        </div>
+        <div id="trCanvasEmptyState" class="hidden py-12 text-center text-gray-500 text-xs">
+            Tidak ada sinyal yang sesuai dengan filter.
+        </div>
+        <div class="prov">
+            <span><b>Penyebut</b> hanya sinyal yang selesai dievaluasi</span>
+            <span><b>Aturan</b> sinyal kedaluwarsa setelah 10 hari bursa</span>
+        </div>
+    </section>
+
+    <!-- Legacy & Backtesting Controls in Collapsible Alat Lanjutan -->
+    <details class="adv-tools" style="margin-top:16px">
+        <summary>Alat lanjutan</summary>
+        <div class="adv-tools-content space-y-4 pt-2">
+            <!-- View Switcher (Rekap vs Backtesting) -->
+            <div class="flex items-center gap-2 border-b border-[var(--ac-line-hairline,#374151)] pb-2.5">
+                <button id="trViewTabTable" onclick="switchTrackRecordView('table')" class="ac-btn ac-btn-secondary is-active text-xs py-1.5 px-3 inline-flex items-center gap-1.5 font-semibold">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>Rekap Sinyal Realtime</span>
+                </button>
+                <button id="trViewTabBacktest" onclick="switchTrackRecordView('backtest')" class="ac-btn ac-btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5 font-semibold">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693l-1.57-.393m15.6 0a4.5 4.5 0 01-8.8 0m0 0a4.5 4.5 0 01-6.8 0"/></svg>
+                    <span>Simulasi &amp; Backtesting Strategi</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono">Baru</span>
+                </button>
+            </div>
 
     <!-- WRAPPER 1: TABEL REKAP SINYAL (DEFAULT) -->
     <div id="trTableViewPanel" class="space-y-4">
@@ -2637,6 +2698,8 @@ html.light #googleCompleteProfileModal input {
             </div>
         </div>
     </div>
+        </div>
+    </details>
 </div>
 
 <!-- ===== PAGE: WATCHLIST PRIBADI ===== -->

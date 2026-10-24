@@ -961,6 +961,26 @@ html #appContent #page-screener .scr-head-act > * { flex: none; white-space: now
 .catatan-chart-banner .info { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .catatan-chart-banner .info b { font-weight: 700; color: var(--ac-brand); }
 
+/* ---- Kelompok 5: Track Record (TrackRecord.dc.html) ---- */
+.mstrip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.mstrip > div { padding: 16px 20px; border-left: 1px solid var(--ac-hair); }
+.mstrip > div:first-child { border-left: 0; }
+@media (max-width: 980px) { .mstrip { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .mstrip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.det { background: var(--ac-raised); }
+.det td { white-space: normal; }
+.stp { display: flex; gap: 0; align-items: center; font-size: 12px; flex-wrap: wrap; row-gap: 8px; }
+.stp span { display: inline-flex; flex-direction: column; gap: 2px; padding-right: 28px; position: relative; }
+.stp span::after { content: ""; position: absolute; right: 8px; top: 8px; width: 12px; height: 1px; background: var(--ac-ctl); }
+.stp span:last-child::after { display: none; }
+.bar { display: flex; overflow: hidden; width: 100%; background: var(--ac-hover); }
+.bar i { height: 100%; display: block; }
+.oc.tp2 { background: rgba(36,122,67,.14); color: var(--ac-pos); }
+.oc.tp1 { background: var(--ac-pos-soft); color: var(--ac-pos); }
+.oc.exp { background: var(--ac-hover); color: var(--ac-2); }
+.oc.act { background: var(--ac-info-soft); color: var(--ac-info); }
+
+
 
 
 
