@@ -50,7 +50,7 @@
     },
     {
       "source": "/pattern",
-      "destination": "/pattern-radar.html"
+      "destination": "/index.html"
     },
     {
       "source": "/pattern-radar",

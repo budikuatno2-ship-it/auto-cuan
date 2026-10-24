@@ -157,8 +157,8 @@ test('Pattern Radar route rewrites are present in vercel.json and local-dev-serv
 
   const rewritePattern = vercelJson.rewrites.find(r => r.source === '/pattern');
   assert.ok(rewritePattern, 'expected rewrite rule for /pattern');
-  assert.equal(rewritePattern.destination, '/pattern-radar.html');
+  assert.equal(rewritePattern.destination, '/index.html');
 
   assert.match(localDevServer, /'\/pattern-radar':\s*'\/pattern-radar\.html'/);
-  assert.match(localDevServer, /'\/pattern':\s*'\/pattern-radar\.html'/);
+  assert.match(localDevServer, /'\/pattern':\s*'\/index\.html'/);
 });
