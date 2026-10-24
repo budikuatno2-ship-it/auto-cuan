@@ -51,9 +51,19 @@ describe('broksum-flow computeDomestic Unit Tests', () => {
     assert.strictEqual(computedD.brokers.length, dataD.brokers.length, 'Broker count must match');
   });
 
-  it('should compute zero foreign brokers when foreign is null or empty', () => {
-    const dOnly = computeDomestic(dataAll, null);
+  it('should return incomplete status when foreign is null or missing', () => {
+    const dMissing = computeDomestic(dataAll, null);
+    assert.strictEqual(dMissing.flow, 'D');
+    assert.strictEqual(dMissing.is_complete, false);
+    assert.strictEqual(dMissing.status, 'foreign_missing');
+    assert.strictEqual(dMissing.data, null);
+  });
+
+  it('should compute domestic when foreign has explicitly zero broker trades', () => {
+    const emptyForeign = { flow: 'F', brokers: [], broker_levels: [] };
+    const dOnly = computeDomestic(dataAll, emptyForeign);
     assert.strictEqual(dOnly.flow, 'D');
+    assert.strictEqual(dOnly.is_complete, true);
     assert.strictEqual(dOnly.brokers.length, dataAll.brokers.length);
   });
 });
