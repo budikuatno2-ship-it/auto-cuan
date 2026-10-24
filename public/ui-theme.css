@@ -7480,7 +7480,7 @@ body:has(> #acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-laun
   left: 0;
   right: 0;
   z-index: var(--ac-z-shell, 40);
-  height: calc(56px + env(safe-area-inset-bottom, 0px));
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--ac-surface);
   border-top: 1px solid var(--ac-line-default);
@@ -15435,7 +15435,7 @@ html.is-dark .thm .moon { display: none; }
   /* The sidebar becomes the compact sticky top bar: logo + "Menu". */
   #dashboardScreen #appShell { flex-direction: column; }
   #acBottomBar[data-ac-ui="v2"] {
-    height: calc(60px + env(safe-area-inset-bottom, 0px));
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
     z-index: 90;
     background: var(--ac-surface);
     border-top: 1px solid var(--ac-line-hairline);

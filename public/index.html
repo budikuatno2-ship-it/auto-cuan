@@ -1300,12 +1300,12 @@ html.light #googleCompleteProfileModal input {
     <section class="sheet rise d1" aria-labelledby="dashMarketTitle">
         <h2 id="dashMarketTitle" class="sr-only">Kondisi pasar</h2>
         <div id="ihsgSummaryCard" class="strip" role="group" aria-label="Ringkasan kondisi pasar">
-            <div id="dashIhsgCell">
+            <div id="dashIhsgCell" onclick="window.location.assign('/analisis-saham?ticker=IHSG')" style="cursor:pointer" title="Buka analisis IHSG">
                 <div class="lbl">IDX Composite · IHSG</div>
                 <div class="big num pop" id="ihsgLast"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></div>
                 <div class="sub num"><span id="ihsgChange"></span><span id="dashIhsgTrend"></span></div>
                 <svg id="dashIhsgSpark" class="dash-spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true" hidden><path class="draw" pathLength="1" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>
-                <button type="button" class="dash-cell-link lnk" onclick="window.location.assign('/analisis-saham?ticker=IHSG')">Buka analisis IHSG</button>
+                <button type="button" class="dash-cell-link lnk sr-only" onclick="event.stopPropagation();window.location.assign('/analisis-saham?ticker=IHSG')">Buka analisis IHSG</button>
             </div>
             <div>
                 <div class="lbl">Market breadth</div>

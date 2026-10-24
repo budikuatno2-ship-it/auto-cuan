@@ -148,6 +148,7 @@ html.is-dark [data-ac-ui="v2"] .vbtn.p { color: #06140E; }
   [data-ac-ui="v2"] .strip { grid-template-columns: 1fr; }
   [data-ac-ui="v2"] .strip > div { border-left: 0; border-top: 1px solid var(--ac-hair); }
   [data-ac-ui="v2"] .strip > div:first-child { border-top: 0; }
+  #page-dashboard #ihsgSummaryCard > div { min-height: auto; }
 }
 @media (pointer: coarse) {
   [data-ac-ui="v2"] .vbtn, [data-ac-ui="v2"] .segx button { min-height: 44px; }
@@ -169,7 +170,14 @@ html.is-dark [data-ac-ui="v2"] .vbtn.p { color: #06140E; }
 #page-dashboard .vbar [data-part="down"] { background: var(--ac-neg); }
 html.is-dark #page-dashboard .vbar [data-part="flat"] { background: #4A5752; }
 #page-dashboard .dash-spark { display: block; width: 100%; height: 28px; margin-top: 8px; }
-#page-dashboard .dash-cell-link { display: inline-block; margin-top: 6px; padding: 0; border: 0; font-size: 12px; cursor: pointer; }
+#page-dashboard .dash-cell-link { display: none; }
+#page-dashboard #dashIhsgCell { cursor: pointer; }
+@media (min-width: 561px) {
+  #page-dashboard #ihsgSummaryCard > div { min-height: 150px; }
+}
+#page-dashboard #dashMarketGateNote,
+#page-dashboard #dashSessionNote { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#page-dashboard .ph-act .vbtn { height: 36px; min-height: 36px; }
 #page-dashboard .dash-session { font-weight: 700; font-size: 20px; letter-spacing: -.01em; color: var(--ac-ink); }
 #page-dashboard .dash-ses { display: grid; grid-template-columns: 1fr 2.2fr .6fr 1.8fr .8fr; gap: 3px; margin-top: 10px; }
 #page-dashboard .dash-ses div { height: 8px; border-radius: 3px; background: var(--ac-hover); }
