@@ -6215,10 +6215,40 @@ async function logout() {
     localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_is_review'); localStorage.removeItem('autocuan_user_id');
     localStorage.removeItem('authToken'); localStorage.removeItem('userSession');
     try { sessionStorage.clear(); } catch (_) {}
+    try {
+        localStorage.setItem('autocuan_logout_event', String(Date.now()));
+        if (typeof window.BroadcastChannel === 'function') {
+            var bc = new BroadcastChannel('autocuan_auth');
+            bc.postMessage({ type: 'logout', timestamp: Date.now() });
+        }
+    } catch (_) {}
     window.__AUTOCUAN_AUTHENTICATED_SESSION__ = null;
     if (typeof window.clearAutocuanAuthState === 'function') { try { window.clearAutocuanAuthState(); } catch (_) {} }
     showLandingPage({ replaceHistory: true });
 }
+
+// ===== CROSS-TAB LOGOUT SYNCHRONIZATION =====
+(function () {
+    if (typeof window.BroadcastChannel === 'function') {
+        try {
+            var authBc = new BroadcastChannel('autocuan_auth');
+            authBc.onmessage = function (ev) {
+                if (ev && ev.data && ev.data.type === 'logout') {
+                    if (localStorage.getItem('autocuan_logged_in') === 'true') {
+                        logout();
+                    }
+                }
+            };
+        } catch (_) {}
+    }
+    window.addEventListener('storage', function (e) {
+        if (e.key === 'autocuan_logout_event' || (e.key === 'autocuan_logged_in' && e.newValue !== 'true')) {
+            if (localStorage.getItem('autocuan_logged_in') === 'true') {
+                logout();
+            }
+        }
+    });
+})();
 
 // ===== GOOGLE AUTH HANDLERS =====
 var _pendingGoogleEmail = null;
