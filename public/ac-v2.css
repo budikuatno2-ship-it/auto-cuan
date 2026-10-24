@@ -910,6 +910,10 @@ html #appContent #page-screener .scr-head-act > * { flex: none; white-space: now
 .kv { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--ac-hair); font-size: 13px; }
 .kv > span:first-child { color: var(--ac-2); }
 @media (min-width: 761px) and (max-width: 1599px) { .sptbl { min-width: 0 !important; } .sptbl tr > *:last-child { display: none; } }
+@media (max-width: 760px) {
+  .split { flex-direction: column; }
+  .pane { flex: 1 1 100%; border-left: none; border-top: 1px solid var(--ac-hair); }
+}
 
 
 

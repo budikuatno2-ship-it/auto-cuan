@@ -2183,6 +2183,31 @@
     return getSampleFsData(ticker, fr);
   }
 
+  function renderFinancialFundamentalLegacy(ticker, f, price, rootObj) {
+    if (!f) return;
+    financialSnapshotCache[ticker] = f;
+    researchText('financialTickerBadge', ticker);
+    var hasPbv = researchHasNumber(f.pbv);
+    var hasBvps = researchHasNumber(f.book_value_per_share);
+    var hasPer = researchHasNumber(f.per);
+    var hasDer = researchHasNumber(f.der);
+    var hasShares = researchHasNumber(f.shares_outstanding);
+    var hasMarketCap = researchHasNumber(f.market_cap);
+    var coverageCount = (hasPbv ? 1 : 0) + (hasBvps ? 1 : 0) + (hasPer ? 1 : 0) + (hasDer ? 1 : 0) + (hasShares ? 1 : 0) + (hasMarketCap ? 1 : 0);
+
+    researchText('financialPbv', hasPbv ? researchNumber(f.pbv, 2) + 'x' : '—');
+    researchText('financialBvps', hasBvps ? researchIdr(f.book_value_per_share) : '—');
+    researchText('financialPer', hasPer ? researchNumber(f.per, 2) + 'x' : '—');
+    researchText('financialDer', hasDer ? researchNumber(f.der, 2) + 'x' : '—');
+    researchText('financialShares', hasShares ? formatIndonesianSharesCount(f.shares_outstanding) : '—');
+    researchText('financialMarketCap', hasMarketCap ? formatIndonesianMarketCap(f.market_cap) : '—');
+
+    if (coverageCount === 0) {
+      var unavailable = byId('financialUnavailableState');
+      if (unavailable) unavailable.hidden = false;
+    }
+  }
+
   function renderFinancialFundamental() {
     var ticker = (financialState.t || 'BRPT').toUpperCase();
     var meta = FINANCIAL_META[ticker];
@@ -2680,6 +2705,10 @@
       return root.loadStrukturPasarUniverse(ticker);
     }
 
+    if (isFinancial && financialSnapshotCache[ticker]) {
+      // cached snapshot available
+    }
+
     if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
       root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false, skipFinancialSync: true });
     } else {
@@ -2965,9 +2994,11 @@
         var btns = group.querySelectorAll('button[data-filter]');
         btns.forEach(function (btn) {
           if (btn.getAttribute('data-filter') === filterKey) {
-            btn.classList.add('is-active');
+            btn.classList.add('is-active', 'on');
+            btn.setAttribute('aria-pressed', 'true');
           } else {
-            btn.classList.remove('is-active');
+            btn.classList.remove('is-active', 'on');
+            btn.setAttribute('aria-pressed', 'false');
           }
         });
       }
@@ -3317,19 +3348,21 @@
 
       var frag = document.createDocumentFragment();
 
-      pageRows.forEach(function (row) {
+      pageRows.forEach(function (row, idx) {
         var tr = document.createElement('tr');
         tr.setAttribute('data-ticker', row.ticker);
         tr.setAttribute('tabindex', '0');
         tr.setAttribute('role', 'button');
         tr.setAttribute('aria-label', 'Pilih saham ' + row.ticker);
-        tr.className = 'ac-table-row hover:bg-slate-800/50 transition cursor-pointer';
+        tr.className = 'rise d' + Math.min(idx, 11) + (self.selectedTicker === row.ticker ? ' sel is-selected' : '');
 
         if (self.selectedTicker === row.ticker) {
-          tr.classList.add('is-selected');
+          tr.classList.add('sel', 'is-selected');
+          tr.setAttribute('aria-selected', 'true');
           tr.setAttribute('aria-pressed', 'true');
           self.lastSelectedRowEl = tr;
         } else {
+          tr.setAttribute('aria-selected', 'false');
           tr.setAttribute('aria-pressed', 'false');
         }
 
@@ -3343,108 +3376,41 @@
           }
         };
 
-        // 1. Kode (sticky left)
-        var tdTicker = document.createElement('td');
-        tdTicker.className = 'py-2 px-3 sticky left-0 z-10 bg-[#0f172a] border-r border-slate-700/40 ac-ticker-sticky-cell';
-        tdTicker.innerHTML = '<span class="ac-ticker-symbol font-mono font-bold text-emerald-500 dark:text-emerald-400">' + escapeHtml(row.ticker) + '</span>';
-        tr.appendChild(tdTicker);
-
-        // 2. Emiten
-        var tdName = document.createElement('td');
-        tdName.className = 'py-2 px-3 font-medium text-slate-800 dark:text-slate-100 max-w-[200px]';
-        var cName = row.company_name || row.name || ('PT ' + row.ticker + ' Tbk');
-        tdName.innerHTML = '<div class="truncate" title="' + escapeHtml(cName) + '">' + escapeHtml(cName) + '</div>';
-        tr.appendChild(tdName);
-
-        // 3. Sektor
-        var tdSec = document.createElement('td');
-        tdSec.className = 'py-2 px-3 text-slate-500 dark:text-slate-400 text-xs max-w-[130px] col-sektor';
-        var sLabel = formatSectorIndonesian(row.sector);
-        tdSec.innerHTML = '<div class="truncate" title="' + escapeHtml(sLabel) + '">' + escapeHtml(sLabel) + '</div>';
-        tr.appendChild(tdSec);
-
-        // 4. Free Float %
-        var tdFf = document.createElement('td');
-        tdFf.className = 'py-2 px-3 text-right font-mono tabular-nums whitespace-nowrap';
         var hasFf = row.free_float_pct != null && Number.isFinite(Number(row.free_float_pct));
         var ffVal = hasFf ? Number(row.free_float_pct) : null;
-        var ffHtml = hasFf
-          ? '<span class="ac-num ' + (ffVal < 15 ? 'text-amber-500 dark:text-amber-400 font-semibold' : 'text-slate-800 dark:text-slate-200') + '">' + ffVal.toFixed(2) + '%</span>'
-          : '<span class="text-slate-400 dark:text-slate-500 font-mono text-[11px]">Belum Terverifikasi</span>';
-        tdFf.innerHTML = ffHtml;
-        tr.appendChild(tdFf);
+        var ffLegacyDisplay = hasFf ? Number(row.free_float_pct).toFixed(2) + '%' : 'Belum Terverifikasi';
+        var ffS = hasFf ? ffVal.toFixed(2).replace('.', ',') + '%' : '—';
+        var ffC = 'r num' + (hasFf && ffVal < 15 ? ' warn' : '');
+        var isHsc = row.hsc_flag === true;
+        var isNoHsc = row.hsc_flag === false;
+        var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : 'Belum diketahui');
+        var hD = 'dot ' + (isHsc ? 'a' : (isNoHsc ? 'g' : 'm'));
+        var st = !hasFf ? 'Data belum lengkap' : (isHsc ? 'Konsentrasi tinggi' : (ffVal < 15 ? 'Free Float rendah' : (!row.hsc_flag ? 'HSC belum diketahui' : 'Normal')));
+        var d = '30 Sep 2026';
 
-        // 5. Status HSC
-        var tdHsc = document.createElement('td');
-        tdHsc.className = 'py-2 px-3 whitespace-nowrap';
-        var hscLabel = formatHscStatus(row.hsc_flag, row.hsc_as_of);
-        var hscBadgeClass = hscLabel === 'HSC Aktif'
-          ? 'ac-status-badge--negative'
-          : (hscLabel === 'Tidak Terindikasi HSC'
-            ? 'ac-status-badge--positive'
-            : 'ac-status-badge--neutral');
-        tdHsc.innerHTML = '<span class="ac-status-badge ' + hscBadgeClass + '">' + escapeHtml(hscLabel) + '</span>';
-        tr.appendChild(tdHsc);
-
-        // 6. Pemegang Saham Terbesar (Nama + %) & Pemegang Cocok Sub-badge
-        var tdTop = document.createElement('td');
-        tdTop.className = 'py-2 px-3 text-xs text-slate-700 dark:text-slate-300 max-w-[240px]';
-        var topInv = null;
-        if (Array.isArray(row.investors) && row.investors.length > 0) {
-          topInv = row.investors.reduce(function (prev, cur) {
-            var prevPct = Number(prev.percentage || 0);
-            var curPct = Number(cur.percentage || 0);
-            return curPct > prevPct ? cur : prev;
-          }, row.investors[0]);
-        }
-
-        var matchedInv = null;
-        if (self.searchQuery && Array.isArray(row.investors)) {
-          var sq = self.searchQuery;
-          matchedInv = row.investors.find(function (inv) {
-            var iname = (inv.investorName || inv.name || inv.investor_name || '').toLowerCase();
-            return iname.indexOf(sq) !== -1;
-          });
-        }
-
-        var topHtml = '<span class="text-slate-400 dark:text-slate-500 font-mono">-</span>';
-        if (topInv && (topInv.investorName || topInv.name)) {
-          var tName = topInv.investorName || topInv.name;
-          var tPct = topInv.percentage != null && Number.isFinite(Number(topInv.percentage))
-            ? Number(topInv.percentage).toFixed(2) + '%'
-            : (topInv.percentage_formatted || '-');
-          topHtml = '<div class="truncate font-medium text-slate-800 dark:text-slate-200" title="' + escapeHtml(tName) + ' (' + escapeHtml(tPct) + ')">' +
-            escapeHtml(tName) + ' <span class="font-mono text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] tabular-nums">(' + escapeHtml(tPct) + ')</span></div>';
-        }
-
-        if (matchedInv && (matchedInv.investorName || matchedInv.name)) {
-          var mName = matchedInv.investorName || matchedInv.name;
-          var mPct = matchedInv.percentage != null && Number.isFinite(Number(matchedInv.percentage))
-            ? Number(matchedInv.percentage).toFixed(2) + '%'
-            : (matchedInv.percentage_formatted || '-');
-          topHtml += '<div class="truncate text-[10px] text-amber-500 dark:text-amber-300 mt-0.5" title="Pemegang Cocok: ' + escapeHtml(mName) + ' (' + escapeHtml(mPct) + ')">Pemegang Cocok: <span class="font-semibold">' + escapeHtml(mName) + ' (' + escapeHtml(mPct) + ')</span></div>';
-        }
-        tdTop.innerHTML = topHtml;
-        tr.appendChild(tdTop);
-
-        // 7. Kelengkapan Data
-        var tdComp = document.createElement('td');
-        tdComp.className = 'py-2 px-3 whitespace-nowrap col-kelengkapan';
-        var hasValidFf = row.free_float_pct != null && Number.isFinite(Number(row.free_float_pct));
-        var isComp = hasValidFf && Array.isArray(row.investors) && row.investors.length > 0;
-        tdComp.innerHTML = '<span class="ac-status-badge ' + (isComp ? 'ac-status-badge--positive' : 'ac-status-badge--neutral') + '">' + (isComp ? 'Lengkap' : 'Belum Lengkap') + '</span>';
-        tr.appendChild(tdComp);
-
-        // 8. As-of Date
-        var tdDate = document.createElement('td');
-        tdDate.className = 'py-2 px-3 text-[11px] text-slate-400 font-mono whitespace-nowrap col-as-of';
-        tdDate.textContent = formatIndonesianDateWithWib(row.free_float_as_of || '2026-09-30');
-        tr.appendChild(tdDate);
+        tr.innerHTML = '<td class="tk mono">' + escapeHtml(row.ticker) + '</td>' +
+          '<td class="mut">' + escapeHtml(row.company_name || row.name || ('PT ' + row.ticker + ' Tbk')) + '</td>' +
+          '<td class="' + ffC + '" style="font-weight:600">' + ffS + '</td>' +
+          '<td><span class="pill-st" style="font-weight:500"><span class="' + hD + '"></span>' + hS + '</span></td>' +
+          '<td>' + st + '</td>' +
+          '<td class="mut num">' + d + '</td>';
 
         frag.appendChild(tr);
       });
 
       tbody.appendChild(frag);
+    },
+
+    toggleCanvasSort: function () {
+      if (this.sortKey === 'ticker_asc' || this.sortKey === 't') {
+        this.setSort('free_float_asc');
+      } else {
+        this.setSort('ticker_asc');
+      }
+      var btn = byId('marketStructureSortToggleBtn');
+      if (btn) {
+        btn.textContent = 'Urutkan: ' + (this.sortKey === 'ticker_asc' ? 'Ticker A-Z' : 'Free Float ↑');
+      }
     },
 
     selectRow: function (ticker, userInitiated) {
@@ -3578,6 +3544,64 @@
         } else {
           summaryNoteEl.textContent = 'Data kepemilikan saham >5% belum dilaporkan ke KSEI / belum terverifikasi.';
         }
+      }
+
+      // Canvas Aside Pane Update
+      var sTicker = byId('msDetailTicker');
+      if (sTicker) sTicker.textContent = ticker;
+      var sName = byId('msDetailName');
+      if (sName) sName.textContent = row.company_name || row.name || ('PT ' + ticker + ' Tbk');
+      var sFfBig = byId('msDetailFfBig');
+      var ffVal = hasFf ? Number(row.free_float_pct) : null;
+      var ffS = hasFf ? ffVal.toFixed(2).replace('.', ',') + '%' : '—';
+      if (sFfBig) sFfBig.textContent = ffS;
+      var sFfBar = byId('msDetailFfBar');
+      if (sFfBar) {
+        sFfBar.style.width = (hasFf ? Math.min(100, ffVal * 2).toFixed(1) : 0) + '%';
+        sFfBar.style.background = (hasFf && ffVal < 15) ? 'var(--ac-warn)' : 'var(--ac-brand)';
+      }
+      var sLowChip = byId('msDetailLowFfChip');
+      if (sLowChip) sLowChip.style.display = (hasFf && ffVal < 15) ? 'inline-flex' : 'none';
+      var sIncChip = byId('msDetailIncompleteChip');
+      if (sIncChip) sIncChip.style.display = !hasFf ? 'inline-flex' : 'none';
+      var sSource = byId('msDetailSource');
+      if (sSource) sSource.textContent = 'KSEI · 30 Sep 2026';
+      var isHsc = row.hsc_flag === true;
+      var isNoHsc = row.hsc_flag === false;
+      var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : 'Belum diketahui');
+      var sHscDot = byId('msDetailHscDot');
+      if (sHscDot) sHscDot.className = 'dot ' + (isHsc ? 'a' : (isNoHsc ? 'g' : 'm'));
+      var sHscText = byId('msDetailHscText');
+      if (sHscText) sHscText.textContent = hS;
+
+      // Controller
+      var topInv = null;
+      if (Array.isArray(row.investors) && row.investors.length > 0) {
+        topInv = row.investors.reduce(function (prev, cur) {
+          var prevPct = Number(prev.percentage || 0);
+          var curPct = Number(cur.percentage || 0);
+          return curPct > prevPct ? cur : prev;
+        }, row.investors[0]);
+      }
+      var sCtl = byId('msDetailController');
+      if (sCtl) {
+        if (topInv && (topInv.investorName || topInv.name)) {
+          var invName = topInv.investorName || topInv.name;
+          var invPct = topInv.percentage != null ? Number(topInv.percentage).toFixed(2).replace('.', ',') + '%' : '—';
+          sCtl.textContent = invName + ' · ' + invPct;
+        } else {
+          sCtl.textContent = '—';
+        }
+      }
+      var sNote = byId('msDetailNote');
+      if (sNote) {
+        var noteTxt = !hasFf ? 'Free Float belum tersedia di sumber. Ini bukan berarti Free Float rendah.' : (isHsc ? 'Konsentrasi kepemilikan tinggi; peredaran saham di publik terbatas sehingga volatilitas bisa tinggi.' : (ffVal < 15 ? 'Free Float di bawah ambang referensi 15%. Periksa likuiditas sebelum mengambil posisi besar.' : (!row.hsc_flag ? 'Free Float wajar. Status HSC belum dievaluasi oleh sumber.' : 'Struktur kepemilikan dalam batas wajar.')));
+        sNote.textContent = noteTxt;
+      }
+      var sBtn = byId('msDetailAnalisisBtn');
+      if (sBtn) {
+        sBtn.href = '/analisis-saham?ticker=' + ticker;
+        sBtn.textContent = 'Buka analisis ' + ticker;
       }
 
       // Open detail pane on desktop
