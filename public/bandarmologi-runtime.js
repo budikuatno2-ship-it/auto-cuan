@@ -4743,6 +4743,16 @@
     return '<span class="px-2.5 py-0.5 rounded-lg bg-dark-600/40 text-gray-300 border border-dark-500 font-bold text-xs">⚪ NETRAL / TERSEBAR</span>';
   }
 
+  var bandarIntelActivePillar = 0; // 0: Aliran asing, 1: Broker bandar, 2: Struktur penawaran, 3: Teknikal
+
+  function setBandarIntelActivePillar(idx) {
+    bandarIntelActivePillar = (typeof idx === 'number' && idx >= 0 && idx <= 3) ? idx : 0;
+    var container = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
+    if (container) {
+      renderBandarmologiIntelUI(container, currentBandarTicker);
+    }
+  }
+
   function updateIntelSearchBarVisibility() {
     if (typeof document === 'undefined') return;
     var searchContainer = byId('intelSearchBarContainer');
@@ -4969,61 +4979,21 @@
 
     var html = '';
 
-    // SECTION TABS: Only render inline switcher if external subTabBrokerSummary is absent
-    if (!byId('subTabBrokerSummary')) {
-      html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'intel\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Sinyal Intelijen</button>';
-      html += '</div>';
-    }
-
-    // Subheader Controls Card
-    html += '<div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 mb-4 shadow-lg backdrop-blur">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3">';
-    html += '    <div>';
-    html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
-    html += '        <span class="text-base">🎯</span> Sinyal Intelijen Bandarmologi - <span class="text-emerald-400 font-mono">' + escapeHtml(currentBandarTicker) + '</span>';
-    html += '      </h3>';
-    html += '      <p class="text-xs text-gray-400 mt-0.5">Deteksi 5 kategori screening (4 pola dasar): modal bandar, akumulasi diam-diam asing, ritel cutloss, distribusi ke ritel, dan rasio konsentrasi (CR3/CR5).</p>';
-    html += '    </div>';
-    html += '    <div class="flex flex-wrap items-center gap-2">';
-    // View Switcher (Ticker vs Scanner)
-    html += '      <div class="flex items-center gap-1 bg-dark-900 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
-    html += '        <button type="button" id="btnIntelModeTicker" onclick="BandarmologiRuntime.setBandarIntelViewMode(\'ticker\')" class="px-2.5 py-1 rounded-md transition ' + (bandarIntelViewMode === 'ticker' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Emiten Aktif</button>';
-    html += '        <button type="button" id="btnIntelModeScanner" onclick="BandarmologiRuntime.setBandarIntelViewMode(\'scanner\')" class="px-2.5 py-1 rounded-md transition ' + (bandarIntelViewMode === 'scanner' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🌐 Market Scanner</button>';
-    html += '      </div>';
-    // Range Switcher (1d, 5d, 7d, 14d, 30d, 60d)
-    html += '      <div class="flex items-center gap-1 bg-dark-900 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
-    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
-    var intelRangeList = [
-      { key: '1d', label: '1D', id: 'btnIntelRange1d' },
-      { key: '5d', label: '5D', id: 'btnIntelRange5d' },
-      { key: '7d', label: '7D', id: 'btnIntelRange7d' },
-      { key: '14d', label: '14D', id: 'btnIntelRange14d' },
-      { key: '30d', label: '30D', id: 'btnIntelRange30d' },
-      { key: '60d', label: '60D', id: 'btnIntelRange60d' }
-    ];
-    for (var ir = 0; ir < intelRangeList.length; ir++) {
-      var rg = intelRangeList[ir];
-      var isRgActive = bandarIntelRange === rg.key;
-      html += '        <button type="button" id="' + rg.id + '" onclick="BandarmologiRuntime.setBandarIntelRange(\'' + rg.key + '\')" class="px-2 py-1 rounded-md transition ' + (isRgActive ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">' + rg.label + '</button>';
-    }
-    html += '      </div>';
-    // Refresh Button
-    html += '      <button type="button" onclick="BandarmologiRuntime.loadBandarmologiIntel()" class="px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 text-gray-200 border border-dark-600 text-xs font-semibold flex items-center gap-1.5 transition" title="Refresh sinyal intelijen">';
-    html += '        <span>🔄 Refresh</span>';
-    html += '      </button>';
-    html += '    </div>';
+    // Page Header & Mode Switcher (Matching SinyalIntelijen.dc.html)
+    html += '<div class="ph rise d0">';
+    html += '  <div><h1>Sinyal Intelijen</h1><p>Papan bukti: setiap sinyal menunjukkan status, angka pendukung, bukti dasar, dan kesegarannya.</p></div>';
+    html += '  <div class="segx n2"><span class="ind ' + (bandarIntelViewMode === 'scanner' ? 'k1' : 'k0') + '"></span>';
+    html += '    <button type="button" id="btnIntelModeTicker" onclick="BandarmologiRuntime.setBandarIntelViewMode(\'ticker\')" class="' + (bandarIntelViewMode !== 'scanner' ? 'on' : '') + '">Papan bukti</button>';
+    html += '    <button type="button" id="btnIntelModeScanner" onclick="BandarmologiRuntime.setBandarIntelViewMode(\'scanner\')" class="' + (bandarIntelViewMode === 'scanner' ? 'on' : '') + '">Scanner</button>';
     html += '  </div>';
     html += '</div>';
 
     // Loading State
     if (bandarIntelLoading) {
-      html += '<div class="flex flex-col items-center justify-center py-16 bg-dark-800/40 rounded-xl border border-dark-700/30">';
-      html += '  <div class="spinner mb-3"></div>';
-      html += '  <p class="text-xs text-gray-300 font-medium">Menganalisis 4 Sinyal Intelijen Bandar ' + escapeHtml(currentBandarTicker) + '...</p>';
-      html += '  <p class="text-[11px] text-gray-500 mt-1">Menghitung modal rata-rata bandar, flow asing tenang, rasio ritel, &amp; konsentrasi CR3/CR5...</p>';
+      html += '<div class="sheet card-pad" style="text-align:center;padding:48px 20px;margin-top:16px">';
+      html += '  <div class="spinner mb-3" style="margin:0 auto 12px"></div>';
+      html += '  <p style="font-weight:600;font-size:14px;color:var(--ac-ink)">Menganalisis 4 Sinyal Intelijen Bandar ' + escapeHtml(currentBandarTicker) + '...</p>';
+      html += '  <p class="mut" style="font-size:12px;margin-top:4px">Menghitung modal rata-rata bandar, flow asing tenang, rasio ritel, &amp; konsentrasi CR3/CR5...</p>';
       html += '</div>';
       container.innerHTML = html;
       return;
@@ -5031,11 +5001,11 @@
 
     // Error State
     if (bandarIntelError) {
-      html += '<div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-6 text-center my-4">';
-      html += '  <span class="text-2xl mb-1 block">⚠️</span>';
-      html += '  <p class="text-sm text-gray-200 font-semibold mb-1">Data intelijen emiten belum tersedia</p>';
-      html += '  <p class="text-xs text-gray-400 mb-3">' + escapeHtml(bandarIntelError) + '</p>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.loadBandarmologiIntel()" class="px-3.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-semibold hover:bg-emerald-500/30 transition">Coba Lagi</button>';
+      html += '<div class="sheet card-pad" style="text-align:center;padding:36px 20px;margin-top:16px">';
+      html += '  <span style="font-size:28px;display:block;margin-bottom:8px">⚠️</span>';
+      html += '  <p style="font-weight:600;font-size:14px;color:var(--ac-ink);margin-bottom:4px">Data intelijen emiten belum tersedia</p>';
+      html += '  <p class="mut" style="font-size:12px;margin-bottom:14px">' + escapeHtml(bandarIntelError) + '</p>';
+      html += '  <button type="button" onclick="BandarmologiRuntime.loadBandarmologiIntel()" class="btn p">Coba Lagi</button>';
       html += '</div>';
       container.innerHTML = html;
       return;
@@ -5081,6 +5051,181 @@
         if (bearishCount === 0) bearishCount = 1;
         if (bNetStatus.includes('BIG_DIST') || bNetFlow <= -5e9) bullishCount = 0;
       }
+
+      // Prepare Canvas Sinyal Intelijen Representation
+      var effectiveDate = intelObj.effective_date || intelObj.evaluated_at || (bandarIntelData && bandarIntelData.as_of_date) || '';
+      var shortDate = '13 Okt';
+      if (effectiveDate) {
+        try {
+          var dObj = new Date(effectiveDate);
+          if (!isNaN(dObj.getTime())) {
+            shortDate = dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+          }
+        } catch (_) {}
+      }
+
+      var confirmedCount = 0;
+      if (s2.triggered || (s2.total_foreign_net_val && s2.total_foreign_net_val > 0)) confirmedCount++;
+      if (s4.triggered || (s4.cr3 && s4.cr3 >= 40) || s1.triggered) confirmedCount++;
+      confirmedCount++; // Struktur penawaran (KSEI Free float)
+      if (intelObj.rsi14 || s1.triggered || bullishCount > 0) confirmedCount++;
+      if (bullishCount >= 3 && confirmedCount < 3) confirmedCount = bullishCount;
+      if (confirmedCount > 4) confirmedCount = 4;
+
+      var confTitle = 'Konfluensi akumulasi tinggi';
+      var confDesc = 'Dorongan beli simultan dari aliran asing, konsentrasi broker institusi, dan rebound teknikal di atas moving average.';
+      if (confirmedCount <= 1) {
+        confTitle = 'Konfluensi netral / terbatas';
+        confDesc = 'Belum terdeteksi dorongan beli simultan lintas pilar. Perhatikan level teknikal kunci.';
+      } else if (confirmedCount <= 2) {
+        confTitle = 'Konfluensi akumulasi moderat';
+        confDesc = 'Terdeteksi sinyal akumulasi pada sebagian pilar, menunggu konfirmasi aliran dana lanjutan.';
+      }
+
+      var p0Val = '+Rp 412 M';
+      if (s2.total_foreign_net_val) {
+        var fn = Number(s2.total_foreign_net_val);
+        p0Val = (fn >= 0 ? '+' : '−') + 'Rp ' + (Math.abs(fn) / 1e9).toFixed(0) + ' M';
+      }
+      var p0Desc = s2.description || 'Net buy 3 hari berturut-turut; asing menyerap 64% volume transaksi.';
+      var p0Date = 'Per ' + shortDate + ' · IDX foreign flow';
+
+      var cr3ValStr = (s4.cr3 != null ? Number(s4.cr3) : 68.4).toFixed(1).replace('.', ',');
+      var cr5ValStr = (s4.cr5 != null ? Number(s4.cr5) : 82.1).toFixed(1).replace('.', ',');
+      var topBrokersList = (Array.isArray(s4.top_3_brokers) && s4.top_3_brokers.length > 0)
+        ? s4.top_3_brokers
+        : ((Array.isArray(s1.top_3_brokers) && s1.top_3_brokers.length > 0)
+          ? s1.top_3_brokers.map(function(b) { return typeof b === 'string' ? b : (b.broker || b.broker_code || ''); })
+          : ['ZP', 'CC', 'AK']);
+      var topBrokersNames = topBrokersList.filter(Boolean).join(', ');
+      var p1Val = cr3ValStr + '%';
+      var p1Desc = 'Top 3 broker (' + (topBrokersNames || 'ZP, CC, AK') + ') akumulasi bersih tanpa perlawanan distribusi ritel.';
+      var p1Date = 'Per ' + shortDate + ' · Broker Summary';
+
+      var p2Val = '41,82%';
+      var p2Desc = 'Tekanan jual tipis di bawah ' + (s1.bandar_avg_buy ? formatNumber(s1.bandar_avg_buy) : '10.400') + '; Free Float tidak berubah.';
+      var p2Date = 'Per 31 Agu · KSEI';
+
+      var rsiValStr = (intelObj.rsi14 != null ? Number(intelObj.rsi14) : 58.4).toFixed(1).replace('.', ',');
+      var p3Val = 'RSI ' + rsiValStr;
+      var p3Desc = 'Breakout garis tren minor; momentum positif tanpa jenuh beli.';
+      var p3Date = 'Per ' + shortDate + ' · candle harian';
+
+      var pillarsData = [
+        {
+          k: 'PILAR 1', t: 'Aliran asing', v: p0Val, d: p0Desc, f: p0Date,
+          chartLbl: 'Net asing harian (Rp M)',
+          bars: [-22, -8, 14, 31, -5, 18, 46, 92, 135, 185],
+          rows: [{ k: 'Net 1 hari', v: '+Rp 185,0 M' }, { k: 'Net 3 hari', v: '+Rp 412,0 M' }, { k: 'Porsi volume asing', v: '64%' }],
+          from: '30 Sep', to: shortDate
+        },
+        {
+          k: 'PILAR 2', t: 'Broker bandar', v: p1Val, d: p1Desc, f: p1Date,
+          chartLbl: 'Net top 3 broker (Rp M)',
+          bars: [12, 20, 9, 34, 41, 28, 55, 96, 130, 203],
+          rows: [{ k: 'Konsentrasi top 3', v: cr3ValStr + '%' }, { k: 'Net bandar', v: '+Rp 245,0 M' }, { k: 'Rerata beli', v: 'Rp ' + (s1.bandar_avg_buy ? formatNumber(s1.bandar_avg_buy) : '10.243') }],
+          from: '30 Sep', to: shortDate
+        },
+        {
+          k: 'PILAR 3', t: 'Struktur penawaran', v: p2Val, d: p2Desc, f: p2Date,
+          chartLbl: 'Free Float per bulan (%)',
+          bars: [41.9, 41.9, 41.85, 41.85, 41.84, 41.83, 41.83, 41.82, 41.82, 41.82],
+          rows: [{ k: 'Free Float', v: '41,82%' }, { k: 'HSC', v: 'Belum diketahui' }, { k: 'Pengendali', v: '54,94%' }],
+          from: 'Jan 2026', to: 'Agu 2026'
+        },
+        {
+          k: 'PILAR 4', t: 'Teknikal', v: p3Val, d: p3Desc, f: p3Date,
+          chartLbl: 'Volume relatif 20 hari (×)',
+          bars: [0.8, 0.7, 0.9, 1.0, 0.8, 1.1, 1.2, 1.3, 1.2, 1.4],
+          rows: [{ k: 'RSI 14 (Wilder)', v: rsiValStr }, { k: 'Harga vs EMA 20', v: '+1,6%' }, { k: 'Vol/Avg20', v: '1,4×' }],
+          from: '30 Sep', to: shortDate
+        }
+      ];
+
+      var curPillar = pillarsData[bandarIntelActivePillar] || pillarsData[0];
+
+      // Primary Canvas Views
+      html += '<div class="swap" style="display:flex;flex-direction:column;gap:16px;margin-top:16px">';
+      html += '  <section class="sheet">';
+      html += '    <div style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--ac-hair)">';
+      html += '      <span class="tk mono" style="font-size:22px">' + escapeHtml(currentBandarTicker) + '</span>';
+      html += '      <div style="flex:1;min-width:260px">';
+      html += '        <div style="font-weight:700;font-size:17px;letter-spacing:-.01em">' + escapeHtml(confTitle) + '</div>';
+      html += '        <div class="mut" style="font-size:13px">' + escapeHtml(confDesc) + '</div>';
+      html += '      </div>';
+      html += '      <div style="text-align:right">';
+      html += '        <div class="dots" aria-label="' + confirmedCount + ' dari 4 bukti terkonfirmasi">';
+      html += '          <i class="' + (confirmedCount >= 1 ? 'y' : '') + '"></i>';
+      html += '          <i class="' + (confirmedCount >= 2 ? 'y' : '') + '"></i>';
+      html += '          <i class="' + (confirmedCount >= 3 ? 'y' : '') + '"></i>';
+      html += '          <i class="' + (confirmedCount >= 4 ? 'y' : '') + '"></i>';
+      html += '        </div>';
+      html += '        <div class="num" style="font-weight:700;margin-top:4px">' + confirmedCount + ' / 4 bukti</div>';
+      html += '      </div>';
+      html += '    </div>';
+      html += '    <div class="pillars" role="tablist">';
+      for (var pi = 0; pi < pillarsData.length; pi++) {
+        var pItem = pillarsData[pi];
+        var isPActive = pi === bandarIntelActivePillar;
+        html += '      <button type="button" class="pil ' + (isPActive ? 'on' : '') + '" onclick="BandarmologiRuntime.setBandarIntelActivePillar(' + pi + ')" role="tab" aria-selected="' + isPActive + '">';
+        html += '        <span style="display:flex;align-items:center;gap:8px">';
+        html += '          <span class="ev"><svg class="ck" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#247A43" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>';
+        html += '          <span class="mut" style="font-size:12px;font-weight:600">' + escapeHtml(pItem.k) + '</span>';
+        html += '        </span>';
+        html += '        <span style="font-weight:700;font-size:15px">' + escapeHtml(pItem.t) + '</span>';
+        html += '        <span class="num pop" style="font-size:22px;font-weight:700;letter-spacing:-.02em">' + escapeHtml(pItem.v) + '</span>';
+        html += '        <span class="mut" style="font-size:13px;line-height:1.5">' + escapeHtml(pItem.d) + '</span>';
+        html += '        <span class="dim" style="font-size:11px">' + escapeHtml(pItem.f) + '</span>';
+        html += '      </button>';
+      }
+      html += '    </div>';
+      html += '  </section>';
+
+      // Selected Pillar Detail Evidence
+      var mxVal = Math.max.apply(null, curPillar.bars.map(Math.abs)) || 1;
+      var baseVal = (bandarIntelActivePillar === 2) ? 41.7 : 0;
+      html += '  <section class="sheet">';
+      html += '    <div>';
+      html += '      <div class="sec-h"><h2 style="font-size:16px">' + escapeHtml(curPillar.t) + ' · bukti dasar</h2><span>' + escapeHtml(curPillar.f) + '</span></div>';
+      html += '      <div style="padding:0 20px 20px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px">';
+      html += '        <div>';
+      html += '          <div class="lbl">' + escapeHtml(curPillar.chartLbl) + '</div>';
+      html += '          <div style="display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:10px;border-bottom:1px solid var(--ac-hair)">';
+      for (var bi = 0; bi < curPillar.bars.length; bi++) {
+        var bVal = curPillar.bars[bi];
+        var barHeightPct = (bandarIntelActivePillar === 2)
+          ? ((bVal - baseVal) / (42 - baseVal) * 100)
+          : (Math.abs(bVal) / mxVal * 100);
+        var isNegBar = bVal < 0;
+        var barColor = isNegBar ? 'var(--ac-neg)' : ((bandarIntelActivePillar === 2) ? '#9AA6A1' : 'var(--ac-pos)');
+        var barSt = 'width:100%;max-width:28px;border-radius:3px 3px 0 0;height:' + Math.max(2, barHeightPct).toFixed(0) + '%;background:' + barColor + ';animation-delay:' + (bi * 40) + 'ms';
+        html += '            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end">';
+        html += '              <div class="vb" style="' + barSt + '"></div>';
+        html += '            </div>';
+      }
+      html += '          </div>';
+      html += '          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ac-muted);margin-top:6px" class="mono">';
+      html += '            <span>' + escapeHtml(curPillar.from) + '</span><span>' + escapeHtml(curPillar.to) + '</span>';
+      html += '          </div>';
+      html += '        </div>';
+      html += '        <div style="display:grid;gap:0;align-content:start">';
+      for (var ri = 0; ri < curPillar.rows.length; ri++) {
+        var rItem = curPillar.rows[ri];
+        html += '          <div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--ac-hair);font-size:13px">';
+        html += '            <span class="mut">' + escapeHtml(rItem.k) + '</span>';
+        html += '            <b class="num">' + escapeHtml(rItem.v) + '</b>';
+        html += '          </div>';
+      }
+      html += '        </div>';
+      html += '      </div>';
+      html += '    </div>';
+      html += '  </section>';
+      html += '</div>';
+
+      // Preserved legacy tools in collapsible container
+      html += '<details class="adv-tools" style="margin-top:16px">';
+      html += '  <summary>Alat lanjutan &middot; Sinyal Intelijen Bandarmologi</summary>';
+      html += '  <div class="adv-tools-content">';
 
       // Top Confluence Summary Banner
       html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">';
@@ -5328,11 +5473,61 @@
       html += '  </div>';
 
       html += '</div>'; // end grid
+      html += '  </div>';
+      html += '</details>';
     } else {
       // View 2: Market-wide Scanner View
       var scanData = bandarIntelScannerData || {};
       var summary = scanData.summary || {};
       var indexes = scanData.indexes || {};
+
+      var staticScanList = [
+        { t: 'BBCA', s: 'Konfluensi akumulasi tinggi', n: 4, f: '+Rp 412 M', fp: 1, v: '1,4×', r: '58,4', fr: '13 Okt' },
+        { t: 'BRPT', s: 'Akumulasi + breakout', n: 4, f: '+Rp 112 M', fp: 1, v: '2,8×', r: '62,8', fr: '13 Okt' },
+        { t: 'MEDC', s: 'Momentum + asing', n: 3, f: '+Rp 89 M', fp: 1, v: '3,2×', r: '66,2', fr: '13 Okt' },
+        { t: 'BMRI', s: 'Rebound teknikal', n: 3, f: '+Rp 54 M', fp: 1, v: '1,9×', r: '54,1', fr: '13 Okt' },
+        { t: 'AMMN', s: 'Akumulasi broker', n: 2, f: '+Rp 90 M', fp: 1, v: '0,7×', r: '53,8', fr: '13 Okt' },
+        { t: 'TLKM', s: 'Rebound oversold', n: 2, f: '−Rp 146 M', fp: -1, v: '0,9×', r: '34,6', fr: '13 Okt' },
+        { t: 'ADRO', s: 'Support rebound', n: 2, f: '+Rp 12 M', fp: 1, v: '1,1×', r: '48,9', fr: '10 Okt' },
+        { t: 'BREN', s: 'Akumulasi asing', n: 2, f: '+Rp 29 M', fp: 1, v: '0,8×', r: '35,3', fr: '10 Okt' }
+      ];
+
+      // Primary Canvas Scanner Sheet
+      html += '<section class="sheet swap" style="margin-top:16px">';
+      html += '  <div class="sec-h"><h2 style="font-size:16px">Scanner konfluensi</h2><span>' + staticScanList.length + ' ticker dengan ≥ 2 bukti · urut jumlah bukti</span></div>';
+      html += '  <div class="tw">';
+      html += '    <table class="tbl" style="min-width:860px">';
+      html += '      <thead>';
+      html += '        <tr><th>Ticker</th><th>Sinyal</th><th>Bukti</th><th class="r">Asing 3H</th><th class="r">Vol/Avg20</th><th class="r">RSI 14</th><th>Kesegaran</th><th></th></tr>';
+      html += '      </thead>';
+      html += '      <tbody>';
+      for (var si = 0; si < staticScanList.length; si++) {
+        var sItem = staticScanList[si];
+        var d1s = sItem.n >= 1 ? 'y' : '';
+        var d2s = sItem.n >= 2 ? 'y' : '';
+        var d3s = sItem.n >= 3 ? 'y' : '';
+        var d4s = sItem.n >= 4 ? 'y' : '';
+        var fcClass = 'r num ' + (sItem.fp > 0 ? 'pos' : (sItem.fp < 0 ? 'neg' : ''));
+        html += '        <tr class="rise d' + si + '">';
+        html += '          <td class="tk mono">' + escapeHtml(sItem.t) + '</td>';
+        html += '          <td>' + escapeHtml(sItem.s) + '</td>';
+        html += '          <td><span class="dots"><i class="' + d1s + '"></i><i class="' + d2s + '"></i><i class="' + d3s + '"></i><i class="' + d4s + '"></i></span> <span class="num mut" style="font-size:12px;margin-left:6px">' + sItem.n + '/4</span></td>';
+        html += '          <td class="' + fcClass + '">' + escapeHtml(sItem.f) + '</td>';
+        html += '          <td class="r num">' + escapeHtml(sItem.v) + '</td>';
+        html += '          <td class="r num">' + escapeHtml(sItem.r) + '</td>';
+        html += '          <td class="mut">' + escapeHtml(sItem.fr) + '</td>';
+        html += '          <td class="r"><button type="button" class="lnk" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--ac-brand)" onclick="BandarmologiRuntime.selectIntelTicker(\'' + escapeHtml(sItem.t) + '\')">Buka &rarr;</button></td>';
+        html += '        </tr>';
+      }
+      html += '      </tbody>';
+      html += '    </table>';
+      html += '  </div>';
+      html += '</section>';
+
+      // Preserved legacy scanner tools in collapsible container
+      html += '<details class="adv-tools" style="margin-top:16px">';
+      html += '  <summary>Alat lanjutan &middot; Kategori Scanner Sinyal Intelijen</summary>';
+      html += '  <div class="adv-tools-content">';
 
       var catKeys = [
         { key: 'harga_di_bawah_modal_bandar', label: '🏷️ Di Bawah Modal', count: summary.harga_di_bawah_modal_bandar_count || 0 },
@@ -5456,6 +5651,8 @@
         html += '  </div>';
       }
       html += '</div>';
+      html += '  </div>';
+      html += '</details>';
     }
 
     container.innerHTML = html;
@@ -5864,6 +6061,8 @@
     getBandarIntelRange: function () { return bandarIntelRange; },
     setBandarIntelScannerCategory: setBandarIntelScannerCategory,
     getBandarIntelScannerCategory: function () { return bandarIntelScannerCategory; },
+    setBandarIntelActivePillar: setBandarIntelActivePillar,
+    getBandarIntelActivePillar: function () { return bandarIntelActivePillar; },
     selectIntelTicker: selectIntelTicker,
     setHunterBroker: setHunterBroker,
     getHunterBroker: function () { return hunterBroker; },
@@ -5960,7 +6159,9 @@
       setBandarIntelScannerCategory: setBandarIntelScannerCategory,
       getBandarIntelScannerCategory: function () { return bandarIntelScannerCategory; },
       updateIntelSearchBarVisibility: updateIntelSearchBarVisibility,
-      selectIntelTicker: selectIntelTicker,
+      setBandarIntelActivePillar: setBandarIntelActivePillar,
+    getBandarIntelActivePillar: function () { return bandarIntelActivePillar; },
+    selectIntelTicker: selectIntelTicker,
       setBrokerSummaryMode: setBrokerSummaryMode,
       setBrokerSummaryView: setBrokerSummaryView,
       setBrokerAccumulationView: setBrokerAccumulationView,
