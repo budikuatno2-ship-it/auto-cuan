@@ -457,7 +457,8 @@ const ROUTE_REWRITES = {
   '/watchlist': '/index.html',
   '/sektor': '/index.html',
   '/trackrecord': '/index.html',
-  '/pattern': '/index.html',
+  '/pattern': '/pattern-radar.html',
+  '/pattern-radar': '/pattern-radar.html',
   '/review': '/index.html',
   '/analisis-saham': '/analisis-saham.html',
   // FASE 9: the shell embeds the Portfolio Command Center at this exact path,
@@ -1713,7 +1714,8 @@ const server = http.createServer(async (req, res) => {
     }
     if (await serveData(req,res,pathname.slice('/data'.length),{noStore:true,extensionFallback:false})) return;
   }
-  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord' || pathname === '/catatan-admin') pathname = '/index.html';
+  if (pathname === '/pattern' || pathname === '/pattern-radar') pathname = '/pattern-radar.html';
+  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord' || pathname === '/catatan-admin') pathname = '/index.html';
   if (await servePublic(req,res,pathname)) return;
   if (await servePublic(req,res,'/404.html',{status:404,noStore:true})) return;
   res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:'404 Not Found');
