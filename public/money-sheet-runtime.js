@@ -6,7 +6,7 @@
   const doc = root.document;
   const $ = id => doc.getElementById(id);
   const money = value => value == null ? '\u2014' : 'Rp ' + value.toLocaleString('id-ID');
-  const format = value => value.toLocaleString('id-ID');
+  const format = value => 'Rp ' + value.toLocaleString('id-ID');
   const metric = (id,value) => root.AutoCuanNumeric ? root.AutoCuanNumeric.set($(id),value,{prefix:'Rp '}) : ($(id).textContent=money(value));
   let sheet = null, month = Model.currentMonth(), loadedMonth = null, notes = '', revision = null, userId = '';
   let lastSaveError = false;
@@ -136,7 +136,7 @@
         const errorState = invalid.get(row.id + ':' + field);
         if (errorState) input.value = errorState.raw;
         else if (force || input !== doc.activeElement) input.value = field === 'amount' ? (input === doc.activeElement && row.formula ? row.formula : format(row.amount)) : row[field];
-        if (field === 'amount') { input.dataset.formula = row.formula || ''; input.title = row.formula ? row.formula + ' = Rp ' + format(row.amount) : ''; }
+        if (field === 'amount') { input.dataset.formula = row.formula || ''; input.title = row.formula ? row.formula + ' = ' + format(row.amount) : ''; }
         input.setAttribute('aria-invalid', invalid.has(row.id + ':' + field) ? 'true' : 'false');
         if (field === 'type') input.parentNode.dataset.type = row.type;
       });
@@ -394,7 +394,7 @@
     if (!sheet) return;
     sheet.rows.forEach(row => { const node=rowNodes.get(row.id); const input=node && node.querySelector('[data-col="3"]');
       if (input && input!==doc.activeElement && !invalid.has(row.id+':amount')) {const value=format(row.amount);if(input.value!==value)input.value=value;}
-      if (input) {const formula=row.formula||'',title=row.formula?row.formula+' = Rp '+format(row.amount):'';if(input.dataset.formula!==formula)input.dataset.formula=formula;if(input.title!==title)input.title=title;}
+      if (input) {const formula=row.formula||'',title=row.formula?row.formula+' = '+format(row.amount):'';if(input.dataset.formula!==formula)input.dataset.formula=formula;if(input.title!==title)input.title=title;}
     });
   }
   function onKey(event) {

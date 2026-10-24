@@ -2545,30 +2545,38 @@ html.light #googleCompleteProfileModal input {
     <p class="ms-portfolio-note">Ringkasan mengikuti sumber data Portofolio. Nilai rencana dan P/L bukan arus kas bulan ini; tidak ditambahkan atau dikurangkan otomatis dari anggaran.</p>
   </section>
   <section class="ms-workbook" aria-label="Lembar kerja anggaran">
-    <div class="ms-workbook-heading"><div><h2>Anggaran bulanan</h2><p>Klik sel untuk memilih, ubah nominal langsung di tabel, total diperbarui otomatis.</p></div><div class="ms-heading-actions"><button type="button" id="mmExpandSheet" class="ms-button" aria-pressed="false">Fokus lembar</button><span id="mmSheetSaveState" class="ms-save-state" role="status" aria-live="polite">Belum dimuat</span></div></div>
+    <div class="ms-workbook-heading"><div><h2>Anggaran bulanan</h2><p>Klik sel untuk memilih &middot; ubah nominal langsung di tabel &middot; total diperbarui otomatis</p></div><div class="ms-heading-actions"><span id="mmSheetSaveState" class="ms-save-state" role="status" aria-live="polite">Belum dimuat</span></div></div>
     <div class="ms-toolbar" role="toolbar" aria-label="Alat lembar kerja">
       <button type="button" class="ms-button" id="mmAddRow" disabled><span aria-hidden="true">+</span> Tambah baris</button>
-      <div class="ms-history"><button type="button" class="ms-icon-button" id="mmUndo" title="Urungkan (Ctrl+Z)" aria-label="Urungkan perubahan" disabled>&#8630;</button><button type="button" class="ms-icon-button" id="mmRedo" title="Ulangi (Ctrl+Shift+Z)" aria-label="Ulangi perubahan" disabled>&#8631;</button></div>
+      <button type="button" id="mmDeleteRows" class="ms-button ms-button-quiet" disabled>Hapus baris</button>
       <label class="ms-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="mmSheetSearch" type="search" placeholder="Cari pos anggaran" aria-label="Cari pos anggaran"></label>
       <label class="ms-sort"><span class="sr-only">Urutkan baris</span><select id="mmSheetSort"><option value="original">Urutan asli</option><option value="amount">Nominal terbesar</option><option value="label">Nama pos A&ndash;Z</option></select></label>
+      <details class="ms-adv" id="mmAdvTools">
+        <summary class="ms-button ms-button-quiet ms-adv-sum">Alat lanjutan</summary>
+        <div class="ms-adv-body">
+          <div class="ms-adv-row">
+            <div class="ms-history"><button type="button" class="ms-icon-button" id="mmUndo" title="Urungkan (Ctrl+Z)" aria-label="Urungkan perubahan" disabled>&#8630;</button><button type="button" class="ms-icon-button" id="mmRedo" title="Ulangi (Ctrl+Shift+Z)" aria-label="Ulangi perubahan" disabled>&#8631;</button></div>
+            <button type="button" class="ms-button ms-button-quiet" id="mmReload">Muat ulang</button>
+            <button type="button" id="mmExpandSheet" class="ms-button" aria-pressed="false">Fokus lembar</button>
+          </div>
+          <div class="ms-edit-toolbar" role="toolbar" aria-label="Edit rentang">
+            <button type="button" id="mmCopyCells" class="ms-button ms-button-quiet" disabled>Salin</button>
+            <button type="button" id="mmClearCells" class="ms-button ms-button-quiet" disabled>Kosongkan sel</button>
+            <button type="button" id="mmFillDown" class="ms-button ms-button-quiet" title="Isi ke bawah (Ctrl+D)" disabled>Isi ke bawah</button>
+            <button type="button" id="mmInsertRow" class="ms-button ms-button-quiet" disabled>Sisipkan baris</button>
+          </div>
+          <details class="ms-help"><summary>Pintasan &amp; rumus</summary><p id="mmSheetHint">Shift + klik atau Shift + panah untuk memilih rentang. Ctrl/Cmd + C untuk salin, + V untuk tempel, + D untuk isi ke bawah, + S untuk simpan. F2 membuka editor sel. Klik judul kolom untuk memilih; seret batasnya untuk mengatur lebar.</p><p>Kolom D mendukung +, -, *, /, SUM, AVERAGE, MIN, MAX, COUNT, dan ROUND. Gunakan angka tanpa pemisah ribuan di dalam rumus. Hasil harus rupiah bulat. Nomor baris tetap sama saat disaring atau diurutkan. Rumus disimpan bersama lembar; bukan mesin Excel lengkap.</p></details>
+        </div>
+      </details>
       <button type="button" class="ms-button ms-button-quiet" id="mmExport" disabled>Ekspor CSV</button>
-      <button type="button" class="ms-button ms-button-quiet" id="mmReload">Muat ulang</button>
       <button type="button" class="ms-button ms-button-primary" id="mmBtnSaveCashflow" disabled>Simpan</button>
     </div>
-    <div class="ms-edit-toolbar" role="toolbar" aria-label="Edit rentang">
-      <button type="button" id="mmCopyCells" class="ms-button ms-button-quiet" disabled>Salin</button>
-      <button type="button" id="mmClearCells" class="ms-button ms-button-quiet" disabled>Kosongkan sel</button>
-      <button type="button" id="mmFillDown" class="ms-button ms-button-quiet" title="Isi ke bawah (Ctrl+D)" disabled>Isi ke bawah</button>
-      <button type="button" id="mmInsertRow" class="ms-button ms-button-quiet" disabled>Sisipkan baris</button>
-      <button type="button" id="mmDeleteRows" class="ms-button ms-button-quiet" disabled>Hapus baris</button>
-    </div>
     <div class="ms-formula-bar"><input class="ms-cell-address" id="mmCellAddress" value="A1" aria-label="Alamat atau rentang sel" title="Ketik D1 atau D1:D4, lalu Enter" autocomplete="off" spellcheck="false"><span class="ms-fx" aria-hidden="true">fx</span><input id="mmFormulaInput" type="text" aria-label="Nilai atau rumus sel aktif" placeholder="Pilih sel. Nominal mendukung =SUM(D1:D3) atau =ROUND(D1*0.1)" autocomplete="off" spellcheck="false" maxlength="500" disabled></div>
-    <details class="ms-help"><summary>Pintasan &amp; rumus</summary><p id="mmSheetHint">Shift + klik atau Shift + panah untuk memilih rentang. Ctrl/Cmd + C untuk salin, + V untuk tempel, + D untuk isi ke bawah, + S untuk simpan. F2 membuka editor sel. Klik judul kolom untuk memilih; seret batasnya untuk mengatur lebar.</p><p>Kolom D mendukung +, -, *, /, SUM, AVERAGE, MIN, MAX, COUNT, dan ROUND. Gunakan angka tanpa pemisah ribuan di dalam rumus. Hasil harus rupiah bulat. Nomor baris tetap sama saat disaring atau diurutkan. Rumus disimpan bersama lembar; bukan mesin Excel lengkap.</p></details>
     <div id="mmSheetNotice" class="ms-notice" role="status" aria-live="polite">Memuat lembar kerja&hellip;</div>
     <div id="mmSheetViewport" class="ms-grid-viewport" tabindex="0" role="region" aria-label="Tabel anggaran, dapat digulir" hidden>
       <table id="mmCashflowSpreadsheetTable" class="ms-grid" role="grid" aria-multiselectable="true" aria-label="Anggaran bulanan">
-        <colgroup><col style="width:44px"><col style="width:148px"><col style="width:146px"><col style="width:248px"><col style="width:160px"><col style="width:250px"><col style="width:44px"></colgroup>
-        <thead><tr><th scope="col" class="ms-row-number">#</th><th scope="col"><span>A</span> Jenis</th><th scope="col"><span>B</span> Kategori</th><th scope="col"><span>C</span> Nama pos</th><th scope="col" class="ms-number"><span>D</span> Nominal (Rp)</th><th scope="col"><span>E</span> Catatan</th><th scope="col"><span class="sr-only">Tindakan</span></th></tr></thead>
+        <colgroup><col style="width:44px"><col style="width:130px"><col style="width:170px"><col style="width:350px"><col style="width:190px"><col style="width:200px"><col style="width:40px"></colgroup>
+        <thead><tr><th scope="col" class="ms-row-number">#</th><th scope="col"><span>A &middot;</span> Jenis</th><th scope="col"><span>B &middot;</span> Kategori</th><th scope="col"><span>C &middot;</span> Nama pos</th><th scope="col" class="ms-number"><span>D &middot;</span> Nominal (Rp)</th><th scope="col"><span>E &middot;</span> Catatan</th><th scope="col"><span class="sr-only">Tindakan</span></th></tr></thead>
         <tbody id="mmCashflowSpreadsheetBody"></tbody>
       </table>
     </div>

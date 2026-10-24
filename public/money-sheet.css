@@ -42,7 +42,7 @@
 }
 .ms-month select:hover, .ms-sort select:hover { border-color: var(--ac-control-border-hover); }
 html.is-dark .ms-month select { color-scheme: dark; }
-#page-money-management .ms-month select { min-height: 36px; padding-right: 32px; font-weight: 600; cursor: pointer; }
+#page-money-management .ms-month select { width: 152px; min-height: 36px; padding-right: 32px; font-weight: 600; cursor: pointer; }
 
 /* Summary strip (canvas .sheet + .strip) */
 .ms-overview {
@@ -114,8 +114,8 @@ html.is-dark .ms-month select { color-scheme: dark; }
 /* Worksheet (canvas sheet + .sec-h) */
 .ms-workbook { background: var(--ac-surface); border: 1px solid var(--ac-line-hairline); border-radius: 12px; min-width: 0; overflow: hidden; }
 .ms-workbook-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; padding: 16px 20px 12px; }
-.ms-workbook-heading h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em; color: var(--ac-ink); }
-.ms-workbook-heading p { margin: 2px 0 0; font-size: 12px; color: var(--ac-text-secondary); }
+.ms-workbook-heading h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 700; letter-spacing: -.01em; color: var(--ac-ink); }
+.ms-workbook-heading p { margin: 2px 0 0; font-size: 12px; line-height: 18px; color: var(--ac-text-secondary); }
 .ms-heading-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .ms-save-state { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ac-text-secondary); flex-shrink: 0; }
 .ms-save-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ac-brand); }
@@ -177,7 +177,28 @@ html.is-dark .money-sheet #mmAddRow { color: #06140E; }
 /* Canvas sheets are hairline-only; the legacy light card shadow is !important. */
 #page-money-management .ms-workbook { box-shadow: none !important; }
 #mmExport { margin-left: auto; }
-.ms-edit-toolbar { display: flex; align-items: center; gap: 4px; overflow-x: auto; padding: 0 20px 12px; scrollbar-width: thin; }
+.ms-adv { position: relative; }
+.ms-adv > summary { list-style: none; }
+.ms-adv > summary::-webkit-details-marker { display: none; }
+.ms-adv:not([open]) > .ms-adv-body { display: none !important; }
+.ms-adv[open] > .ms-adv-body {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 25;
+  min-width: 340px;
+  max-width: min(560px, calc(100vw - 48px));
+  padding: 12px 14px;
+  border: 1px solid var(--ac-line-default);
+  border-radius: 10px;
+  background: var(--ac-surface);
+  box-shadow: var(--ac-shadow-elevated, 0 8px 24px rgba(15, 23, 20, .12));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ms-adv-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ms-edit-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px 0 0; border-top: 1px solid var(--ac-line-hairline); scrollbar-width: thin; }
 .money-sheet .ms-edit-toolbar .ms-button { border-color: transparent; background: transparent; color: var(--ac-text-secondary); }
 .money-sheet .ms-edit-toolbar .ms-button:hover:not(:disabled) { color: var(--ac-ink); background: var(--ac-surface-hover); }
 
@@ -197,13 +218,16 @@ html.is-dark .money-sheet #mmAddRow { color: #06140E; }
   min-width: 56px;
   max-width: 96px;
   height: 34px;
-  padding: 0 12px;
-  border: 0;
-  border-right: 1px solid var(--ac-line-hairline);
-  background: var(--ac-surface-raised);
+  min-height: 0 !important;
+  padding: 0 12px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--ac-line-hairline) !important;
+  border-radius: 0 !important;
+  background: var(--ac-surface-raised) !important;
   color: var(--ac-ink);
   font: 600 12px var(--ac-font-mono);
   text-align: center;
+  box-shadow: none !important;
 }
 .ms-fx {
   display: grid;
@@ -214,9 +238,9 @@ html.is-dark .money-sheet #mmAddRow { color: #06140E; }
   font: italic 600 13px var(--ac-font-sans);
   color: var(--ac-text-muted);
 }
-#mmFormulaInput { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border: 0; background: transparent; color: var(--ac-ink); font: 500 13px var(--ac-font-mono); }
+#page-money-management #mmFormulaInput { flex: 1; min-width: 0; height: 34px; min-height: 0; padding: 0 12px; border: 0; border-radius: 0; background: transparent; color: var(--ac-ink); font: 500 13px var(--ac-font-mono); box-shadow: none; }
 #mmFormulaInput::placeholder { color: var(--ac-text-muted); font-family: var(--ac-font-sans); }
-.ms-help { padding: 0 20px 12px; font-size: 12px; color: var(--ac-text-secondary); }
+.ms-help { padding: 8px 0 0; border-top: 1px solid var(--ac-line-hairline); font-size: 12px; color: var(--ac-text-secondary); }
 .ms-help summary { cursor: pointer; min-height: 24px; line-height: 24px; font-weight: 600; }
 .ms-help p { margin: 8px 0; max-width: 950px; line-height: 1.6; }
 .ms-notice { padding: 16px 20px; border-top: 1px solid var(--ac-line-hairline); font-size: 13px; color: var(--ac-text-secondary); }
@@ -305,7 +329,8 @@ html.is-dark .money-sheet #mmAddRow { color: #06140E; }
 .ms-grid [aria-invalid="true"] { box-shadow: inset 0 -2px var(--ac-negative); }
 .ms-grid .ms-delete { width: 100%; height: 39px; border: 0; background: transparent; color: var(--ac-text-muted); font-size: 18px; cursor: pointer; }
 .ms-grid .ms-delete:hover { color: var(--ac-negative); }
-.ms-grid textarea { display: block; resize: none; min-height: 39px; max-height: 120px; white-space: pre-wrap; }
+.ms-grid th.ms-number .ms-column-select { text-align: right; }
+.ms-grid textarea { display: block; resize: none; min-height: 39px; max-height: 120px; padding: 10px; line-height: 19px; color: var(--ac-text-secondary); white-space: pre-wrap; }
 .ms-column-select { display: block; width: 100%; height: 32px; padding: 0 10px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .ms-column-select:hover { color: var(--ac-ink); }
 .ms-row-number button { width: 100%; min-height: 39px; border: 0; background: none; color: inherit; cursor: pointer; }
