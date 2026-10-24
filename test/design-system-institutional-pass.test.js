@@ -130,7 +130,11 @@ test('the build-patcher invariants still hold', () => {
 });
 
 test('reduced motion still disables the transitions the pass adds', () => {
-  const reduced = theme.slice(theme.lastIndexOf('@media (prefers-reduced-motion'));
+  // Find this pass's own reduced-motion block; later sections (redesign v2,
+  // section 9) append their own blocks after it.
+  const start = theme.indexOf('.action-card:hover { transform: none');
+  assert.ok(start > 0, 'the new card lift must be suppressed');
+  const reduced = theme.slice(theme.lastIndexOf('@media (prefers-reduced-motion', start));
   assert.match(reduced, /\.action-card:hover \{ transform: none/, 'the new card lift must be suppressed');
   assert.match(reduced, /\.panel table tbody tr \{ transition: none/, 'the new row hover must be suppressed');
 });

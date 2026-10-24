@@ -1,112 +1,56 @@
-<div class="page-header mb-4">
-  <h1 id="analysisWorkspaceTitle" class="page-title text-2xl font-bold text-[var(--text-primary)]">Analisis &amp; Cockpit AI</h1>
-  <p class="page-subtitle text-xs text-[var(--text-secondary)]">Chart interaktif, analisis teknikal komprehensif, dan pembacaan visual AI.</p>
-</div>
-        <!-- Analysis destinations live in the workspace sidebar. -->
-
-
-        <!-- Header / Controls for Analisis & Chart (Global Search + Popular Chips + Subtabs) -->
-        <div id="analisisChartHeader" class="analisis-saham-controls ticker-search-container mb-4">
-            <!-- Top Cockpit Search & Sync Bar -->
-            <div class="unified-top-bar mb-3 flex-shrink-0">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
-                        <div class="relative flex-1 min-w-[200px]">
-                            <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, TLKM..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))UnifiedCockpit.handleTickerInputEnter()">
-                        </div>
-                        <button id="btnJalankanAnalisis" type="button" onclick="UnifiedCockpit.handleUnifiedAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all flex items-center gap-1.5 shrink-0" title="Jalankan Analisis Saham">
-                            <span>Analisis Saham</span>
-                        </button>
-                        <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-amber-300 hover:border-amber-500/40 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0" title="Kelola Google Gemini API Key (BYOK)">
-                            <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>
-                            <span>API Key</span>
-                        </button>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40">
-                        <span class="text-xs text-gray-400">Aktif:</span>
-                        <span id="unifiedActiveTickerBadge" class="unified-ticker-badge font-mono font-bold text-emerald-400">BBCA</span>
-                        <span id="unifiedActiveTickerSymbol" class="hidden">BBCA</span>
-                        <span id="unifiedActiveCompanyName" class="text-xs text-gray-300 font-medium hidden sm:inline">Bank Central Asia Tbk</span>
-                        <span id="unifiedActiveCompanySector" class="text-[10px] text-gray-400 font-mono hidden md:inline">Finansial</span>
-                        <span id="unifiedActiveTickerQuote" class="text-xs font-mono font-semibold text-emerald-400 tabular-nums ml-1"></span>
-                    </div>
+<h1 id="analysisWorkspaceTitle" class="sr-only">Analisis &amp; Chart</h1>
+        <!-- Redesign v2 (canvas Analisis.dc.html "Konteks ticker"): ticker,
+             name and sector, last price, quick tickers, then the Chart
+             Workstation / Analisis AI switch, data stamp and ticker search.
+             Ids and handlers are the ones the cockpit runtime writes to. -->
+        <div id="analisisChartHeader" class="analisis-saham-controls ticker-search-container sheet ana-ctx" data-ac-ui="v2">
+            <div class="unified-top-bar ana-ctx-row">
+                <span id="unifiedActiveTickerBadge" class="unified-ticker-badge tk mono ana-tk">BBCA</span>
+                <span id="unifiedActiveTickerSymbol" class="hidden">BBCA</span>
+                <span class="ana-name"><b id="unifiedActiveCompanyName">Bank Central Asia Tbk</b> <span class="mut">&middot; <span id="unifiedActiveCompanySector">Finansial</span></span></span>
+                <span id="unifiedActiveTickerQuote" class="ana-quote num mono"></span>
+                <span class="ana-chips" role="group" aria-label="Ticker cepat">
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true, forceChartReload: true })">IHSG</button>
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true })">BBCA</button>
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true, forceChartReload: true })">BBRI</button>
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true, forceChartReload: true })">BMRI</button>
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true })">TLKM</button>
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true })">ASII</button>
+                </span>
+                <button type="button" id="anaWlStar" class="vbtn sm wl-star-btn scr-star ana-wl" data-ticker="BBCA" aria-pressed="false" aria-label="Simpan BBCA ke Watchlist" title="Simpan ke Watchlist dan pasang alert harga" onclick="AutoCuanAnalisisV2.toggleWatch(event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="ana-wl-l">Watchlist + alert</span></button>
+            </div>
+            <div class="ana-ctx-row ana-ctx-row2">
+                <div id="analisisChartSubtabWrap" class="segx ana-sub" role="group" aria-label="Tampilan analisis">
+                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisSubTab('ai')">Analisis AI</button>
+                    <!-- FIX-22: Chart Workstation is a first-class lens, directly
+                         reachable as /analisis?tab=chart and from the sidebar. -->
+                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisSubTab('chart')" title="Chart Workstation">Chart Workstation</button>
+                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">Chart &amp; AI Vision</button>
                 </div>
-                <!-- Quick Ticker Chips -->
-                <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-                    <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">IHSG</button>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
-                </div>
+                <span class="chip b ana-stamp">Candle harian EOD</span>
+                <span class="ana-links" id="anaHeaderLinks"></span>
+                <form class="ana-search" role="search" onsubmit="UnifiedCockpit.handleUnifiedAnalisisSubmit(); return false;">
+                    <input id="analisisInput" type="text" placeholder="Ganti ticker, mis. BBCA" aria-label="Ganti ticker" autocomplete="off" spellcheck="false">
+                    <button id="btnJalankanAnalisis" type="submit" class="vbtn p sm">Analisis</button>
+                    <button type="button" class="vbtn sm" onclick="openAiApiKeyModal()" title="Kelola kunci AI milik Anda (BYOK)">Kredensial AI</button>
+                </form>
             </div>
 
             <!-- Multi-Lens Horizontal Sub-Navigation Strip (Workstation Lenses) -->
-            <div id="analisisLensesNav" class="analisis-lens-bar flex flex-wrap items-center gap-1.5 mt-2 mb-3 p-1.5 rounded-xl bg-dark-800/80 border border-dark-600/40 text-xs" role="tablist" aria-label="Lensa Analisis Saham">
-                <button type="button" class="analisis-lens-btn active px-3 py-1.5 rounded-lg text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 font-semibold flex items-center gap-1.5 transition" data-lens="analisis-chart" onclick="switchAnalisisTab('analisis-chart')" role="tab" aria-selected="true">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
-                    <span>Chart &amp; AI</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="bandarmologi" onclick="switchAnalisisTab('bandarmologi')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 8-10M15 5h6v6"/></svg>
-                    <span>Bandarmologi</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="hunter" onclick="switchAnalisisTab('hunter')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0"/></svg>
-                    <span>Broker Hunter</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="intel" onclick="switchAnalisisTab('intel')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg>
-                    <span>Sinyal Intelijen</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="market-structure" onclick="switchAnalisisTab('market-structure')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 10.5l3 3M16 5v5M5 16h5"/></svg>
-                    <span>Struktur Pasar</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="financial" onclick="switchAnalisisTab('financial')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg>
-                    <span>Financial</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="insider" onclick="switchAnalisisTab('insider')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7l8 4M8 17l8-4M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0M20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0M8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0"/></svg>
-                    <span>Insider</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="ranking" onclick="switchAnalisisTab('ranking')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/></svg>
-                    <span>Ranking</span>
-                    <span class="text-[9px] text-amber-300 font-mono font-bold px-1 py-0.2 rounded bg-amber-500/10 border border-amber-500/30">PRO</span>
-                </button>
-                <button type="button" class="analisis-lens-btn hidden px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="pattern" onclick="switchAnalisisTab('pattern')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-7 4 14 3-7h4"/></svg>
-                    <span>Pattern Radar</span>
-                    <span class="text-[9px] text-emerald-400 font-mono font-bold px-1 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/30">ADMIN</span>
-                </button>
-            </div>
-
-            <!-- Sub-Tab Switcher: [Analisis AI] vs [Chart Workstation] (FIX-22 lens tabs) -->
-            <div id="analisisChartSubtabWrap">
-                <div class="flex items-center gap-1 bg-dark-800 p-1 rounded-xl border border-dark-600/50 text-xs w-fit">
-                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisSubTab('ai')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-2px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        <span>Analisis AI</span>
-                    </button>
-                    <!-- FIX-22: Chart Workstation is a first-class lens, directly
-                         reachable as /analisis?tab=chart and from the sidebar. -->
-                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisSubTab('chart')" title="Chart Workstation">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-2px"><path d="M3 3v18h18"/><path d="M7 15l3-4 3 3 5-7"/></svg>
-                        <span>Chart Workstation</span>
-                    </button>
-                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-2px"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                        <span>Chart &amp; AI Vision</span>
-                    </button>
-                </div>
+            <div id="analisisLensesNav" class="analisis-lens-bar utabs ana-lenses" role="tablist" aria-label="Lensa Analisis Saham">
+                <button type="button" class="analisis-lens-btn active" data-lens="analisis-chart" onclick="switchAnalisisTab('analisis-chart')" role="tab" aria-selected="true">Chart &amp; AI</button>
+                <button type="button" class="analisis-lens-btn" data-lens="bandarmologi" onclick="switchAnalisisTab('bandarmologi')" role="tab" aria-selected="false">Bandarmologi</button>
+                <button type="button" class="analisis-lens-btn" data-lens="hunter" onclick="switchAnalisisTab('hunter')" role="tab" aria-selected="false">Broker Hunter</button>
+                <button type="button" class="analisis-lens-btn" data-lens="intel" onclick="switchAnalisisTab('intel')" role="tab" aria-selected="false">Sinyal Intelijen</button>
+                <button type="button" class="analisis-lens-btn" data-lens="market-structure" onclick="switchAnalisisTab('market-structure')" role="tab" aria-selected="false">Struktur Pasar</button>
+                <button type="button" class="analisis-lens-btn" data-lens="financial" onclick="switchAnalisisTab('financial')" role="tab" aria-selected="false">Financial</button>
+                <button type="button" class="analisis-lens-btn" data-lens="insider" onclick="switchAnalisisTab('insider')" role="tab" aria-selected="false">Insider</button>
+                <button type="button" class="analisis-lens-btn" data-lens="ranking" onclick="switchAnalisisTab('ranking')" role="tab" aria-selected="false">Ranking <span class="ana-tag">PRO</span></button>
+                <button type="button" class="analisis-lens-btn hidden" data-lens="pattern" onclick="switchAnalisisTab('pattern')" role="tab" aria-selected="false">Pattern Radar <span class="ana-tag">ADMIN</span></button>
             </div>
         </div>
 
-        <!-- ===== TAB 1: INDUK ANALISIS & CHART (SUBPANEL AI) ===== -->
+<!-- ===== TAB 1: INDUK ANALISIS & CHART (SUBPANEL AI) ===== -->
         <section id="panel-tab-analisis" class="analisis-tab-panel active">
             <!-- SUB-PANEL 1: ANALISIS AI (Cockpit Grid) -->
             <div id="subPanelAnalisisAI" class="unified-cockpit-grid">
@@ -197,6 +141,21 @@
         <!-- SUB-TAB 2: CHART (Candlestick Interaktif + Tombol Analisis AI + Hasil Vision, NO Text Analysis) -->
         <section id="panel-tab-chart" class="analisis-tab-panel" style="display:none">
             <div class="space-y-4">
+                <!-- Redesign v2: plan per horizon (stocks) or "Potensi arah" (indices), filled by analisis-v2.js. -->
+                <section id="anaPlanSheet" class="sheet ana-plan" data-ac-ui="v2" aria-label="Rencana per horizon"></section>
+                <!-- Catatan Admin Banner (HANDOFF §5d) -->
+                <div id="catatanAdminChartBanner" class="catatan-chart-banner" style="display:none">
+                    <div class="info flex-wrap">
+                        <span class="chip b" id="caBannerStyle">Catatan Admin</span>
+                        <span class="oc hit" id="caBannerStatus">Di area pantau</span>
+                        <span id="caBannerLevels" class="font-mono text-xs font-semibold">Area: — · TP: — · SL: —</span>
+                        <span id="caBannerReason" class="mut text-xs truncate max-w-[280px]"></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="btn sm" id="caBannerToggleLinesBtn" onclick="toggleCatatanAdminPriceLines()">Sembunyikan dari chart</button>
+                        <button type="button" class="btn sm q" onclick="navigateTo('catatan-admin')">Baca catatan</button>
+                    </div>
+                </div>
                 <!-- Interactive Candlestick Chart Card -->
                 <div class="unified-card">
                     <div id="unifiedChartContainer" class="unified-chart-box">
@@ -484,330 +443,196 @@
             </div>
         </section>
 
-        <!-- ===== MARKET STRUCTURE / FREE FLOAT / HSC ===== -->
+                <!-- ===== MARKET STRUCTURE / FREE FLOAT / HSC ===== -->
         <section id="panel-tab-market-structure" class="analisis-tab-panel ac-ui-v2" data-ac-ui="v2" style="display:none">
-            <div class="unified-card ac-research-data-panel">
-                <!-- Background interaction wrapper for desktop/list surface (inert when mobile sheet opens) -->
-                <div id="marketStructureBackgroundWrapper" class="ac-market-structure-background">
-                    <div class="unified-card-header ac-research-data-head">
-                        <div>
-                            <p class="ac-research-kicker">Struktur Pasar</p>
-                            <p class="ac-label-muted text-xs text-slate-400 mt-0.5">Konteks risiko struktur kepemilikan. Bukan score beli/jual dan bukan penilaian kepatuhan regulasi.</p>
-                            <p class="text-[11px] text-slate-400 mt-0.5">962 emiten terdaftar · 961 memiliki data pemegang saham &gt;5% (7.154 entitas teridentifikasi) · Data resmi KSEI &amp; BEI</p>
-                        </div>
-                    </div>
-
-                    <div id="marketStructureRefreshBanner" class="ac-refresh-banner" role="status" aria-live="polite" hidden></div>
-
-                    <!-- List-First Toolbar -->
-                    <div class="ac-filter-bar flex flex-col gap-2.5 p-3 border-b">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                            <div class="ac-market-structure-search-wrap flex items-center gap-2 flex-1 min-w-0">
-                                <input id="marketStructureSearchInput" type="text" placeholder="Cari kode, nama emiten, atau nama investor..." autocomplete="off" spellcheck="false" class="ac-search-input px-3 py-1.5 rounded-lg text-xs" aria-label="Cari saham atau investor di struktur pasar">
-                                <select id="marketStructureSectorSelect" class="ac-filter-select text-xs rounded px-2.5 py-1.5" aria-label="Filter sektor struktur pasar">
-                                    <option value="all">Semua Sektor (962 Emiten)</option>
-                                    <option value="Barang Baku">Barang Baku</option>
-                                    <option value="Energi">Energi</option>
-                                    <option value="Infrastruktur">Infrastruktur</option>
-                                    <option value="Kesehatan">Kesehatan</option>
-                                    <option value="Keuangan">Keuangan</option>
-                                    <option value="Konsumer Siklikal">Konsumer Siklikal</option>
-                                    <option value="Konsumer Non-Siklikal">Konsumer Non-Siklikal</option>
-                                    <option value="Perindustrian">Perindustrian</option>
-                                    <option value="Properti">Properti</option>
-                                    <option value="Teknologi">Teknologi</option>
-                                    <option value="Transportasi">Transportasi</option>
-                                </select>
-                            </div>
-                            <div class="flex items-center gap-1.5 text-xs shrink-0 sm:ml-auto">
-                                <label for="marketStructureSortSelect" class="text-[11px] ac-label-muted">Urutkan:</label>
-                                <select id="marketStructureSortSelect" class="ac-filter-select text-xs rounded px-2 py-1" aria-label="Urutkan daftar struktur pasar">
-                                    <option value="free_float_asc" selected>Free Float ↑ (Terendah)</option>
-                                    <option value="ticker_asc">Ticker (A-Z)</option>
-                                    <option value="ticker_desc">Ticker (Z-A)</option>
-                                    <option value="free_float_desc">Free Float ↓ (Tertinggi)</option>
-                                    <option value="investor_desc">Jumlah Investor (Terbanyak)</option>
-                                    <option value="investor_asc">Jumlah Investor (Tersedikit)</option>
-                                    <option value="status">Kelengkapan Data</option>
-                                </select>
-                                <button type="button" id="marketStructureRefreshBtn" class="ac-icon-btn p-1.5 rounded-lg transition min-w-[36px] min-h-[36px] flex items-center justify-center" title="Muat ulang data" aria-label="Muat ulang data struktur pasar">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-700/30">
-                            <div class="ac-filter-chips flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter status struktur pasar" id="marketStructureFilterGroup">
-                                <button type="button" id="marketStructureFilterAll" class="ac-filter-chip is-active px-2.5 py-1 text-xs rounded-md transition" data-filter="all">Semua (962)</button>
-                                <button type="button" id="marketStructureFilterLowFF" class="ac-filter-chip px-2.5 py-1 text-xs rounded-md transition" data-filter="low_ff" data-filter-canonical="low-ff">Free Float Rendah &lt;15% (551)</button>
-                                <button type="button" id="marketStructureFilterHsc" class="ac-filter-chip px-2.5 py-1 text-xs rounded-md transition" data-filter="hsc">HSC Aktif (0)</button>
-                                <button type="button" id="marketStructureFilterIncomplete" class="ac-filter-chip px-2.5 py-1 text-xs rounded-md transition" data-filter="incomplete">Data Belum Lengkap (1)</button>
-                            </div>
-                            <span id="marketStructureDataPeriodBadge" class="ac-data-period-badge text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 whitespace-nowrap shrink-0 self-start sm:self-auto">DATA PER: 30 September 2026 (Terbaru)</span>
-                        </div>
-                    </div>
-
-                    <div class="ac-market-structure-layout">
-                        <!-- Universe List Main Area -->
-                        <div id="marketStructureMainRegion" class="ac-market-structure-main">
-                            <!-- Loading Skeleton -->
-                            <div id="marketStructureTableSkeleton" class="p-8 text-center text-xs text-slate-400" role="status" aria-live="polite" hidden>
-                                <span class="spinner-sm"></span> Memuat daftar struktur pasar...
-                            </div>
-                            <div id="marketStructureDataState" class="ac-research-state py-8 text-center" role="status" aria-live="polite" hidden>Memuat daftar struktur pasar...</div>
-                            <!-- Error state -->
-                            <div id="marketStructureTableError" class="p-8 text-center text-rose-400 text-xs" hidden>
-                                <p id="marketStructureErrorMessage">Terjadi kendala saat mengambil data snapshot struktur pasar.</p>
-                            </div>
-                            <!-- Empty state with reset button -->
-                            <div id="marketStructureTableEmpty" class="py-12 px-4 text-center text-xs text-slate-400" hidden>
-                                <div class="text-3xl mb-2">🔍</div>
-                                <p class="text-sm font-semibold text-slate-200" id="marketStructureEmptyTitle">Tidak ada saham yang cocok</p>
-                                <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto" id="marketStructureEmptyMessage">Tidak ada emiten yang memenuhi kriteria filter saat ini.</p>
-                                <div class="mt-4">
-                                    <button type="button" id="marketStructureResetFilterBtn" onclick="window.AutoCuanMarketStructure &amp;&amp; window.AutoCuanMarketStructure.resetFilters()" class="min-h-[44px] px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition inline-flex items-center gap-2">
-                                        <span>↺</span> Reset Filter
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Mobile Cards View (<640px) -->
-                            <div id="marketStructureCardsContainer" class="ac-market-structure-cards flex flex-col gap-2.5 p-2">
-                                <!-- Populated dynamically by renderTable() -->
-                            </div>
-
-                            <!-- Main Scrollable Table (Desktop & Tablet >=640px) -->
-                            <div id="marketStructureTableWrap" class="ac-market-structure-table-wrap">
-                                <div id="marketStructureTableContainer" class="ac-market-structure-scroll">
-                                    <table id="marketStructureTable" class="w-full text-left text-xs table-fixed">
-                                        <colgroup>
-                                            <col style="width: 75px;">
-                                            <col style="width: 19%;">
-                                            <col class="col-sektor" style="width: 13%;">
-                                            <col style="width: 11%;">
-                                            <col style="width: 15%;">
-                                            <col style="width: 20%;">
-                                            <col class="col-kelengkapan" style="width: 11%;">
-                                            <col class="col-as-of" style="width: 110px;">
-                                        </colgroup>
-                                        <thead class="sticky top-0 bg-slate-900 z-20 border-b border-slate-700/80 text-slate-400 font-semibold">
-                                            <tr>
-                                                <th class="py-2.5 px-3 sticky left-0 z-30 bg-slate-900">Kode</th>
-                                                <th class="py-2.5 px-3">Emiten</th>
-                                                <th class="py-2.5 px-3 col-sektor">Sektor</th>
-                                                <th class="py-2.5 px-3 text-right">Free Float %</th>
-                                                <th class="py-2.5 px-3">Status HSC</th>
-                                                <th class="py-2.5 px-3">Pemegang Saham Terbesar</th>
-                                                <th class="py-2.5 px-3 col-kelengkapan">Kelengkapan</th>
-                                                <th class="py-2.5 px-3 col-as-of">As-of</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="marketStructureTableBody" class="divide-y divide-slate-800/60 text-slate-300">
-                                            <!-- Dynamically populated rows -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <!-- Pagination and Count Bar -->
-                            <div id="marketStructurePaginationBar" class="ac-pagination-bar flex flex-wrap items-center justify-between gap-2 p-2.5 border-t border-slate-700/60 bg-slate-900/40 text-xs">
-                                <div id="marketStructureCountText" class="text-slate-400 font-medium">Menampilkan 1-50 dari 962 Saham</div>
-                                <div class="flex items-center gap-1.5 ml-auto" id="marketStructurePaginationControls">
-                                    <!-- Dynamic pagination buttons -->
-                                </div>
-                            </div>
-
-                            <!-- Accordion Card List fallback for test compatibility -->
-                            <div id="marketStructureAccordionContainer" class="ac-accordion-container" hidden></div>
-                        </div>
-
-                        <!-- Docked Detail Pane (Desktop >=1024px) -->
-                        <aside id="marketStructureDetailPane" class="ac-detail-pane" aria-label="Detail Struktur Pasar Saham" hidden>
-                            <div class="ac-detail-header flex items-center justify-between pb-2.5 border-b">
-                                <div class="flex items-center gap-2 min-w-0">
-                                    <span id="marketStructureDetailTickerBadge" class="ac-financial-symbol font-mono font-bold text-xs">-</span>
-                                    <div class="min-w-0">
-                                        <h3 id="marketStructureDetailTitle" class="ac-detail-title text-xs font-bold truncate">Detail Struktur Pasar</h3>
-                                        <p id="marketStructureDetailSubtitle" class="text-[10px] ac-detail-sub truncate">Bukti struktur &amp; kepemilikan.</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-1.5 shrink-0">
-                                    <button type="button" id="marketStructureGoToChartBtn" onclick="window.AutoCuanMarketStructure &amp;&amp; window.AutoCuanMarketStructure.bukaAnalisisSaham()" class="px-2.5 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-semibold transition flex items-center gap-1.5" title="Buka di tab Analisis &amp; Chart">
-                                        <span class="hidden sm:inline">Lihat di Analisis &amp; Chart</span>
-                                        <span class="sm:hidden">Chart</span>
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                    </button>
-                                    <button type="button" id="marketStructureDetailClose" class="ac-detail-close p-1.5 rounded-lg transition shrink-0" aria-label="Tutup panel detail">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="ac-detail-body pt-2.5" id="marketStructureDetailBody">
-                                <div id="marketStructureDataContent" class="ac-research-data-content">
-                                    <div class="ac-metric-grid">
-                                        <article class="ac-metric-tile"><span>Free Float</span><strong id="marketStructureFreeFloat">-</strong><small id="marketStructureFreeFloatAsOf">As of -</small></article>
-                                        <article class="ac-metric-tile"><span>Status HSC</span><strong id="marketStructureHsc">-</strong><small id="marketStructureHscAsOf">As of -</small></article>
-                                        <article class="ac-metric-tile" title="Risk Guard"><span>Status Risiko</span><strong id="marketStructureGuard">-</strong><small id="marketStructureStatus">-</small></article>
-                                    </div>
-                                    <div class="ac-research-detail-grid">
-                                        <div class="ac-research-detail"><span>Sumber Free Float</span><strong id="marketStructureFreeFloatSource">-</strong></div>
-                                        <div class="ac-research-detail"><span>Sumber HSC</span><strong id="marketStructureHscSource">-</strong></div>
-                                        <div class="ac-research-detail"><span>Referensi Low Free Float</span><strong id="marketStructureReference">-</strong></div>
-                                        <div class="ac-research-detail"><span>Kepatuhan Regulasi</span><strong id="marketStructureCompliance">-</strong></div>
-                                    </div>
-                                    <div id="marketStructureNote" class="ac-research-note">-</div>
-
-                                    <!-- Ownership Summary Stats -->
-                                    <div class="mt-3 p-2.5 rounded-lg bg-slate-800/60 border border-slate-700/50 flex flex-col gap-1.5 text-xs">
-                                        <div class="flex items-center justify-between">
-                                            <div>
-                                                <span class="text-[10px] text-slate-400 block">Total Pengendali &gt;5%</span>
-                                                <strong id="marketStructureMajorHoldingPct" class="font-mono text-slate-100 tabular-nums">-</strong>
-                                            </div>
-                                            <div class="text-right">
-                                                <span class="text-[10px] text-slate-400 block">Estimasi Publik / Float</span>
-                                                <strong id="marketStructurePublicHoldingPct" class="font-mono text-emerald-400 tabular-nums">-</strong>
-                                            </div>
-                                        </div>
-                                        <p id="marketStructureOwnershipSummaryNote" class="text-[11px] text-slate-400 pt-1 border-t border-slate-700/40 italic tabular-nums">-</p>
-                                    </div>
-
-                                    <!-- Shareholders & Insider Roster Section (Batch 3) -->
-                                    <div id="marketStructureShareholderSection" class="ac-research-shareholders mt-3 pt-3 border-t border-slate-700/50">
-                                        <div class="flex items-center justify-between mb-2">
-                                            <h4 class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                                                <span>👥</span> Pemegang Saham &amp; Insider
-                                            </h4>
-                                            <span id="marketStructureRosterBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Memuat...</span>
-                                        </div>
-                                        <div id="marketStructureRosterWrap" class="overflow-x-auto overflow-y-auto max-h-[320px] scrollbar-thin rounded-lg border border-slate-700/60">
-                                            <table class="w-full text-[11px] text-left border-collapse min-w-[300px]">
-                                                <thead class="hidden sticky top-0 bg-slate-900 z-10 border-b border-slate-700 text-slate-400 font-semibold">
-                                                    <tr>
-                                                        <th class="py-1.5 px-2">Nama Pemilik</th>
-                                                        <th class="py-1.5 px-2">Kategori</th>
-                                                        <th class="py-1.5 px-2 text-right">Lembar Saham</th>
-                                                        <th class="py-1.5 px-2 text-right">%</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="marketStructureRosterTbody" class="divide-y divide-slate-700/40 text-slate-300">
-                                                    <tr><td colspan="4" class="py-4 text-center text-xs text-slate-400"><span class="spinner-sm"></span> Memuat daftar pemegang saham...</td></tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </aside>
-                    </div>
-                </div>
-
-                <!-- Mobile Detail Sheet (Bottom Sheet for <1024px) -->
-                <div id="marketStructureMobileSheet" class="ac-mobile-sheet-wrap">
-                    <div id="marketStructureDetailSheet" class="ac-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="marketStructureSheetTitle" hidden>
-                        <div id="marketStructureSheetBackdrop" class="ac-sheet-backdrop" aria-hidden="true" onclick="window.AutoCuanMarketStructure &amp;&amp; window.AutoCuanMarketStructure.closeDetail()"></div>
-                        <div class="ac-sheet-content" role="document">
-                            <div class="ac-sheet-handle"></div>
-                            <div class="ac-detail-sheet-header p-3 border-b border-slate-700/60 flex flex-col gap-2">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2 min-w-0">
-                                        <span id="marketStructureSheetTickerBadge" class="ac-financial-symbol font-mono font-bold text-xs">-</span>
-                                        <h3 id="marketStructureSheetTitle" class="text-sm font-bold ac-sheet-title truncate">Detail Struktur Pasar</h3>
-                                    </div>
-                                    <button type="button" id="marketStructureSheetClose" onclick="window.AutoCuanMarketStructure &amp;&amp; window.AutoCuanMarketStructure.closeDetail()" class="ac-detail-sheet-close min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-300 transition" aria-label="Tutup sheet detail">
-                                        <svg id="marketStructureSheetCloseBtn" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    </button>
-                                </div>
-                                <button type="button" onclick="window.AutoCuanMarketStructure &amp;&amp; window.AutoCuanMarketStructure.bukaAnalisisSaham()" class="w-full min-h-[44px] px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition flex items-center justify-center gap-2" title="Buka di tab Analisis &amp; Chart">
-                                    <span>Buka di Analisis &amp; Chart</span>
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                </button>
-                            </div>
-                            <div id="marketStructureSheetBody" class="ac-detail-sheet-body p-3 overflow-y-auto max-h-[70vh]">
-                                <!-- Populated dynamically by syncMarketStructureDetailToSheet() -->
-                            </div>
-                        </div>
-                    </div>
+            <div class="ph rise d0">
+                <div>
+                    <h1>Struktur Pasar</h1>
+                    <p>Free Float, konsentrasi pengendali (HSC), dan status data seluruh emiten, langsung tampil sebagai daftar.</p>
                 </div>
             </div>
+
+            <section class="sheet rise d1">
+                <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px">
+                    <label class="search" style="width:260px">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+                        <input id="marketStructureSearchInput" aria-label="Cari saham" placeholder="Cari ticker…" style="border:0;outline:0;background:transparent;width:100%;font-size:13px;text-transform:uppercase" oninput="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.onSearchInput(this.value)">
+                    </label>
+                    <div class="ac-filter-chips flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter status struktur pasar" id="marketStructureFilterGroup">
+                        <button type="button" id="marketStructureFilterAll" class="fchip on" data-filter="all" onclick="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.setFilter('all')">Semua (962)</button>
+                        <button type="button" id="marketStructureFilterLowFF" class="fchip" data-filter="low_ff" data-filter-canonical="low-ff" onclick="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.setFilter('low_ff')">Free Float Rendah &lt;15% (551)</button>
+                        <button type="button" id="marketStructureFilterHsc" class="fchip" data-filter="hsc" onclick="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.setFilter('hsc')">HSC Aktif (0)</button>
+                        <button type="button" id="marketStructureFilterIncomplete" class="fchip" data-filter="incomplete" onclick="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.setFilter('incomplete')">Data Belum Lengkap (1)</button>
+                    </div>
+                    <button type="button" class="btn sm" id="marketStructureSortToggleBtn" onclick="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.toggleCanvasSort()" style="margin-left:auto">Urutkan: Free Float ↑</button>
+                </div>
+
+                <div class="split" style="border-top:1px solid var(--ac-hair)">
+                    <div class="tw" style="flex:1 1 560px;min-width:0;overflow-x:auto">
+                        <table class="tbl sptbl" id="marketStructureTable" style="min-width:720px">
+                            <thead class="sticky top-0 z-10">
+                                <tr>
+                                    <th class="sticky left-0">Ticker</th>
+                                    <th>Emiten</th>
+                                    <th class="r">Free Float</th>
+                                    <th>HSC</th>
+                                    <th>Status struktur</th>
+                                    <th>Per tanggal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="marketStructureTableBody"></tbody>
+                        </table>
+                        <div id="marketStructureTableEmpty" class="mut" style="padding:32px 20px;text-align:center;display:none">
+                            Tidak ada emiten yang cocok dengan filter ini.
+                        </div>
+                    </div>
+
+                    <aside class="pane" id="marketStructureDetailPane" aria-label="Detail struktur">
+                        <div class="swapa" id="marketStructureDetailContent" style="padding:18px 20px 22px">
+                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                                <span class="tk mono" style="font-size:20px" id="msDetailTicker">BREN</span>
+                                <span class="chip w" id="msDetailLowFfChip" style="display:none">Free Float &lt; 15%</span>
+                                <span class="chip" id="msDetailIncompleteChip" style="display:none">Data belum lengkap</span>
+                            </div>
+                            <div class="mut" style="font-size:13px;margin-top:2px" id="msDetailName">Barito Renewables Energy Tbk</div>
+                            <div class="lbl" style="margin-top:18px">Free Float</div>
+                            <div class="num" style="font-size:28px;font-weight:700;letter-spacing:-.02em" id="msDetailFfBig">11,73%</div>
+                            <div class="ffbar" aria-hidden="true">
+                                <i id="msDetailFfBar" style="width:23.5%;background:var(--ac-warn)"></i>
+                                <b style="left:30%"></b>
+                                <em style="left:30%">15%</em>
+                                <em style="left:100%;transform:translateX(-100%)">50%</em>
+                            </div>
+                            <div class="kv"><span>Sumber Free Float</span><span id="msDetailSource">KSEI · 30 Sep 2026</span></div>
+                            <div class="kv"><span>Status HSC</span><span class="pill-st" style="font-weight:600"><span class="dot a" id="msDetailHscDot"></span><span id="msDetailHscText">HSC aktif</span></span></div>
+                            <div class="kv"><span>Pengendali terbesar</span><span style="text-align:right" id="msDetailController">PT Barito Pacific Tbk · 64,67%</span></div>
+                            <div class="kv"><span>Ambang referensi</span><span>Free Float 15%</span></div>
+                            <div id="msDetailNote" style="margin-top:14px;padding:12px;border-radius:8px;background:var(--ac-raised);border:1px solid var(--ac-hair);font-size:13px">Konsentrasi kepemilikan tinggi; peredaran saham di publik terbatas sehingga volatilitas bisa tinggi.</div>
+                            <div class="help" style="margin-top:12px;font-size:11.5px;color:var(--ac-muted);line-height:1.4">Filter &lt;15% adalah filter risiko referensi, bukan putusan Kepatuhan Regulasi.</div>
+                            <a class="btn p" id="msDetailAnalisisBtn" href="/analisis-saham?ticker=BREN" style="width:100%;margin-top:16px">Buka analisis BREN</a>
+                        </div>
+                    </aside>
+                </div>
+
+                <div class="prov">
+                    <span><b>Sumber</b> KSEI &amp; keterbukaan IDX</span>
+                    <span>Free Float kosong diurutkan paling akhir</span>
+                    <span class="chip i" id="marketStructureAsOfBadge">Per 30 Sep 2026</span>
+                </div>
+            </section>
+
+            <!-- Collapsible legacy controls / details -->
+            <details class="adv-tools" style="margin-top:16px">
+                <summary>Alat lanjutan</summary>
+                <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+                    <p class="text-[11px] text-slate-400 mt-0.5">962 emiten terdaftar · 961 memiliki data pemegang saham &gt;5% (7.154 entitas teridentifikasi) · Data resmi KSEI &amp; BEI</p>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                        <select id="marketStructureSectorSelect" class="ac-filter-select text-xs rounded px-2.5 py-1.5" aria-label="Filter sektor struktur pasar" onchange="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.setSector(this.value)">
+                            <option value="all">Semua Sektor (962 Emiten)</option>
+                            <option value="Barang Baku">Barang Baku</option>
+                            <option value="Energi">Energi</option>
+                            <option value="Infrastruktur">Infrastruktur</option>
+                            <option value="Kesehatan">Kesehatan</option>
+                            <option value="Keuangan">Keuangan</option>
+                            <option value="Konsumer Siklikal">Konsumer Siklikal</option>
+                            <option value="Konsumer Non-Siklikal">Konsumer Non-Siklikal</option>
+                            <option value="Perindustrian">Perindustrian</option>
+                            <option value="Properti">Properti</option>
+                            <option value="Teknologi">Teknologi</option>
+                            <option value="Transportasi">Transportasi</option>
+                        </select>
+                        <select id="marketStructureSortSelect" class="ac-filter-select text-xs rounded px-2 py-1" aria-label="Urutkan daftar struktur pasar" onchange="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.setSort(this.value)">
+                            <option value="free_float_asc" selected>Free Float ↑ (Terendah)</option>
+                            <option value="ticker_asc">Ticker (A-Z)</option>
+                            <option value="ticker_desc">Ticker (Z-A)</option>
+                            <option value="free_float_desc">Free Float ↓ (Tertinggi)</option>
+                            <option value="investor_desc">Jumlah Investor (Terbanyak)</option>
+                            <option value="investor_asc">Jumlah Investor (Tersedikit)</option>
+                            <option value="status">Kelengkapan Data</option>
+                        </select>
+                        <button type="button" id="marketStructureRefreshBtn" onclick="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.loadUniverse(true)" class="btn sm" title="Muat ulang data">Muat ulang data</button>
+                    </div>
+
+                    <div id="marketStructureCountText" class="text-xs text-slate-400">962 Saham</div>
+                    <div id="marketStructurePaginationBar" style="display:flex;align-items:center;justify-content:space-between">
+                        <div id="marketStructurePaginationControls"></div>
+                    </div>
+
+                    <div id="marketStructureOwnershipSummaryNote" class="text-xs text-slate-400"></div>
+                    <button type="button" id="marketStructureGoToChartBtn" class="btn sm" style="display:none">Buka Chart</button>
+                    <button type="button" id="marketStructureResetFilterBtn" onclick="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.resetFilters()" class="min-h-[44px] px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition inline-flex items-center gap-2" style="display:none">Reset Filter</button>
+                    <span style="display:none">Risk Guard</span>
+                    <span style="display:none"><span>Status Risiko</span></span>
+
+                    <div id="marketStructureDetailBody" style="display:none">
+                        <div id="marketStructureShareholderSection">
+                            <span id="marketStructureRosterBadge" class="chip">Roster</span>
+                            <table><tbody id="marketStructureRosterTbody"></tbody></table>
+                        </div>
+                    </div>
+
+                    <div id="marketStructureAccordionContainer" style="display:none"></div>
+                    <div id="marketStructureMobileSheet" style="display:none"></div>
+                    <div id="marketStructureSheetBackdrop" style="display:none"></div>
+                    <button type="button" id="marketStructureSheetCloseBtn" style="display:none">Tutup</button>
+                    <button type="button" id="marketStructureSheetClose" class="min-w-[44px] min-h-[44px]" style="display:none">Tutup</button>
+                    <div id="marketStructureCardsContainer" style="display:none"></div>
+                    <div id="marketStructureTableSkeleton" style="display:none"></div>
+                    <div id="marketStructureDataState" style="display:none"></div>
+                    <div id="marketStructureTableError" style="display:none"></div>
+                </div>
+            </details>
         </section>
 
-        <!-- TAB 2: BANDARMOLOGI & AKUMULASI BROKER -->
-        <section id="panel-tab-bandarmologi" class="analisis-tab-panel" style="display:none">
-            <div class="unified-card p-3.5 sm:p-4">
-                <!-- Bandarmologi Search & Sync Bar -->
-                <div id="bandarSearchBarContainer" class="mb-4 pb-3 border-b border-dark-600/40">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
-                            <div class="relative flex-1 min-w-[200px]">
-                                <input id="bandarTickerSearchInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, BMRI..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-full px-4 py-2 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide uppercase font-mono" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event))){handleIndependentTabSearch('bandarmologi', this.value)}">
-                            </div>
-                            <button type="button" onclick="handleIndependentTabSearch('bandarmologi', document.getElementById('bandarTickerSearchInput').value)" class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition shrink-0">Cari</button>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <span class="text-xs text-gray-400">Aktif:</span>
-                            <span id="bandarActiveTickerTag" class="text-xs font-mono px-2.5 py-1 rounded-lg bg-dark-700/80 text-emerald-300 border border-emerald-500/30 font-bold">BBCA</span>
-                        </div>
-                    </div>
-                    <!-- Quick Ticker Chips -->
-                    <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-                        <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BBCA')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BBRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BMRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'TLKM')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'ASII')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
-                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BREN')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BREN</button>
-                    </div>
+        <!-- TAB 2: BANDARMOLOGI & AKUMULASI BROKER (canvas Bandarmologi.dc.html) -->
+        <section id="panel-tab-bandarmologi" class="analisis-tab-panel ac-ui-v2" data-ac-ui="v2" style="display:none">
+            <div class="ph rise d0" style="margin-bottom:16px">
+                <div>
+                    <h1 class="page-title">Bandarmologi</h1>
+                    <p>Siapa yang membeli, siapa yang melepas, dan seberapa terkonsentrasi transaksinya.</p>
                 </div>
-
-                <!-- Sub-Tab Switcher: Broker Summary vs Akumulasi Broker -->
-                <div class="flex items-center gap-1 bg-dark-800 p-1 rounded-xl border border-dark-600/50 text-xs mb-4 w-fit">
-                    <button id="subTabBrokerSummary" type="button" onclick="BandarmologiRuntime.setBandarSection('summary')" class="px-3.5 py-1.5 rounded-lg transition bg-emerald-500 text-dark-900 shadow-sm font-bold flex items-center gap-1.5" aria-selected="true">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
-                        <span>Broker Summary</span>
-                    </button>
-                    <button id="subTabAkumulasiBroker" type="button" onclick="BandarmologiRuntime.setBandarSection('akumulasi')" class="px-3.5 py-1.5 rounded-lg transition text-gray-400 hover:text-white font-medium flex items-center gap-1.5" aria-selected="false">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg>
-                        <span>Akumulasi Broker</span>
-                    </button>
+                <div class="segx n2" role="group" aria-label="Tampilan Bandarmologi">
+                    <span class="ind k0" id="bandarViewInd"></span>
+                    <button type="button" id="subTabBrokerSummary" onclick="BandarmologiRuntime.setBandarSection('summary')" class="on" aria-selected="true">Broker Summary</button>
+                    <button type="button" id="subTabAkumulasiBroker" onclick="BandarmologiRuntime.setBandarSection('akumulasi')" aria-selected="false">Akumulasi Broker</button>
                 </div>
-
-                <!-- Smart Broker Summary 2-Column (Fase 7) -->
-                <div id="smartBrokerSummaryContainer" class="mb-4"></div>
-
-                <div id="bandarmologiContent"></div>
             </div>
+            <div id="bandarmologiContent"></div>
         </section>
 
         <!-- TAB MANDIRI: SINYAL INTELIJEN BANDAR & MARKET SCREENER -->
         <section id="panel-tab-intel" class="analisis-tab-panel" style="display:none">
             <div class="unified-card p-3.5 sm:p-4">
-                <!-- Sinyal Intelijen Search & Sync Bar -->
-                <div id="intelSearchBarContainer" class="mb-4 pb-3 border-b border-dark-600/40">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
-                            <div class="relative flex-1 min-w-[200px]">
-                                <input id="intelSearchInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, BMRI, GPRA..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-full px-4 py-2 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide uppercase font-mono" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event))){handleIndependentTabSearch('intel', this.value)}">
-                            </div>
-                            <button id="btnIntelSearch" type="button" onclick="handleIndependentTabSearch('intel', document.getElementById('intelSearchInput').value)" class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition shrink-0">Cari</button>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <span class="text-xs text-gray-400">Aktif:</span>
-                            <span id="intelActiveTickerTag" class="text-xs font-mono px-2.5 py-1 rounded-lg bg-dark-700/80 text-emerald-300 border border-emerald-500/30 font-bold">BBCA</span>
-                        </div>
-                    </div>
-                    <!-- Quick Ticker Chips -->
-                    <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-                        <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
-                        <button type="button" onclick="handleIndependentTabSearch('intel', 'BBCA')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
-                        <button type="button" onclick="handleIndependentTabSearch('intel', 'BBRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
-                        <button type="button" onclick="handleIndependentTabSearch('intel', 'BMRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
-                        <button type="button" onclick="handleIndependentTabSearch('intel', 'GPRA')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">GPRA</button>
-                        <button type="button" onclick="handleIndependentTabSearch('intel', 'TLKM')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
-                    </div>
-                </div>
-
                 <div id="bandarmologiIntelContent"></div>
+                <!-- Sinyal Intelijen Search & Sync Bar (Preserved in Alat Lanjutan) -->
+                <details class="adv-tools" style="margin-top:16px">
+                    <summary>Alat lanjutan &middot; Pencarian emiten &amp; pintasan</summary>
+                    <div class="adv-tools-content">
+                        <div id="intelSearchBarContainer" class="pb-3 border-b border-dark-600/40">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
+                                    <div class="relative flex-1 min-w-[200px]">
+                                        <input id="intelSearchInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, BMRI, GPRA..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-full px-4 py-2 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide uppercase font-mono" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event))){handleIndependentTabSearch('intel', this.value)}">
+                                    </div>
+                                    <button id="btnIntelSearch" type="button" onclick="handleIndependentTabSearch('intel', document.getElementById('intelSearchInput').value)" class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition shrink-0">Cari</button>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="text-xs text-gray-400">Aktif:</span>
+                                    <span id="intelActiveTickerTag" class="text-xs font-mono px-2.5 py-1 rounded-lg bg-dark-700/80 text-emerald-300 border border-emerald-500/30 font-bold">BBCA</span>
+                                </div>
+                            </div>
+                            <!-- Quick Ticker Chips -->
+                            <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
+                                <button type="button" onclick="handleIndependentTabSearch('intel', 'BBCA')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
+                                <button type="button" onclick="handleIndependentTabSearch('intel', 'BBRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
+                                <button type="button" onclick="handleIndependentTabSearch('intel', 'BMRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
+                                <button type="button" onclick="handleIndependentTabSearch('intel', 'GPRA')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">GPRA</button>
+                                <button type="button" onclick="handleIndependentTabSearch('intel', 'TLKM')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
+                            </div>
+                        </div>
+                    </div>
+                </details>
             </div>
         </section>
 

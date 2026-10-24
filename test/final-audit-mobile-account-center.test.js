@@ -84,17 +84,22 @@ test('H1.1 mobile Account Center owns drawer hit testing and restores focus', as
    await page.goto(origin + '/dashboard', { waitUntil: 'networkidle0' });
    await page.evaluate(() => { hideOnboardingGuide(true); applyAppTheme('light'); });
    await page.waitForFunction(() => premiumAccessState.state === 'ready' && premiumAccessState.premium === true);
-   if (width < 1024) {
-    await page.click('#workspaceSidebarToggle'); await pause(350);
+   // Redesign v2 (HANDOFF §4): the full-screen menu is a phone (<=760px)
+   // pattern opened by the sidebar's own "Menu" control; 761px and up use
+   // the icon rail, so 768 now takes the desktop path.
+   if (width <= 760) {
+    await page.click('#sidebarCollapseToggle'); await pause(350);
     const current = await geometry(); assertReachable(current);
     assert.equal(current.scroll.overflow, 'auto'); assert.ok(current.scroll.client > 0);
     if (width === 390 && height === 900) {
-     // Recreate only the original owner stacking failure in memory. The
-     // full-height account row overlaps the bar, whose hit target must win.
+     // Recreate the original owner stacking failure in memory. Before the
+     // redesign the bar won the hit test here; now the bottom bar leaves while
+     // the full-screen menu is open (canvas: menu z 120 over tabs z 90), so the
+     // account row must stay reachable even with the stacking context broken.
      const original = await page.$eval('#dashboardScreen', e => { const old = e.getAttribute('style'); e.style.setProperty('position', 'static', 'important'); e.style.setProperty('z-index', 'auto', 'important'); return old; });
      try {
-      const negative = await geometry(); assert.equal(negative.hitTarget, 'screener');
-      assert.throws(() => assertReachable(negative), assert.AssertionError);
+      const negative = await geometry(); assert.equal(negative.hitTarget, 'sidebarAccountEntry');
+      assertReachable(negative);
       record('H11_NEGATIVE', negative);
      } finally { await page.$eval('#dashboardScreen', (e, old) => old === null ? e.removeAttribute('style') : e.setAttribute('style', old), original); }
     }

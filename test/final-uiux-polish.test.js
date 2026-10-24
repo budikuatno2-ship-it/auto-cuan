@@ -12,13 +12,16 @@ const html = read('public/index.html');
 const css = read('public/ui-theme.css');
 const runtime = read('public/canonical-motion.js');
 
-test('final UI polish assets are loaded once and light is the first-run default', () => {
+// Redesign v2 (HANDOFF §3a): the first-run default is Otomatis, which follows
+// the device's prefers-color-scheme; Terang/Gelap are explicit pins.
+test('final UI polish assets are loaded once and Otomatis is the first-run default', () => {
   assert.equal((html.match(/\/ui-theme\.css/g) || []).length, 1);
   assert.equal((html.match(/\/canonical-motion\.js/g) || []).length, 1);
   assert.equal((html.match(/\/final-uiux-polish/g) || []).length, 0);
-  assert.match(html, /localStorage\.getItem\('autocuan_theme'\) \|\| 'light'/);
+  assert.match(html, /localStorage\.getItem\('autocuan_theme'\) \|\| 'auto'/);
+  assert.match(html, /prefers-color-scheme: dark/);
   assert.match(html, /<meta name="color-scheme" content="light dark">/);
-  assert.match(html, /<meta name="theme-color" content="#f3f5f4">/);
+  assert.match(html, /<meta name="theme-color" content="#EFF1EC">/);
 });
 
 test('final UI runtime stays syntax-safe and does not own business data', () => {

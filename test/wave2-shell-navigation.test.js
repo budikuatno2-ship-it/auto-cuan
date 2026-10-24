@@ -15,26 +15,30 @@ const MOBILE_NAV_JS = read('public/mobile-nav.js');
 const ACCOUNT_CENTER_JS = read('public/account-center-v1.js');
 const SUB_GATE_JS = read('public/subscription-access-gate-v1.js');
 
-test('Wave 2: Sidebar IA matches direct navigation simplification per Wave 6B', () => {
+// Redesign v2 (HANDOFF §4) brings visible group labels back, in Indonesian:
+// Dashboard · Temukan · Riset · Pantau · Admin. This supersedes Wave 6B.
+test('Wave 2: Sidebar IA follows the redesign v2 groups (HANDOFF §4)', () => {
   const sidebarNavMatch = INDEX_HTML.match(/<nav class="sidebar-nav"[^>]*>([\s\S]*?)<\/nav>/);
   assert.ok(sidebarNavMatch, 'Sidebar <nav class="sidebar-nav"> must exist in index.html');
   const sidebarHtml = sidebarNavMatch[1];
 
-  // Verify visible category headers have been removed per Wave 6B direct navigation list simplification
-  const groupHeaders = [...sidebarHtml.matchAll(/<h2 class="sidebar-group-label">([^<]+)<\/h2>/g)].map(m => m[1].trim().toUpperCase());
-  assert.equal(
-    groupHeaders.length,
-    0,
-    'Sidebar visible group headers must be removed in favor of direct navigation per Wave 6B'
-  );
+  const groupLabels = [...sidebarHtml.matchAll(/<p class="sidebar-group-label"[^>]*>([^<]+)<\/p>/g)].map(m => m[1].trim());
+  assert.deepEqual(groupLabels, ['Temukan', 'Riset', 'Pantau', 'Admin'], 'visible group labels follow HANDOFF §4');
 
-  // Verify semantic sections exist in order
-  const sectionAriaLabels = [...sidebarHtml.matchAll(/<section class="sidebar-nav-group" aria-label="([^"]+)">/g)].map(m => m[1]);
+  const sectionAriaLabels = [...sidebarHtml.matchAll(/<section class="sidebar-nav-group[^"]*" aria-label="([^"]+)">/g)].map(m => m[1]);
   assert.deepEqual(
     sectionAriaLabels,
-    ['Overview', 'Discover', 'Research', 'Monitor'],
+    ['Dashboard', 'Temukan', 'Riset', 'Pantau', 'Admin'],
     'Sidebar semantic sections must retain accessible group labels'
   );
+
+  // Riset keeps the HANDOFF order: Analisis & Chart, Bandarmologi, Sinyal
+  // Intelijen, Broker Hunter, Insider, Ranking, Financial, Struktur Pasar.
+  const riset = sidebarHtml.match(/aria-label="Riset">([\s\S]*?)<\/section>/)[1];
+  const order = ['analisis', 'bandarmologi', 'intel', 'hunter', 'insider', 'ranking', 'financial', 'market-structure']
+    .map(page => riset.indexOf('data-sidebar-page="' + page + '"'));
+  assert.ok(order.every(i => i >= 0), 'every research tool is in Riset');
+  assert.deepEqual([...order].sort((a, b) => a - b), order, 'Riset follows the HANDOFF order');
 
   // Group 1: OVERVIEW -> Dashboard
   assert.ok(sidebarHtml.includes('data-sidebar-page="dashboard"'), 'OVERVIEW must contain Dashboard');
@@ -53,10 +57,11 @@ test('Wave 2: Sidebar IA matches direct navigation simplification per Wave 6B', 
   assert.ok(sidebarHtml.includes('data-sidebar-page="market-structure"'), 'RESEARCH must contain Struktur Pasar');
   assert.ok(sidebarHtml.includes('data-sidebar-page="ranking"'), 'RESEARCH must contain Ranking');
 
-  // Pattern Radar must be admin-only and start hidden
+  // Pattern Radar lives in the Admin group and starts hidden
+  const admin = sidebarHtml.match(/aria-label="Admin">([\s\S]*?)<\/section>/)[1];
   assert.ok(
-    sidebarHtml.includes('id="tabAnalisisPattern"') && sidebarHtml.includes('data-sidebar-page="pattern"'),
-    'RESEARCH must contain admin Pattern Radar'
+    admin.includes('id="tabAnalisisPattern"') && admin.includes('data-sidebar-page="pattern"'),
+    'Admin group must contain Pattern Radar'
   );
   assert.match(
     sidebarHtml,
@@ -69,9 +74,11 @@ test('Wave 2: Sidebar IA matches direct navigation simplification per Wave 6B', 
   assert.ok(sidebarHtml.includes('data-sidebar-page="portofolio"'), 'MONITOR must contain Portfolio');
   assert.ok(sidebarHtml.includes('data-sidebar-page="trackrecord"'), 'MONITOR must contain Track Record');
 
-  // Decommissioned & dormant features must NOT be in the sidebar navigation
-  assert.ok(!sidebarHtml.includes('data-sidebar-page="money-management"'), 'Money Management must NOT be in sidebar');
-  assert.ok(!sidebarHtml.includes('data-sidebar-page="kelola-keuangan"'), 'Kelola Keuangan must NOT be in sidebar');
+  // Kelola Keuangan was revived by the owner (redesign v2) and sits after Track Record
+  assert.ok(sidebarHtml.includes('data-sidebar-page="money-management"'), 'MONITOR must contain Kelola Keuangan');
+  assert.ok(sidebarHtml.indexOf('data-sidebar-page="money-management"') > sidebarHtml.indexOf('data-sidebar-page="trackrecord"'), 'Kelola Keuangan follows Track Record');
+  assert.ok(!sidebarHtml.includes('data-sidebar-page="kelola-keuangan"'), 'Kelola Keuangan uses the money-management page id');
+  // Dormant features must NOT be in the sidebar navigation
   assert.ok(!sidebarHtml.includes('data-sidebar-page="deepscan"'), 'DeepScan must NOT be in sidebar');
   assert.ok(sidebarHtml.includes('id="nav-subscription"'), 'Subscription menu must be present in sidebar');
 });

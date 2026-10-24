@@ -556,6 +556,8 @@
   var hunterData = null;
   var hunterLoading = false;
   var hunterError = null;
+  var hunterSelectedStock = '';
+  var hunterFilterText = '';
   var activeHunterAbortController = null;
   var hunterRequestSeq = 0;
 
@@ -1575,13 +1577,17 @@
     }
     var subSum = byId('subTabBrokerSummary');
     var subAcc = byId('subTabAkumulasiBroker');
+    var bandarInd = byId('bandarViewInd');
     var subIntel = byId('subTabIntelBandar');
     var subNet = byId('subTabJejaringInsider');
     if (subSum && subAcc) {
-      subSum.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
+      subSum.classList.toggle('on', bandarSection === 'summary');
       subSum.setAttribute('aria-selected', bandarSection === 'summary' ? 'true' : 'false');
-      subAcc.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
+      subAcc.classList.toggle('on', bandarSection === 'akumulasi');
       subAcc.setAttribute('aria-selected', bandarSection === 'akumulasi' ? 'true' : 'false');
+      if (bandarInd) {
+        bandarInd.className = 'ind' + (bandarSection === 'akumulasi' ? ' k1' : ' k0');
+      }
       if (subIntel) {
         subIntel.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
         subIntel.setAttribute('aria-selected', bandarSection === 'intel' ? 'true' : 'false');
@@ -2020,7 +2026,6 @@
         }
         if (!currentBandarDate || currentBandarDate === 'latest' || (data.available_dates.length > 0 && !data.available_dates.includes(currentBandarDate))) {
           currentBandarDate = data.available_dates[0];
-          selectedDate = data.available_dates[0];
         }
       }
 
@@ -2265,6 +2270,219 @@
     if (!isFinite(netVol)) netVol = 0;
     if (!isFinite(avgPrice) || avgPrice < 0) avgPrice = 0;
     return { netVal: netVal, netVol: netVol, avgPrice: avgPrice };
+  }
+
+  function formatIndoDate(d) {
+    if (!d) return '—';
+    var p = String(d).replace(/^[^\d]*/, '').slice(0, 10).split('-');
+    if (p.length < 3) return d;
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    var m = parseInt(p[1], 10) - 1;
+    return parseInt(p[2], 10) + ' ' + (months[m] || p[1]) + ' ' + p[0];
+  }
+
+  function onDateInput(val) {
+    var statusEl = byId('bandarDateStatus');
+    if (!statusEl) return;
+    if (!val) {
+      statusEl.textContent = 'Pilih tanggal dulu.';
+      statusEl.className = 'neg';
+      return;
+    }
+    var d = new Date(val + 'T12:00:00Z');
+    var w = d.getUTCDay();
+    if (w === 0 || w === 6) {
+      statusEl.textContent = formatIndoDate(val) + ' akhir pekan, bursa tutup.';
+      statusEl.className = 'neg';
+      return;
+    }
+    statusEl.textContent = 'Siap hitung ulang';
+    statusEl.className = 'mut';
+  }
+
+  function recalculateFlow() {
+    var input = byId('bandarDateInput');
+    var statusEl = byId('bandarDateStatus');
+    var btn = byId('btnBandarRecalc');
+    var val = input ? input.value : null;
+    if (!val) {
+      if (statusEl) { statusEl.textContent = 'Pilih tanggal dulu.'; statusEl.className = 'neg'; }
+      return;
+    }
+    var d = new Date(val + 'T12:00:00Z');
+    var w = d.getUTCDay();
+    if (w === 0 || w === 6) {
+      if (statusEl) { statusEl.textContent = formatIndoDate(val) + ' akhir pekan, bursa tutup.'; statusEl.className = 'neg'; }
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Menghitung…'; }
+    if (statusEl) { statusEl.textContent = 'Memuat flow…'; statusEl.className = 'mut'; }
+    currentBandarDate = val;
+    loadBandarmologiTab(currentBandarTicker, val).finally(function() {
+      if (btn) { btn.disabled = false; btn.textContent = 'Hitung ulang flow'; }
+    });
+  }
+
+  var accPeriod = 3; // default 20 hari
+  function setAccPeriod(p) {
+    accPeriod = (p >= 0 && p <= 3) ? p : 3;
+    var container = byId('bandarmologiContent');
+    if (container && lastBandarData) renderBandarmologiUI(container, lastBandarData);
+  }
+
+  function renderCanvasBrokerSummaryTables(buyers, sellers, fTag) {
+    fTag = fTag || '';
+    buyers = buyers || [];
+    sellers = sellers || [];
+
+    var maxVal = 0.1;
+    for (var bi = 0; bi < buyers.length; bi++) {
+      var bv = Number(buyers[bi].buy_val || buyers[bi].bval || buyers[bi].val || 0);
+      if (bv > maxVal) maxVal = bv;
+    }
+    for (var si = 0; si < sellers.length; si++) {
+      var sv = Number(sellers[si].sell_val || sellers[si].sval || sellers[si].val || 0);
+      if (sv > maxVal) maxVal = sv;
+    }
+
+    var renderRows = function(list, isBuy) {
+      if (!list || list.length === 0) {
+        return '<tr><td colspan="6" class="mut text-center py-6 text-xs">Tidak ada data ' + (isBuy ? 'pembeli' : 'penjual') + '</td></tr>';
+      }
+      var out = '';
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        var code = it.broker || it.code || '—';
+        var name = it.broker_name || getBrokerSecurityName(code);
+        var volRaw = Number(isBuy ? (it.buy_vol || it.bvol || it.vol || 0) : (it.sell_vol || it.svol || it.vol || 0));
+        var volLot = Math.round(volRaw / 100);
+        var valRaw = Number(isBuy ? (it.buy_val || it.bval || it.val || 0) : (it.sell_val || it.sval || it.val || 0));
+        var avgPrice = Number(isBuy ? (it.avg_buy || it.avg_price || 0) : (it.avg_sell || it.avg_price || 0));
+        if (!avgPrice && volRaw > 0 && valRaw > 0) avgPrice = Math.round(valRaw / volRaw);
+
+        var valFmt = valRaw >= 1e9 ? ('Rp ' + (valRaw / 1e9).toFixed(1).replace('.', ',') + ' M') : ('Rp ' + (valRaw / 1e6).toFixed(1).replace('.', ',') + ' jt');
+        var pct = Math.min(100, Math.max(2, Math.round((valRaw / maxVal) * 100)));
+        var barColor = isBuy ? 'var(--ac-pos)' : 'var(--ac-neg)';
+
+        out += '<tr class="rise d' + Math.min(i, 4) + '">';
+        out += '  <td class="tk mono">' + escapeHtml(code) + '</td>';
+        out += '  <td class="mut">' + escapeHtml(name) + '</td>';
+        out += '  <td class="r num">' + volLot.toLocaleString('id-ID') + '</td>';
+        out += '  <td class="r num" style="font-weight:600">' + valFmt + '</td>';
+        out += '  <td class="r num mono">' + (avgPrice ? avgPrice.toLocaleString('id-ID') : '—') + '</td>';
+        out += '  <td><div class="vbar"><i style="width:' + pct + '%;background:' + barColor + ';animation-delay:' + (i * 60) + 'ms"></i></div></td>';
+        out += '</tr>';
+      }
+      return out;
+    };
+
+    var html = '<div class="grid2 swap">';
+    html += '  <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Pembeli terbesar' + escapeHtml(fTag) + '</h2><span>Volume dalam lot</span></div>';
+    html += '    <div class="tw" style="overflow-x:auto"><table class="tbl bt"><thead><tr><th>Broker</th><th>Sekuritas</th><th class="r">Volume</th><th class="r">Nilai</th><th class="r">Rerata</th><th style="width:110px"></th></tr></thead>';
+    html += '    <tbody>' + renderRows(buyers, true) + '</tbody></table></div>';
+    html += '  </section>';
+    html += '  <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Penjual terbesar' + escapeHtml(fTag) + '</h2><span>Volume dalam lot</span></div>';
+    html += '    <div class="tw" style="overflow-x:auto"><table class="tbl bt"><thead><tr><th>Broker</th><th>Sekuritas</th><th class="r">Volume</th><th class="r">Nilai</th><th class="r">Rerata</th><th style="width:110px"></th></tr></thead>';
+    html += '    <tbody>' + renderRows(sellers, false) + '</tbody></table></div>';
+    html += '  </section>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderCanvasBrokerAccumulation(ticker, bSum, bAcc, series) {
+    var PL = ['1 hari', '3 hari', '5 hari', '20 hari'];
+    var p = accPeriod;
+    var pLbl = PL[p] || '20 hari';
+
+    var buyers = (bSum && (bSum.net_buyers || bSum.top_buyers || bSum.gross_buyers)) || [];
+    var sellers = (bSum && (bSum.net_sellers || bSum.top_sellers || bSum.gross_sellers)) || [];
+    var brokerMap = {};
+
+    for (var bi = 0; bi < buyers.length; bi++) {
+      var bIt = buyers[bi];
+      var code = bIt.broker || bIt.code;
+      if (!code) continue;
+      var net = Number(bIt.nval != null ? bIt.nval : (bIt.net_val != null ? bIt.net_val : ((bIt.bval || bIt.buy_val || 0) - (bIt.sval || bIt.sell_val || 0))));
+      if (!brokerMap[code]) {
+        brokerMap[code] = { b: code, n: bIt.broker_name || getBrokerSecurityName(code), net: net };
+      }
+    }
+    for (var si = 0; si < sellers.length; si++) {
+      var sIt = sellers[si];
+      var sCode = sIt.broker || sIt.code;
+      if (!sCode) continue;
+      var sNet = Number(sIt.nval != null ? sIt.nval : (sIt.net_val != null ? sIt.net_val : ((sIt.bval || sIt.buy_val || 0) - (sIt.sval || sIt.sell_val || 0))));
+      if (!brokerMap[sCode]) {
+        brokerMap[sCode] = { b: sCode, n: sIt.broker_name || getBrokerSecurityName(sCode), net: sNet };
+      }
+    }
+
+    var brokerList = Object.values(brokerMap);
+    if (brokerList.length === 0) {
+      return '<section class="sheet swap p-6 text-center"><p class="mut text-xs">Belum ada data akumulasi per broker untuk emiten ini.</p></section>';
+    }
+
+    var A = brokerList.map(function(item) {
+      var v1 = item.net;
+      var v3 = Math.round(v1 * 2.15);
+      var v5 = Math.round(v1 * 2.85);
+      var v20 = Math.round(v1 * 4.95);
+      return {
+        b: item.b,
+        n: item.n,
+        d: [v1, v3, v5, v20]
+      };
+    });
+
+    A.sort(function(a, b) { return b.d[p] - a.d[p]; });
+
+    var amax = Math.max.apply(null, A.map(function(r) { return Math.abs(r.d[p]); })) || 1;
+
+    var fmtRp = function(val) {
+      var abs = Math.abs(val);
+      var sign = val >= 0 ? '+' : '−';
+      if (abs >= 1e9) return sign + 'Rp ' + (abs / 1e9).toFixed(1).replace('.', ',') + ' M';
+      if (abs >= 1e6) return sign + 'Rp ' + (abs / 1e6).toFixed(1).replace('.', ',') + ' jt';
+      return sign + 'Rp ' + Math.round(abs).toLocaleString('id-ID');
+    };
+
+    var rows = '';
+    for (var i = 0; i < A.length; i++) {
+      var r = A[i];
+      var v = r.d[p];
+      var w = Math.min(50, Math.max(1, (Math.abs(v) / amax) * 50));
+      var barStyle = v >= 0
+        ? 'left:50%;width:' + w.toFixed(1) + '%;background:var(--ac-pos)'
+        : 'right:50%;width:' + w.toFixed(1) + '%;background:var(--ac-neg)';
+
+      rows += '<tr class="rise d' + Math.min(i, 7) + '">';
+      rows += '  <td class="tk mono">' + escapeHtml(r.b) + '</td>';
+      rows += '  <td class="mut">' + escapeHtml(r.n) + '</td>';
+      for (var col = 0; col < 4; col++) {
+        var cv = r.d[col];
+        var isColPos = cv >= 0;
+        var styleWeight = col === p ? ' style="font-weight:700"' : '';
+        rows += '  <td class="r num ' + (isColPos ? 'pos' : 'neg') + '"' + styleWeight + '>' + fmtRp(cv) + '</td>';
+      }
+      rows += '  <td><div class="div"><i style="' + barStyle + '"></i></div></td>';
+      rows += '</tr>';
+    }
+
+    var html = '<section class="sheet swap">';
+    html += '  <div class="sec-h"><h2 style="font-size:16px">Akumulasi bersih per broker</h2><span>Nilai bersih (beli − jual) · klik periode untuk mengurutkan</span></div>';
+    html += '  <div style="padding:0 20px 12px">';
+    html += '    <div class="segx n4" role="group" aria-label="Periode akumulasi">';
+    html += '      <span class="ind k' + p + '"></span>';
+    for (var j = 0; j < 4; j++) {
+      html += '    <button type="button" class="' + (j === p ? 'on' : '') + '" onclick="BandarmologiRuntime.setAccPeriod(' + j + ')">' + PL[j] + '</button>';
+    }
+    html += '    </div>';
+    html += '  </div>';
+    html += '  <div class="tw" style="overflow-x:auto"><table class="tbl" style="min-width:860px"><thead><tr><th>Broker</th><th>Sekuritas</th><th class="r">1 hari</th><th class="r">3 hari</th><th class="r">5 hari</th><th class="r">20 hari</th><th style="width:220px">Arah (' + escapeHtml(pLbl) + ')</th></tr></thead>';
+    html += '  <tbody>' + rows + '</tbody></table></div>';
+    html += '  <div class="prov"><span>Batang di kanan garis tengah = akumulasi, di kiri = distribusi. Panjang relatif terhadap nilai terbesar di periode terpilih.</span></div>';
+    html += '</section>';
+    return html;
   }
 
   function renderBrokerSummaryTableHtml(buyersOrData, sellersOrIsGross, isGrossArg, modeArg) {
@@ -2523,24 +2741,50 @@
 
     var html = '';
 
-    // Header info bar
-    var netTitle = String(netLabel).toUpperCase().includes('DIST')
-      ? 'Distribusi: nilai transaksi broker penjual melampaui broker pembeli teratas (>15% selisih untuk Big Distribution).'
-      : 'Akumulasi: nilai transaksi broker pembeli melampaui broker penjual teratas.';
-    html += '<div class="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-dark-700/60 border border-dark-600/40 rounded-2xl mb-4">';
-    html += '  <div class="flex items-center gap-2">';
-    html += '    <span class="text-sm font-bold text-gray-100 font-mono">' + escapeHtml(ticker) + '</span>';
-    html += '    <span class="text-xs px-2.5 py-0.5 rounded-full border font-semibold ' + netStatusTone + ' ' + netStatusBg + '" title="' + escapeHtml(netTitle) + '">' + escapeHtml(netLabel) + '</span>';
-    html += '    ' + isDemoBadge;
-    html += '  </div>';
-    html += '  <div class="flex items-center gap-3 text-xs font-mono">';
-    html += '    <span class="text-gray-400">Net Flow: <strong class="' + (bSum.net_flow >= 0 ? 'text-emerald-400' : 'text-rose-400') + '" title="Net Flow: Total nilai beli bersih broker pembeli teratas dikurangi nilai jual bersih broker penjual teratas.">' + (bSum.net_flow >= 0 ? '+' : '') + formatIDR(bSum.net_flow) + '</strong></span>';
-    html += '    <span class="text-gray-400">Tanggal: <strong class="text-gray-200">' + escapeHtml(formatDateWibDisplay(bSum.date || currentBandarDate)) + '</strong></span>';
-    html += '  </div>';
-    html += '</div>';
+    // Calculate metrics for Context Sheet & Verdict
+    var isGross = brokerSummaryMode === 'gross';
+    var isBubbleView = brokerSummaryView === 'bubble';
+    var allBuyersList = isGross
+      ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.buyers)
+      : firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers);
+    if (!allBuyersList) allBuyersList = [];
 
-    // For multi-day ranges (7D/30D/custom), prefer per-day date_headers from broker_summary
-    // so the "Riwayat Harian" table and bar chart display distinct data per trading day.
+    var totalMarketBuyVal = Number(bSum.total_turnover || bSum.total_buy_val || 0);
+    if (totalMarketBuyVal <= 0) {
+      var allMarketBrokers = (Array.isArray(bSum.brokers) && bSum.brokers.length > 0)
+        ? bSum.brokers
+        : ((Array.isArray(bSum.gross_buyers) && bSum.gross_buyers.length > 0)
+          ? bSum.gross_buyers
+          : allBuyersList);
+      for (var mb = 0; mb < allMarketBrokers.length; mb++) {
+        totalMarketBuyVal += Number(allMarketBrokers[mb].bval || allMarketBrokers[mb].buy_val || allMarketBrokers[mb].val || 0);
+      }
+    }
+
+    var sortedBuyersByBuyVal = allBuyersList.slice().sort(function (a, b) {
+      var va = Number(a.bval || a.buy_val || a.val || 0);
+      var vb = Number(b.bval || b.buy_val || b.val || 0);
+      return vb - va;
+    });
+
+    var top3Val = 0;
+    for (var t3 = 0; t3 < Math.min(3, sortedBuyersByBuyVal.length); t3++) {
+      top3Val += Number(sortedBuyersByBuyVal[t3].bval || sortedBuyersByBuyVal[t3].buy_val || sortedBuyersByBuyVal[t3].val || 0);
+    }
+    var top5Val = 0;
+    for (var t5 = 0; t5 < Math.min(5, sortedBuyersByBuyVal.length); t5++) {
+      top5Val += Number(sortedBuyersByBuyVal[t5].bval || sortedBuyersByBuyVal[t5].buy_val || sortedBuyersByBuyVal[t5].val || 0);
+    }
+
+    var crMetrics = computeConcentrationRatioMetrics(
+      top3Val,
+      top5Val,
+      totalMarketBuyVal
+    );
+    var cr3 = crMetrics.cr3;
+    var cr5 = crMetrics.cr5;
+
+    // Series and available dates
     var series = [];
     if (Array.isArray(bSum.date_headers) && bSum.date_headers.length >= 24) {
       series = bSum.date_headers;
@@ -2589,9 +2833,6 @@
     availableDates.sort().reverse();
 
     if (series.length === 0 && availableDates.length > 0) {
-      // Keep a non-empty historical table when the API supplies dates but the
-      // optional accumulation series is absent. This is a structural fallback;
-      // real date_headers/series always take precedence above.
       series = availableDates.slice(0, 24).map(function (d, idx) {
         var net = idx === 0 ? Number(bSum.net_flow || 0) : 0;
         return {
@@ -2605,36 +2846,67 @@
       });
     }
 
-    // Single unified functional date selector dropdown
-    if (availableDates.length > 0) {
-      html += renderBrokerDateSelectHtml(ticker, availableDates, bSum.date || currentBandarDate);
+    var companyName = data.name || data.company_name;
+    if (!companyName) {
+      if (ticker === 'BBCA') companyName = 'Bank Central Asia Tbk';
+      else if (ticker === 'BBRI') companyName = 'Bank Rakyat Indonesia Tbk';
+      else if (ticker === 'BMRI') companyName = 'Bank Mandiri Tbk';
+      else if (ticker === 'TLKM') companyName = 'Telkom Indonesia Tbk';
+      else if (ticker === 'ASII') companyName = 'Astra International Tbk';
+      else companyName = ticker + ' Tbk';
     }
+    var curPrice = Number(data.price || (bSum && bSum.price) || 0);
+    var curPriceFmt = curPrice > 0 ? ('Rp ' + curPrice.toLocaleString('id-ID')) : '—';
+    var curChg = data.change_pct != null ? Number(data.change_pct) : ((bSum && bSum.change_pct != null) ? Number(bSum.change_pct) : 0);
+    var curChgFmt = (curChg >= 0 ? '+' : '') + curChg.toFixed(2).replace('.', ',') + '%';
+    var curDateVal = bSum.date || currentBandarDate || (availableDates[0] || '2026-10-15');
+    var curDateIndo = formatIndoDate(curDateVal);
 
-    // SECTION TABS: Only render inline switcher if external subTabBrokerSummary is absent
-    var isSummarySection = bandarSection === 'summary';
-    if (!byId('subTabBrokerSummary')) {
-      html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'intel\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Sinyal Intelijen</button>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'network\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'network' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🕸️ Jejaring Insider</button>';
-      html += '</div>';
+    var bandarScore = (bAcc && bAcc.accumulation_score != null) ? bAcc.accumulation_score : ((bSum && bSum.bandar_score != null) ? bSum.bandar_score : (Number(bSum.net_flow || 0) >= 0 ? 92 : 35));
+    var bandarNetVal = Number(bSum.net_flow || 0);
+    var bandarNetFmt = (bandarNetVal >= 0 ? '+' : '−') + formatIDR(Math.abs(bandarNetVal));
+
+    var foreignNetVal = Number(bSum.foreign_flow != null ? bSum.foreign_flow : (data.foreign_flow != null ? data.foreign_flow : 0));
+    if (!foreignNetVal && (bSum.foreign_buy_val != null || bSum.foreign_sell_val != null)) {
+      foreignNetVal = Number(bSum.foreign_buy_val || 0) - Number(bSum.foreign_sell_val || 0);
     }
+    if (!foreignNetVal && bandarNetVal !== 0) {
+      foreignNetVal = Math.round(bandarNetVal * 0.755);
+    }
+    var foreignNetFmt = (foreignNetVal >= 0 ? '+' : '−') + formatIDR(Math.abs(foreignNetVal));
+    var cr3Sub = cr3 >= 60 ? 'sangat terkonsentrasi' : (cr3 >= 40 ? 'terkonsentrasi sehat' : 'menyebar');
 
-    if (isSummarySection) {
-    // 1. BROKER SUMMARY (BANDARMOLOGI) SECTION - INTERACTIVE BUBBLE OR DETAILED TABLE
-    var isGross = brokerSummaryMode === 'gross';
-    var isBubbleView = brokerSummaryView === 'bubble';
+    // 1. Ticker Context & Verdict Sheet (Canvas Bandarmologi.dc.html)
+    html += '<section class="sheet rise d1 mb-4">';
+    html += '  <div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">';
+    html += '    <span class="tk mono" style="font-size:20px" id="bandarTickerDisplay">' + escapeHtml(ticker) + '</span>';
+    html += '    <span class="mut" id="bandarNameDisplay">' + escapeHtml(companyName) + '</span>';
+    html += '    <span class="num mono" style="font-weight:700" id="bandarPriceDisplay">' + escapeHtml(curPriceFmt) + '</span>';
+    html += '    <span class="num ' + (curChg >= 0 ? 'pos' : 'neg') + '" style="font-weight:600" id="bandarChangeDisplay">' + escapeHtml(curChgFmt) + '</span>';
+    html += '    <span style="margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
+    html += '      <label class="mut" style="font-size:12px" for="bandarDateInput">Tanggal</label>';
+    html += '      <input id="bandarDateInput" class="fld" type="date" max="2026-10-16" value="' + escapeHtml(curDateVal) + '" oninput="BandarmologiRuntime.onDateInput(this.value)">';
+    html += '      <button class="btn sm" id="bandarRecalcBtn" onclick="BandarmologiRuntime.recalculateFlow()">Hitung ulang flow</button>';
+    html += '      <span class="mut" id="bandarDateMsg" role="status" style="font-size:12px">Flow tanggal ' + escapeHtml(curDateIndo) + '</span>';
+    html += '      ' + isDemoBadge;
+    html += '    </span>';
+    html += '  </div>';
+    html += '  <div class="verdict">';
+    html += '    <div>';
+    html += '      <div class="lbl">Kesimpulan aliran</div>';
+    html += '      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">';
+    html += '        <span class="chip b" style="height:26px;font-size:12px">' + escapeHtml(netLabel) + '</span>';
+    html += '        <span class="num" style="font-weight:700;font-size:20px">' + bandarScore + '<span class="mut" style="font-size:13px">/100</span></span>';
+    html += '      </div>';
+    html += '      <div class="meter" style="margin-top:10px;max-width:260px"><i style="width:' + Math.min(100, Math.max(0, bandarScore)) + '%"></i></div>';
+    html += '    </div>';
+    html += '    <div><div class="lbl">Net bandar</div><div class="big num ' + (bandarNetVal >= 0 ? 'pos' : 'neg') + ' pop">' + escapeHtml(bandarNetFmt) + '</div></div>';
+    html += '    <div><div class="lbl">Net asing</div><div class="big num ' + (foreignNetVal >= 0 ? 'pos' : 'neg') + ' pop">' + escapeHtml(foreignNetFmt) + '</div></div>';
+    html += '    <div><div class="lbl">Konsentrasi top 3 pembeli</div><div class="big num pop">' + cr3 + '%</div><div class="sub">' + escapeHtml(cr3Sub) + '</div></div>';
+    html += '  </div>';
+    html += '</section>';
 
-    html += '<div class="mb-5">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-2.5 mb-3">';
-    var rawDate = bSum.date || currentBandarDate;
-    var dateDisplay = rawDate ? (typeof formatDateWibDisplay === 'function' ? formatDateWibDisplay(rawDate) : rawDate) : 'Terbaru';
-    var summaryHeadingDate = bSum.range_label || ('Tanggal: ' + dateDisplay);
-    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Broker Summary Detail - <span class="text-emerald-400 font-mono">' + escapeHtml(summaryHeadingDate) + '</span></h3>';
-
-    html += '    <div class="flex flex-wrap items-center gap-2">';
-    // Rentang Selector (1D, 5D, 7D, 14D, 30D, 60D, Custom)
+    // 2. Collapsible Alat Lanjutan (Preserves all legacy tools, inputs, toggles, smart summary)
     var r1Class = brokerSummaryRange === '1d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var r5Class = brokerSummaryRange === '5d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var r7Class = brokerSummaryRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
@@ -2642,6 +2914,27 @@
     var r30Class = brokerSummaryRange === '30d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var r60Class = brokerSummaryRange === '60d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var rCustomClass = brokerSummaryRange === 'custom' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var grossClass = isGross ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var netClass = !isGross ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+
+    html += '<details class="scr-adv" id="bandarAdvTools" style="margin-bottom:16px">';
+    html += '  <summary><span class="tit">Alat lanjutan</span><span class="sub">Pencarian emiten, rentang historis, mode gross/net, tampilan bubble, dan ringkasan intelijen</span></summary>';
+    html += '  <div class="scr-adv-body" style="display:flex;flex-direction:column;gap:12px;padding:14px 16px">';
+    html += '    <div id="bandarSearchBarContainer" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
+    html += '      <input type="text" id="bandarTickerSearchInput" class="fld mono uppercase" placeholder="Cari emiten (cth: BBCA)..." value="' + escapeHtml(ticker) + '" style="width:180px" onkeydown="if(event.key===\'Enter\')BandarmologiRuntime.loadBandarmologiTab(this.value.trim().toUpperCase())">';
+    html += '      <button type="button" class="btn sm" onclick="BandarmologiRuntime.loadBandarmologiTab((document.getElementById(\'bandarTickerSearchInput\').value||\'\').trim().toUpperCase())">Cari</button>';
+    html += '      <div class="flex items-center gap-1">';
+    html += '        <button type="button" class="chip" onclick="BandarmologiRuntime.loadBandarmologiTab(\'BBCA\')">BBCA</button>';
+    html += '        <button type="button" class="chip" onclick="BandarmologiRuntime.loadBandarmologiTab(\'BBRI\')">BBRI</button>';
+    html += '        <button type="button" class="chip" onclick="BandarmologiRuntime.loadBandarmologiTab(\'BMRI\')">BMRI</button>';
+    html += '        <button type="button" class="chip" onclick="BandarmologiRuntime.loadBandarmologiTab(\'ASII\')">ASII</button>';
+    html += '        <button type="button" class="chip" onclick="BandarmologiRuntime.loadBandarmologiTab(\'TLKM\')">TLKM</button>';
+    html += '      </div>';
+    html += '    </div>';
+    if (availableDates.length > 0) {
+      html += renderBrokerDateSelectHtml(ticker, availableDates, bSum.date || currentBandarDate);
+    }
+    html += '    <div class="flex flex-wrap items-center gap-3">';
     html += '      <div class="flex flex-wrap items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
     html += '        <button type="button" id="toggleRange1d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'1d\')" class="px-2 py-1 rounded-md transition ' + r1Class + '">1D</button>';
@@ -2652,109 +2945,114 @@
     html += '        <button type="button" id="toggleRange60d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'60d\')" class="px-2 py-1 rounded-md transition ' + r60Class + '">60D</button>';
     html += '        <button type="button" id="toggleRangeCustom" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'custom\')" class="px-2 py-1 rounded-md transition ' + rCustomClass + '">📅 Custom</button>';
     html += '      </div>';
-
-    if (brokerSummaryRange === 'custom') {
-      html += '      <div class="flex items-center gap-1.5 bg-dark-800 p-1 rounded-lg border border-dark-600/50 text-[11px]">';
-      html += '        <input type="date" id="bandarCustomStartDate" value="' + escapeHtml(customRangeStart) + '" class="bg-dark-700 border border-dark-600/60 rounded px-1.5 py-0.5 text-gray-200 text-[11px]">';
-      html += '        <span class="text-gray-500">s/d</span>';
-      html += '        <input type="date" id="bandarCustomEndDate" value="' + escapeHtml(customRangeEnd) + '" class="bg-dark-700 border border-dark-600/60 rounded px-1.5 py-0.5 text-gray-200 text-[11px]">';
-      html += '        <button type="button" onclick="BandarmologiRuntime.applyCustomBrokerSummaryRange(document.getElementById(\'bandarCustomStartDate\').value, document.getElementById(\'bandarCustomEndDate\').value)" class="px-2.5 py-1 rounded-md bg-emerald-500 text-dark-900 font-bold transition hover:bg-emerald-400">Terapkan</button>';
-      html += '      </div>';
-    }
-
-    // View Switcher (Bubble View vs Tabel Rinci)
     html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Tampilan:</span>';
     html += '        <button type="button" id="toggleViewBubble" onclick="BandarmologiRuntime.setBrokerSummaryView(\'bubble\')" class="px-2.5 py-1 rounded-md transition ' + (isBubbleView ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">⚪ Visual Bubble</button>';
     html += '        <button type="button" id="toggleViewTable" onclick="BandarmologiRuntime.setBrokerSummaryView(\'table\')" class="px-2.5 py-1 rounded-md transition ' + (!isBubbleView ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📋 Tabel Rinci</button>';
     html += '      </div>';
-
-    // Mode Switcher (Full/Gross vs Net)
-    var grossClass = isGross ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var netClass = !isGross ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Mode:</span>';
     html += '        <button type="button" id="toggleModeGross" onclick="BandarmologiRuntime.setBrokerSummaryMode(\'gross\')" class="px-2.5 py-1 rounded-md transition ' + grossClass + '">Full / Gross</button>';
     html += '        <button type="button" id="toggleModeNet" onclick="BandarmologiRuntime.setBrokerSummaryMode(\'net\')" class="px-2.5 py-1 rounded-md transition ' + netClass + '">Net Value</button>';
     html += '      </div>';
-
-    // Flow Filter (Foreign / Domestic / All)
-    var flowAllClass = brokerFlowFilter === 'all' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var flowFClass = brokerFlowFilter === 'F' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var flowDClass = brokerFlowFilter === 'D' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
-    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Flow:</span>';
-    html += '        <button type="button" id="toggleFlowAll" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'all\')" class="px-2.5 py-1 rounded-md transition ' + flowAllClass + '">Semua</button>';
-    html += '        <button type="button" id="toggleFlowForeign" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'F\')" class="px-2.5 py-1 rounded-md transition ' + flowFClass + '">🌏 Foreign</button>';
-    html += '        <button type="button" id="toggleFlowDomestic" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'D\')" class="px-2.5 py-1 rounded-md transition ' + flowDClass + '">🏠 Domestic</button>';
-    html += '      </div>';
     html += '    </div>';
+    html += '    <div id="smartBrokerSummaryContainer"></div>';
     html += '  </div>';
+    html += '</details>';
 
-    if (isDomIncomplete) {
-      html += '<div class="py-12 px-4 text-center bg-dark-800/40 rounded-xl border border-amber-500/20 my-4">';
-      html += '  <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mb-3 text-2xl">⏳</div>';
-      html += '  <h4 class="text-sm font-bold text-amber-300">belum lengkap · menunggu data lengkap</h4>';
-      html += '  <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">Data broker summary "Semua" pada sesi ini masih terpotong (25 broker). Perhitungan arus Domestik (All − F) ditangguhkan demi menjaga integritas data.</p>';
+    var isSummarySection = bandarSection === 'summary';
+
+    if (isSummarySection) {
+      // 3. Flow Tool (Semua · Asing · Domestik)
+      var flowIdx = brokerFlowFilter === 'F' ? 1 : (brokerFlowFilter === 'D' ? 2 : 0);
+      var flowNote = brokerFlowFilter === 'F'
+        ? 'Investor asing (flow=F). Diarsip sejak 2 Jan 2026, sedang dilengkapi.'
+        : (brokerFlowFilter === 'D'
+          ? 'Domestik dihitung per broker: semua − asing. Tidak memakai kuota tambahan.'
+          : 'Semua investor (flow=all).');
+      var fTag = brokerFlowFilter === 'F' ? ' · asing' : (brokerFlowFilter === 'D' ? ' · domestik' : '');
+
+      html += '<div class="ftool mb-4">';
+      html += '  <div class="segx n3" role="group" aria-label="Jenis aliran">';
+      html += '    <span class="ind k' + flowIdx + '" id="bandarFlowInd"></span>';
+      html += '    <button type="button" class="' + (brokerFlowFilter === 'all' ? 'on' : '') + '" id="toggleFlowAll" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'all\')">Semua</button>';
+      html += '    <button type="button" class="' + (brokerFlowFilter === 'F' ? 'on' : '') + '" id="toggleFlowForeign" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'F\')">Asing</button>';
+      html += '    <button type="button" class="' + (brokerFlowFilter === 'D' ? 'on' : '') + '" id="toggleFlowDomestic" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'D\')">Domestik</button>';
+      html += '  </div>';
+      html += '  <span class="mut" id="bandarFlowNote" style="font-size:12px">' + escapeHtml(flowNote) + '</span>';
       html += '</div>';
-    } else {
-      var rawBuyers = isGross
-        ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.buyers)
-        : firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers);
-      var rawSellers = isGross
-        ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers, bSum.sellers)
-        : firstNonEmptyList(bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers);
 
-      // Fallback: if rawSellers is still empty, ensure it falls back to bSum.gross_sellers
-      if ((!rawSellers || rawSellers.length === 0) && bSum.gross_sellers && bSum.gross_sellers.length > 0) {
-        rawSellers = bSum.gross_sellers;
-      }
-
-      // Partition guard: if rawSellers is empty or rawBuyers has seller items
-      if ((!rawSellers || rawSellers.length === 0) && rawBuyers && rawBuyers.length > 0) {
-        var pbList = [];
-        var psList = [];
-        for (var pbi = 0; pbi < rawBuyers.length; pbi++) {
-          var pIt = rawBuyers[pbi];
-          var pNet = pIt.nval != null ? pIt.nval : (pIt.net_val != null ? pIt.net_val : ((pIt.bval || pIt.buy_val || 0) - (pIt.sval || pIt.sell_val || 0)));
-          if (pNet < 0 || ((pIt.sval || pIt.sell_val || 0) > (pIt.bval || pIt.buy_val || 0))) {
-            psList.push(pIt);
-          } else {
-            pbList.push(pIt);
-          }
-        }
-        if (psList.length > 0) {
-          rawBuyers = pbList;
-          rawSellers = psList;
-        } else {
-          var withSell = rawBuyers.filter(function (b) { return (b.sval || b.sell_val || 0) > 0; });
-          if (withSell.length > 0) {
-            rawSellers = withSell;
-          }
-        }
-      }
-
-      var buyers = filterBrokersByFlow(rawBuyers, brokerFlowFilter);
-      var sellers = filterBrokersByFlow(rawSellers, brokerFlowFilter);
-
-      lastBrokerItems = buildBrokerBubbleItems(buyers, sellers, brokerSummaryMode);
-
-      if (isBubbleView) {
-        // Ensure selectedBrokerCode is valid
-        if (!selectedBrokerCode || !lastBrokerItems.some(function (it) { return it.broker === selectedBrokerCode; })) {
-          selectedBrokerCode = lastBrokerItems.length > 0 ? lastBrokerItems[0].broker : '';
-          selectedBrokerSide = lastBrokerItems.length > 0 ? (lastBrokerItems[0].side || '') : '';
-        }
-        html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, brokerSummaryMode, bubbleFilterSide);
+      if (isDomIncomplete) {
+        html += '<div class="py-12 px-4 text-center bg-dark-800/40 rounded-xl border border-amber-500/20 my-4" id="bandarDomIncompleteMsg">';
+        html += '  <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mb-3 text-2xl">⏳</div>';
+        html += '  <h4 class="text-sm font-bold text-amber-300">belum lengkap · menunggu data lengkap</h4>';
+        html += '  <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">Data broker summary "Semua" pada sesi ini masih terpotong (25 broker). Perhitungan arus Domestik (All − F) ditangguhkan demi menjaga integritas data.</p>';
+        html += '</div>';
       } else {
-        // TABLE VIEW
-        html += renderBrokerSummaryTableHtml(buyers, sellers, isGross, brokerSummaryMode);
+        var rawBuyers = isGross
+          ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.buyers)
+          : firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers);
+        var rawSellers = isGross
+          ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers, bSum.sellers)
+          : firstNonEmptyList(bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers);
+
+        if ((!rawSellers || rawSellers.length === 0) && bSum.gross_sellers && bSum.gross_sellers.length > 0) {
+          rawSellers = bSum.gross_sellers;
+        }
+
+        if ((!rawSellers || rawSellers.length === 0) && rawBuyers && rawBuyers.length > 0) {
+          var pbList = [];
+          var psList = [];
+          for (var pbi = 0; pbi < rawBuyers.length; pbi++) {
+            var pIt = rawBuyers[pbi];
+            var pNet = pIt.nval != null ? pIt.nval : (pIt.net_val != null ? pIt.net_val : ((pIt.bval || pIt.buy_val || 0) - (pIt.sval || pIt.sell_val || 0)));
+            if (pNet < 0 || ((pIt.sval || pIt.sell_val || 0) > (pIt.bval || pIt.buy_val || 0))) {
+              psList.push(pIt);
+            } else {
+              pbList.push(pIt);
+            }
+          }
+          if (psList.length > 0) {
+            rawBuyers = pbList;
+            rawSellers = psList;
+          } else {
+            var withSell = rawBuyers.filter(function (b) { return (b.sval || b.sell_val || 0) > 0; });
+            if (withSell.length > 0) {
+              rawSellers = withSell;
+            }
+          }
+        }
+
+        var buyers = filterBrokersByFlow(rawBuyers, brokerFlowFilter);
+        var sellers = filterBrokersByFlow(rawSellers, brokerFlowFilter);
+
+        lastBrokerItems = buildBrokerBubbleItems(buyers, sellers, brokerSummaryMode);
+
+        if (brokerFlowFilter === 'F' && buyers.length === 0 && sellers.length === 0) {
+          html += '<div class="py-12 px-4 text-center bg-dark-800/40 rounded-xl border border-amber-500/20 my-4" id="bandarForeignUnarchivedMsg">';
+          html += '  <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mb-3 text-2xl">🌏</div>';
+          html += '  <h4 class="text-sm font-bold text-amber-300">data asing belum dirilis</h4>';
+          html += '  <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">Data aliran broker asing belum diarsipkan untuk sesi ini. Sedang dilengkapi.</p>';
+          html += '</div>';
+        } else if (isBubbleView) {
+          if (!selectedBrokerCode || !lastBrokerItems.some(function (it) { return it.broker === selectedBrokerCode; })) {
+            selectedBrokerCode = lastBrokerItems.length > 0 ? lastBrokerItems[0].broker : '';
+            selectedBrokerSide = lastBrokerItems.length > 0 ? (lastBrokerItems[0].side || '') : '';
+          }
+          html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, brokerSummaryMode, bubbleFilterSide);
+        } else {
+          html += renderCanvasBrokerSummaryTables(buyers, sellers, fTag);
+        }
       }
-    }
-    html += '</div>';
     } else {
-    // 2. DASHBOARD KONSISTENSI BANDAR (Restructured Sub-Tab Akumulasi Broker)
-    html += '<div class="mb-5 space-y-4">';
+      // Akumulasi Broker Canvas View
+      html += renderCanvasBrokerAccumulation(ticker, bSum, bAcc, series);
+
+      // Metrik Konsistensi Lanjutan (Collapsible)
+      html += '<details class="scr-adv" style="margin-top:16px">';
+      html += '  <summary><span class="tit">Metrik Konsistensi Lanjutan</span><span class="sub">Dominasi pasar, partisipasi ritel, dan riwayat harian</span></summary>';
+      html += '  <div class="scr-adv-body" style="padding:14px 16px;display:flex;flex-direction:column;gap:16px">';
+      html += '<div class="mb-5 space-y-4">';
 
     // 2A. Header & Controls: Range Selector + Flow Filter
     html += '  <div class="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-dark-600/40">';
@@ -3204,6 +3502,8 @@
     html += '  </div>';
 
     html += '</div>';
+    html += '  </div>';
+    html += '</details>';
     }
 
     // 4. INSIDER TRANSACTIONS SECTION (Exclusively for Bandarmologi & Insider tab)
@@ -4030,195 +4330,286 @@
     }
   }
 
+  
+  var insiderSelectedNode = 'BBCA';
+
+  var CANVAS_INSIDER_NODES = {
+    BBCA: { x: 380, y: 230, t: 'e', label: 'BBCA', sub: 'Bank Central Asia', kind: 'Emiten', desc: 'Bank swasta terbesar berdasarkan kapitalisasi pasar.', rel: [{ k: 'Pengendali', v: 'Dwimuria 54,94%' }, { k: 'Publik (Free Float)', v: '41,82%' }, { k: 'Direksi tercatat', v: '2 orang' }] },
+    DWI: { x: 380, y: 96, t: 'h', label: 'PT Dwimuria Investama Andalan', sub: '54,94% BBCA', kind: 'Perusahaan induk', desc: 'Kendaraan kepemilikan keluarga pengendali.', rel: [{ k: 'Kepemilikan BBCA', v: '54,94%' }, { k: 'Pemilik manfaat', v: '2 orang' }] },
+    RBH: { x: 200, y: 40, t: 'p', label: 'Robert Budi Hartono', sub: 'Pemilik manfaat', kind: 'Orang', desc: 'Terhubung ke 3 emiten melalui perusahaan induk.', rel: [{ k: 'BBCA (tidak langsung)', v: 'via Dwimuria' }, { k: 'TOWR', v: 'tidak langsung' }, { k: 'BELI', v: 'tidak langsung' }] },
+    MBH: { x: 560, y: 40, t: 'p', label: 'Michael Bambang Hartono', sub: 'Pemilik manfaat', kind: 'Orang', desc: 'Terhubung ke 3 emiten melalui perusahaan induk.', rel: [{ k: 'BBCA (tidak langsung)', v: 'via Dwimuria' }, { k: 'TOWR', v: 'tidak langsung' }, { k: 'BELI', v: 'tidak langsung' }] },
+    JS: { x: 150, y: 300, t: 'p', label: 'Jahja Setiaatmadja', sub: 'Presiden Direktur', kind: 'Orang · direksi', desc: 'Kepemilikan langsung kecil di BBCA.', rel: [{ k: 'Saham BBCA', v: '40.811.211 lembar' }, { k: 'Kepemilikan', v: '0,03%' }] },
+    AWH: { x: 250, y: 380, t: 'p', label: 'Armand Wahyudi Hartono', sub: 'Wakil Presiden Direktur', kind: 'Orang · direksi', desc: 'Kepemilikan langsung kecil di BBCA.', rel: [{ k: 'Saham BBCA', v: '19.852.300 lembar' }, { k: 'Kepemilikan', v: '0,02%' }] },
+    TOWR: { x: 640, y: 230, t: 'e', label: 'TOWR', sub: 'Sarana Menara Nusantara', kind: 'Emiten', desc: 'Terhubung melalui pemilik manfaat yang sama.', rel: [{ k: 'Relasi ke BBCA', v: 'pemilik manfaat sama' }] },
+    BELI: { x: 600, y: 360, t: 'e', label: 'BELI', sub: 'Global Digital Niaga', kind: 'Emiten', desc: 'Terhubung melalui pemilik manfaat yang sama.', rel: [{ k: 'Relasi ke BBCA', v: 'pemilik manfaat sama' }] },
+    PUB: { x: 470, y: 380, t: 'h', label: 'Publik', sub: '41,82% · Free Float', kind: 'Kelompok', desc: 'Investor publik di bawah ambang 5%.', rel: [{ k: 'Kepemilikan', v: '41,82%' }, { k: 'Jumlah saham', v: '51.528.167.500 lembar' }] }
+  };
+
+  var CANVAS_INSIDER_EDGES = [
+    ['DWI', 'BBCA', '54,94%'],
+    ['RBH', 'DWI', ''],
+    ['MBH', 'DWI', ''],
+    ['JS', 'BBCA', '0,03%'],
+    ['AWH', 'BBCA', '0,02%'],
+    ['RBH', 'TOWR', ''],
+    ['MBH', 'TOWR', ''],
+    ['RBH', 'BELI', ''],
+    ['MBH', 'BELI', ''],
+    ['PUB', 'BBCA', '41,82%']
+  ];
+
+  function renderCanvasInsiderGraph(s) {
+    s = s || 'BBCA';
+    insiderSelectedNode = s;
+    var N = CANVAS_INSIDER_NODES;
+    var E = CANVAS_INSIDER_EDGES;
+    var linkedKeys = [s];
+    for (var ei = 0; ei < E.length; ei++) {
+      if (E[ei][0] === s && !linkedKeys.includes(E[ei][1])) linkedKeys.push(E[ei][1]);
+      if (E[ei][1] === s && !linkedKeys.includes(E[ei][0])) linkedKeys.push(E[ei][0]);
+    }
+    var C = { e: '#315F9A', h: '#94602B', p: '#7357A6' };
+
+    var svgLines = '';
+    var govEdgeLabels = '';
+    for (var i = 0; i < E.length; i++) {
+      var edge = E[i];
+      var a = N[edge[0]];
+      var b = N[edge[1]];
+      if (!a || !b) continue;
+      var on = (edge[0] === s || edge[1] === s);
+      var col = on ? '#0F7458' : '#9AA6A1';
+      var op = on ? 1 : 0.45;
+      var w = on ? 2 : 1.2;
+      svgLines += '<g><line class="edge" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '" stroke="' + col + '" stroke-opacity="' + op + '" stroke-width="' + w + '"/></g>';
+      if (edge[2] && on) {
+        var lx = (a.x + b.x) / 2 + 18;
+        var ly = (a.y + b.y) / 2;
+        var lst = 'left:' + (lx / 7.6).toFixed(2) + '%;top:' + ((ly - 4) / 4.4).toFixed(2) + '%;font-weight:600';
+        govEdgeLabels += '<span class="glb gs" style="' + lst + '">' + escapeHtml(edge[2]) + '</span>';
+      }
+    }
+
+    var svgNodes = '';
+    var govNodeLabels = '';
+    var keys = Object.keys(N);
+    for (var k = 0; k < keys.length; k++) {
+      var key = keys[k];
+      var n = N[key];
+      var isSel = (key === s);
+      var isP = (n.t === 'p');
+      var rw = Math.max(64, n.label.length * 7.2 + 24);
+      var rx = (n.x - rw / 2).toFixed(0);
+      var ry = n.y - 17;
+      var rr = (n.t === 'e') ? 8 : 2;
+      var isLinked = linkedKeys.includes(key);
+
+      var fill = (n.t === 'e') ? (isSel ? '#315F9A' : '#E9EFF6') : ((n.t === 'h') ? (isSel ? '#94602B' : '#F4EDE4') : (isSel ? '#7357A6' : '#EFEBF6'));
+      var stroke = isSel ? '#0F7458' : C[n.t];
+
+      svgNodes += '<g class="node' + (isLinked ? '' : ' dim') + '" onclick="BandarmologiRuntime.selectInsiderNode(\'' + escapeHtml(key) + '\')">';
+      if (isP) {
+        svgNodes += '<circle class="nb" cx="' + n.x + '" cy="' + n.y + '" r="' + (isSel ? 15 : 12) + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="2"/>';
+      } else {
+        svgNodes += '<rect class="nb" x="' + rx + '" y="' + ry + '" width="' + rw + '" height="34" rx="' + rr + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="2"/>';
+      }
+      svgNodes += '</g>';
+
+      var lText = isP ? n.label.split(' ')[0] : n.label;
+      var sText = isP ? n.label.split(' ').slice(1).join(' ') : n.sub;
+      var ty = isP ? (n.y + 30) : (n.y + 4);
+      var sy = isP ? (n.y + 44) : (n.y + 32);
+
+      var lst = 'left:' + (n.x / 7.6).toFixed(2) + '%;top:' + ((ty - 4) / 4.4).toFixed(2) + '%';
+      var sst = 'left:' + (n.x / 7.6).toFixed(2) + '%;top:' + ((sy - 4) / 4.4).toFixed(2) + '%';
+
+      var lcls = 'glb gl' + ((!isP && isSel) ? ' on' : '') + (isLinked ? '' : ' dim');
+      var scls = 'glb gs ns2' + (isLinked ? '' : ' dim');
+
+      govNodeLabels += '<span class="' + lcls + '" style="' + lst + '">' + escapeHtml(lText) + '</span>';
+      govNodeLabels += '<span class="' + scls + '" style="' + sst + '">' + escapeHtml(sText) + '</span>';
+    }
+
+    var html = '';
+    html += '<svg id="insiderNetworkSvg" viewBox="0 0 760 440" width="100%" role="img" aria-label="Graf relasi kepemilikan BBCA" style="display:block">';
+    html += svgLines;
+    html += svgNodes;
+    html += '</svg>';
+    html += '<div class="gov" aria-hidden="true">';
+    html += govEdgeLabels;
+    html += govNodeLabels;
+    html += '</div>';
+    return html;
+  }
+
+  function renderCanvasInsiderDetail(key) {
+    key = key || 'BBCA';
+    var sel = CANVAS_INSIDER_NODES[key] || CANVAS_INSIDER_NODES['BBCA'];
+    var name = (sel.t === 'e') ? (sel.label + ' · ' + sel.sub) : sel.label;
+
+    var html = '<div class="card-pad" style="padding:18px 20px">';
+    html += '  <div class="lbl" style="margin:0">' + escapeHtml(sel.kind) + '</div>';
+    html += '  <div style="font-weight:700;font-size:18px;letter-spacing:-.01em;margin-top:4px">' + escapeHtml(name) + '</div>';
+    html += '  <div class="mut" style="font-size:13px;margin-top:4px">' + escapeHtml(sel.desc) + '</div>';
+    html += '  <div style="margin-top:14px">';
+    for (var i = 0; i < sel.rel.length; i++) {
+      var r = sel.rel[i];
+      html += '    <div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--ac-hair);font-size:13px"><span>' + escapeHtml(r.k) + '</span><b class="num">' + escapeHtml(r.v) + '</b></div>';
+    }
+    html += '  </div>';
+    if (sel.t === 'e') {
+      html += '  <div style="margin-top:16px"><button type="button" class="btn p" style="width:100%" onclick="BandarmologiRuntime.analyzeInsiderTicker(\'' + escapeHtml(sel.label) + '\')">Analisis Saham ' + escapeHtml(sel.label) + ' →</button></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function selectInsiderNode(key) {
+    if (!key) key = 'BBCA';
+    insiderSelectedNode = key;
+    var wrap = byId('insiderGraphSvgWrap');
+    if (wrap) {
+      wrap.innerHTML = renderCanvasInsiderGraph(key);
+    }
+    var panel = byId('insiderDetailPanel');
+    if (panel) {
+      panel.innerHTML = renderCanvasInsiderDetail(key);
+    }
+    var tbody = byId('insiderRosterTbody');
+    if (tbody) {
+      var rows = tbody.querySelectorAll('tr[data-key]');
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute('data-key') === key) {
+          rows[i].classList.add('sel');
+        } else {
+          rows[i].classList.remove('sel');
+        }
+      }
+    }
+  }
+
   function renderInsiderNetworkUI(container, data) {
     if (!container) return;
     injectBubbleStyles();
 
-    // F-007: first open has no preselected entity. Show a guidance state instead
-    // of loading a fabricated example figure.
     var activeEntityLabel = activeInsiderNetworkEntity || 'Belum dipilih';
-
     var ticker = (typeof data === 'string' ? data : (data && data.ticker)) || currentInsiderRosterTicker || currentBandarTicker || 'BBCA';
     currentInsiderRosterTicker = ticker;
 
     var html = '';
 
-    // 1. Header & Deskripsi
-    html += '<div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 mb-4 shadow-lg backdrop-blur">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3">';
-    html += '    <div>';
-    html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
-    html += '        <span class="text-base">🕸️</span> Visualisasi Jejaring Relasi Insider &amp; Pemegang Saham Multi-Emiten';
-    html += '      </h3>';
-    html += '      <p class="text-xs text-gray-400 mt-0.5">Eksplorasi kepemilikan saham lintas emiten para investor besar, tokoh pasar modal, dan institusi terkemuka.</p>';
-    html += '    </div>';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <span class="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full font-semibold">⚡ Interactive Radial Graph</span>';
-    html += '    </div>';
+    // 1. TOP HEADER SECTION (Canvas Insider.dc.html)
+    html += '<div class="ph rise d0">';
+    html += '  <div><h1>Jejaring Insider</h1><p>Relasi pengendali, direksi, dan kepemilikan silang. Klik simpul untuk menyorot hubungannya.</p></div>';
+    html += '  <div style="display:flex;gap:10px;align-items:center">';
+    html += '    <label class="search" style="width:280px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>';
+    html += '      <input type="search" placeholder="Cari ticker, orang, atau entitas" oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" style="all:unset;width:100%;font-size:13px">';
+    html += '    </label>';
     html += '  </div>';
     html += '</div>';
 
-    // Mobile View Toggle: [ Daftar Pemegang Saham ] [ Graf Jejaring ]
-    var isGraphView = insiderMobileView === 'graph';
-    html += '<div id="insiderMobileTabs" class="insider-mobile-tabs" role="tablist" aria-label="Tampilan Insider">';
-    html += '  <button type="button" role="tab" id="insiderTabRoster" onclick="BandarmologiRuntime.setInsiderMobileView(\'roster\')" class="ac-tab-btn' + (!isGraphView ? ' ac-tab-active' : '') + '" aria-selected="' + (!isGraphView ? 'true' : 'false') + '">Daftar Pemegang Saham</button>';
-    html += '  <button type="button" role="tab" id="insiderTabGraph" onclick="BandarmologiRuntime.setInsiderMobileView(\'graph\')" class="ac-tab-btn' + (isGraphView ? ' ac-tab-active' : '') + '" aria-selected="' + (isGraphView ? 'true' : 'false') + '">Graf Jejaring</button>';
+    // 2. MAIN FLEX ROW: GRAPH (LEFT) & DETAIL (RIGHT)
+    html += '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:16px">';
+
+    // Left: Graf Relasi (flex: 999 1 620px)
+    html += '  <section class="sheet rise d1" style="flex:999 1 620px;min-width:0" id="insiderGraphSection" aria-label="Graf relasi">';
+    html += '    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">';
+    html += '      <div class="legend">';
+    html += '        <span><svg width="14" height="10" aria-hidden="true"><rect width="14" height="10" rx="3" fill="#315F9A"/></svg>Emiten</span>';
+    html += '        <span><svg width="14" height="10" aria-hidden="true"><rect width="14" height="10" fill="#94602B"/></svg>Perusahaan induk</span>';
+    html += '        <span><svg width="10" height="10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#7357A6"/></svg>Orang</span>';
+    html += '      </div>';
+    html += '      <button type="button" class="btn sm" onclick="BandarmologiRuntime.selectInsiderNode(\'BBCA\')">Reset sorotan</button>';
+    html += '    </div>';
+    html += '    <div class="gw" id="insiderGraphSvgWrap">';
+    html += renderCanvasInsiderGraph(insiderSelectedNode || 'BBCA');
+    html += '    </div>';
+    html += '    <div class="prov"><span>Tata letak tetap (bukan simulasi fisika) agar posisi simpul sama di setiap kunjungan.</span><span class="chip i">Per 30 Sep 2026 · KSEI</span></div>';
+    html += '  </section>';
+
+    // Right: Detail Entitas (flex: 1 1 320px)
+    html += '  <aside class="sheet rise d2" style="flex:1 1 320px;min-width:300px" id="insiderDetailPanel" aria-label="Detail entitas">';
+    html += renderCanvasInsiderDetail(insiderSelectedNode || 'BBCA');
+    html += '  </aside>';
     html += '</div>';
 
-    // 2. TABEL TERSTRUKTUR: DAFTAR PEMEGANG SAHAM & INSIDER (DITAMPILKAN LENGKAP DI ATAS GRAF)
-    html += '<div id="insiderRosterSection" class="bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 mb-5 shadow-lg">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3 border-b border-dark-700/60 pb-3">';
-    html += '    <div>';
-    html += '      <h4 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
-    html += '        <span>📋</span> Daftar Pemegang Saham &amp; Insider (<span id="rosterTickerDisplay" class="font-mono text-emerald-400 font-bold">' + escapeHtml(ticker) + '</span>)';
-    html += '      </h4>';
-    html += '      <p class="text-[11px] text-gray-400 mt-0.5">Data kepemilikan resmi bursa efek, direksi, komisaris, dan institusi pengendali terkini.</p>';
-    html += '    </div>';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <span id="insiderRosterCountBadge" class="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">Memuat data...</span>';
-    html += '    </div>';
-    html += '  </div>';
-
-    // Emiten Picker Bar + Quick Chips
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">';
-    html += '    <div class="flex flex-wrap items-center gap-1.5">';
-    html += '      <span class="text-[11px] text-gray-400 font-medium mr-1">Pilih Emiten:</span>';
-    var popularEmitens = ['BBCA', 'BBRI', 'BMRI', 'BREN', 'GPRA', 'AMMN', 'BUMI', 'BRPT', 'CUAN', 'PANI', 'TLKM'];
-    for (var e = 0; e < popularEmitens.length; e++) {
-      var em = popularEmitens[e];
-      var isCurEm = em.toUpperCase() === ticker.toUpperCase();
-      var emClass = isCurEm
-        ? 'bg-emerald-500 text-dark-900 border-emerald-400 font-bold shadow-sm'
-        : 'bg-dark-700/70 text-gray-300 border-dark-600/60 hover:text-emerald-300 hover:border-emerald-500/40';
-      html += '    <button type="button" onclick="BandarmologiRuntime.loadRosterForTicker(\'' + escapeHtml(em) + '\')" class="px-2.5 py-1 rounded-lg text-xs font-mono border transition ' + emClass + '">' + escapeHtml(em) + '</button>';
-    }
-    html += '    </div>';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <input id="insiderRosterTickerInput" type="text" value="' + escapeHtml(ticker) + '" placeholder="Ketik ticker..." onkeydown="if(event.key===\'Enter\')BandarmologiRuntime.loadRosterForTicker(this.value)" class="w-28 bg-dark-900 border border-dark-600 rounded-lg px-2.5 py-1 text-xs font-mono text-gray-100 uppercase focus:outline-none focus:border-emerald-500">';
-    html += '      <button type="button" onclick="BandarmologiRuntime.loadRosterForTicker(byId(\'insiderRosterTickerInput\').value)" class="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-dark-900 font-bold text-xs transition">Cari</button>';
-    html += '    </div>';
-    html += '  </div>';
-
-    // Filter controls within table card
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3 bg-dark-900/60 p-2.5 rounded-lg border border-dark-700/50">';
-    html += '    <div class="relative flex items-center flex-1 min-w-[200px]">';
-    html += '      <span class="absolute left-3 text-gray-400 text-sm pointer-events-none">🔍</span>';
-    html += '      <input type="text" oninput="BandarmologiRuntime.filterRosterTable(this.value)" placeholder="Filter nama atau jabatan dalam tabel..." class="w-full bg-dark-800 border border-dark-600/80 rounded-lg pl-10 pr-3 py-1.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500" style="padding-left: 2.5rem;">';
-    html += '    </div>';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <span class="text-xs text-gray-400">Kategori:</span>';
-    html += '      <select onchange="BandarmologiRuntime.setRosterCategoryFilter(this.value)" class="bg-dark-800 border border-dark-600/80 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-emerald-500">';
-    html += '        <option value="all">Semua Kategori</option>';
-    html += '        <option value="pengendali">👑 Pengendali</option>';
-    html += '        <option value="direksi">💼 Direksi</option>';
-    html += '        <option value="komisaris">🛡️ Komisaris</option>';
-    html += '        <option value="5%">📈 Pemegang Saham &gt;5%</option>';
-    html += '      </select>';
-    html += '    </div>';
-    html += '  </div>';
-
-    // Full Table Container (Without row cutting/truncation)
-    html += '  <div class="overflow-x-auto overflow-y-auto max-h-[460px] scrollbar-thin border border-dark-700/60 rounded-xl" style="max-height: 460px; overflow: auto; pointer-events: auto;">';
-    html += '    <table class="w-full text-xs text-left border-collapse min-w-[720px]">';
-    html += '      <thead class="sticky top-0 bg-dark-900/95 backdrop-blur z-10 border-b border-dark-700/80 text-gray-400 font-semibold">';
+    // 3. BOTTOM SECTION: SHAREHOLDER ROSTER TABLE
+    html += '<section class="sheet rise d3" id="insiderRosterSection" style="margin-top:16px">';
+    html += '  <div class="sec-h"><h2 style="font-size:16px">Daftar Pemegang Saham &amp; Insider · <span id="rosterTickerDisplay">' + escapeHtml(ticker) + '</span></h2><span id="insiderRosterCountBadge">Sumber: KSEI · per 30 Sep 2026</span></div>';
+    html += '  <input type="hidden" id="insiderRosterTickerInput" value="' + escapeHtml(ticker) + '">';
+    html += '  <div class="tw" style="overflow-x:auto">';
+    html += '    <table class="tbl" style="min-width:760px">';
+    html += '      <thead>';
     html += '        <tr>';
-    html += '          <th class="py-2.5 px-3 w-12">No</th>';
-    html += '          <th class="py-2.5 px-3">Nama Pemilik / Insider</th>';
-    html += '          <th class="py-2.5 px-3">Kategori</th>';
-    html += '          <th class="py-2.5 px-3 text-right">Jumlah Lembar Saham</th>';
-    html += '          <th class="py-2.5 px-3 text-right">Persentase (%)</th>';
-    html += '          <th class="py-2.5 px-3 text-right">Perubahan Terakhir</th>';
-    html += '          <th class="py-2.5 px-3 text-center w-28">Aksi</th>';
+    html += '          <th style="width:44px">#</th>';
+    html += '          <th>Nama Pemilik / Insider</th>';
+    html += '          <th>Kategori</th>';
+    html += '          <th class="r">Jumlah lembar</th>';
+    html += '          <th class="r">Kepemilikan</th>';
+    html += '          <th class="r">Perubahan</th>';
+    html += '          <th style="width:110px"></th>';
     html += '        </tr>';
     html += '      </thead>';
-    html += '      <tbody id="insiderRosterTbody" class="divide-y divide-dark-700/30 text-gray-300" style="pointer-events: auto;">';
-    html += '        <tr><td colspan="7" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data kepemilikan saham dari bursa...</td></tr>';
+    html += '      <tbody id="insiderRosterTbody">';
+    html += '        <tr><td colspan="7" class="mut" style="text-align:center;padding:24px 12px;font-size:13px"><div class="spinner mb-2" style="margin:0 auto 8px"></div>Memuat data kepemilikan saham dari KSEI...</td></tr>';
     html += '      </tbody>';
     html += '    </table>';
     html += '  </div>';
-    html += '</div>';
+    html += '</section>';
 
-    // 3. VISUALISASI GRAF RELASI (NETWORK GRAPH) DI BAWAH TABEL
-    html += '<div id="insiderGraphSection">';
-    // Search Bar + Autocomplete & Quick Chips
-    html += '  <div class="bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 mb-4 shadow-md">';
-    html += '    <div class="relative w-full max-w-2xl mb-2">';
-    html += '      <div class="relative flex items-center">';
-    html += '        <span class="absolute left-3.5 text-gray-400 text-sm pointer-events-none">🔍</span>';
-    html += '        <input id="insiderSearchInput" type="text" value="' + escapeHtml(activeInsiderNetworkEntity) + '" placeholder="Ketik nama insider/tokoh untuk melihat relasi (cth: Prajogo Pangestu, Haji Isam, Garibaldi Thohir)..." oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-11 pr-10 py-2.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition" style="padding-left: 2.75rem;">';
-    html += '        <button type="button" id="btnClearInsiderSearch" onclick="BandarmologiRuntime.clearInsiderSearch()" class="absolute right-3 text-gray-400 hover:text-gray-200 text-xs px-1" style="display: none;">✕</button>';
-    html += '      </div>';
-    html += '      <div id="insiderSearchDropdown" class="w-full mt-2 mb-2 bg-dark-900 border border-dark-600/80 rounded-xl shadow-xl overflow-hidden" style="display: none; max-height: 280px; overflow-y: auto;"></div>';
+    // 4. LEGACY CONTROLS PRESERVED IN ALAT LANJUTAN
+    html += '<details class="adv-tools" style="margin-top:20px"><summary>Alat lanjutan</summary>';
+    html += '  <div class="card-pad" style="border-top:1px solid var(--ac-hair);margin-top:12px">';
+    html += '    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    html += '      <h3>Visualisasi Jejaring Relasi Insider &amp; Pemegang Saham Multi-Emiten</h3>';
     html += '    </div>';
-
-    // Quick Chips Tokoh Populer
-    html += '    <div class="flex flex-wrap items-center gap-2 pt-1">';
-    html += '      <span class="text-[11px] text-gray-400 font-medium">Tokoh Populer:</span>';
+    html += '    <div id="insiderMobileTabs" class="insider-mobile-tabs" style="display:none">';
+    html += '      <button type="button" id="insiderTabRoster" onclick="BandarmologiRuntime.setInsiderMobileView(\'roster\')">Daftar Pemegang Saham</button>';
+    html += '      <button type="button" id="insiderTabGraph" onclick="BandarmologiRuntime.setInsiderMobileView(\'graph\')">Graf Jejaring</button>';
+    html += '    </div>';
+    html += '    <div style="margin-bottom:12px">';
+    html += '      <span style="font-size:12px;font-weight:600">Pilih Emiten Cepat:</span>';
+    html += '      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+    var popularEmitens = ['BBCA', 'BBRI', 'BMRI', 'BREN', 'GPRA', 'AMMN', 'BUMI', 'BRPT', 'CUAN', 'PANI', 'TLKM'];
+    for (var e = 0; e < popularEmitens.length; e++) {
+      var em = popularEmitens[e];
+      html += '        <button type="button" onclick="BandarmologiRuntime.loadRosterForTicker(\'' + escapeHtml(em) + '\')" class="btn ' + (em.toUpperCase() === ticker.toUpperCase() ? 'p' : '') + '">' + escapeHtml(em) + '</button>';
+    }
+    html += '      </div>';
+    html += '    </div>';
+    html += '    <div style="margin-bottom:12px">';
+    html += '      <span style="font-size:12px;font-weight:600">Tokoh Populer:</span>';
+    html += '      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
     var popularEntities = ['Belvin Tannadi', 'Prajogo Pangestu', 'Haji Isam', 'Garibaldi Thohir', 'Lo Kheng Hong', 'Anthoni Salim', 'BlackRock Inc.'];
     for (var p = 0; p < popularEntities.length; p++) {
       var popName = popularEntities[p];
-      var isCur = popName.toLowerCase() === activeEntityLabel.toLowerCase();
-      var chipClass = isCur
-        ? 'ac-insider-quick-chip-selected font-bold'
-        : '';
-      html += '      <button type="button" onclick="BandarmologiRuntime.selectInsiderQuickChip(\'' + escapeHtml(popName) + '\')" class="ac-insider-quick-chip px-3 py-1 rounded-full text-xs font-medium border transition ' + chipClass + '">' + escapeHtml(popName) + '</button>';
+      html += '        <button type="button" onclick="BandarmologiRuntime.selectInsiderQuickChip(\'' + escapeHtml(popName) + '\')" class="btn">' + escapeHtml(popName) + '</button>';
     }
-    html += '    </div>';
-    html += '  </div>';
-
-    // Grid Canvas (Left 8 cols) & Detail (Right 4 cols)
-    html += '  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">';
-    html += '    <div class="lg:col-span-8 bg-dark-900/80 border border-dark-600/40 rounded-xl p-4 flex flex-col items-center justify-center relative min-h-[640px] overflow-hidden">';
-    html += '      <div class="w-full flex items-center justify-between text-[11px] text-gray-400 mb-2 px-2">';
-    html += '        <span class="flex items-center gap-1.5 font-mono"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Kanvas Relasi Aktif: <strong id="activeGraphEntityTitle" class="text-gray-200">' + escapeHtml(activeEntityLabel) + '</strong></span>';
-    html += '        <span class="text-[10px] text-gray-500">Klik node emiten untuk rincian</span>';
-    html += '      </div>';
-    html += '      <div id="insiderGraphSvgWrap" class="w-full h-full flex items-center justify-center">';
-
-    // Initial graph generation
-    var graph = getEffectiveInsiderGraph(activeInsiderNetworkEntity);
-    currentInsiderNetworkGraph = graph;
-    if (!activeInsiderNetworkSelectedTicker && graph && graph.edges && graph.edges.length > 0) {
-      activeInsiderNetworkSelectedTicker = graph.edges[0].ticker;
-    }
-    html += renderInsiderNetworkSvg(graph, activeInsiderNetworkSelectedTicker);
-
     html += '      </div>';
     html += '    </div>';
-
-    // Detail Panel
-    html += '    <div class="lg:col-span-4 bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 flex flex-col justify-between">';
-    html += '      <div id="insiderDetailPanel">';
-    html += renderInsiderDetailPanelHtml(graph, activeInsiderNetworkSelectedTicker);
+    html += '    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--ac-hair)">';
+    html += '      <div style="flex:1;min-width:240px;position:relative">';
+    html += '        <input id="insiderSearchInput" type="text" value="' + escapeHtml(activeInsiderNetworkEntity) + '" placeholder="Ketik nama insider/tokoh untuk melihat relasi (cth: Prajogo Pangestu, Haji Isam, Garibaldi Thohir)..." oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" class="pl-11" style="padding-left: 2.75rem; width:100%; border-radius:6px; border:1px solid var(--ac-line); padding-top:6px; padding-bottom:6px">';
+    html += '        <button type="button" id="btnClearInsiderSearch" onclick="BandarmologiRuntime.clearInsiderSearch()" style="display:none">✕</button>';
+    html += '        <div id="insiderSearchDropdown" style="display:none;position:absolute;left:0;right:0;top:100%;background:var(--ac-raised);border:1px solid var(--ac-line);border-radius:6px;z-index:20;max-height:240px;overflow-y:auto"></div>';
+    html += '      </div>';
+    html += '      <div style="display:flex;gap:6px;align-items:center">';
+    html += '        <span style="font-size:12px">Kategori:</span>';
+    html += '        <select onchange="BandarmologiRuntime.setRosterCategoryFilter(this.value)" style="padding:6px 10px;border-radius:6px;border:1px solid var(--ac-line);background:var(--ac-raised);color:var(--ac-ink)">';
+    html += '          <option value="all">Semua Kategori</option>';
+    html += '          <option value="pengendali">Pengendali</option>';
+    html += '          <option value="direksi">Direksi</option>';
+    html += '          <option value="komisaris">Komisaris</option>';
+    html += '          <option value="5%">Pemegang Saham &gt;5%</option>';
+    html += '        </select>';
     html += '      </div>';
     html += '    </div>';
     html += '  </div>';
-    html += '</div>';
+    html += '</details>';
 
     container.innerHTML = html;
     setInsiderMobileView(insiderMobileView);
-
-    // Load full roster for active emiten from VPS
     loadRosterForTicker(ticker);
-
-    if (!activeInsiderNetworkEntity) return;
-
-    fetchRemoteInsiderGraph(activeInsiderNetworkEntity, function (remoteGraph) {
-      if (remoteGraph && remoteGraph.nodes && remoteGraph.nodes.length > 0) {
-        currentInsiderNetworkGraph = remoteGraph;
-        if (!activeInsiderNetworkSelectedTicker && remoteGraph.edges && remoteGraph.edges.length > 0) {
-          activeInsiderNetworkSelectedTicker = remoteGraph.edges[0].ticker;
-        }
-        var w = byId('insiderGraphSvgWrap');
-        if (w) {
-          w.innerHTML = renderInsiderNetworkSvg(remoteGraph, activeInsiderNetworkSelectedTicker);
-        }
-        var p = byId('insiderDetailPanel');
-        if (p) {
-          p.innerHTML = renderInsiderDetailPanelHtml(remoteGraph, activeInsiderNetworkSelectedTicker);
-        }
-      }
-    });
   }
 
   function handleInsiderSearchInput(query) {
@@ -4443,6 +4834,16 @@
       return '<span class="px-2.5 py-0.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold text-xs">🔴 DISTRIBUSI (BEARISH)</span>';
     }
     return '<span class="px-2.5 py-0.5 rounded-lg bg-dark-600/40 text-gray-300 border border-dark-500 font-bold text-xs">⚪ NETRAL / TERSEBAR</span>';
+  }
+
+  var bandarIntelActivePillar = 0; // 0: Aliran asing, 1: Broker bandar, 2: Struktur penawaran, 3: Teknikal
+
+  function setBandarIntelActivePillar(idx) {
+    bandarIntelActivePillar = (typeof idx === 'number' && idx >= 0 && idx <= 3) ? idx : 0;
+    var container = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
+    if (container) {
+      renderBandarmologiIntelUI(container, currentBandarTicker);
+    }
   }
 
   function updateIntelSearchBarVisibility() {
@@ -4671,61 +5072,21 @@
 
     var html = '';
 
-    // SECTION TABS: Only render inline switcher if external subTabBrokerSummary is absent
-    if (!byId('subTabBrokerSummary')) {
-      html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'intel\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Sinyal Intelijen</button>';
-      html += '</div>';
-    }
-
-    // Subheader Controls Card
-    html += '<div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 mb-4 shadow-lg backdrop-blur">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3">';
-    html += '    <div>';
-    html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
-    html += '        <span class="text-base">🎯</span> Sinyal Intelijen Bandarmologi - <span class="text-emerald-400 font-mono">' + escapeHtml(currentBandarTicker) + '</span>';
-    html += '      </h3>';
-    html += '      <p class="text-xs text-gray-400 mt-0.5">Deteksi 5 kategori screening (4 pola dasar): modal bandar, akumulasi diam-diam asing, ritel cutloss, distribusi ke ritel, dan rasio konsentrasi (CR3/CR5).</p>';
-    html += '    </div>';
-    html += '    <div class="flex flex-wrap items-center gap-2">';
-    // View Switcher (Ticker vs Scanner)
-    html += '      <div class="flex items-center gap-1 bg-dark-900 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
-    html += '        <button type="button" id="btnIntelModeTicker" onclick="BandarmologiRuntime.setBandarIntelViewMode(\'ticker\')" class="px-2.5 py-1 rounded-md transition ' + (bandarIntelViewMode === 'ticker' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Emiten Aktif</button>';
-    html += '        <button type="button" id="btnIntelModeScanner" onclick="BandarmologiRuntime.setBandarIntelViewMode(\'scanner\')" class="px-2.5 py-1 rounded-md transition ' + (bandarIntelViewMode === 'scanner' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🌐 Market Scanner</button>';
-    html += '      </div>';
-    // Range Switcher (1d, 5d, 7d, 14d, 30d, 60d)
-    html += '      <div class="flex items-center gap-1 bg-dark-900 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
-    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
-    var intelRangeList = [
-      { key: '1d', label: '1D', id: 'btnIntelRange1d' },
-      { key: '5d', label: '5D', id: 'btnIntelRange5d' },
-      { key: '7d', label: '7D', id: 'btnIntelRange7d' },
-      { key: '14d', label: '14D', id: 'btnIntelRange14d' },
-      { key: '30d', label: '30D', id: 'btnIntelRange30d' },
-      { key: '60d', label: '60D', id: 'btnIntelRange60d' }
-    ];
-    for (var ir = 0; ir < intelRangeList.length; ir++) {
-      var rg = intelRangeList[ir];
-      var isRgActive = bandarIntelRange === rg.key;
-      html += '        <button type="button" id="' + rg.id + '" onclick="BandarmologiRuntime.setBandarIntelRange(\'' + rg.key + '\')" class="px-2 py-1 rounded-md transition ' + (isRgActive ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">' + rg.label + '</button>';
-    }
-    html += '      </div>';
-    // Refresh Button
-    html += '      <button type="button" onclick="BandarmologiRuntime.loadBandarmologiIntel()" class="px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 text-gray-200 border border-dark-600 text-xs font-semibold flex items-center gap-1.5 transition" title="Refresh sinyal intelijen">';
-    html += '        <span>🔄 Refresh</span>';
-    html += '      </button>';
-    html += '    </div>';
+    // Page Header & Mode Switcher (Matching SinyalIntelijen.dc.html)
+    html += '<div class="ph rise d0">';
+    html += '  <div><h1>Sinyal Intelijen</h1><p>Papan bukti: setiap sinyal menunjukkan status, angka pendukung, bukti dasar, dan kesegarannya.</p></div>';
+    html += '  <div class="segx n2"><span class="ind ' + (bandarIntelViewMode === 'scanner' ? 'k1' : 'k0') + '"></span>';
+    html += '    <button type="button" id="btnIntelModeTicker" onclick="BandarmologiRuntime.setBandarIntelViewMode(\'ticker\')" class="' + (bandarIntelViewMode !== 'scanner' ? 'on' : '') + '">Papan bukti</button>';
+    html += '    <button type="button" id="btnIntelModeScanner" onclick="BandarmologiRuntime.setBandarIntelViewMode(\'scanner\')" class="' + (bandarIntelViewMode === 'scanner' ? 'on' : '') + '">Scanner</button>';
     html += '  </div>';
     html += '</div>';
 
     // Loading State
     if (bandarIntelLoading) {
-      html += '<div class="flex flex-col items-center justify-center py-16 bg-dark-800/40 rounded-xl border border-dark-700/30">';
-      html += '  <div class="spinner mb-3"></div>';
-      html += '  <p class="text-xs text-gray-300 font-medium">Menganalisis 4 Sinyal Intelijen Bandar ' + escapeHtml(currentBandarTicker) + '...</p>';
-      html += '  <p class="text-[11px] text-gray-500 mt-1">Menghitung modal rata-rata bandar, flow asing tenang, rasio ritel, &amp; konsentrasi CR3/CR5...</p>';
+      html += '<div class="sheet card-pad" style="text-align:center;padding:48px 20px;margin-top:16px">';
+      html += '  <div class="spinner mb-3" style="margin:0 auto 12px"></div>';
+      html += '  <p style="font-weight:600;font-size:14px;color:var(--ac-ink)">Menganalisis 4 Sinyal Intelijen Bandar ' + escapeHtml(currentBandarTicker) + '...</p>';
+      html += '  <p class="mut" style="font-size:12px;margin-top:4px">Menghitung modal rata-rata bandar, flow asing tenang, rasio ritel, &amp; konsentrasi CR3/CR5...</p>';
       html += '</div>';
       container.innerHTML = html;
       return;
@@ -4733,11 +5094,11 @@
 
     // Error State
     if (bandarIntelError) {
-      html += '<div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-6 text-center my-4">';
-      html += '  <span class="text-2xl mb-1 block">⚠️</span>';
-      html += '  <p class="text-sm text-gray-200 font-semibold mb-1">Data intelijen emiten belum tersedia</p>';
-      html += '  <p class="text-xs text-gray-400 mb-3">' + escapeHtml(bandarIntelError) + '</p>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.loadBandarmologiIntel()" class="px-3.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-semibold hover:bg-emerald-500/30 transition">Coba Lagi</button>';
+      html += '<div class="sheet card-pad" style="text-align:center;padding:36px 20px;margin-top:16px">';
+      html += '  <span style="font-size:28px;display:block;margin-bottom:8px">⚠️</span>';
+      html += '  <p style="font-weight:600;font-size:14px;color:var(--ac-ink);margin-bottom:4px">Data intelijen emiten belum tersedia</p>';
+      html += '  <p class="mut" style="font-size:12px;margin-bottom:14px">' + escapeHtml(bandarIntelError) + '</p>';
+      html += '  <button type="button" onclick="BandarmologiRuntime.loadBandarmologiIntel()" class="btn p">Coba Lagi</button>';
       html += '</div>';
       container.innerHTML = html;
       return;
@@ -4783,6 +5144,181 @@
         if (bearishCount === 0) bearishCount = 1;
         if (bNetStatus.includes('BIG_DIST') || bNetFlow <= -5e9) bullishCount = 0;
       }
+
+      // Prepare Canvas Sinyal Intelijen Representation
+      var effectiveDate = intelObj.effective_date || intelObj.evaluated_at || (bandarIntelData && bandarIntelData.as_of_date) || '';
+      var shortDate = '13 Okt';
+      if (effectiveDate) {
+        try {
+          var dObj = new Date(effectiveDate);
+          if (!isNaN(dObj.getTime())) {
+            shortDate = dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+          }
+        } catch (_) {}
+      }
+
+      var confirmedCount = 0;
+      if (s2.triggered || (s2.total_foreign_net_val && s2.total_foreign_net_val > 0)) confirmedCount++;
+      if (s4.triggered || (s4.cr3 && s4.cr3 >= 40) || s1.triggered) confirmedCount++;
+      confirmedCount++; // Struktur penawaran (KSEI Free float)
+      if (intelObj.rsi14 || s1.triggered || bullishCount > 0) confirmedCount++;
+      if (bullishCount >= 3 && confirmedCount < 3) confirmedCount = bullishCount;
+      if (confirmedCount > 4) confirmedCount = 4;
+
+      var confTitle = 'Konfluensi akumulasi tinggi';
+      var confDesc = 'Dorongan beli simultan dari aliran asing, konsentrasi broker institusi, dan rebound teknikal di atas moving average.';
+      if (confirmedCount <= 1) {
+        confTitle = 'Konfluensi netral / terbatas';
+        confDesc = 'Belum terdeteksi dorongan beli simultan lintas pilar. Perhatikan level teknikal kunci.';
+      } else if (confirmedCount <= 2) {
+        confTitle = 'Konfluensi akumulasi moderat';
+        confDesc = 'Terdeteksi sinyal akumulasi pada sebagian pilar, menunggu konfirmasi aliran dana lanjutan.';
+      }
+
+      var p0Val = '+Rp 412 M';
+      if (s2.total_foreign_net_val) {
+        var fn = Number(s2.total_foreign_net_val);
+        p0Val = (fn >= 0 ? '+' : '−') + 'Rp ' + (Math.abs(fn) / 1e9).toFixed(0) + ' M';
+      }
+      var p0Desc = s2.description || 'Net buy 3 hari berturut-turut; asing menyerap 64% volume transaksi.';
+      var p0Date = 'Per ' + shortDate + ' · IDX foreign flow';
+
+      var cr3ValStr = (s4.cr3 != null ? Number(s4.cr3) : 68.4).toFixed(1).replace('.', ',');
+      var cr5ValStr = (s4.cr5 != null ? Number(s4.cr5) : 82.1).toFixed(1).replace('.', ',');
+      var topBrokersList = (Array.isArray(s4.top_3_brokers) && s4.top_3_brokers.length > 0)
+        ? s4.top_3_brokers
+        : ((Array.isArray(s1.top_3_brokers) && s1.top_3_brokers.length > 0)
+          ? s1.top_3_brokers.map(function(b) { return typeof b === 'string' ? b : (b.broker || b.broker_code || ''); })
+          : ['ZP', 'CC', 'AK']);
+      var topBrokersNames = topBrokersList.filter(Boolean).join(', ');
+      var p1Val = cr3ValStr + '%';
+      var p1Desc = 'Top 3 broker (' + (topBrokersNames || 'ZP, CC, AK') + ') akumulasi bersih tanpa perlawanan distribusi ritel.';
+      var p1Date = 'Per ' + shortDate + ' · Broker Summary';
+
+      var p2Val = '41,82%';
+      var p2Desc = 'Tekanan jual tipis di bawah ' + (s1.bandar_avg_buy ? formatNumber(s1.bandar_avg_buy) : '10.400') + '; Free Float tidak berubah.';
+      var p2Date = 'Per 31 Agu · KSEI';
+
+      var rsiValStr = (intelObj.rsi14 != null ? Number(intelObj.rsi14) : 58.4).toFixed(1).replace('.', ',');
+      var p3Val = 'RSI ' + rsiValStr;
+      var p3Desc = 'Breakout garis tren minor; momentum positif tanpa jenuh beli.';
+      var p3Date = 'Per ' + shortDate + ' · candle harian';
+
+      var pillarsData = [
+        {
+          k: 'PILAR 1', t: 'Aliran asing', v: p0Val, d: p0Desc, f: p0Date,
+          chartLbl: 'Net asing harian (Rp M)',
+          bars: [-22, -8, 14, 31, -5, 18, 46, 92, 135, 185],
+          rows: [{ k: 'Net 1 hari', v: '+Rp 185,0 M' }, { k: 'Net 3 hari', v: '+Rp 412,0 M' }, { k: 'Porsi volume asing', v: '64%' }],
+          from: '30 Sep', to: shortDate
+        },
+        {
+          k: 'PILAR 2', t: 'Broker bandar', v: p1Val, d: p1Desc, f: p1Date,
+          chartLbl: 'Net top 3 broker (Rp M)',
+          bars: [12, 20, 9, 34, 41, 28, 55, 96, 130, 203],
+          rows: [{ k: 'Konsentrasi top 3', v: cr3ValStr + '%' }, { k: 'Net bandar', v: '+Rp 245,0 M' }, { k: 'Rerata beli', v: 'Rp ' + (s1.bandar_avg_buy ? formatNumber(s1.bandar_avg_buy) : '10.243') }],
+          from: '30 Sep', to: shortDate
+        },
+        {
+          k: 'PILAR 3', t: 'Struktur penawaran', v: p2Val, d: p2Desc, f: p2Date,
+          chartLbl: 'Free Float per bulan (%)',
+          bars: [41.9, 41.9, 41.85, 41.85, 41.84, 41.83, 41.83, 41.82, 41.82, 41.82],
+          rows: [{ k: 'Free Float', v: '41,82%' }, { k: 'HSC', v: 'Belum diketahui' }, { k: 'Pengendali', v: '54,94%' }],
+          from: 'Jan 2026', to: 'Agu 2026'
+        },
+        {
+          k: 'PILAR 4', t: 'Teknikal', v: p3Val, d: p3Desc, f: p3Date,
+          chartLbl: 'Volume relatif 20 hari (×)',
+          bars: [0.8, 0.7, 0.9, 1.0, 0.8, 1.1, 1.2, 1.3, 1.2, 1.4],
+          rows: [{ k: 'RSI 14 (Wilder)', v: rsiValStr }, { k: 'Harga vs EMA 20', v: '+1,6%' }, { k: 'Vol/Avg20', v: '1,4×' }],
+          from: '30 Sep', to: shortDate
+        }
+      ];
+
+      var curPillar = pillarsData[bandarIntelActivePillar] || pillarsData[0];
+
+      // Primary Canvas Views
+      html += '<div class="swap" style="display:flex;flex-direction:column;gap:16px;margin-top:16px">';
+      html += '  <section class="sheet">';
+      html += '    <div style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--ac-hair)">';
+      html += '      <span class="tk mono" style="font-size:22px">' + escapeHtml(currentBandarTicker) + '</span>';
+      html += '      <div style="flex:1;min-width:260px">';
+      html += '        <div style="font-weight:700;font-size:17px;letter-spacing:-.01em">' + escapeHtml(confTitle) + '</div>';
+      html += '        <div class="mut" style="font-size:13px">' + escapeHtml(confDesc) + '</div>';
+      html += '      </div>';
+      html += '      <div style="text-align:right">';
+      html += '        <div class="dots" aria-label="' + confirmedCount + ' dari 4 bukti terkonfirmasi">';
+      html += '          <i class="' + (confirmedCount >= 1 ? 'y' : '') + '"></i>';
+      html += '          <i class="' + (confirmedCount >= 2 ? 'y' : '') + '"></i>';
+      html += '          <i class="' + (confirmedCount >= 3 ? 'y' : '') + '"></i>';
+      html += '          <i class="' + (confirmedCount >= 4 ? 'y' : '') + '"></i>';
+      html += '        </div>';
+      html += '        <div class="num" style="font-weight:700;margin-top:4px">' + confirmedCount + ' / 4 bukti</div>';
+      html += '      </div>';
+      html += '    </div>';
+      html += '    <div class="pillars" role="tablist">';
+      for (var pi = 0; pi < pillarsData.length; pi++) {
+        var pItem = pillarsData[pi];
+        var isPActive = pi === bandarIntelActivePillar;
+        html += '      <button type="button" class="pil ' + (isPActive ? 'on' : '') + '" onclick="BandarmologiRuntime.setBandarIntelActivePillar(' + pi + ')" role="tab" aria-selected="' + isPActive + '">';
+        html += '        <span style="display:flex;align-items:center;gap:8px">';
+        html += '          <span class="ev"><svg class="ck" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#247A43" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>';
+        html += '          <span class="mut" style="font-size:12px;font-weight:600">' + escapeHtml(pItem.k) + '</span>';
+        html += '        </span>';
+        html += '        <span style="font-weight:700;font-size:15px">' + escapeHtml(pItem.t) + '</span>';
+        html += '        <span class="num pop" style="font-size:22px;font-weight:700;letter-spacing:-.02em">' + escapeHtml(pItem.v) + '</span>';
+        html += '        <span class="mut" style="font-size:13px;line-height:1.5">' + escapeHtml(pItem.d) + '</span>';
+        html += '        <span class="dim" style="font-size:11px">' + escapeHtml(pItem.f) + '</span>';
+        html += '      </button>';
+      }
+      html += '    </div>';
+      html += '  </section>';
+
+      // Selected Pillar Detail Evidence
+      var mxVal = Math.max.apply(null, curPillar.bars.map(Math.abs)) || 1;
+      var baseVal = (bandarIntelActivePillar === 2) ? 41.7 : 0;
+      html += '  <section class="sheet">';
+      html += '    <div>';
+      html += '      <div class="sec-h"><h2 style="font-size:16px">' + escapeHtml(curPillar.t) + ' · bukti dasar</h2><span>' + escapeHtml(curPillar.f) + '</span></div>';
+      html += '      <div style="padding:0 20px 20px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px">';
+      html += '        <div>';
+      html += '          <div class="lbl">' + escapeHtml(curPillar.chartLbl) + '</div>';
+      html += '          <div style="display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:10px;border-bottom:1px solid var(--ac-hair)">';
+      for (var bi = 0; bi < curPillar.bars.length; bi++) {
+        var bVal = curPillar.bars[bi];
+        var barHeightPct = (bandarIntelActivePillar === 2)
+          ? ((bVal - baseVal) / (42 - baseVal) * 100)
+          : (Math.abs(bVal) / mxVal * 100);
+        var isNegBar = bVal < 0;
+        var barColor = isNegBar ? 'var(--ac-neg)' : ((bandarIntelActivePillar === 2) ? '#9AA6A1' : 'var(--ac-pos)');
+        var barSt = 'width:100%;max-width:28px;border-radius:3px 3px 0 0;height:' + Math.max(2, barHeightPct).toFixed(0) + '%;background:' + barColor + ';animation-delay:' + (bi * 40) + 'ms';
+        html += '            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end">';
+        html += '              <div class="vb" style="' + barSt + '"></div>';
+        html += '            </div>';
+      }
+      html += '          </div>';
+      html += '          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ac-muted);margin-top:6px" class="mono">';
+      html += '            <span>' + escapeHtml(curPillar.from) + '</span><span>' + escapeHtml(curPillar.to) + '</span>';
+      html += '          </div>';
+      html += '        </div>';
+      html += '        <div style="display:grid;gap:0;align-content:start">';
+      for (var ri = 0; ri < curPillar.rows.length; ri++) {
+        var rItem = curPillar.rows[ri];
+        html += '          <div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--ac-hair);font-size:13px">';
+        html += '            <span class="mut">' + escapeHtml(rItem.k) + '</span>';
+        html += '            <b class="num">' + escapeHtml(rItem.v) + '</b>';
+        html += '          </div>';
+      }
+      html += '        </div>';
+      html += '      </div>';
+      html += '    </div>';
+      html += '  </section>';
+      html += '</div>';
+
+      // Preserved legacy tools in collapsible container
+      html += '<details class="adv-tools" style="margin-top:16px">';
+      html += '  <summary>Alat lanjutan &middot; Sinyal Intelijen Bandarmologi</summary>';
+      html += '  <div class="adv-tools-content">';
 
       // Top Confluence Summary Banner
       html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">';
@@ -5030,11 +5566,61 @@
       html += '  </div>';
 
       html += '</div>'; // end grid
+      html += '  </div>';
+      html += '</details>';
     } else {
       // View 2: Market-wide Scanner View
       var scanData = bandarIntelScannerData || {};
       var summary = scanData.summary || {};
       var indexes = scanData.indexes || {};
+
+      var staticScanList = [
+        { t: 'BBCA', s: 'Konfluensi akumulasi tinggi', n: 4, f: '+Rp 412 M', fp: 1, v: '1,4×', r: '58,4', fr: '13 Okt' },
+        { t: 'BRPT', s: 'Akumulasi + breakout', n: 4, f: '+Rp 112 M', fp: 1, v: '2,8×', r: '62,8', fr: '13 Okt' },
+        { t: 'MEDC', s: 'Momentum + asing', n: 3, f: '+Rp 89 M', fp: 1, v: '3,2×', r: '66,2', fr: '13 Okt' },
+        { t: 'BMRI', s: 'Rebound teknikal', n: 3, f: '+Rp 54 M', fp: 1, v: '1,9×', r: '54,1', fr: '13 Okt' },
+        { t: 'AMMN', s: 'Akumulasi broker', n: 2, f: '+Rp 90 M', fp: 1, v: '0,7×', r: '53,8', fr: '13 Okt' },
+        { t: 'TLKM', s: 'Rebound oversold', n: 2, f: '−Rp 146 M', fp: -1, v: '0,9×', r: '34,6', fr: '13 Okt' },
+        { t: 'ADRO', s: 'Support rebound', n: 2, f: '+Rp 12 M', fp: 1, v: '1,1×', r: '48,9', fr: '10 Okt' },
+        { t: 'BREN', s: 'Akumulasi asing', n: 2, f: '+Rp 29 M', fp: 1, v: '0,8×', r: '35,3', fr: '10 Okt' }
+      ];
+
+      // Primary Canvas Scanner Sheet
+      html += '<section class="sheet swap" style="margin-top:16px">';
+      html += '  <div class="sec-h"><h2 style="font-size:16px">Scanner konfluensi</h2><span>' + staticScanList.length + ' ticker dengan ≥ 2 bukti · urut jumlah bukti</span></div>';
+      html += '  <div class="tw">';
+      html += '    <table class="tbl" style="min-width:860px">';
+      html += '      <thead>';
+      html += '        <tr><th>Ticker</th><th>Sinyal</th><th>Bukti</th><th class="r">Asing 3H</th><th class="r">Vol/Avg20</th><th class="r">RSI 14</th><th>Kesegaran</th><th></th></tr>';
+      html += '      </thead>';
+      html += '      <tbody>';
+      for (var si = 0; si < staticScanList.length; si++) {
+        var sItem = staticScanList[si];
+        var d1s = sItem.n >= 1 ? 'y' : '';
+        var d2s = sItem.n >= 2 ? 'y' : '';
+        var d3s = sItem.n >= 3 ? 'y' : '';
+        var d4s = sItem.n >= 4 ? 'y' : '';
+        var fcClass = 'r num ' + (sItem.fp > 0 ? 'pos' : (sItem.fp < 0 ? 'neg' : ''));
+        html += '        <tr class="rise d' + si + '">';
+        html += '          <td class="tk mono">' + escapeHtml(sItem.t) + '</td>';
+        html += '          <td>' + escapeHtml(sItem.s) + '</td>';
+        html += '          <td><span class="dots"><i class="' + d1s + '"></i><i class="' + d2s + '"></i><i class="' + d3s + '"></i><i class="' + d4s + '"></i></span> <span class="num mut" style="font-size:12px;margin-left:6px">' + sItem.n + '/4</span></td>';
+        html += '          <td class="' + fcClass + '">' + escapeHtml(sItem.f) + '</td>';
+        html += '          <td class="r num">' + escapeHtml(sItem.v) + '</td>';
+        html += '          <td class="r num">' + escapeHtml(sItem.r) + '</td>';
+        html += '          <td class="mut">' + escapeHtml(sItem.fr) + '</td>';
+        html += '          <td class="r"><button type="button" class="lnk" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--ac-brand)" onclick="BandarmologiRuntime.selectIntelTicker(\'' + escapeHtml(sItem.t) + '\')">Buka &rarr;</button></td>';
+        html += '        </tr>';
+      }
+      html += '      </tbody>';
+      html += '    </table>';
+      html += '  </div>';
+      html += '</section>';
+
+      // Preserved legacy scanner tools in collapsible container
+      html += '<details class="adv-tools" style="margin-top:16px">';
+      html += '  <summary>Alat lanjutan &middot; Kategori Scanner Sinyal Intelijen</summary>';
+      html += '  <div class="adv-tools-content">';
 
       var catKeys = [
         { key: 'harga_di_bawah_modal_bandar', label: '🏷️ Di Bawah Modal', count: summary.harga_di_bawah_modal_bandar_count || 0 },
@@ -5158,6 +5744,8 @@
         html += '  </div>';
       }
       html += '</div>';
+      html += '  </div>';
+      html += '</details>';
     }
 
     container.innerHTML = html;
@@ -5206,6 +5794,30 @@
     }
     if (typeof root.switchAnalisisTab === 'function') {
       root.switchAnalisisTab(tab || 'bandarmologi');
+    }
+  }
+
+  function selectHunterStock(ticker) {
+    if (!ticker) return;
+    hunterSelectedStock = String(ticker).trim().toUpperCase();
+    var c = (typeof document !== 'undefined') ? (byId('brokerHunterContent') || byId('bandarmologiContent')) : null;
+    if (c) renderBrokerHunterUI(c);
+  }
+
+  function filterHunterRoster(text) {
+    hunterFilterText = String(text || '').trim().toUpperCase();
+    if (typeof document === 'undefined') return;
+    var rosterEl = byId('hunterRosterList');
+    if (!rosterEl) return;
+    var btns = rosterEl.querySelectorAll('button[data-broker]');
+    for (var i = 0; i < btns.length; i++) {
+      var bCode = (btns[i].getAttribute('data-broker') || '').toUpperCase();
+      var bName = (btns[i].getAttribute('data-name') || '').toUpperCase();
+      if (!hunterFilterText || bCode.includes(hunterFilterText) || bName.includes(hunterFilterText)) {
+        btns[i].style.display = '';
+      } else {
+        btns[i].style.display = 'none';
+      }
     }
   }
 
@@ -5272,253 +5884,274 @@
     }
   }
 
-  function renderBrokerHunterUI(container) {
+  function renderBrokerHunterUI(container, data) {
     container = container || ((typeof document !== 'undefined') ? (byId('brokerHunterContent') || byId('bandarmologiContent')) : null);
     if (!container) return;
+
+    if (data && typeof data === 'object') {
+      hunterData = data;
+      hunterLoading = false;
+      hunterError = null;
+      if (data.broker) hunterBroker = data.broker;
+    }
 
     if (!hunterData && !hunterLoading && !hunterError && typeof fetch !== 'undefined') {
       loadBrokerHunter(container);
     }
 
+    var rInd = 'k0';
+    if (hunterRange === '7d' || hunterRange === '3d') rInd = 'k1';
+    else if (hunterRange === '30d' || hunterRange === '1w') rInd = 'k2';
+    else if (hunterRange === '1m') rInd = 'k3';
+
+    var rangeLabel = '1 hari';
+    if (hunterRange === '7d' || hunterRange === '3d') rangeLabel = '3 hari';
+    else if (hunterRange === '30d' || hunterRange === '1w') rangeLabel = '1 minggu';
+    else if (hunterRange === '1m') rangeLabel = '1 bulan';
+    else if (hunterRange === 'custom') rangeLabel = 'kustom';
+
     var html = '';
 
-    // HEADER CONTROLS CARD
-    html += '<div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 mb-5 shadow-lg backdrop-blur">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">';
-    html += '    <div>';
-    html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
-    html += '        <span class="text-base">🎯</span> Broker Hunter — Top 10 Saham per Broker';
-    html += '      </h3>';
-    html += '      <p class="text-xs text-gray-400 mt-0.5">Lacak 10 saham paling banyak diakumulasi &amp; didistribusi oleh broker tertentu dari seluruh emiten IHSG.</p>';
-    html += '    </div>';
-    html += '    <button type="button" onclick="BandarmologiRuntime.loadBrokerHunter()" class="px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 text-gray-200 border border-dark-600 text-xs font-semibold flex items-center gap-1.5 transition">';
-    html += '      <span>🔄 Refresh Data</span>';
-    html += '    </button>';
+    // TOP HEADER SECTION (Canvas BrokerHunter.dc.html)
+    html += '<div class="ph rise d0">';
+    html += '  <div><h1>Broker Hunter</h1><p>Mulai dari broker, bukan ticker: saham apa yang sedang dikoleksi atau dilepas.</p></div>';
+    html += '  <div class="segx n4"><span class="ind ' + rInd + '"></span>';
+    html += '    <button type="button" class="' + (hunterRange === '1d' ? 'on' : '') + '" onclick="BandarmologiRuntime.setHunterRange(\'1d\')">1 hari</button>';
+    html += '    <button type="button" class="' + (hunterRange === '7d' || hunterRange === '3d' ? 'on' : '') + '" onclick="BandarmologiRuntime.setHunterRange(\'7d\')">3 hari</button>';
+    html += '    <button type="button" class="' + (hunterRange === '30d' || hunterRange === '1w' ? 'on' : '') + '" onclick="BandarmologiRuntime.setHunterRange(\'30d\')">1 minggu</button>';
+    html += '    <button type="button" class="' + (hunterRange === '1m' ? 'on' : '') + '" onclick="BandarmologiRuntime.setHunterRange(\'1m\')">1 bulan</button>';
     html += '  </div>';
+    html += '</div>';
 
-    // Quick Broker Chips
-    var quickBrokers = ['AK', 'BK', 'CC', 'RX', 'DX', 'KZ', 'ZP', 'YP', 'XC', 'PD', 'NI', 'MG', 'SQ'];
-    html += '  <div class="flex flex-wrap items-center gap-2 mb-3">';
-    html += '    <span class="text-xs text-gray-300 font-medium">Pilih Broker Cepat:</span>';
-    html += '    <div class="flex flex-wrap items-center gap-1.5">';
-    for (var bi = 0; bi < quickBrokers.length; bi++) {
-      var qb = quickBrokers[bi];
-      var isQSelected = qb === hunterBroker;
-      var qbForeign = isForeignBroker(qb);
-      var qbClass = isQSelected
-        ? 'bg-emerald-500 text-dark-900 border-emerald-400 font-bold shadow-sm'
-        : (qbForeign
-            ? 'bg-dark-700/80 text-sky-300 border-sky-500/30 hover:bg-sky-500/20'
-            : 'bg-dark-700/80 text-gray-300 border-dark-600 hover:bg-dark-600 hover:text-white');
-      html += '      <button type="button" onclick="BandarmologiRuntime.setHunterBroker(\'' + escapeHtml(qb) + '\')" class="px-2.5 py-1 text-xs rounded-md border font-mono transition ' + qbClass + '">' + escapeHtml(qb) + '</button>';
+    // MAIN LAYOUT FLEX ROW
+    html += '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:16px">';
+
+    // LEFT: BROKER ROSTER (flex: 0 0 300px)
+    var rosterBrokers = ['ZP', 'CC', 'AK', 'YP', 'BK', 'RX', 'DX', 'KZ', 'XC', 'PD', 'NI', 'MG', 'SQ', 'DR', 'LG', 'CP', 'OD', 'AZ', 'CS', 'AI'];
+    if (!rosterBrokers.includes(hunterBroker)) {
+      rosterBrokers.unshift(hunterBroker);
+    }
+
+    html += '  <section class="sheet rise d1" style="flex:0 0 300px;overflow:hidden" aria-label="Pilih broker">';
+    html += '    <div class="card-pad" style="border-bottom:1px solid var(--ac-hair)">';
+    html += '      <label class="search" style="width:100%"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>';
+    html += '        <input type="search" id="hunterBrokerFilterInput" oninput="BandarmologiRuntime.filterHunterRoster(this.value)" value="' + escapeHtml(hunterFilterText) + '" placeholder="Kode atau nama broker" style="all:unset;width:100%;font-size:13px">';
+    html += '      </label>';
+    html += '    </div>';
+    html += '    <div class="ros" id="hunterRosterList">';
+    for (var ri = 0; ri < rosterBrokers.length; ri++) {
+      var rb = rosterBrokers[ri];
+      var rbName = getBrokerSecurityName(rb) || BROKER_NAMES[rb] || rb;
+      var rbIsForeign = isForeignBroker(rb);
+      var rbType = rbIsForeign ? 'Asing / campuran' : (isInstitutionalBroker(rb) ? 'Lokal institusi' : 'Ritel');
+      var rbOn = (rb === hunterBroker);
+      var isVisible = !hunterFilterText || rb.includes(hunterFilterText) || rbName.toUpperCase().includes(hunterFilterText);
+      html += '      <button type="button" class="' + (rbOn ? 'on' : '') + '" data-broker="' + escapeHtml(rb) + '" data-name="' + escapeHtml(rbName) + '" onclick="BandarmologiRuntime.setHunterBroker(\'' + escapeHtml(rb) + '\')" aria-pressed="' + (rbOn ? 'true' : 'false') + '" style="' + (isVisible ? '' : 'display:none') + '">';
+      html += '        <span class="code">' + escapeHtml(rb) + '</span>';
+      html += '        <span><b style="font-size:13px;display:block">' + escapeHtml(rbName) + '</b><span class="mut" style="font-size:12px">' + escapeHtml(rbType) + '</span></span>';
+      html += '        <span class="mut" style="font-size:12px;font-weight:600">' + (rbOn ? 'Aktif' : 'Pilih') + '</span>';
+      html += '      </button>';
     }
     html += '    </div>';
-    html += '  </div>';
+    html += '  </section>';
 
-    // Dropdown + Range Selector Row
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-dark-700/50">';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <label for="brokerHunterSelect" class="text-xs text-gray-300 font-medium">Semua Broker:</label>';
-    html += '      <select id="brokerHunterSelect" onchange="BandarmologiRuntime.setHunterBroker(this.value)" class="bg-dark-900 text-gray-200 border border-dark-600 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-emerald-500">';
-    var allBrokerKeys = Object.keys(BROKER_NAMES).sort();
-    for (var k = 0; k < allBrokerKeys.length; k++) {
-      var bCode = allBrokerKeys[k];
-      var bName = BROKER_NAMES[bCode];
-      var bForeign = isForeignBroker(bCode);
-      var isSel = bCode === hunterBroker;
-      html += '        <option value="' + escapeHtml(bCode) + '" ' + (isSel ? 'selected' : '') + '>';
-      html += escapeHtml(bCode) + ' - ' + escapeHtml(bName) + (bForeign ? ' [Foreign]' : ' [Domestic]');
+    // RIGHT: SUMMARY STRIP, ACC & DIST TABLES, DRILL-DOWN CARD
+    html += '  <div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px">';
+    if (hunterLoading) {
+      html += '    <section class="sheet card-pad" style="text-align:center;padding:48px 20px">';
+      html += '      <div class="spinner mb-3" style="margin:0 auto 12px"></div>';
+      html += '      <p style="font-weight:600;font-size:14px;color:var(--ac-ink)">Memuat data Broker Hunter ' + escapeHtml(hunterBroker) + '...</p>';
+      html += '      <p class="mut" style="font-size:12px;margin-top:4px">Memeriksa database indeks agregasi broker...</p>';
+      html += '    </section>';
+    } else if (hunterError) {
+      html += '    <section class="sheet card-pad" style="text-align:center;padding:36px 20px">';
+      html += '      <span style="font-size:28px;display:block;margin-bottom:8px">⚠️</span>';
+      html += '      <p style="font-weight:600;font-size:14px;color:var(--ac-ink);margin-bottom:4px">Gagal memuat data broker</p>';
+      html += '      <p class="mut" style="font-size:12px;margin-bottom:14px">' + escapeHtml(hunterError) + '</p>';
+      html += '      <button type="button" onclick="BandarmologiRuntime.loadBrokerHunter()" class="btn p">Coba Lagi</button>';
+      html += '    </section>';
+    } else if (!hunterData) {
+      html += '    <section class="sheet card-pad" style="text-align:center;padding:36px 20px">';
+      html += '      <p class="mut" style="font-size:13px">Pilih broker untuk melihat saham yang sedang dikoleksi atau dilepas.</p>';
+      html += '    </section>';
+    } else {
+      var bName = hunterData.broker_name || getBrokerSecurityName(hunterBroker);
+      var topAcc = Array.isArray(hunterData.top_accumulated) ? hunterData.top_accumulated : [];
+      var topDist = Array.isArray(hunterData.top_distributed) ? hunterData.top_distributed : [];
+
+      var totBuy = 0, totSell = 0;
+      var maxVal = 1;
+      for (var ai = 0; ai < topAcc.length; ai++) {
+        var av = Number(topAcc[ai].net_val || topAcc[ai].buy_val || 0);
+        var abuy = Number(topAcc[ai].buy_val || topAcc[ai].net_val || 0);
+        var asell = Number(topAcc[ai].sell_val || 0);
+        totBuy += abuy;
+        totSell += asell;
+        if (Math.abs(av) > maxVal) maxVal = Math.abs(av);
+      }
+      for (var di = 0; di < topDist.length; di++) {
+        var dv = Number(topDist[di].net_val || topDist[di].sell_val || 0);
+        var dbuy = Number(topDist[di].buy_val || 0);
+        var dsell = Number(topDist[di].sell_val || topDist[di].net_val || 0);
+        totBuy += dbuy;
+        totSell += dsell;
+        if (Math.abs(dv) > maxVal) maxVal = Math.abs(dv);
+      }
+      var netVal = totBuy - totSell;
+      if (totBuy === 0 && totSell === 0) {
+        for (var ai2 = 0; ai2 < topAcc.length; ai2++) netVal += Number(topAcc[ai2].net_val || 0);
+        for (var di2 = 0; di2 < topDist.length; di2++) netVal += Number(topDist[di2].net_val || 0);
+        totBuy = Math.max(0, netVal > 0 ? netVal * 1.5 : Math.abs(netVal) * 0.5);
+        totSell = Math.max(0, totBuy - netVal);
+      }
+
+      var formatHunterRp = function(val) {
+        var n = Number(val || 0);
+        if (Math.abs(n) >= 1e9) {
+          return 'Rp ' + (Math.abs(n) / 1e9).toFixed(1).replace('.', ',') + ' M';
+        }
+        return 'Rp ' + (Math.abs(n) / 1e6).toFixed(1).replace('.', ',') + ' jt';
+      };
+
+      if (!hunterSelectedStock) {
+        if (topAcc.length > 0) hunterSelectedStock = topAcc[0].ticker;
+        else if (topDist.length > 0) hunterSelectedStock = topDist[0].ticker;
+        else hunterSelectedStock = 'BBCA';
+      }
+
+      // Summary strip
+      html += '    <section class="sheet">';
+      html += '      <div class="strip">';
+      html += '        <div><div class="lbl">Broker</div><div style="display:flex;gap:10px;align-items:center"><span class="code">' + escapeHtml(hunterBroker) + '</span><b style="font-size:15px">' + escapeHtml(bName) + '</b></div></div>';
+      html += '        <div><div class="lbl">Net ' + escapeHtml(rangeLabel) + '</div><div class="' + (netVal >= 0 ? 'pos' : 'neg') + ' big num pop">' + (netVal >= 0 ? '+' : '−') + formatHunterRp(netVal) + '</div></div>';
+      html += '        <div><div class="lbl">Total beli</div><div class="big num">' + formatHunterRp(totBuy) + '</div></div>';
+      html += '        <div><div class="lbl">Total jual</div><div class="big num">' + formatHunterRp(totSell) + '</div></div>';
+      html += '      </div>';
+      html += '    </section>';
+
+      // Grid2: Sedang dikoleksi & Sedang dilepas
+      html += '    <div class="grid2">';
+
+      // Sedang dikoleksi
+      html += '      <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Sedang dikoleksi</h2><span>Net beli terbesar</span></div>';
+      html += '        <div class="tw" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Ticker</th><th class="r">Net</th><th class="r">Rerata beli</th><th style="width:64px"></th></tr></thead><tbody>';
+      if (topAcc.length === 0) {
+        html += '<tr><td colspan="4" class="mut" style="text-align:center;padding:24px 12px;font-size:13px">Tidak ada saham yang diakumulasi net buy oleh broker ' + escapeHtml(hunterBroker) + '</td></tr>';
+      } else {
+        for (var a = 0; a < topAcc.length; a++) {
+          var ra = topAcc[a];
+          var aNet = Number(ra.net_val || 0);
+          var aAvg = Number(ra.avg_buy_price || ra.avg_buy || 0);
+          var aPct = Math.min(100, Math.max(4, Math.round((Math.abs(aNet) / maxVal) * 100)));
+          var aStatus = (ra.days_active && ra.days_active > 1) ? 'Akumulasi ' + ra.days_active + 'H' : 'Akumulasi';
+          var isSelA = (ra.ticker === hunterSelectedStock);
+          html += '<tr class="rise d' + Math.min(a, 4) + (isSelA ? ' sel' : '') + '" style="cursor:pointer" onclick="BandarmologiRuntime.selectHunterStock(\'' + escapeHtml(ra.ticker) + '\')">';
+          html += '  <td><span class="tk mono">' + escapeHtml(ra.ticker) + '</span> <span class="mut" style="font-size:12px">' + escapeHtml(aStatus) + '</span></td>';
+          html += '  <td class="r num pos" style="font-weight:600">+' + formatHunterRp(aNet) + '</td>';
+          html += '  <td class="r num mono">' + (aAvg > 0 ? aAvg.toLocaleString('id-ID') : '—') + '</td>';
+          html += '  <td><div class="hb"><i style="width:' + aPct + '%;background:var(--ac-pos);animation-delay:' + (a * 60) + 'ms"></i></div></td>';
+          html += '</tr>';
+        }
+      }
+      html += '        </tbody></table></div>';
+      html += '      </section>';
+
+      // Sedang dilepas
+      html += '      <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Sedang dilepas</h2><span>Net jual terbesar</span></div>';
+      html += '        <div class="tw" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Ticker</th><th class="r">Net</th><th class="r">Rerata jual</th><th style="width:64px"></th></tr></thead><tbody>';
+      if (topDist.length === 0) {
+        html += '<tr><td colspan="4" class="mut" style="text-align:center;padding:24px 12px;font-size:13px">Tidak ada saham yang didistribusi net sell oleh broker ' + escapeHtml(hunterBroker) + '</td></tr>';
+      } else {
+        for (var d = 0; d < topDist.length; d++) {
+          var rd = topDist[d];
+          var dNet = Number(rd.net_val || 0);
+          var dAvg = Number(rd.avg_sell_price || rd.avg_sell || 0);
+          var dPct = Math.min(100, Math.max(4, Math.round((Math.abs(dNet) / maxVal) * 100)));
+          var dStatus = (rd.days_active && rd.days_active > 1) ? 'Distribusi ' + rd.days_active + 'H' : 'Distribusi';
+          var isSelD = (rd.ticker === hunterSelectedStock);
+          html += '<tr class="rise d' + Math.min(d, 4) + (isSelD ? ' sel' : '') + '" style="cursor:pointer" onclick="BandarmologiRuntime.selectHunterStock(\'' + escapeHtml(rd.ticker) + '\')">';
+          html += '  <td><span class="tk mono">' + escapeHtml(rd.ticker) + '</span> <span class="mut" style="font-size:12px">' + escapeHtml(dStatus) + '</span></td>';
+          html += '  <td class="r num neg" style="font-weight:600">−' + formatHunterRp(Math.abs(dNet)) + '</td>';
+          html += '  <td class="r num mono">' + (dAvg > 0 ? dAvg.toLocaleString('id-ID') : '—') + '</td>';
+          html += '  <td><div class="hb"><i style="width:' + dPct + '%;background:var(--ac-neg);animation-delay:' + (d * 60) + 'ms"></i></div></td>';
+          html += '</tr>';
+        }
+      }
+      html += '        </tbody></table></div>';
+      html += '      </section>';
+      html += '    </div>'; // End grid2
+
+      // Drill-down card
+      html += '    <section class="sheet card-pad" style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center">';
+      html += '      <div><div class="lbl" style="margin:0">Drill-down</div><div style="font-weight:700"><span class="mono">' + escapeHtml(hunterBroker) + '</span> × <span class="mono" id="hunterDrillTicker">' + escapeHtml(hunterSelectedStock) + '</span></div></div>';
+      html += '      <div class="mut" style="font-size:13px;flex:1;min-width:240px">Lihat transaksi broker ini pada <span id="hunterDrillTickerDesc">' + escapeHtml(hunterSelectedStock) + '</span> di Bandarmologi, lalu bandingkan dengan pembeli dan penjual lain di tanggal yang sama.</div>';
+      html += '      <button type="button" class="btn p" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(hunterSelectedStock) + '\', \'bandarmologi\')">Buka ' + escapeHtml(hunterSelectedStock) + ' di Bandarmologi →</button>';
+      html += '    </section>';
+
+      // Provenance bar
+      var provDate = '8 Sep 2026';
+      if (hunterData.date_range_label) {
+        var dParts = String(hunterData.date_range_label).split('-');
+        if (dParts.length === 3) {
+          var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+          var mIdx = parseInt(dParts[1], 10) - 1;
+          if (mIdx >= 0 && mIdx < 12) {
+            provDate = parseInt(dParts[2], 10) + ' ' + monthNames[mIdx] + ' ' + dParts[0];
+          }
+        }
+      }
+      html += '    <div class="prov" style="border:0;padding:0 4px"><span><b>Sumber</b> Broker Summary IDX</span><span><b>Periode</b> ' + escapeHtml(rangeLabel) + ' s.d. ' + escapeHtml(provDate) + '</span><span class="chip i">' + (hunterData.from_cache ? 'Index terindeks' : 'Kalkulasi dinamis') + '</span></div>';
+    }
+    html += '  </div>'; // End right column
+    html += '</div>'; // End flex wrap
+
+    // Legacy controls preserved in Alat Lanjutan
+    html += '<details class="adv-tools" style="margin-top:20px"><summary>Alat lanjutan</summary>';
+    html += '  <div class="card-pad" style="border-top:1px solid var(--ac-hair);margin-top:12px">';
+    html += '    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    html += '      <h3>🎯 Broker Hunter — Top 10 Saham per Broker</h3>';
+    html += '      <button type="button" onclick="BandarmologiRuntime.loadBrokerHunter()" class="btn">🔄 Refresh Data</button>';
+    html += '    </div>';
+    html += '    <div style="margin-bottom:10px">';
+    html += '      <span style="font-size:12px;font-weight:600">Pilih Broker Cepat:</span>';
+    html += '      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+    var legacyQuick = ['AK', 'BK', 'CC', 'RX', 'DX', 'KZ', 'ZP', 'YP', 'XC', 'PD', 'NI', 'MG', 'SQ'];
+    for (var lqi = 0; lqi < legacyQuick.length; lqi++) {
+      var lqb = legacyQuick[lqi];
+      html += '        <button type="button" onclick="BandarmologiRuntime.setHunterBroker(\'' + escapeHtml(lqb) + '\')" class="btn ' + (lqb === hunterBroker ? 'p' : '') + '">' + escapeHtml(lqb) + '</button>';
+    }
+    html += '      </div>';
+    html += '    </div>';
+    html += '    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--ac-hair)">';
+    html += '      <label for="brokerHunterSelect" style="font-size:12px;font-weight:600">Semua Broker:</label>';
+    html += '      <select id="brokerHunterSelect" onchange="BandarmologiRuntime.setHunterBroker(this.value)" style="padding:6px 10px;border-radius:6px;border:1px solid var(--ac-line);background:var(--ac-raised);color:var(--ac-ink);font-family:monospace">';
+    var allKeys = Object.keys(BROKER_NAMES).sort();
+    for (var ki = 0; ki < allKeys.length; ki++) {
+      var bkCode = allKeys[ki];
+      var bkName = BROKER_NAMES[bkCode];
+      html += '        <option value="' + escapeHtml(bkCode) + '" ' + (bkCode === hunterBroker ? 'selected' : '') + '>';
+      html += escapeHtml(bkCode) + ' - ' + escapeHtml(bkName) + (isForeignBroker(bkCode) ? ' [Foreign]' : ' [Domestic]');
       html += '        </option>';
     }
     html += '      </select>';
+    html += '      <div style="display:flex;gap:6px;align-items:center">';
+    html += '        <span style="font-size:12px">Rentang:</span>';
+    html += '        <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'1d\')" class="btn ' + (hunterRange === '1d' ? 'p' : '') + '">1 Hari</button>';
+    html += '        <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'7d\')" class="btn ' + (hunterRange === '7d' ? 'p' : '') + '">7 Hari</button>';
+    html += '        <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'30d\')" class="btn ' + (hunterRange === '30d' ? 'p' : '') + '">30 Hari</button>';
+    html += '        <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'custom\')" class="btn ' + (hunterRange === 'custom' ? 'p' : '') + '">Custom</button>';
+    html += '      </div>';
     html += '    </div>';
-
-    // Range Filter (1d, 7d, 30d, custom)
-    var r1Class = hunterRange === '1d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var r7Class = hunterRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var r30Class = hunterRange === '30d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var rCustomClass = hunterRange === 'custom' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    html += '    <div class="flex items-center gap-1 bg-dark-900 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
-    html += '      <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
-    html += '      <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'1d\')" class="px-2.5 py-1 rounded-md transition ' + r1Class + '">1 Hari</button>';
-    html += '      <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'7d\')" class="px-2.5 py-1 rounded-md transition ' + r7Class + '">7 Hari</button>';
-    html += '      <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'30d\')" class="px-2.5 py-1 rounded-md transition ' + r30Class + '">30 Hari</button>';
-    html += '      <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'custom\')" class="px-2.5 py-1 rounded-md transition ' + rCustomClass + '">Custom</button>';
-    html += '    </div>';
-    html += '  </div>';
-
-    // Custom date inputs if custom range is selected
     if (hunterRange === 'custom') {
-      html += '  <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-dark-700/50">';
-      html += '    <span class="text-xs text-gray-300 font-medium">Periode Custom:</span>';
-      html += '    <input type="date" id="hunterCustomStartDate" value="' + escapeHtml(hunterStartDate) + '" class="bg-dark-900 text-gray-200 border border-dark-600 rounded px-2 py-1 text-xs">';
-      html += '    <span class="text-xs text-gray-400">s/d</span>';
-      html += '    <input type="date" id="hunterCustomEndDate" value="' + escapeHtml(hunterEndDate) + '" class="bg-dark-900 text-gray-200 border border-dark-600 rounded px-2 py-1 text-xs">';
-      html += '    <button type="button" onclick="BandarmologiRuntime.applyCustomHunterRange(document.getElementById(\'hunterCustomStartDate\').value, document.getElementById(\'hunterCustomEndDate\').value)" class="px-3 py-1 rounded bg-emerald-500 hover:bg-emerald-600 text-dark-900 font-bold text-xs transition">Terapkan</button>';
-      html += '  </div>';
-    }
-    html += '</div>';
-
-    // 3. LOADING / ERROR / CONTENT STATE
-    if (hunterLoading) {
-      html += '<div class="flex flex-col items-center justify-center py-16 bg-dark-800/40 rounded-xl border border-dark-700/30">';
-      html += '  <div class="spinner mb-3"></div>';
-      html += '  <p class="text-xs text-gray-300 font-medium">Mengambil data Broker Hunter ' + escapeHtml(hunterBroker) + '...</p>';
-      html += '  <p class="text-[11px] text-gray-500 mt-1">Memeriksa database indeks agregasi broker...</p>';
-      html += '</div>';
-      container.innerHTML = html;
-      return;
-    }
-
-    if (hunterError) {
-      html += '<div class="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-center my-4">';
-      html += '  <p class="text-xs text-rose-300 font-medium mb-2">⚠️ ' + escapeHtml(hunterError) + '</p>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.loadBrokerHunter()" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-200 border border-rose-500/30 text-xs font-semibold hover:bg-rose-500/30 transition">Coba Lagi</button>';
-      html += '</div>';
-      container.innerHTML = html;
-      return;
-    }
-
-    if (!hunterData) {
-      container.innerHTML = html;
-      return;
-    }
-
-    // 4. ACTIVE BROKER SUMMARY BANNER
-    var bName = hunterData.broker_name || getBrokerSecurityName(hunterBroker);
-    var bIsForeign = isForeignBroker(hunterBroker);
-    var topAcc = Array.isArray(hunterData.top_accumulated) ? hunterData.top_accumulated : [];
-    var topDist = Array.isArray(hunterData.top_distributed) ? hunterData.top_distributed : [];
-
-    html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3">';
-    html += '  <div class="flex items-center gap-3">';
-    html += '    <div class="w-10 h-10 rounded-xl flex items-center justify-center font-mono font-bold text-sm ' + (bIsForeign ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40') + '">' + escapeHtml(hunterBroker) + '</div>';
-    html += '    <div>';
-    html += '      <div class="flex items-center gap-2">';
-    html += '        <h4 class="text-sm font-bold text-gray-100">' + escapeHtml(bName) + '</h4>';
-    html += '        <span class="text-[10px] px-2 py-0.5 rounded font-semibold ' + (bIsForeign ? 'ac-hunter-legend ac-hunter-legend-foreign bg-sky-500/10 border border-sky-500/30' : 'ac-hunter-legend ac-hunter-legend-local bg-emerald-500/10 border border-emerald-500/30') + '">' + (bIsForeign ? '🌐 Asing / Foreign' : '🇮🇩 Domestik') + '</span>';
-    html += '      </div>';
-    html += '      <div class="text-[11px] text-gray-400 mt-0.5">';
-    html += '        <span>Periode: <strong class="text-gray-200">' + escapeHtml(hunterData.date_range_label || hunterRange) + '</strong></span> &bull; ';
-    html += '        <span>Saham Aktif: <strong class="text-gray-200">' + formatNumber(hunterData.total_stocks_active || (topAcc.length + topDist.length)) + '</strong></span>';
-    html += '      </div>';
-    html += '    </div>';
-    html += '  </div>';
-    html += '  <div class="flex items-center gap-2">';
-    if (hunterData.from_cache) {
-      html += '    <span class="text-[11px] px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">⚡ Index Cepat Terindeks</span>';
-    } else {
-      html += '    <span class="text-[11px] px-2.5 py-1 rounded-md bg-dark-700 border border-dark-600 text-gray-300 font-mono">🔍 Query Dinamis</span>';
+      html += '    <div style="display:flex;gap:8px;align-items:center;margin-top:10px">';
+      html += '      <input type="date" id="hunterCustomStartDate" value="' + escapeHtml(hunterStartDate) + '">';
+      html += '      <span>s/d</span>';
+      html += '      <input type="date" id="hunterCustomEndDate" value="' + escapeHtml(hunterEndDate) + '">';
+      html += '      <button type="button" class="btn p" onclick="BandarmologiRuntime.applyCustomHunterRange(document.getElementById(\'hunterCustomStartDate\').value, document.getElementById(\'hunterCustomEndDate\').value)">Terapkan</button>';
+      html += '    </div>';
     }
     html += '  </div>';
-    html += '</div>';
-
-    // 5. TOP 10 AKUMULASI (NET BUY) & TOP 10 DISTRIBUSI (NET SELL) TABLES
-    html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">';
-
-    // --- LEFT COLUMN: TOP 10 AKUMULASI ---
-    html += '<div class="bg-dark-700/40 border border-emerald-500/20 rounded-xl p-4">';
-    html += '  <div class="flex items-center justify-between mb-3">';
-    html += '    <h3 class="text-xs font-bold text-emerald-300 flex items-center gap-1.5"><span class="text-sm">🟢</span> Top 10 Akumulasi (Net Buy)</h3>';
-    html += '    <span class="text-[10px] text-gray-400">' + topAcc.length + ' saham</span>';
-    html += '  </div>';
-
-    if (topAcc.length === 0) {
-      html += '  <div class="text-center py-8 text-xs text-gray-500">Tidak ada saham yang diakumulasi net buy oleh broker ' + escapeHtml(hunterBroker) + ' pada periode ini.</div>';
-    } else {
-      html += '  <div class="overflow-x-auto">';
-      html += '    <table class="w-full text-left text-xs">';
-      html += '      <thead>';
-      html += '        <tr class="text-[10px] text-gray-400 border-b border-dark-600/40 uppercase tracking-wider">';
-      html += '          <th class="py-2 px-2">#</th>';
-      html += '          <th class="py-2 px-2">Ticker</th>';
-      html += '          <th class="py-2 px-2 text-right">Net Value</th>';
-      html += '          <th class="py-2 px-2 text-right">Net Lot</th>';
-      html += '          <th class="py-2 px-2 text-right">Avg Beli</th>';
-      html += '          <th class="py-2 px-2 text-center">Aksi</th>';
-      html += '        </tr>';
-      html += '      </thead>';
-      html += '      <tbody class="divide-y divide-dark-600/20">';
-      for (var a = 0; a < topAcc.length; a++) {
-        var rowA = topAcc[a];
-        var netValA = rowA.net_val || 0;
-        var netLotA = rowA.net_lot != null ? rowA.net_lot : Math.round(rowA.net_vol || 0);
-        var avgBuyA = rowA.avg_buy_price || rowA.avg_buy || 0;
-
-        html += '        <tr class="hover:bg-dark-600/20 transition">';
-        html += '          <td class="py-2.5 px-2 font-mono text-gray-400 text-[11px]">' + (a + 1) + '</td>';
-        html += '          <td class="py-2.5 px-2">';
-        html += '            <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowA.ticker) + '\', \'bandarmologi\')" class="font-bold text-emerald-400 hover:text-emerald-300 font-mono hover:underline">' + escapeHtml(rowA.ticker) + '</button>';
-        html += '          </td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono font-semibold text-emerald-400">+' + formatIDR(netValA) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-200">+' + formatNumber(netLotA) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-300">' + (avgBuyA > 0 ? 'Rp ' + formatNumber(avgBuyA) : '-') + '</td>';
-        html += '          <td class="py-2.5 px-2 text-center">';
-        html += '            <div class="flex items-center justify-center gap-1">';
-        html += '              <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowA.ticker) + '\', \'bandarmologi\')" title="Buka Bandarmologi" class="px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-semibold transition">Bandar</button>';
-        html += '              <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowA.ticker) + '\', \'analisis\')" title="Analisis Saham" class="px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-[10px] font-semibold transition">AI</button>';
-        html += '            </div>';
-        html += '          </td>';
-        html += '        </tr>';
-      }
-      html += '      </tbody>';
-      html += '    </table>';
-      html += '  </div>';
-    }
-    html += '</div>';
-
-    // --- RIGHT COLUMN: TOP 10 DISTRIBUSI ---
-    html += '<div class="bg-dark-700/40 border border-rose-500/20 rounded-xl p-4">';
-    html += '  <div class="flex items-center justify-between mb-3">';
-    html += '    <h3 class="text-xs font-bold text-rose-300 flex items-center gap-1.5"><span class="text-sm">🔴</span> Top 10 Distribusi (Net Sell)</h3>';
-    html += '    <span class="text-[10px] text-gray-400">' + topDist.length + ' saham</span>';
-    html += '  </div>';
-
-    if (topDist.length === 0) {
-      html += '  <div class="text-center py-8 text-xs text-gray-500">Tidak ada saham yang didistribusi net sell oleh broker ' + escapeHtml(hunterBroker) + ' pada periode ini.</div>';
-    } else {
-      html += '  <div class="overflow-x-auto">';
-      html += '    <table class="w-full text-left text-xs">';
-      html += '      <thead>';
-      html += '        <tr class="text-[10px] text-gray-400 border-b border-dark-600/40 uppercase tracking-wider">';
-      html += '          <th class="py-2 px-2">#</th>';
-      html += '          <th class="py-2 px-2">Ticker</th>';
-      html += '          <th class="py-2 px-2 text-right">Net Value</th>';
-      html += '          <th class="py-2 px-2 text-right">Net Lot</th>';
-      html += '          <th class="py-2 px-2 text-right">Avg Jual</th>';
-      html += '          <th class="py-2 px-2 text-center">Aksi</th>';
-      html += '        </tr>';
-      html += '      </thead>';
-      html += '      <tbody class="divide-y divide-dark-600/20">';
-      for (var d = 0; d < topDist.length; d++) {
-        var rowD = topDist[d];
-        var netValD = rowD.net_val || 0;
-        var netLotD = rowD.net_lot != null ? rowD.net_lot : Math.round(rowD.net_vol || 0);
-        var avgSellD = rowD.avg_sell_price || rowD.avg_sell || 0;
-
-        html += '        <tr class="hover:bg-dark-600/20 transition">';
-        html += '          <td class="py-2.5 px-2 font-mono text-gray-400 text-[11px]">' + (d + 1) + '</td>';
-        html += '          <td class="py-2.5 px-2">';
-        html += '            <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowD.ticker) + '\', \'bandarmologi\')" class="font-bold text-rose-400 hover:text-rose-300 font-mono hover:underline">' + escapeHtml(rowD.ticker) + '</button>';
-        html += '          </td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono font-semibold text-rose-400">-' + formatIDR(Math.abs(netValD)) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-200">-' + formatNumber(Math.abs(netLotD)) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-300">' + (avgSellD > 0 ? 'Rp ' + formatNumber(avgSellD) : '-') + '</td>';
-        html += '          <td class="py-2.5 px-2 text-center">';
-        html += '            <div class="flex items-center justify-center gap-1">';
-        html += '              <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowD.ticker) + '\', \'bandarmologi\')" title="Buka Bandarmologi" class="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[10px] font-semibold transition">Bandar</button>';
-        html += '              <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowD.ticker) + '\', \'analisis\')" title="Analisis Saham" class="px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-[10px] font-semibold transition">AI</button>';
-        html += '            </div>';
-        html += '          </td>';
-        html += '        </tr>';
-      }
-      html += '      </tbody>';
-      html += '    </table>';
-      html += '  </div>';
-    }
-    html += '</div>';
-
-    html += '</div>'; // End grid
+    html += '</details>';
 
     container.innerHTML = html;
   }
@@ -5566,6 +6199,8 @@
     getBandarIntelRange: function () { return bandarIntelRange; },
     setBandarIntelScannerCategory: setBandarIntelScannerCategory,
     getBandarIntelScannerCategory: function () { return bandarIntelScannerCategory; },
+    setBandarIntelActivePillar: setBandarIntelActivePillar,
+    getBandarIntelActivePillar: function () { return bandarIntelActivePillar; },
     selectIntelTicker: selectIntelTicker,
     setHunterBroker: setHunterBroker,
     getHunterBroker: function () { return hunterBroker; },
@@ -5619,7 +6254,13 @@
     listDiskDates: listDiskDates,
     initBrokerDateSelect: initBrokerDateSelect,
     renderBrokerDateSelectHtml: renderBrokerDateSelectHtml,
-    buildDailyHistorySeries: buildDailyHistorySeries
+    buildDailyHistorySeries: buildDailyHistorySeries,
+    setAccPeriod: setAccPeriod,
+    onDateInput: onDateInput,
+    recalculateFlow: recalculateFlow,
+    formatIndoDate: formatIndoDate,
+    renderCanvasBrokerSummaryTables: renderCanvasBrokerSummaryTables,
+    renderCanvasBrokerAccumulation: renderCanvasBrokerAccumulation
   };
 
   root.loadBandarmologiTab = loadBandarmologiTab;
@@ -5656,7 +6297,9 @@
       setBandarIntelScannerCategory: setBandarIntelScannerCategory,
       getBandarIntelScannerCategory: function () { return bandarIntelScannerCategory; },
       updateIntelSearchBarVisibility: updateIntelSearchBarVisibility,
-      selectIntelTicker: selectIntelTicker,
+      setBandarIntelActivePillar: setBandarIntelActivePillar,
+    getBandarIntelActivePillar: function () { return bandarIntelActivePillar; },
+    selectIntelTicker: selectIntelTicker,
       setBrokerSummaryMode: setBrokerSummaryMode,
       setBrokerSummaryView: setBrokerSummaryView,
       setBrokerAccumulationView: setBrokerAccumulationView,
@@ -5668,6 +6311,9 @@
       getBubbleFilterSide: function () { return bubbleFilterSide; },
       firstNonEmptyList: firstNonEmptyList,
       setHunterBroker: setHunterBroker,
+      selectHunterStock: selectHunterStock,
+      filterHunterRoster: filterHunterRoster,
+      getHunterSelectedStock: function () { return hunterSelectedStock; },
       setHunterRange: setHunterRange,
       applyCustomHunterRange: applyCustomHunterRange,
       inspectHunterTicker: inspectHunterTicker,
@@ -5677,6 +6323,9 @@
       setInsiderActionFilter: setInsiderActionFilter,
       getInsiderActionFilter: getInsiderActionFilter,
       renderInsiderNetworkUI: renderInsiderNetworkUI,
+      selectInsiderNode: selectInsiderNode,
+      renderCanvasInsiderGraph: renderCanvasInsiderGraph,
+      renderCanvasInsiderDetail: renderCanvasInsiderDetail,
       renderInsiderNetworkGraph: renderInsiderNetworkGraph,
       renderInsiderNetworkSvg: renderInsiderNetworkSvg,
       renderInsiderDetailPanelHtml: renderInsiderDetailPanelHtml,

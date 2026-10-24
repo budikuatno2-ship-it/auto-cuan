@@ -1,10 +1,11 @@
 'use strict';
 
 // ===========================================================================
-// The document head loads two third-party resources from origins the product
-// does not control: the Tailwind Play CDN and Google Fonts. Neither may be
-// allowed to break or stall the page when it is slow, filtered, or down —
-// which happens on plenty of corporate and ISP networks.
+// The document head used to load two third-party resources from origins the
+// product does not control: the Tailwind Play CDN and Google Fonts. Neither may
+// be allowed to break or stall the page when it is slow, filtered, or down,
+// which happens on plenty of corporate and ISP networks. Both are now served
+// from this origin (Tailwind prebuilt, fonts self-hosted since redesign v2).
 //
 // Measured in Chromium:
 //   font stylesheet render-blocking, font CDN answering in 1200ms
@@ -32,27 +33,24 @@ const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const head = html.slice(0, html.indexOf('</head>'));
 
-test('the webfont stylesheet does not block first paint', () => {
-  const link = head.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^>]*>/);
-  assert.ok(link, 'the Inter stylesheet link must exist');
-  assert.match(
-    link[0],
-    /media="print"/,
-    'a plain stylesheet link hands the whole font-CDN round trip to first paint'
-  );
-  assert.match(link[0], /onload="this\.media='all'/, 'it must be promoted to all once loaded');
+// Redesign v2 self-hosts the faces (HANDOFF §2.3), which removes the font CDN
+// from the head entirely: there is no third-party round trip left to stall
+// first paint, and no origin that a filtered network can block.
+test('webfonts come from this origin, not a font CDN', () => {
+  assert.doesNotMatch(head, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
+  assert.match(head, /<link rel="stylesheet" href="\/fonts\/ac-fonts\.css[^"]*">/);
 });
 
-test('the webfont still applies without JavaScript', () => {
-  const noscript = head.match(/<noscript>[\s\S]*?<\/noscript>/);
-  assert.ok(noscript, 'the media=print swap needs a noscript fallback');
-  assert.match(noscript[0], /fonts\.googleapis\.com/);
-  assert.doesNotMatch(noscript[0], /media="print"/, 'the fallback must load normally');
+test('both variable faces are preloaded so swap happens early', () => {
+  assert.match(head, /<link rel="preload" href="\/fonts\/plus-jakarta-sans-latin-wght-normal\.woff2" as="font" type="font\/woff2" crossorigin>/);
+  assert.match(head, /<link rel="preload" href="\/fonts\/geist-mono-latin-wght-normal\.woff2" as="font" type="font\/woff2" crossorigin>/);
 });
 
-test('preconnect hints for the font origins are kept', () => {
-  assert.match(head, /<link rel="preconnect" href="https:\/\/fonts\.googleapis\.com">/);
-  assert.match(head, /<link rel="preconnect" href="https:\/\/fonts\.gstatic\.com" crossorigin>/);
+test('the font stylesheet only declares faces with font-display: swap', () => {
+  const faces = fs.readFileSync(path.join(ROOT, 'public', 'fonts', 'ac-fonts.css'), 'utf8');
+  const blocks = faces.match(/@font-face\s*\{[^}]*\}/g) || [];
+  assert.equal(blocks.length, 2);
+  for (const block of blocks) assert.match(block, /font-display:\s*swap/);
 });
 
 test('Tailwind cannot fail open, because it is no longer fetched at runtime', () => {

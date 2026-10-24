@@ -214,8 +214,9 @@
   --ac-lh-snug: 1.45;
   --ac-lh-normal: 1.55;
 
-  --ac-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --ac-font-mono: 'JetBrains Mono', 'SF Mono', 'Roboto Mono', 'Cascadia Code', ui-monospace, monospace;
+  /* Redesign v2 (HANDOFF §2.3): faces are self-hosted in /fonts/ac-fonts.css. */
+  --ac-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ac-font-mono: 'Geist Mono', 'SF Mono', 'Roboto Mono', 'Cascadia Code', ui-monospace, monospace;
 
   /* --- Focus: one job per token. See the header note above. */
   --ac-focus-color: #34d399;
@@ -332,49 +333,84 @@ html, body, #dashboardScreen, .page-content {
 
 /* Canonical Design System V2 Scoped Tokens (DESIGN.md §4, §5, §6, §7, §8, §9, §50, §103) */
 :where([data-ac-ui="v2"], .ac-ui-v2) {
-  /* Ground & Surfaces (§4.1, Light-First Workstation Default) */
-  --ac-canvas: #F3F5F4;
-  --ac-surface: #FFFFFF;
-  --ac-surface-raised: #F8FAF9;
-  --ac-surface-hover: #EEF2F0;
+  /* Ground & Surfaces (§4.1). Values are the redesign v2 canvas `:root` in
+     handoff design/project/ac.css (v2.2 eye-comfort palette), mapped onto the
+     existing v2 names so there is still exactly one token system. */
+  --ac-canvas: #EFF1EC;
+  --ac-surface: #FCFCFA;
+  --ac-surface-raised: #F5F7F3;
+  --ac-surface-hover: #EAEEE8;
 
   /* Typography / Ink Tokens (§4.1) */
-  --ac-ink: #17211E;
-  --ac-text-secondary: #52605B;
-  --ac-text-muted: #5F6C66;
+  --ac-ink: #1D2724;
+  --ac-text-secondary: #535F5A;
+  --ac-text-muted: #5E6A65;
   --ac-text-tertiary: var(--ac-text-muted);
 
-  /* Lines & Borders (§4.1) */
-  --ac-line-hairline: #E2E7E4;
-  --ac-line-default: rgba(18, 35, 29, 0.14);
-  --ac-line-strong: rgba(18, 35, 29, 0.20);
-  --ac-control-border: #7D8683;
-  --ac-control-border-hover: #65726C;
+  /* Lines & Borders (§4.1). The canvas has no strong line; it keeps the
+     previous 0.20 alpha on the canvas ink. */
+  --ac-line-hairline: #DFE4DE;
+  --ac-line-default: rgba(29, 39, 36, 0.13);
+  --ac-line-strong: rgba(29, 39, 36, 0.20);
+  --ac-control-border: #848D88;
+  --ac-control-border-hover: #68746E;
 
   --ac-border: var(--ac-line-default);
   --ac-border-strong: var(--ac-line-strong);
 
   /* Brand Emerald (§4.1) */
-  --ac-brand: #0F7458;
-  --ac-brand-hover: #0B6049;
-  --ac-brand-soft: #E8F3EE;
-  --ac-focus: #0F7458;
+  --ac-brand: #13785D;
+  --ac-brand-hover: #0D634C;
+  --ac-brand-soft: #E3EFE8;
+  --ac-focus: #13785D;
   --ac-focus-ring: 0 0 0 2px var(--ac-surface), 0 0 0 4px var(--ac-focus);
 
-  /* Financial Semantics (§4.1) */
-  --ac-positive: #247A43;
-  --ac-positive-soft: rgba(36, 122, 67, 0.09);
-  --ac-negative: #C13F4D;
-  --ac-negative-soft: rgba(193, 63, 77, 0.09);
+  /* Financial Semantics (§4.1). --ac-negative and --ac-warning-text are the
+     darkened values that pass AA (HANDOFF §3). */
+  --ac-positive: #26734A;
+  --ac-positive-soft: rgba(42, 122, 75, 0.10);
+  --ac-negative: #AD3F52;
+  --ac-negative-soft: rgba(185, 71, 90, 0.10);
   --ac-warning: #A96D13;
-  --ac-warning-text: #96610F;
-  --ac-warning-soft: rgba(169, 109, 19, 0.09);
+  --ac-warning-text: #8A590D;
+  --ac-warning-soft: rgba(169, 109, 19, 0.10);
   --ac-info: #315F9A;
   --ac-info-soft: rgba(49, 95, 154, 0.09);
 
   /* System State Aliases (§4.1) */
-  --ac-success: #247A43;
-  --ac-danger: #C13F4D;
+  --ac-success: #26734A;
+  --ac-danger: #AD3F52;
+
+  /* Inverted surface (active chip, toast, active segment) and the one
+     floating shadow (mascot, bottom sheet, dialog, drawer). HANDOFF §3, §3a. */
+  --ac-inv: #1D2724;
+  --ac-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.10), 0 8px 10px -6px rgba(0, 0, 0, 0.10);
+  --ease-spring: cubic-bezier(.34, 1.45, .64, 1);
+
+  /* Canvas short names. Pages ported from the canvas read these; they only
+     point at the v2 tokens above, so dark mode follows automatically.
+     --ac-warn is deliberately NOT aliased: legacy rules use --ac-warn as a
+     text colour, while the canvas uses it as an accent. Ported canvas CSS
+     reads --ac-warning for dots/borders and --ac-warn-t for text. */
+  --ac-raised: var(--ac-surface-raised);
+  --ac-hover: var(--ac-surface-hover);
+  --ac-2: var(--ac-text-secondary);
+  --ac-muted: var(--ac-text-muted);
+  --ac-hair: var(--ac-line-hairline);
+  --ac-line: var(--ac-line-default);
+  --ac-ctl: var(--ac-control-border);
+  --ac-ctl-h: var(--ac-control-border-hover);
+  --ac-brand-h: var(--ac-brand-hover);
+  --ac-pos: var(--ac-positive);
+  --ac-pos-soft: var(--ac-positive-soft);
+  --ac-neg: var(--ac-negative);
+  --ac-neg-soft: var(--ac-negative-soft);
+  --ac-warn-t: var(--ac-warning-text);
+  --ac-warn-soft: var(--ac-warning-soft);
+  --shadow2: var(--ac-shadow-float);
+  --ease: var(--ease-standard);
+  --ease-e: var(--ease-emphasized);
+  --spring: var(--ease-spring);
 
   /* Spacing Scale (4px base, §7) */
   --ac-space-1: 4px;
@@ -459,43 +495,48 @@ html, body, #dashboardScreen, .page-content {
 html:not(.light) :where([data-ac-ui="v2"], .ac-ui-v2),
 [data-theme="dark"] :where([data-ac-ui="v2"], .ac-ui-v2),
 :where([data-ac-ui="v2"], .ac-ui-v2)[data-theme="dark"] {
-  --ac-canvas: #090D16;
-  --ac-surface: #10151F;
-  --ac-surface-raised: #161C29;
-  --ac-surface-hover: #19202E;
+  /* Dark block of handoff design/project/ac.css (HANDOFF §3a). */
+  --ac-canvas: #0E1412;
+  --ac-surface: #141C19;
+  --ac-surface-raised: #19231F;
+  --ac-surface-hover: #1F2B27;
 
-  --ac-ink: #F4F6F8;
-  --ac-text-secondary: #9AA4B2;
-  --ac-text-muted: #93a1b5;
+  --ac-ink: #E4EBE7;
+  --ac-text-secondary: #B2BDB8;
+  --ac-text-muted: #9AA7A1;
   --ac-text-tertiary: var(--ac-text-muted);
 
-  --ac-line-hairline: rgba(255, 255, 255, 0.08);
-  --ac-line-default: rgba(148, 163, 184, 0.16);
-  --ac-line-strong: rgba(148, 163, 184, 0.28);
-  --ac-control-border: #475569;
-  --ac-control-border-hover: #64748B;
+  --ac-line-hairline: #26322D;
+  --ac-line-default: rgba(228, 235, 231, 0.13);
+  --ac-line-strong: rgba(228, 235, 231, 0.20);
+  --ac-control-border: #56635D;
+  --ac-control-border-hover: #76847D;
 
   --ac-border: var(--ac-line-default);
   --ac-border-strong: var(--ac-line-strong);
 
-  --ac-brand: #10B981;
-  --ac-brand-hover: #059669;
-  --ac-brand-soft: rgba(16, 185, 129, 0.12);
-  --ac-focus: #10B981;
+  --ac-brand: #48C797;
+  --ac-brand-hover: #63D4A9;
+  --ac-brand-soft: rgba(61, 187, 142, 0.14);
+  --ac-focus: #48C797;
   --ac-focus-ring: 0 0 0 2px var(--ac-surface), 0 0 0 4px var(--ac-focus);
 
-  --ac-positive: #34D399;
-  --ac-positive-soft: rgba(52, 211, 153, 0.12);
-  --ac-negative: #FB7185;
-  --ac-negative-soft: rgba(251, 113, 133, 0.12);
-  --ac-warning: #F59E0B;
-  --ac-warning-text: #FBBF24;
-  --ac-warning-soft: rgba(245, 158, 11, 0.12);
-  --ac-info: #60A5FA;
-  --ac-info-soft: rgba(96, 165, 250, 0.12);
+  --ac-positive: #4FC383;
+  --ac-positive-soft: rgba(79, 195, 131, 0.13);
+  --ac-negative: #F2808F;
+  --ac-negative-soft: rgba(242, 128, 143, 0.13);
+  --ac-warning: #E2A94B;
+  --ac-warning-text: #EBBA66;
+  --ac-warning-soft: rgba(226, 169, 75, 0.13);
+  --ac-info: #86ADE3;
+  --ac-info-soft: rgba(134, 173, 227, 0.13);
 
-  --ac-success: #34D399;
-  --ac-danger: #FB7185;
+  --ac-success: #4FC383;
+  --ac-danger: #F2808F;
+
+  --ac-inv: #2F3D38;
+  --ac-shadow-float: 0 12px 28px -6px rgba(0, 0, 0, 0.55), 0 8px 10px -6px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
 
   /* Categorical Chart Tokens Dark (§103.1) */
   --ac-chart-cat-1-dark: #8BB2E8;
@@ -517,43 +558,47 @@ html:not(.light) :where([data-ac-ui="v2"], .ac-ui-v2),
 html.light :where([data-ac-ui="v2"], .ac-ui-v2),
 [data-theme="light"] :where([data-ac-ui="v2"], .ac-ui-v2),
 :where([data-ac-ui="v2"], .ac-ui-v2)[data-theme="light"] {
-  --ac-canvas: #F3F5F4;
-  --ac-surface: #FFFFFF;
-  --ac-surface-raised: #F8FAF9;
-  --ac-surface-hover: #EEF2F0;
+  --ac-canvas: #EFF1EC;
+  --ac-surface: #FCFCFA;
+  --ac-surface-raised: #F5F7F3;
+  --ac-surface-hover: #EAEEE8;
 
-  --ac-ink: #17211E;
-  --ac-text-secondary: #52605B;
-  --ac-text-muted: #5F6C66;
+  --ac-ink: #1D2724;
+  --ac-text-secondary: #535F5A;
+  --ac-text-muted: #5E6A65;
   --ac-text-tertiary: var(--ac-text-muted);
 
-  --ac-line-hairline: #E2E7E4;
-  --ac-line-default: rgba(18, 35, 29, 0.14);
-  --ac-line-strong: rgba(18, 35, 29, 0.20);
-  --ac-control-border: #7D8683;
-  --ac-control-border-hover: #65726C;
+  --ac-line-hairline: #DFE4DE;
+  --ac-line-default: rgba(29, 39, 36, 0.13);
+  --ac-line-strong: rgba(29, 39, 36, 0.20);
+  --ac-control-border: #848D88;
+  --ac-control-border-hover: #68746E;
 
   --ac-border: var(--ac-line-default);
   --ac-border-strong: var(--ac-line-strong);
 
-  --ac-brand: #0F7458;
-  --ac-brand-hover: #0B6049;
-  --ac-brand-soft: #E8F3EE;
-  --ac-focus: #0F7458;
+  --ac-brand: #13785D;
+  --ac-brand-hover: #0D634C;
+  --ac-brand-soft: #E3EFE8;
+  --ac-focus: #13785D;
   --ac-focus-ring: 0 0 0 2px var(--ac-surface), 0 0 0 4px var(--ac-focus);
 
-  --ac-positive: #247A43;
-  --ac-positive-soft: rgba(36, 122, 67, 0.09);
-  --ac-negative: #C13F4D;
-  --ac-negative-soft: rgba(193, 63, 77, 0.09);
+  --ac-positive: #26734A;
+  --ac-positive-soft: rgba(42, 122, 75, 0.10);
+  --ac-negative: #AD3F52;
+  --ac-negative-soft: rgba(185, 71, 90, 0.10);
   --ac-warning: #A96D13;
-  --ac-warning-text: #96610F;
-  --ac-warning-soft: rgba(169, 109, 19, 0.09);
+  --ac-warning-text: #8A590D;
+  --ac-warning-soft: rgba(169, 109, 19, 0.10);
   --ac-info: #315F9A;
   --ac-info-soft: rgba(49, 95, 154, 0.09);
 
-  --ac-success: #247A43;
-  --ac-danger: #C13F4D;
+  --ac-success: #26734A;
+  --ac-danger: #AD3F52;
+
+  --ac-inv: #1D2724;
+  --ac-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.10), 0 8px 10px -6px rgba(0, 0, 0, 0.10);
+  color-scheme: light;
 
   --ac-chart-cat-1: #315F9A;
   --ac-chart-cat-2: #7357A6;
@@ -6116,7 +6161,7 @@ input[type="checkbox"] {
 #mmJournalSpreadsheetTable tbody td.font-mono,
 #mmCashflowSpreadsheetTable tfoot td.font-mono,
 #mmJournalSpreadsheetTable tfoot td.font-mono {
-  font-family: var(--ac-font-mono, 'JetBrains Mono', monospace) !important;
+  font-family: var(--ac-font-mono, 'Geist Mono', monospace) !important;
   font-variant-numeric: tabular-nums !important;
 }
 
@@ -7418,7 +7463,7 @@ html.light { --brand-mark-bg:#e1f5eb; --brand-mark-ink:#07593f; --brand-mark-lin
 /* Mobile launcher replacement: scoped ONLY when V2 bottom bar is active on the shell */
 #acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden) ~ .ac-launcher,
 .app-shell:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launcher,
-body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launcher {
+body:has(> #acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launcher {
   display: none !important;
 }
 
@@ -7435,7 +7480,7 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
   left: 0;
   right: 0;
   z-index: var(--ac-z-shell, 40);
-  height: calc(56px + env(safe-area-inset-bottom, 0px));
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--ac-surface);
   border-top: 1px solid var(--ac-line-default);
@@ -8522,8 +8567,8 @@ details.tr-cat-collapsible > #trCategoryGrid {
 }
 .tr-status-waiting {
   background: var(--ac-warning-soft);
-  color: var(--ac-warn);
-  border-color: var(--ac-warn);
+  color: var(--ac-warning-text, var(--ac-warn));
+  border-color: var(--ac-warning-text, var(--ac-warn));
 }
 .tr-status-expired {
   background: var(--ac-surface-3);
@@ -12754,78 +12799,6 @@ html.light #aiApiKeyModal button[onclick*="closeAiApiKeyModal"] {
    System state mobile text compression
    ========================================================================= */
 
-/* --- Login: Google "Segera tersedia" divider --- */
-.login-google-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 2px 0;
-  color: #4b5563;
-  font-size: 11px;
-}
-.login-google-divider::before,
-.login-google-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: rgba(148, 163, 184, 0.14);
-}
-
-/* --- Login: Google button (disabled placeholder) --- */
-.login-google-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  width: 100%;
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.38);
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: not-allowed;
-  opacity: 0.72;
-  transition: none;
-}
-.login-google-btn svg {
-  flex: 0 0 16px;
-  opacity: 0.55;
-}
-.login-google-badge {
-  margin-left: auto;
-  padding: 1px 7px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.07);
-  color: #64748b;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-
-/* Light mode: Google button */
-html.light .login-google-btn {
-  background: rgba(241, 245, 249, 0.7);
-  border-color: rgba(15, 23, 42, 0.12);
-  color: #94a3b8;
-}
-html.light .login-google-badge {
-  background: rgba(15, 23, 42, 0.05);
-  border-color: rgba(15, 23, 42, 0.10);
-  color: #94a3b8;
-}
-html.light .login-google-divider {
-  color: #94a3b8;
-}
-html.light .login-google-divider::before,
-html.light .login-google-divider::after {
-  background: rgba(15, 23, 42, 0.10);
-}
-
 /* --- Auth choice modal: session expiry emphasis --- */
 /* When data-context="expiry", the Login card is visually emphasized.    */
 /* The Daftar card is de-emphasized — user already has an account.       */
@@ -12987,49 +12960,6 @@ html.light #authChoiceModal[data-context="expiry"] .landing-auth-card:first-of-t
   color: #ffffff !important;
 }
 
-/* Light mode Google button contrast enhancement */
-html.light .login-google-btn {
-  background: #f8fafc !important;
-  border-color: #cbd5e1 !important;
-  color: #334155 !important;
-}
-html.light .login-google-badge {
-  background: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-  color: #475569 !important;
-}
-html.light .login-google-divider {
-  color: #64748b !important;
-}
-html.light .login-google-divider::before,
-html.light .login-google-divider::after {
-  background: #cbd5e1 !important;
-}
-
-/* Dark mode Google button */
-[data-theme="dark"] .login-google-btn,
-html.dark .login-google-btn {
-  background: rgba(15, 23, 42, 0.55) !important;
-  border-color: rgba(148, 163, 184, 0.22) !important;
-  color: #94a3b8 !important;
-}
-[data-theme="dark"] .login-google-badge,
-html.dark .login-google-badge {
-  background: rgba(148, 163, 184, 0.10) !important;
-  border-color: rgba(148, 163, 184, 0.20) !important;
-  color: #94a3b8 !important;
-}
-[data-theme="dark"] .login-google-divider,
-html.dark .login-google-divider {
-  color: #64748b !important;
-}
-[data-theme="dark"] .login-google-divider::before,
-[data-theme="dark"] .login-google-divider::after,
-html.dark .login-google-divider::before,
-html.dark .login-google-divider::after {
-  background: rgba(148, 163, 184, 0.16) !important;
-}
-
 
 /* =========================================================================
    Wave 8D — Final Visual QC: Mobile Account Center readability &
@@ -13087,37 +13017,6 @@ html.light .approval-active-status .approval-state-label {
 }
 html.light .approval-active-status .approval-state-note {
   color: #475569 !important;
-}
-
-/* --- Task 3: Prevent awkward two-line wrapping on Google button --- */
-.login-google-btn {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 8px !important;
-  width: 100% !important;
-  min-height: 44px !important;
-  padding: 0 14px !important;
-  white-space: nowrap !important;
-  flex-wrap: nowrap !important;
-}
-.login-google-btn-inner {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-  white-space: nowrap !important;
-}
-.login-google-btn-inner span {
-  white-space: nowrap !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-}
-.login-google-badge {
-  flex-shrink: 0 !important;
-  white-space: nowrap !important;
-  font-size: 10px !important;
-  padding: 2px 7px !important;
 }
 
 /* --- Task 2: Mobile Account Center readability, wrapping tabs & touch targets --- */
@@ -13246,9 +13145,6 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
   }
   #acAccountCenter .ac-center-body {
     padding: 12px 14px 20px !important;
-  }
-  .login-google-btn-inner span {
-    font-size: 12px !important;
   }
 }
 
@@ -15136,4 +15032,575 @@ html.light #tabAnalisisVision[aria-selected="true"],
 html.light .analisis-subtab.active#tabAnalisisVision {
   color: #ffffff !important;
   font-weight: 700 !important;
+}
+
+/* ---- 9. Redesign v2 foundation -------------------------------------------
+   Shared pieces of the v2 canvas (handoff design/project/ac.css) that every
+   migrated page uses. Values are the canvas values; colours always go
+   through the v2 tokens (fallbacks are the canvas light values for the rare
+   case a state renders outside a v2 scope). */
+
+/* 9a. Data states: empty / loading / error (canvas .stp-box, .stp-load,
+   .spin2, .stp-sk). Rendered in place by public/ac-states.js, not as a
+   fixed overlay. */
+.ac-state {
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 48px 16px;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.ac-state svg {
+  width: 40px;
+  height: 40px;
+  stroke: var(--ac-text-muted, #5E6A65);
+  margin-bottom: 6px;
+}
+.ac-state-error svg { stroke: var(--ac-negative, #AD3F52); }
+.ac-state b {
+  font-size: 18px;
+  letter-spacing: -.01em;
+  color: var(--ac-ink, #1D2724);
+}
+.ac-state p {
+  margin: 0 0 10px;
+  color: var(--ac-text-secondary, #535F5A);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.ac-state-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+/* Canvas .btn.p.sm, with the 44px touch floor on coarse pointers. */
+.ac-btn-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ac-brand, #13785D);
+  background: var(--ac-brand, #13785D);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--motion-hover, 140ms) var(--ease-standard, ease), border-color var(--motion-hover, 140ms);
+}
+.ac-btn-state:hover { background: var(--ac-brand-hover, #0D634C); border-color: var(--ac-brand-hover, #0D634C); }
+.ac-btn-state:focus-visible { outline: 2px solid var(--ac-brand, #13785D); outline-offset: 2px; }
+.ac-btn-state-quiet {
+  background: var(--ac-surface, #FCFCFA);
+  border-color: var(--ac-control-border, #848D88);
+  color: var(--ac-ink, #1D2724);
+}
+.ac-btn-state-quiet:hover { background: var(--ac-surface-hover, #EAEEE8); border-color: var(--ac-control-border-hover, #68746E); }
+html.is-dark .ac-btn-state:not(.ac-btn-state-quiet) { color: #06140E; }
+@media (pointer: coarse) { .ac-btn-state { min-height: 44px; padding: 0 14px; } }
+.ac-state-loading { padding: 24px 0; }
+.ac-state-load {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ac-text-secondary, #535F5A);
+  margin-bottom: 18px;
+}
+.ac-spin {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ac-line-hairline, #DFE4DE);
+  border-top-color: var(--ac-brand, #13785D);
+  border-radius: 50%;
+  animation: ac-rot 700ms linear infinite;
+}
+.ac-state-sk { display: grid; gap: 10px; width: 100%; }
+/* The canvas shimmer animates background-position; the performance budget
+   allows only transform/opacity, so the skeleton breathes with opacity. */
+.ac-state-sk i {
+  display: block;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--ac-surface-hover, #EAEEE8);
+  animation: ac-sk 1.4s ease-in-out infinite alternate;
+}
+.ac-state-sk i:first-child { height: 120px; }
+@keyframes ac-rot { to { transform: rotate(360deg); } }
+@keyframes ac-sk { from { opacity: 1; } to { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) {
+  .ac-spin, .ac-state-sk i { animation: none; }
+}
+
+/* 9b. App shell (canvas .side / .top / .mtab, HANDOFF §4).
+   Widths: phone <=760px, rail 761-1099px, wide >=1100px. The sidebar stays
+   position:fixed with the document as the scroller, which keeps the canvas
+   result (sidebar never moves, only content scrolls) without breaking code
+   that reads window.scrollY. Selectors are anchored on #appShell so they win
+   over the earlier shell layers, several of which use !important. */
+body #appShell > #appSidebar.app-sidebar {
+  background: var(--ac-surface) !important;
+  border-right: 1px solid var(--ac-line-hairline) !important;
+  padding: 16px 12px 12px;
+  gap: 2px;
+  box-shadow: none;
+  color: var(--ac-ink);
+  font-family: var(--ac-font-sans);
+  transform: none;
+  transition: width 320ms var(--ease-emphasized), padding 320ms var(--ease-emphasized);
+}
+body #appShell > #appSidebar > .sidebar-brand {
+  min-height: 0;
+  padding: 2px 10px 16px !important;
+  border-bottom: 0 !important;
+  gap: 10px;
+}
+body #appShell > #appSidebar .sidebar-brand-lockup { gap: 10px; }
+body #appShell > #appSidebar .brand-mark {
+  width: 26px !important;
+  height: 26px !important;
+  flex: 0 0 26px;
+  border-radius: 7px;
+  border: 0;
+  background: var(--ac-inv) !important;
+  display: grid;
+  place-items: center;
+}
+html.is-dark body #appShell > #appSidebar .brand-mark { background: #24302C !important; }
+body #appShell > #appSidebar .sidebar-brand-text strong {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--ac-ink);
+  line-height: 1.2;
+}
+body #appShell > #appSidebar .sidebar-brand-text > span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ac-text-muted);
+  letter-spacing: 0;
+}
+body #appShell > #appSidebar .sidebar-collapse-toggle {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: var(--ac-text-secondary);
+  background: transparent;
+  transition: background 140ms var(--ease-standard), color 140ms var(--ease-standard);
+}
+body #appShell > #appSidebar .sidebar-collapse-toggle:hover { background: var(--ac-surface-hover); color: var(--ac-ink); }
+body #appShell > #appSidebar .sidebar-collapse-toggle svg { transition: transform 320ms var(--ease-spring); }
+body #appShell > #appSidebar .sidebar-menu-label { display: none; }
+body #appShell > #appSidebar > .sidebar-nav { padding: 0 0 12px; }
+body #appShell > #appSidebar .sidebar-nav-group { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; border: 0; }
+body #appShell > #appSidebar .sidebar-group-label {
+  margin: 0;
+  padding: 12px 10px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ac-text-muted);
+}
+body #appShell > #appSidebar .sidebar-admin-group .sidebar-group-label { color: var(--ac-info); }
+body #appShell > #appSidebar .sidebar-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0 !important;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ac-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 140ms var(--ease-standard), color 140ms var(--ease-standard);
+}
+body #appShell > #appSidebar .sidebar-item svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  stroke: currentColor;
+  transition: transform 320ms var(--ease-spring);
+}
+body #appShell > #appSidebar .sidebar-item:hover { background: var(--ac-surface-hover); color: var(--ac-ink); }
+body #appShell > #appSidebar .sidebar-item:hover svg { transform: translateX(2px) scale(1.08); }
+body #appShell > #appSidebar .sidebar-item.active {
+  background: var(--ac-brand-soft) !important;
+  color: var(--ac-ink) !important;
+  font-weight: 600;
+}
+body #appShell > #appSidebar .sidebar-item.active svg { color: var(--ac-brand); transform: scale(1.06); }
+/* The left bar marks the real active state, not decoration. */
+body #appShell > #appSidebar .sidebar-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--ac-brand);
+  animation: ac-edge 360ms var(--ease-spring) both;
+}
+body #appShell > #appSidebar .sidebar-item:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
+body #appShell > #appSidebar .sidebar-item .nav-icon { display: contents; }
+body #appShell > #appSidebar .sidebar-badge {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ac-text-muted);
+}
+body #appShell > #appSidebar .sidebar-footer {
+  border-top: 1px solid var(--ac-line-hairline);
+  margin: 8px -12px -12px;
+  padding: 12px 22px;
+  background: var(--ac-surface);
+}
+/* The sun/moon switch lives in the top bar on every page (HANDOFF §3a). */
+body #appShell > #appSidebar .sidebar-footer .theme-toggle-compact { display: none !important; }
+body #appShell > #appSidebar .user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ac-ink);
+  text-align: left;
+}
+body #appShell > #appSidebar .user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ac-inv);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex: none;
+}
+html.is-dark body #appShell > #appSidebar .user-avatar { background: #24302C; }
+body #appShell > #appSidebar .user-name { font-size: 13px; font-weight: 700; line-height: 1.2; color: var(--ac-ink); }
+body #appShell > #appSidebar .user-role { font-size: 11px; color: var(--ac-text-muted); letter-spacing: 0; text-transform: none; }
+body #appShell > #appSidebar .sidebar-profile-chevron { color: var(--ac-text-secondary); margin-left: auto; }
+body #appShell > #appSidebar #sidebarLogoutBtn {
+  color: var(--ac-negative);
+  background: transparent;
+  border-color: var(--ac-line-hairline);
+  border-radius: 6px;
+  min-height: 30px;
+}
+body #appShell > #appSidebar #sidebarLogoutBtn:hover { background: var(--ac-negative-soft); }
+
+/* Collapsed rail (wide screens on request, 761-1099px by default). */
+body #appShell > #appSidebar.app-sidebar.is-collapsed { width: 68px !important; padding-left: 10px; padding-right: 10px; }
+body #appShell > #appSidebar.is-collapsed > .sidebar-brand { flex-direction: column; gap: 10px; padding: 2px 0 12px !important; }
+body #appShell > #appSidebar.is-collapsed .sidebar-brand-text,
+body #appShell > #appSidebar.is-collapsed .sidebar-label,
+body #appShell > #appSidebar.is-collapsed .sidebar-badge,
+body #appShell > #appSidebar.is-collapsed .user-info,
+body #appShell > #appSidebar.is-collapsed .sidebar-profile-chevron,
+body #appShell > #appSidebar.is-collapsed #sidebarLogoutBtn { display: none !important; }
+body #appShell > #appSidebar.is-collapsed .sidebar-collapse-toggle { margin: 0; }
+body #appShell > #appSidebar.is-collapsed .sidebar-collapse-icon { transform: scaleX(-1); }
+body #appShell > #appSidebar.is-collapsed .sidebar-item { justify-content: center; padding: 0; gap: 0; height: 38px; }
+body #appShell > #appSidebar.is-collapsed .sidebar-item svg { width: 19px; height: 19px; flex-basis: 19px; }
+body #appShell > #appSidebar.is-collapsed .sidebar-group-label { font-size: 0; height: 1px; padding: 0; margin: 9px 8px; background: var(--ac-line-hairline); }
+body #appShell > #appSidebar.is-collapsed .sidebar-footer { padding: 12px 0; margin: 8px -10px -12px; display: flex; justify-content: center; }
+body #appShell > #appSidebar.is-collapsed .user-profile-badge { justify-content: center; flex: 0 0 auto !important; }
+
+/* Content column offsets follow the rail width. */
+@media (min-width: 761px) {
+  /* The older <=1023px drawer rules hid the rail; from 761px it is always
+     on screen (68px rail or full sidebar). */
+  body #appShell > #appSidebar.app-sidebar:not(.hidden) {
+    display: flex !important;
+    position: fixed !important;
+    transform: none !important;
+    width: 240px;
+    max-width: none !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    box-shadow: none !important;
+  }
+  body #appShell > #appMain { margin-left: 240px !important; width: calc(100% - 240px) !important; }
+  body #appShell[data-sidebar-state="collapsed"] > #appMain { margin-left: 68px !important; width: calc(100% - 68px) !important; }
+}
+
+/* Top bar (canvas .top): search, data freshness, theme switch. */
+body #appShell #appMain > .app-header {
+  display: block !important;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--ac-surface) !important;
+  border-bottom: 1px solid var(--ac-line-hairline);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  color: var(--ac-ink);
+}
+body #appShell #appMain > .app-header > .header-shell { padding: 0 32px; max-width: none; }
+body #appShell #appMain > .app-header > .header-shell > .flex { width: 100%; height: 52px; gap: 16px; }
+body #appShell #appMain > .app-header .workspace-header-brand { display: none !important; }
+body #appShell #appMain > .app-header .desktop-header-chips { display: flex !important; order: 2; margin-left: auto !important; gap: 8px; min-width: 0; }
+body #appShell #appMain > .app-header .desktop-header-chips > .header-status-chip:not(#globalLiveRadarChip) { display: none !important; }
+body #appShell #appMain > .app-header #globalSearchBtn { order: 1; }
+body #appShell #appMain > .app-header #topThemeToggle { order: 3; }
+body #appShell #appMain > .app-header .header-account { order: 4; margin-left: 0 !important; }
+/* Signed in, everything in this cluster is hidden; drop the empty slot so it
+   does not open an extra row on phones. Guests still see Masuk / Daftar. */
+body #appShell #appMain > .app-header .header-account:not(:has(#headerLoginBtn:not(.hidden), #headerRegisterBtn:not(.hidden), #reviewBadge:not(.hidden))) { display: none !important; }
+body #appShell #appMain > .app-header #headerAccountSection,
+body #appShell #appMain > .app-header #wibClock { display: none !important; }
+body #appShell #appMain > .app-header > .mobile-nav-row { display: none !important; }
+body #appShell #appMain > .app-header .ac-top-search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  width: min(420px, 100%);
+  padding: 0 12px;
+  border: 1px solid var(--ac-control-border);
+  border-radius: 8px;
+  background: var(--ac-surface);
+  color: var(--ac-text-muted);
+  font-size: 13px;
+  transition: border-color 140ms;
+}
+body #appShell #appMain > .app-header .ac-top-search-trigger:hover { border-color: var(--ac-control-border-hover); }
+body #appShell #appMain > .app-header .ac-top-search-trigger svg { width: 15px; height: 15px; color: var(--ac-text-muted); }
+body #appShell #appMain > .app-header .ac-top-search-text { display: inline !important; color: var(--ac-text-muted); font-size: 13px; }
+body #appShell #appMain > .app-header #globalSearchKbd {
+  display: inline-flex !important;
+  margin-left: auto;
+  font: 600 11px var(--ac-font-mono);
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: transparent;
+  color: var(--ac-text-muted);
+}
+body #appShell #appMain > .app-header #globalLiveRadarChip {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ac-text-secondary) !important;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+body #appShell #appMain > .app-header #globalLiveRadarDot { width: 7px; height: 7px; border-radius: 50%; box-shadow: none !important; }
+.thm {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--ac-line-hairline);
+  background: var(--ac-surface);
+  color: var(--ac-text-secondary);
+  cursor: pointer;
+  flex: none;
+  transition: background 140ms var(--ease-standard), color 140ms;
+}
+.thm:hover { background: var(--ac-surface-hover); color: var(--ac-ink); }
+.thm:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
+.thm svg { width: 16px; height: 16px; }
+.thm .sun { display: none; }
+html.is-dark .thm .sun { display: block; }
+html.is-dark .thm .moon { display: none; }
+
+/* Phone bottom tabs: the existing #acBottomBar (built by mobile-nav.js, with
+   its "Lainnya" sheet) takes the canvas .mtab look. From 761px the rail
+   replaces it, so the bar and its reserved space go away. */
+@media (min-width: 761px) {
+  #acBottomBar[data-ac-ui="v2"], #acMoreSheet, #acMoreSheetBackdrop { display: none !important; }
+  #dashboardScreen #appShell > #appMain { padding-bottom: 0 !important; }
+}
+
+@media (max-width: 760px) {
+  /* The sidebar becomes the compact sticky top bar: logo + "Menu". */
+  #dashboardScreen #appShell { flex-direction: column; }
+  #acBottomBar[data-ac-ui="v2"] {
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+    z-index: 90;
+    background: var(--ac-surface);
+    border-top: 1px solid var(--ac-line-hairline);
+  }
+  #acBottomBar .ac-bottom-nav-item { font-size: 11px; font-weight: 600; color: var(--ac-text-secondary); gap: 3px; }
+  #acBottomBar .ac-bottom-nav-item svg { width: 20px; height: 20px; stroke-width: 1.7; }
+  #acBottomBar .ac-bottom-nav-item.active,
+  #acBottomBar .ac-bottom-nav-item[aria-current="page"] { color: var(--ac-brand); }
+  #acBottomBar .ac-bottom-nav-item:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: -4px; border-radius: 8px; }
+  /* The full-screen menu covers the tabs, as on the canvas (z 120 over 90).
+     The bar is a <body> child outside the menu's stacking context, so it is
+     taken out while the menu is open. */
+  html.workspace-menu-open #acBottomBar[data-ac-ui="v2"] { visibility: hidden; pointer-events: none; }
+  body #appShell > #appSidebar.app-sidebar:not(.hidden) {
+    display: flex !important;
+    position: sticky !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    z-index: 50;
+    padding: 8px 12px;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--ac-line-hairline);
+    transform: none !important;
+    box-shadow: none;
+  }
+  body #appShell > #appSidebar > .sidebar-brand { padding: 2px 4px !important; }
+  body #appShell > #appSidebar:not(.mobile-open) > .sidebar-nav,
+  body #appShell > #appSidebar:not(.mobile-open) > .sidebar-footer { display: none !important; }
+  body #appShell > #appSidebar .sidebar-collapse-toggle { width: auto; height: auto; min-height: 44px; padding: 0; }
+  body #appShell > #appSidebar .sidebar-collapse-icon { display: none; }
+  body #appShell > #appSidebar .sidebar-menu-label {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ac-ink);
+    padding: 6px 12px;
+    border: 1px solid var(--ac-line-hairline);
+    border-radius: 8px;
+    background: var(--ac-surface-raised);
+  }
+  /* Full-screen menu. */
+  #dashboardScreen #appShell > #appSidebar.app-sidebar.mobile-open {
+    position: fixed !important;
+    inset: 0;
+    height: 100dvh !important;
+    z-index: 120;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: 24px;
+  }
+  body #appShell > #appSidebar.mobile-open .sidebar-item { height: 44px; min-height: 44px; font-size: 15px; }
+  body #appShell > #appSidebar.mobile-open .sidebar-footer { margin: 12px -12px 0; }
+  body #appShell > #appMain { margin-left: 0 !important; width: 100% !important; }
+  #sidebarScrim { display: none !important; }
+  /* Search and freshness scroll away with the page on phones. */
+  body #appShell #appMain > .app-header { position: static; height: auto !important; min-height: 0 !important; }
+  body #appShell #appMain > .app-header > .header-shell { padding: 8px 16px; height: auto !important; align-items: stretch; }
+  body #appShell #appMain > .app-header > .header-shell > .flex { height: auto; min-height: 52px; flex-wrap: wrap; gap: 8px 12px; }
+  body #appShell #appMain > .app-header #globalSearchBtn { order: 3; width: 100%; }
+  body #appShell #appMain > .app-header .desktop-header-chips { order: 1; margin-left: 0; flex: 1 1 160px; min-width: 0; }
+  body #appShell #appMain > .app-header #globalLiveRadarChip { white-space: normal; font-size: 11px; }
+  body #appShell #appMain > .app-header #topThemeToggle { order: 2; }
+}
+
+@keyframes ac-edge { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) {
+  body #appShell > #appSidebar .sidebar-item,
+  body #appShell > #appSidebar .sidebar-item svg,
+  body #appShell > #appSidebar.app-sidebar,
+  body #appShell > #appSidebar .sidebar-collapse-toggle svg { transition: none !important; }
+  body #appShell > #appSidebar .sidebar-item.active::before { animation: none; }
+}
+
+/* 9c. Motion layer and Si Mata (canvas ac.css "motion layer v1" + "Si Mata
+   mini", HANDOFF §7). Driven by public/ac-motion.js. Only transform and
+   opacity animate; reduced motion turns all of it off. */
+[data-mag] { transition: translate 360ms var(--ease-spring, cubic-bezier(.34,1.45,.64,1)); }
+[data-rip] { position: relative; overflow: hidden; }
+[data-rip]::before {
+  content: "";
+  position: absolute;
+  left: var(--rx, 50%);
+  top: var(--ry, 50%);
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .22;
+  pointer-events: none;
+  animation: ac-rip 620ms var(--ease-emphasized, cubic-bezier(.16,1,.3,1)) forwards;
+  z-index: 0;
+}
+@keyframes ac-rip { from { transform: scale(0); opacity: .28; } to { transform: scale(28); opacity: 0; } }
+/* Number flash: a tinted overlay fades out (canvas animates `color`). */
+[data-ac-flash] { position: relative; }
+[data-ac-flash].ac-flash-up::after,
+[data-ac-flash].ac-flash-dn::after {
+  content: "";
+  position: absolute;
+  inset: -1px -3px;
+  border-radius: 4px;
+  pointer-events: none;
+  animation: ac-flash 900ms var(--ease-standard, ease) forwards;
+}
+[data-ac-flash].ac-flash-up::after { background: var(--ac-positive-soft, rgba(42,122,75,.10)); }
+[data-ac-flash].ac-flash-dn::after { background: var(--ac-negative-soft, rgba(185,71,90,.10)); }
+@keyframes ac-flash { from { opacity: 1; } to { opacity: 0; } }
+
+.mm { position: fixed; right: 20px; bottom: 20px; z-index: 95; background: none; display: flex; align-items: flex-end; gap: 10px; flex-direction: row-reverse; pointer-events: none; }
+.mm[hidden] { display: none !important; }
+.mm > * { pointer-events: auto; }
+.mm-eye { width: 62px; height: 62px; padding: 0; border: 0; background: transparent; border-radius: 50%; cursor: pointer; animation: mmIn 700ms var(--ease-spring) 600ms both; filter: drop-shadow(0 10px 18px rgba(14,23,20,.3)); }
+.mm-eye:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
+.mm-eye svg { display: block; width: 100%; height: 100%; }
+.mm-body { transform-origin: 60px 60px; transition: transform 360ms var(--ease-spring); }
+.mm-eye:hover .mm-body { transform: scale(1.08) rotate(-4deg); }
+.mm-lid { transform-origin: 60px 56px; transform: scaleY(0); animation: mmBlink 6.2s infinite 3s; }
+.mm-mouth { opacity: 0; transform-origin: 60px 86px; }
+.mm.talk .mm-smile { opacity: 0; }
+.mm.talk .mm-mouth { opacity: 1; animation: mmTalk 260ms ease-in-out infinite alternate; }
+@keyframes mmTalk { from { transform: scaleY(.35); } to { transform: scaleY(1.1); } }
+.mm-bub { order: 2; }
+.mm.near .mm-lid { animation: none; transform: scaleY(.3); transition: transform 180ms var(--ease-standard); }
+.mm-brow path, .m-big, .m-flat, .m-frown, .m-sweat { opacity: 0; transition: opacity 220ms var(--ease-standard); }
+.mm-brow path { fill: none; stroke: #CFE9DD; stroke-width: 3.2; stroke-linecap: round; }
+.m-big { fill: #34D399; }
+.m-flat, .m-frown { fill: none; stroke: #34D399; stroke-width: 3.5; stroke-linecap: round; }
+.m-sweat { fill: #86ADE3; }
+.mm[data-mood="up2"] .b-up, .mm[data-mood="up2"] .m-big, .mm[data-mood="flat"] .m-flat, .mm[data-mood="down"] .b-wo, .mm[data-mood="down"] .m-frown, .mm[data-mood="down2"] .b-wo, .mm[data-mood="down2"] .m-frown, .mm[data-mood="down2"] .m-sweat { opacity: 1; }
+.mm[data-mood="up2"] .mm-smile, .mm[data-mood="flat"] .mm-smile, .mm[data-mood="down"] .mm-smile, .mm[data-mood="down2"] .mm-smile, .mm.talk .m-big, .mm.talk .m-flat, .mm.talk .m-frown { opacity: 0; }
+.mm-eye.hop { animation: mmHop 820ms var(--ease-spring) 1; }
+@keyframes mmHop { 0% { transform: none; } 28% { transform: translateY(-9px) rotate(-3deg); } 55% { transform: none; } 75% { transform: translateY(-3px); } 100% { transform: none; } }
+.mm-bub { max-width: 240px; background: #0E1714; color: #EAF1EE; font-size: 13px; line-height: 1.45; padding: 10px 12px; border-radius: 12px 12px 4px 12px; box-shadow: 0 14px 30px -12px rgba(14,23,20,.45); opacity: 0; transform: translateY(6px) scale(.96); transform-origin: right bottom; transition: opacity 220ms var(--ease-standard), transform 360ms var(--ease-spring); margin-bottom: 14px; pointer-events: none; }
+.mm-bub.on { opacity: 1; transform: none; pointer-events: auto; }
+.mm-x { position: absolute; right: -4px; top: -8px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--ac-line-hairline); background: var(--ac-surface); color: var(--ac-text-secondary); font-size: 12px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 180ms; }
+.mm:hover .mm-x, .mm-x:focus-visible { opacity: 1; }
+.mm-x:focus-visible, .mm-mini:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
+.mm-mini { display: none; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--ac-line-hairline); background: var(--ac-surface); font: 600 12px var(--ac-font-sans); color: var(--ac-text-secondary); cursor: pointer; box-shadow: 0 6px 16px -8px rgba(0,0,0,.25); }
+.mm.off .mm-eye, .mm.off .mm-bub, .mm.off .mm-x { display: none; }
+.mm.off .mm-mini { display: inline-flex; align-items: center; }
+@keyframes mmIn { from { opacity: 0; transform: translateY(16px) scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes mmBlink { 0%, 94%, 100% { transform: scaleY(0); } 96% { transform: scaleY(1); } }
+@media (max-width: 760px) { .mm { right: 12px; bottom: 72px; } }
+@media (max-width: 560px) { .mm { right: 12px; bottom: 70px; } .mm-eye { width: 46px; height: 46px; } .mm-bub { max-width: 200px; } }
+/* The blink pauses while the tab is in the background (HANDOFF §2.4). */
+html.ac-tab-hidden .mm-lid, html.ac-tab-hidden .mm.talk .mm-mouth { animation-play-state: paused; }
+/* Not on the auth screens (HANDOFF §2.4): focus stays on the form. */
+/* Child combinators keep this check off ordinary DOM changes: a body:has() with
+   a descendant argument is re-checked on every mutation in the page (it cost
+   about half of each chart hover frame). Same elements, same meaning. */
+body:has(> #loginModal:not(.hidden), > #registerModal:not(.hidden), > #selfResetModal:not(.hidden), > #dashboardScreen > #resetPasswordModal:not(.hidden), > #googleCompleteProfileModal:not(.hidden), > dialog.legacy-gmail-dialog[open]) .mm { display: none !important; }
+html.is-dark .mm-bub { background: #22302B; border: 1px solid #33433D; }
+html.is-dark .mm-body > path:first-child { fill: #2A3C35; stroke: #48C797; stroke-opacity: .7; stroke-width: 2.5; }
+html.is-dark .mm-lid path { fill: #2A3C35; }
+html.is-dark .mm-eye svg [fill="#F6F7F5"] { fill: #EEF3F0; }
+html.is-dark .mm-eye { filter: drop-shadow(0 0 10px rgba(72,199,151,.28)) drop-shadow(0 8px 16px rgba(0,0,0,.55)); }
+@media (prefers-reduced-motion: reduce) {
+  [data-mag] { transition: none; }
+  [data-rip]::before, [data-ac-flash]::after { animation: none; display: none; }
+  .mm-eye, .mm-lid, .mm.talk .mm-mouth, .mm-eye.hop { animation: none !important; }
+  .mm-body, .mm-bub { transition: none; }
 }

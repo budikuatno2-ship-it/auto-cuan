@@ -40,27 +40,27 @@ with sync_playwright() as pw:
     page.on('pageerror',lambda error:errors.append(str(error)))
     page.route('**/*',network)
     try:
-        # FINAL-BUG-004: the deprecated alias must resolve to Dashboard, and the
-        # decommissioned worksheet must not exist anywhere in the SPA.
+        # Kelola Keuangan revived per redesign v2 (owner decision 20 Oct 2026):
+        # /preview/kelola-keuangan opens the revived worksheet without duplicate journal.
         page.goto(BASE+'/preview/kelola-keuangan',wait_until='domcontentloaded')
-        page.wait_for_selector('#page-dashboard',state='visible',timeout=30000)
-        check('Deprecated kelola-keuangan alias lands on Dashboard',page.locator('#page-dashboard').is_visible())
-        check('Decommissioned worksheet is absent from the SPA',page.locator('#page-money-management,#mmCashflowSpreadsheetTable,#mmCashflowSpreadsheetBody').count()==0)
+        page.wait_for_selector('#page-money-management',state='visible',timeout=30000)
+        check('Revived kelola-keuangan lands on worksheet',page.locator('#page-money-management').is_visible())
+        check('Worksheet is present in the SPA',page.locator('#page-money-management').count()>=1)
         check('No duplicate Finance journal',page.locator('#mmPanelJournal,#mmTabBtnJournal').count()==0)
         check('Sidebar fixed in full app',page.locator('#appSidebar').evaluate("e=>getComputedStyle(e).position==='fixed'"))
         page.evaluate("navigateTo('portofolio')")
         page.wait_for_selector('#portofolioPartialMount #tabStrip',timeout=30000)
         page.wait_for_function("document.querySelector('#portofolioPartialMount #app') && !document.querySelector('#portofolioPartialMount #app').classList.contains('hidden')",timeout=30000)
-        check('Portfolio keeps six primary tabs and scenarios out of the primary strip',
-              page.locator('#portofolioPartialMount #tabStrip [data-tab]').count()==6
-              and page.locator('#portofolioPartialMount #tabStrip [data-tab="scenarios"]').count()==0
-              and page.locator('#portofolioPartialMount .pcc-subnav [data-tab="scenarios"]').count()>=1)
+        check('Portfolio has seven primary tabs matching Portfolio.dc.html',
+              page.locator('#portofolioPartialMount #tabStrip [data-tab]').count()==7
+              and page.locator('#portofolioPartialMount #tabStrip [data-tab="scenarios"]').count()>=1)
         for tab in ['today','planner','watch','risk']:
             page.locator('#portofolioPartialMount #tabStrip [data-tab="'+tab+'"]').click()
             check('Portfolio '+tab+' opens',page.locator('#portofolioPartialMount #page-'+tab).is_visible())
-        page.locator('#portofolioPartialMount .pcc-subnav [data-tab="scenarios"]').first.click()
-        check('Portfolio scenarios subview opens',page.locator('#portofolioPartialMount #page-scenarios').is_visible())
-        for tab in ['journal','ai']:
+        if page.locator('#portofolioPartialMount .pcc-subnav [data-tab="scenarios"]').count()>=1:
+            page.locator('#portofolioPartialMount .pcc-subnav [data-tab="scenarios"]').first.click()
+            check('Portfolio scenarios subview opens',page.locator('#portofolioPartialMount #page-scenarios').is_visible())
+        for tab in ['scenarios','journal','ai']:
             page.locator('#portofolioPartialMount #tabStrip [data-tab="'+tab+'"]').click()
             check('Portfolio '+tab+' opens',page.locator('#portofolioPartialMount #page-'+tab).is_visible())
         for tab in ['analisis-chart','bandarmologi','intel','hunter','insider','ranking','pattern']:
@@ -69,11 +69,11 @@ with sync_playwright() as pw:
             page.wait_for_selector('#analisisPartialMount #analisisInput',state='attached')
             check('Analysis '+tab+' has exactly one active sidebar destination',page.locator('#appSidebar .sidebar-item.active').count()==1 and page.locator('#appSidebar .sidebar-item.active').get_attribute('data-analysis-tab')==tab)
             if tab!='analisis-chart':check('Analysis '+tab+' panel opens',page.locator('#panel-tab-'+tab).is_visible())
-        # Rapid navigation ending on the decommissioned destination must resolve
-        # deterministically to Dashboard with exactly one visible page.
-        page.evaluate("navigateTo('analisis','intel');navigateTo('analisis','hunter');navigateTo('money-management')")
+        # Rapid navigation ending on a valid destination must resolve
+        # deterministically with exactly one visible page.
+        page.evaluate("navigateTo('analisis','intel');navigateTo('analisis','hunter');navigateTo('portofolio')")
         page.wait_for_timeout(250)
-        check('Rapid navigation to a decommissioned page lands on Dashboard',page.locator('#page-dashboard').is_visible() and not page.locator('#page-analisis').is_visible())
+        check('Rapid navigation resolves deterministically to portfolio',page.locator('#page-portofolio').is_visible() and not page.locator('#page-analisis').is_visible())
         check('Exactly one workspace page is visible after rapid navigation',page.locator('.page-content:not(.hidden)').count()==1)
         page.mouse.move(1100, 100)
         for motion in ['reduce','no-preference']:

@@ -117,7 +117,9 @@ const PREVIEW_MODULE_MAP = {
   'portofolio': 'portofolio',
   'portfolio': 'portofolio',
   'kelola-keuangan': 'kelola-keuangan',
-  'money-management': 'kelola-keuangan'
+  'money-management': 'kelola-keuangan',
+  'catatan-admin': 'catatan-admin',
+  'catatan': 'catatan-admin'
 };
 
 function getPreviewInjectionHtml(module, options = {}) {
@@ -386,6 +388,8 @@ function getPreviewInjectionHtml(module, options = {}) {
         }, 120);
       } else if (mod === 'kelola-keuangan') {
         if (typeof navigateTo === 'function') navigateTo('money-management');
+      } else if (mod === 'catatan-admin') {
+        if (typeof navigateTo === 'function') navigateTo('catatan-admin');
       }
     }
 
@@ -462,6 +466,7 @@ const ROUTE_REWRITES = {
   '/portfolio-planner': '/portfolio-command-center-v2.html',
   '/kelola-keuangan': '/index.html',
   '/money-management': '/index.html',
+  '/catatan-admin': '/index.html',
   // Public BYOK registration form (mirrors the Vercel rewrite so the VPS
   // fallback serves the same URL shape).
   '/register': '/register.html',
@@ -1698,7 +1703,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (await serveData(req,res,pathname.slice('/data'.length),{noStore:true,extensionFallback:false})) return;
   }
-  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord') pathname = '/index.html';
+  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord' || pathname === '/catatan-admin') pathname = '/index.html';
   if (await servePublic(req,res,pathname)) return;
   if (await servePublic(req,res,'/404.html',{status:404,noStore:true})) return;
   res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:'404 Not Found');

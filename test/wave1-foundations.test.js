@@ -15,29 +15,31 @@ const viewportCss = fs.readFileSync(path.join(ROOT, 'public', 'viewport.css'), '
 // ---------------------------------------------------------------------------
 // 1. Canonical Tokens (§4.1, §6-§9, §50, §103)
 // ---------------------------------------------------------------------------
+// Values follow the redesign v2 canvas (handoff design/project/ac.css), which
+// DESIGN.md §4.1 now records.
 test('Wave 1: Canonical light tokens match DESIGN.md §4.1 exactly', () => {
   const lightTokens = [
-    ['--ac-canvas', '#F3F5F4'],
-    ['--ac-surface', '#FFFFFF'],
-    ['--ac-surface-raised', '#F8FAF9'],
-    ['--ac-surface-hover', '#EEF2F0'],
-    ['--ac-ink', '#17211E'],
-    ['--ac-text-secondary', '#52605B'],
-    ['--ac-text-muted', '#5F6C66'],
-    ['--ac-line-hairline', '#E2E7E4'],
-    ['--ac-control-border', '#7D8683'],
-    ['--ac-control-border-hover', '#65726C'],
-    ['--ac-brand', '#0F7458'],
-    ['--ac-brand-hover', '#0B6049'],
-    ['--ac-brand-soft', '#E8F3EE'],
-    ['--ac-focus', '#0F7458'],
-    ['--ac-positive', '#247A43'],
-    ['--ac-negative', '#C13F4D'],
+    ['--ac-canvas', '#EFF1EC'],
+    ['--ac-surface', '#FCFCFA'],
+    ['--ac-surface-raised', '#F5F7F3'],
+    ['--ac-surface-hover', '#EAEEE8'],
+    ['--ac-ink', '#1D2724'],
+    ['--ac-text-secondary', '#535F5A'],
+    ['--ac-text-muted', '#5E6A65'],
+    ['--ac-line-hairline', '#DFE4DE'],
+    ['--ac-control-border', '#848D88'],
+    ['--ac-control-border-hover', '#68746E'],
+    ['--ac-brand', '#13785D'],
+    ['--ac-brand-hover', '#0D634C'],
+    ['--ac-brand-soft', '#E3EFE8'],
+    ['--ac-focus', '#13785D'],
+    ['--ac-positive', '#26734A'],
+    ['--ac-negative', '#AD3F52'],
     ['--ac-warning', '#A96D13'],
-    ['--ac-warning-text', '#96610F'],
+    ['--ac-warning-text', '#8A590D'],
     ['--ac-info', '#315F9A'],
-    ['--ac-success', '#247A43'],
-    ['--ac-danger', '#C13F4D']
+    ['--ac-success', '#26734A'],
+    ['--ac-danger', '#AD3F52']
   ];
 
   for (const [token, value] of lightTokens) {
@@ -107,10 +109,10 @@ test('Wave 1: Categorical chart palette matches DESIGN.md §103.1', () => {
 // ---------------------------------------------------------------------------
 test('Wave 1: Dark theme remapping supports Night Research Mode without broken styles', () => {
   assert.match(uiThemeCss, /html:not\(\.light\),[\s\S]*?\[data-theme="dark"\]/);
-  assert.match(uiThemeCss, /\[data-theme="dark"\][\s\S]*?--ac-canvas:\s*#090D16/i);
-  assert.match(uiThemeCss, /\[data-theme="dark"\][\s\S]*?--ac-surface:\s*#10151F/i);
-  assert.match(uiThemeCss, /\[data-theme="dark"\][\s\S]*?--ac-ink:\s*#F4F6F8/i);
-  assert.match(uiThemeCss, /\[data-theme="dark"\][\s\S]*?--ac-positive:\s*#34D399/i);
+  assert.match(uiThemeCss, /\[data-theme="dark"\][\s\S]*?--ac-canvas:\s*#0E1412/i);
+  assert.match(uiThemeCss, /\[data-theme="dark"\][\s\S]*?--ac-surface:\s*#141C19/i);
+  assert.match(uiThemeCss, /\[data-theme="dark"\][\s\S]*?--ac-ink:\s*#E4EBE7/i);
+  assert.match(uiThemeCss, /\[data-theme="dark"\][\s\S]*?--ac-positive:\s*#4FC383/i);
 });
 
 // ---------------------------------------------------------------------------

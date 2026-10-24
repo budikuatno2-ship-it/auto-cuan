@@ -1,6 +1,11 @@
-<div class="page-header mb-4">
-  <h1 class="page-title text-2xl font-bold text-[var(--text-primary)]">Portfolio Command Center</h1>
-  <p class="page-subtitle text-xs text-[var(--text-secondary)]">Satu pusat keputusan untuk modal, posisi, risiko, perubahan, dan jurnal.</p>
+<div class="ph rise d0 page-header mb-4">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+    <div>
+      <h1 class="page-title text-2xl font-bold text-[var(--text-primary)]" style="margin:0 0 4px">Portfolio</h1>
+      <p class="page-subtitle text-xs text-[var(--text-secondary)]" style="margin:0">Rencana dan posisi mandiri. Tidak ada eksekusi broker otomatis. Semua angka dihitung dari data yang Anda simpan.</p>
+    </div>
+    <span class="chip i" style="font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--ac-hair);background:var(--ac-raised);color:var(--ac-2)">Data asli</span>
+  </div>
 </div>
 <section id="accessGate" class="access-gate">
       <span class="spinner" aria-hidden="true"></span>
@@ -15,9 +20,9 @@
         <select id="pccMobileSectionSelect" class="pcc-mobile-select" aria-label="Pilih Bagian Portofolio">
           <option value="today" selected>Hari Ini</option>
           <option value="planner">Rencana Posisi</option>
-          <option value="watch">Pantauan</option>
-          <option value="risk">Risiko &amp; Avg Down</option>
-          <option value="scenarios">Skenario Posisi</option>
+          <option value="watch">Posisi Aktif</option>
+          <option value="risk">Risk Lab</option>
+          <option value="scenarios">Skenario</option>
           <option value="journal">Jurnal</option>
           <option value="ai">Asisten AI</option>
         </select>
@@ -26,8 +31,9 @@
       <nav id="tabStrip" class="tab-strip" role="tablist" aria-label="Portfolio Command Center">
         <button class="tab active" role="tab" aria-selected="true" data-tab="today"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625z"/></svg><span>Hari Ini</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="planner"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg><span>Rencana Posisi</span></button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="watch"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Pantauan</span></button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="risk"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.002A11.959 11.959 0 0112 2.714zm0 13.036h.008v.008H12v-.008z"/></svg><span>Risiko &amp; Avg Down</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="watch"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Posisi Aktif</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="risk"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.002A11.959 11.959 0 0112 2.714zm0 13.036h.008v.008H12v-.008z"/></svg><span>Risk Lab</span></button>
+        <button id="portTabScenarios" class="tab" role="tab" aria-selected="false" data-tab="scenarios"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.75v15a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V4.5A2.25 2.25 0 016.75 2.25h10.5a2.25 2.25 0 012.25 2.25z"/></svg><span>Skenario</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="journal"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg><span>Jurnal</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="ai"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg><span>Asisten AI</span></button>
       </nav>
@@ -82,38 +88,18 @@
       <section id="page-planner" class="page" role="tabpanel">
         <div class="grid two">
           <article class="card">
-            <div class="card-head"><div><h2>Budget-to-Stock Planner</h2><p>Mulai dari modal dan batas alokasi, lalu lihat rentang harga saham yang masuk.</p></div></div>
+            <div class="card-head"><div><h2>Kalkulator Ukuran Posisi</h2><p>Stop loss wajib berada di bawah entry. Target boleh dikosongkan.</p></div></div>
             <div class="form-grid">
-              <div class="field full"><label for="budgetCapital">Modal tersedia</label><input id="budgetCapital" inputmode="numeric" value="5000000"></div>
-              <div class="field"><label for="budgetProfile">Profil risiko</label><select id="budgetProfile"><option value="LOW">Rendah</option><option value="MEDIUM" selected>Sedang</option><option value="HIGH">Tinggi</option></select></div>
-              <div class="field"><label for="budgetReserve">Dana cadangan (%)</label><input id="budgetReserve" type="number" min="0" max="90" value="10"></div>
-              <div class="field"><label for="budgetPositions">Maksimal posisi aktif</label><input id="budgetPositions" type="number" min="1" max="20" value="4"></div>
-              <div class="field"><label for="budgetTicker">Cek ticker tertentu</label><input id="budgetTicker" maxlength="8" placeholder="BBRI"></div>
-            </div>
-            <div class="actions"><button id="calculateBudget" class="btn primary">Hitung Kapasitas</button><button id="checkBudgetTicker" class="btn">Cek Ticker</button></div>
-            <div id="budgetError" class="error hidden"></div>
-            <div id="budgetBands" class="budget-band-grid"></div>
-          </article>
-          <article class="card">
-            <div class="card-head"><div><h2>Kandidat Sesuai Budget</h2><p>Kandidat berasal dari ticker sektor cache atau ticker yang kamu periksa. Kelayakan tetap perlu dianalisis.</p></div></div>
-            <div id="budgetCandidates" class="empty">Hitung kapasitas untuk melihat kandidat.</div>
-          </article>
-        </div>
-
-        <div class="grid two section-gap">
-          <article class="card">
-            <div class="card-head"><div><h2>Rencana Posisi Manual</h2><p>Stop loss wajib berada di bawah entry. TP boleh dikosongkan.</p></div></div>
-            <div class="form-grid">
-              <div class="field full"><label for="capital">Modal tersedia</label><input id="capital" inputmode="numeric" value="5000000"></div>
+              <div class="field full"><label for="capital">Modal alokasi (Rp)</label><input id="capital" inputmode="numeric" value="5000000"></div>
               <div class="field"><label for="riskProfile">Profil risiko</label><select id="riskProfile"><option value="LOW">Rendah</option><option value="MEDIUM" selected>Sedang</option><option value="HIGH">Tinggi</option></select></div>
-              <div class="field"><label for="riskPct">Risiko per transaksi (%)</label><input id="riskPct" type="number" step="0.01" value="1"></div>
+              <div class="field"><label for="riskPct">Toleransi risiko (%)</label><input id="riskPct" type="number" step="0.01" value="1"></div>
               <div class="field"><label for="reservePct">Dana cadangan (%)</label><input id="reservePct" type="number" value="10"></div>
               <div class="field"><label for="maxPositions">Maksimal posisi</label><input id="maxPositions" type="number" value="4"></div>
               <div class="field full"><label for="ticker">Ticker</label><input id="ticker" maxlength="8" placeholder="BBRI"></div>
-              <div class="field"><label for="entry">Harga entry</label><input id="entry" inputmode="numeric"></div>
+              <div class="field"><label for="entry">Harga beli</label><input id="entry" inputmode="numeric"></div>
               <div class="field"><label for="stop">Stop loss</label><input id="stop" inputmode="numeric"></div>
-              <div class="field"><label for="tp1">TP1</label><input id="tp1" inputmode="numeric"></div>
-              <div class="field"><label for="tp2">TP2</label><input id="tp2" inputmode="numeric"></div>
+              <div class="field"><label for="tp1">Target 1</label><input id="tp1" inputmode="numeric"></div>
+              <div class="field"><label for="tp2">Target 2</label><input id="tp2" inputmode="numeric"></div>
             </div>
             <div class="actions"><button id="calculatePlan" class="btn primary">Hitung Rencana</button><button id="resetPlan" class="btn">Reset</button></div>
             <div id="plannerError" class="error hidden"></div>
@@ -140,26 +126,51 @@
           </article>
         </div>
 
-        <article class="card section-gap">
-          <div class="card-head"><div><h2>Sudah Keburu Entry?</h2><p>Catat posisi yang sudah dimiliki agar ikut dipantau.</p></div></div>
-          <div class="form-grid three">
-            <div class="field"><label for="ownedTicker">Ticker</label><input id="ownedTicker" maxlength="8" placeholder="BBCA"></div>
-            <div class="field"><label for="ownedEntry">Harga beli rata-rata</label><input id="ownedEntry" inputmode="numeric"></div>
-            <div class="field"><label for="ownedLots">Jumlah lot</label><input id="ownedLots" type="number" min="1"></div>
-            <div class="field"><label for="ownedStop">Stop loss rencana</label><input id="ownedStop" inputmode="numeric"></div>
-            <div class="field"><label for="ownedTp1">TP1</label><input id="ownedTp1" inputmode="numeric"></div>
-            <div class="field"><label for="ownedTp2">TP2</label><input id="ownedTp2" inputmode="numeric"></div>
+        <details class="adv-tools">
+          <summary>Alat lanjutan (Kapasitas budget &amp; catat posisi lama)</summary>
+          <div class="adv-tools-content">
+            <div class="grid two">
+              <article class="card">
+                <div class="card-head"><div><h2>Budget-to-Stock Planner</h2><p>Mulai dari modal dan batas alokasi, lalu lihat rentang harga saham yang masuk.</p></div></div>
+                <div class="form-grid">
+                  <div class="field full"><label for="budgetCapital">Modal tersedia</label><input id="budgetCapital" inputmode="numeric" value="5000000"></div>
+                  <div class="field"><label for="budgetProfile">Profil risiko</label><select id="budgetProfile"><option value="LOW">Rendah</option><option value="MEDIUM" selected>Sedang</option><option value="HIGH">Tinggi</option></select></div>
+                  <div class="field"><label for="budgetReserve">Dana cadangan (%)</label><input id="budgetReserve" type="number" min="0" max="90" value="10"></div>
+                  <div class="field"><label for="budgetPositions">Maksimal posisi aktif</label><input id="budgetPositions" type="number" min="1" max="20" value="4"></div>
+                  <div class="field"><label for="budgetTicker">Cek ticker tertentu</label><input id="budgetTicker" maxlength="8" placeholder="BBRI"></div>
+                </div>
+                <div class="actions"><button id="calculateBudget" class="btn primary">Hitung Kapasitas</button><button id="checkBudgetTicker" class="btn">Cek Ticker</button></div>
+                <div id="budgetError" class="error hidden"></div>
+                <div id="budgetBands" class="budget-band-grid"></div>
+              </article>
+              <article class="card">
+                <div class="card-head"><div><h2>Kandidat Sesuai Budget</h2><p>Kandidat berasal dari ticker sektor cache atau ticker yang kamu periksa. Kelayakan tetap perlu dianalisis.</p></div></div>
+                <div id="budgetCandidates" class="empty">Hitung kapasitas untuk melihat kandidat.</div>
+              </article>
+            </div>
+
+            <article class="card section-gap">
+              <div class="card-head"><div><h2>Sudah Keburu Entry?</h2><p>Catat posisi yang sudah dimiliki agar ikut dipantau.</p></div></div>
+              <div class="form-grid three">
+                <div class="field"><label for="ownedTicker">Ticker</label><input id="ownedTicker" maxlength="8" placeholder="BBCA"></div>
+                <div class="field"><label for="ownedEntry">Harga beli rata-rata</label><input id="ownedEntry" inputmode="numeric"></div>
+                <div class="field"><label for="ownedLots">Jumlah lot</label><input id="ownedLots" type="number" min="1"></div>
+                <div class="field"><label for="ownedStop">Stop loss rencana</label><input id="ownedStop" inputmode="numeric"></div>
+                <div class="field"><label for="ownedTp1">TP1</label><input id="ownedTp1" inputmode="numeric"></div>
+                <div class="field"><label for="ownedTp2">TP2</label><input id="ownedTp2" inputmode="numeric"></div>
+              </div>
+              <div class="actions"><button id="saveOwned" class="btn">Catat Posisi</button></div>
+              <div id="ownedMessage" class="success hidden"></div>
+            </article>
           </div>
-          <div class="actions"><button id="saveOwned" class="btn">Catat Posisi</button></div>
-          <div id="ownedMessage" class="success hidden"></div>
-        </article>
+        </details>
       </section>
 
       <section id="page-watch" class="page" role="tabpanel">
         <article class="card">
-          <div class="card-head"><div><h2>Pantauan Posisi</h2><p>Klik ticker untuk membuka Ticker Intelligence.</p></div><button id="refreshPrices" class="btn">Refresh Harga</button></div>
+          <div class="card-head"><div><h2>Posisi Aktif</h2><p>Posisi kini di antara SL dan TP1 ditunjukkan oleh penanda. Klik ticker untuk detail.</p></div><button id="refreshPrices" class="btn">Refresh Harga</button></div>
           <div id="watchEmpty" class="empty">Belum ada posisi atau rencana tersimpan.</div>
-          <div id="watchTable" class="table-wrap hidden"><table><thead><tr><th>Ticker</th><th>Status</th><th>Lot</th><th>Entry</th><th>Harga</th><th>P/L</th><th>Stop</th><th>TP1 / TP2</th><th>Aksi</th></tr></thead><tbody id="watchBody"></tbody></table></div>
+          <div id="watchTable" class="table-wrap tw hidden"><table class="tbl" style="min-width:1000px"><thead><tr><th>Ticker</th><th>Status</th><th>Lot</th><th>Harga beli</th><th>Harga kini</th><th>P/L</th><th>Stop</th><th>TP1 / TP2</th><th>Aksi</th></tr></thead><tbody id="watchBody"></tbody></table></div>
           <div id="watchCards" class="mobile-position-list"></div>
         </article>
       </section>

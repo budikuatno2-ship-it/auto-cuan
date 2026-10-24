@@ -91,7 +91,7 @@ const signals = ['RUNNING','TP1_HIT','TP2_HIT','SL_HIT','WAITING','EXPIRED'].map
 const targets = {
  insider:'#insiderRosterSection button, #insiderRosterSection input, #insiderRosterSection select, #insiderMobileTabs button',
  portfolio:'#qualityNote', watchlist:'.wl-filter-btn', trackrecord:'.tr-status-pill',
- dashboard:'#page-dashboard .ac-section-hint, #page-dashboard .market-tile-note', intel:'#panel-tab-intel .text-gray-500, #panel-tab-intel .text-gray-400'
+ dashboard:'#page-dashboard .sub:not(:empty), #page-dashboard .sec-h-note:not(:empty), #page-dashboard .prov', intel:'#panel-tab-intel .text-gray-500, #panel-tab-intel .text-gray-400'
 };
 const routes = {insider:['analisis','insider'],portfolio:['portofolio'],watchlist:['watchlist'],trackrecord:['trackrecord'],dashboard:['dashboard'],intel:['analisis','intel']};
 async function navigate(route) {
@@ -113,7 +113,7 @@ async function measurements(selector) {
   return els.filter(e=>e.getClientRects().length&&!e.closest('.hidden,[hidden]')).map(e=>{
    const s=getComputedStyle(e),bg=background(e),outside=e.parentElement?background(e.parentElement):bg,r=e.getBoundingClientRect();
    const ancestors=[];for(let a=e;a;a=a.parentElement){const st=getComputedStyle(a);if(st.backgroundImage!=='none'||st.opacity!=='1')ancestors.push({element:a.id||a.className,image:st.backgroundImage,opacity:st.opacity});if(rgb(st.backgroundColor)[3]===1)break;}
-   return {id:e.id,cls:e.className,text:(e.textContent||e.value||e.placeholder).trim().slice(0,100),foreground:s.color,background:s.backgroundColor,effectiveBackground:bg,ratio:ratio(blend(rgb(s.color),bg),bg),border:s.borderTopColor,boundaryRatio:ratio(blend(rgb(s.borderTopColor),outside),outside),outline:s.outlineColor,outlineWidth:s.outlineWidth,focusVisible:e.matches(':focus-visible'),focusRatio:ratio(blend(rgb(s.outlineColor),outside),outside),width:r.width,height:r.height,font:s.fontSize,ancestors};
+   return {id:e.id,cls:e.className,text:(e.textContent||e.value||e.placeholder||'').trim().slice(0,100),foreground:s.color,background:s.backgroundColor,effectiveBackground:bg,ratio:ratio(blend(rgb(s.color),bg),bg),border:s.borderTopColor,boundaryRatio:ratio(blend(rgb(s.borderTopColor),outside),outside),outline:s.outlineColor,outlineWidth:s.outlineWidth,focusVisible:e.matches(':focus-visible'),focusRatio:ratio(blend(rgb(s.outlineColor),outside),outside),width:r.width,height:r.height,font:s.fontSize,ancestors};
   });
  });
  // Where gradients remain beneath translucent surfaces, sample the actual
@@ -170,6 +170,9 @@ for(const route of Object.keys(routes))for(const width of [390,1440])for(const t
   assert.ok(rows.every(r=>!r.ancestors.length||r.paintBackground),'non-flat paint requires actual pixel measurement');
   assert.ok(geometry.scroll<=geometry.client+1,JSON.stringify(geometry));
   if(route==='insider')assert.ok(rows.filter(r=>r.id!=='insiderTabRoster'&&r.id!=='insiderTabGraph').every(r=>r.boundaryRatio>=3),JSON.stringify(rows.filter(r=>r.boundaryRatio<3)));
+  // Dashboard was rebuilt to the v2 canvas (Main.dc.html); its contrast and
+  // overflow are checked above, the pre-redesign text geometry no longer applies.
+  if(route==='dashboard')return;
   const before=geometryFixture.find(r=>r.name==='MATRIX'&&r.value.route===route&&r.value.theme===theme&&r.value.width===width)?.value;
   assert.ok(before,'baseline matrix required');
   // Intel results load asynchronously. The fixed controls retain exact geometry;
