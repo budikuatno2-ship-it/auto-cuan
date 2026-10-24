@@ -552,6 +552,7 @@
   "test/run-daily-broker-update.test.js",
   "test/run-intraday-experimental-pipeline.test.js",
   "test/runtime-hardening-regressions.test.js",
+  "test/scoring-preserve-null-metrics.test.js",
   "test/screener-alert-dedup.test.js",
   "test/screener-evaluation-contract.test.js",
   "test/screener-evaluation-logger.test.js",
