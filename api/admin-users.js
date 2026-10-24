@@ -10,6 +10,7 @@ const { requirePremiumEntitlement } = require('../lib/subscription-auth');
 const { handleAdminForeignUpload } = require('../lib/admin-foreign-upload');
 const { handleAdminFundamentalsUpload } = require('../lib/admin-fundamentals-upload');
 const originalHandler = require('../lib/admin-users-handler');
+const { recordHeartbeat, getOnlineList, getDatasetFreshness, getJobPipeline } = require('../lib/admin-console-service');
 
 const AI_EVAL_RUN_NAME = 'one-time-ai-data-20260803';
 const AI_EVAL_MODEL = 'claude-sonnet-4.6';
@@ -471,6 +472,39 @@ async function aiEvalControl(req, res, statusOnly) {
 
 async function handler(req, res) {
   const action = req && req.body && req.body.action;
+
+  if (action === 'heartbeat') {
+    const auth = requireAuthenticatedSession(req);
+    const username = auth.ok ? (auth.session.un || 'member') : 'guest';
+    const page = req.body && req.body.page;
+    const device = req.body && req.body.device;
+    recordHeartbeat(username, page, device);
+    return res.status(200).json({ success: true });
+  }
+
+  if (action === 'online_list') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    const filter = req.body && req.body.filter;
+    const query = req.body && req.body.query;
+    const result = getOnlineList(filter, query);
+    return res.status(200).json({ success: true, ...result });
+  }
+
+  if (action === 'admin_console_stats') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    const freshness = getDatasetFreshness();
+    const jobs = getJobPipeline();
+    const onlineSummary = getOnlineList().summary;
+    return res.status(200).json({
+      success: true,
+      admin: auth.session.un,
+      ...freshness,
+      jobs,
+      online_summary: onlineSummary
+    });
+  }
 
   if (action === 'portfolio_access') {
     return resolvePremiumPortfolioAccess(req, res);

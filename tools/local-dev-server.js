@@ -471,6 +471,8 @@ const ROUTE_REWRITES = {
   // fallback serves the same URL shape).
   '/register': '/register.html',
   '/ketentuan': '/ketentuan.html',
+  '/admin-console': '/admin-console.html',
+  '/admin': '/admin-console.html',
   // FASE 2: broker-summary ("broksum") and chart viewers. Both are real views of
   // pages that already resolve their initial state from the query string, so
   // these short paths only need to map to the right page + default tab. The tab

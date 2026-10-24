@@ -71,6 +71,14 @@
     {
       "source": "/ketentuan",
       "destination": "/ketentuan.html"
+    },
+    {
+      "source": "/admin-console",
+      "destination": "/admin-console.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin-console.html"
     }
   ],
   "headers": [
