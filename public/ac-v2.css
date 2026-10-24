@@ -612,6 +612,27 @@ html.cw-one-screen-open .mm, html.cw-one-screen-open #acBottomBar { display: non
 #panel-tab-bandarmologi { min-width: 0; max-width: 100%; }
 #panel-tab-bandarmologi .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
+/* Watchlist (Canvas Watchlist.dc.html) */
+.fchip { height: 30px; padding: 0 12px; border: 1px solid var(--ac-hair); border-radius: 999px; background: var(--ac-surface); font-size: 12px; font-weight: 600; color: var(--ac-2); cursor: pointer; transition: background 140ms var(--ease), border-color 140ms, color 140ms; display: inline-flex; align-items: center; justify-content: center; }
+.fchip:hover { border-color: var(--ac-ctl); color: var(--ac-ink); }
+.fchip.on, .fchip.active { background: var(--ac-inv); border-color: var(--ac-inv); color: #fff; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 100%; background: var(--ac-surface); border-left: 1px solid var(--ac-hair); box-shadow: var(--shadow2); z-index: 80; animation: slidein 260ms var(--ease-e) both; display: flex; flex-direction: column; }
+.ib { width: 30px; height: 30px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; color: var(--ac-2); display: inline-grid; place-items: center; text-decoration: none; }
+.ib:hover { background: var(--ac-hover); color: var(--ac-ink); }
+.prox { height: 4px; border-radius: 2px; background: var(--ac-hover); overflow: hidden; width: 70px; display: inline-block; vertical-align: middle; margin-left: 6px; }
+.prox i { display: block; height: 100%; background: var(--ac-brand); border-radius: 2px; }
+#wlRefreshBtn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 14px; box-sizing: border-box; }
+#wlRefreshBtn:focus-visible, .btn:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
+html #page-watchlist { min-width: 0; max-width: 100%; }
+html #page-watchlist .sheet { min-width: 0; max-width: 100%; }
+html #page-watchlist .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+html #page-watchlist .wl-table-wrap { display: block !important; }
+html #page-watchlist .wl-mobile-cards { display: none !important; }
+@media (max-width: 768px) {
+  #wlRefreshBtn, #page-watchlist .ph .btn { min-height: 44px; height: 44px; }
+}
+
+
 /* The partial mount is the first child of the page: drop the legacy framed panel. */
 html #appContent #page-analisis > #analisisPartialMount { margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; background-color: transparent !important; }
 html #appContent #page-analisis #analisisChartHeader button:not(.analisis-lens-btn):not(.analisis-subtab) { min-height: 0; }

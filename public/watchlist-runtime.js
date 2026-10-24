@@ -96,14 +96,26 @@
       window.__AUTOCUAN_WATCHLIST_SET__ = new Set(items.map(function (it) { return it.ticker; }));
 
       // Update metrics
-      if (countEl) countEl.textContent = items.length;
       var activeAlertsCount = 0;
+      var upCount = 0;
+      var downCount = 0;
       items.forEach(function (it) {
         if (it.alerts && it.alerts.length) {
           it.alerts.forEach(function (a) { if (a.is_active && !a.is_triggered) activeAlertsCount++; });
         }
+        var c = Number(it.change_pct != null ? it.change_pct : (it.change || 0));
+        if (c > 0) upCount++;
+        else if (c < 0) downCount++;
       });
+      if (countEl) countEl.innerHTML = items.length + ' <span class="mut" style="font-size:15px">saham</span>';
       if (alertCountEl) alertCountEl.textContent = activeAlertsCount;
+      var upEl = document.getElementById('wlUpCount');
+      if (upEl) upEl.textContent = upCount;
+      var downEl = document.getElementById('wlDownCount');
+      if (downEl) downEl.textContent = downCount;
+      var timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      var freshEl = document.getElementById('wlFreshness');
+      if (freshEl) freshEl.innerHTML = '<b>Diperbarui</b> ' + timeStr;
 
       renderWatchlistView(items);
       updateAllWatchlistStars();
@@ -132,11 +144,13 @@
     tabs.forEach(function (btn) {
       var isMatch = (btn.getAttribute('data-wl-filter') === _wlFilter) || (btn.dataset && btn.dataset.wlFilter === _wlFilter);
       if (isMatch) {
-        btn.classList.add('active');
+        btn.classList.add('on', 'active');
         btn.setAttribute('aria-selected', 'true');
+        btn.setAttribute('aria-pressed', 'true');
       } else {
-        btn.classList.remove('active');
+        btn.classList.remove('on', 'active');
         btn.setAttribute('aria-selected', 'false');
+        btn.setAttribute('aria-pressed', 'false');
       }
     });
     renderWatchlistView(window.__AUTOCUAN_WATCHLIST_DATA__);
@@ -175,127 +189,75 @@
     });
 
     if (!filtered.length) {
-      container.innerHTML = '<div class="py-10 text-center text-[var(--ac-text-muted,#6b7280)] text-xs"><div class="text-2xl mb-1.5">🔍</div><p class="font-medium text-[var(--ac-text-secondary,#9ca3af)]">Tidak ada saham yang sesuai dengan filter ini.</p><p class="mt-1 text-[var(--ac-text-muted,#6b7280)]">Coba pilih tab filter [Semua] untuk melihat seluruh daftar pantauan.</p></div>';
+      container.innerHTML = '<div class="mut" style="padding:32px 20px;text-align:center">Tidak ada saham di filter ini.</div>';
       return;
     }
 
-    // 1. Desktop Table View
-    var html = '<div class="wl-table-wrap"><table class="wl-table ac-table">';
+    // Canvas Table View (Watchlist.dc.html)
+    var html = '<div class="tw wl-table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl wl-table ac-table" style="min-width:920px">';
     html += '<thead><tr>';
-    html += '<th class="text-center w-10">#</th>';
-    html += '<th>Ticker &amp; Catatan</th>';
-    html += '<th class="text-right">Harga</th>';
-    html += '<th class="text-right">Perubahan</th>';
-    html += '<th>Alert Aktif</th>';
-    html += '<th class="text-right">Aksi</th>';
+    html += '<th>Ticker</th>';
+    html += '<th class="r">Harga</th>';
+    html += '<th class="r">Perubahan</th>';
+    html += '<th>Alert</th>';
+    html += '<th>Jarak ke alert</th>';
+    html += '<th>Catatan pantauan</th>';
+    html += '<th class="r">Aksi</th>';
     html += '</tr></thead><tbody>';
 
     filtered.forEach(function (item, idx) {
       var last = item.last_price ? Number(item.last_price).toLocaleString('id-ID') : '—';
       var chg = item.change_pct != null ? Number(item.change_pct) : null;
-      var chgText = chg != null ? ((chg >= 0 ? '+' : '') + chg.toFixed(2) + '%') : '—';
-      var chgColor = chg != null ? (chg > 0 ? 'var(--ac-gain,#10b981)' : (chg < 0 ? 'var(--ac-loss,#ef4444)' : 'var(--ac-text-muted,#9ca3af)')) : 'var(--ac-text-muted,#9ca3af)';
-      var chgClass = chg != null ? (chg > 0 ? 'ac-num-positive' : (chg < 0 ? 'ac-num-negative' : 'ac-num-neutral')) : 'ac-num-neutral';
+      var chgText = chg != null ? ((chg >= 0 ? '+' : '−') + Math.abs(chg).toFixed(2).replace('.', ',') + '%') : '—';
+      var chgClass = chg != null ? (chg >= 0 ? 'pos' : 'neg') : 'mut';
+      var compName = item.name || item.company_name || '';
 
-      var alertsDesktopHtml = '';
+      var hasAlert = false;
+      var alertText = 'Tidak ada alert';
+      var alertDot = 'm';
+      var distText = '—';
+      var proxWidth = 0;
+
       if (item.alerts && item.alerts.length) {
-        alertsDesktopHtml = item.alerts.map(function (a) {
-          var cond = String(a.condition_type || a.condition || '').toUpperCase();
-          var targetPrice = a.target_price != null ? Number(a.target_price).toLocaleString('id-ID') : '—';
-          var label = (cond === 'PRICE_ABOVE' || cond === 'ABOVE') ? ('▲ > Rp' + targetPrice) :
-                      ((cond === 'PRICE_BELOW' || cond === 'BELOW') ? ('▼ < Rp' + targetPrice) :
-                      (cond ? (cond + ' Rp' + targetPrice) : ('Target Rp' + targetPrice)));
-          var statusBadge = a.is_triggered ?
-            '<span class="wl-badge-triggered">Triggered</span>' :
-            '<span class="wl-badge-active bg-[var(--ac-gain,#059669)]/15">Aktif</span>';
-
-          return '<div class="wl-alert-row">' +
-            '<span class="wl-alert-label font-mono tabular-nums">' + escapeHtml(label) + '</span> ' + statusBadge +
-            ' <button onclick="window.openEditAlertModal(\'' + escapeAttr(a.id) + '\', \'' + escapeAttr(item.ticker) + '\', \'' + escapeAttr(a.condition_type || a.condition || 'PRICE_ABOVE') + '\', ' + Number(a.target_price || 0) + ')" class="wl-icon-btn" title="Edit Alert">✎</button>' +
-            '<button onclick="window.deleteUserAlert(\'' + escapeAttr(a.id) + '\')" class="wl-icon-btn wl-icon-danger" title="Hapus Alert">×</button></div>';
-        }).join('');
-      } else {
-        alertsDesktopHtml = '<span class="wl-no-alert">Belum ada alert</span>';
+        var activeAlert = item.alerts.find(function (a) { return a.is_active && !a.is_triggered; }) || item.alerts[0];
+        if (activeAlert) {
+          hasAlert = true;
+          var cond = String(activeAlert.condition_type || activeAlert.condition || '').toUpperCase();
+          var targetPrice = activeAlert.target_price != null ? Number(activeAlert.target_price) : 0;
+          var tFmt = targetPrice ? targetPrice.toLocaleString('id-ID') : '—';
+          alertText = (cond === 'PRICE_ABOVE' || cond === 'ABOVE') ? ('Saat ≥ ' + tFmt) :
+                      ((cond === 'PRICE_BELOW' || cond === 'BELOW') ? ('Saat ≤ ' + tFmt) :
+                      (cond ? (cond + ' ' + tFmt) : ('Target ' + tFmt)));
+          alertDot = 'g';
+          if (item.last_price && targetPrice) {
+            var dist = ((targetPrice - item.last_price) / item.last_price) * 100;
+            distText = (dist >= 0 ? '+' : '−') + Math.abs(dist).toFixed(2).replace('.', ',') + '%';
+            proxWidth = Math.min(100, Math.max(8, Math.round(100 - Math.abs(dist) * 10)));
+          }
+        }
       }
 
-      var noteDesktopHtml = item.notes ?
-        '<span data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-note-tag" title="Klik untuk edit catatan">📝 ' + escapeHtml(item.notes) + '</span>' :
-        '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-note-btn" title="Tambah catatan">+ Catatan</button>';
+      var noteText = item.notes ? escapeHtml(item.notes) : '—';
 
-      var tickerBtn = '<span class="wl-ticker-symbol cursor-pointer" onclick="if(typeof navigateTo===\'function\')navigateTo(\'analisis\',null,\'' + escapeAttr(item.ticker) + '\')" title="Buka Riset ' + escapeAttr(item.ticker) + '">' + escapeHtml(item.ticker) + '</span>';
-
-      // Append Desktop Row
-      html += '<tr class="wl-row" data-ticker="' + escapeAttr(item.ticker) + '">';
-      html += '<td class="text-center font-mono tabular-nums lining-nums text-[11px]">' + (idx + 1) + '</td>';
-      html += '<td><div class="wl-ticker-cell">' + tickerBtn + noteDesktopHtml + '</div></td>';
-      html += '<td class="text-right font-mono tabular-nums lining-nums">' + last + '</td>';
-      html += '<td class="text-right font-mono tabular-nums lining-nums font-semibold ' + chgClass + '" style="color:' + chgColor + '">' + chgText + '</td>';
-      html += '<td>' + alertsDesktopHtml + '</td>';
-      html += '<td class="text-right whitespace-nowrap">';
-      html += '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-action-btn" title="Edit Catatan">📝 Edit</button>';
-      html += '<button onclick="window.openCreateAlertModal(\'' + escapeAttr(item.ticker) + '\')" class="wl-action-btn wl-action-alert">+ Alert</button>';
-      html += '<button onclick="window.toggleWatchlistTicker(\'' + escapeAttr(item.ticker) + '\', null, event)" class="wl-action-btn wl-action-danger text-[var(--ac-loss,#dc2626)]">Hapus</button>';
-      html += '</td>';
+      html += '<tr class="wl-row rise d' + Math.min(idx, 7) + '" data-ticker="' + escapeAttr(item.ticker) + '">';
+      html += '  <td><span class="tk mono cursor-pointer" onclick="if(typeof navigateTo===\'function\')navigateTo(\'analisis\',null,\'' + escapeAttr(item.ticker) + '\')">' + escapeHtml(item.ticker) + '</span> <span class="mut" style="font-size:12px">' + escapeHtml(compName) + '</span></td>';
+      html += '  <td class="r num mono" style="font-weight:600">' + last + '</td>';
+      html += '  <td class="r num ' + chgClass + '" style="font-weight:600">' + chgText + '</td>';
+      html += '  <td><span class="pill-st" style="font-weight:500"><span class="dot ' + alertDot + '"></span>' + escapeHtml(alertText) + '</span></td>';
+      html += '  <td class="num mut">' + distText;
+      if (hasAlert) {
+        html += '<span class="prox"><i style="width:' + proxWidth + '%"></i></span>';
+      }
+      html += '  </td>';
+      html += '  <td class="mut" style="white-space:normal;max-width:280px"><span data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="cursor-pointer hover:underline" title="Klik untuk edit catatan">' + noteText + '</span></td>';
+      html += '  <td class="r" style="white-space:nowrap">';
+      html += '    <a class="ib" href="/analisis-saham?ticker=' + escapeAttr(item.ticker) + '" onclick="if(typeof navigateTo===\'function\'){navigateTo(\'analisis\',null,\'' + escapeAttr(item.ticker) + '\');return false;}" aria-label="Buka analisis ' + escapeAttr(item.ticker) + '"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg></a>';
+      html += '    <button class="ib" onclick="window.toggleWatchlistTicker(\'' + escapeAttr(item.ticker) + '\', null, event)" aria-label="Hapus ' + escapeAttr(item.ticker) + ' dari watchlist"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg></button>';
+      html += '  </td>';
       html += '</tr>';
     });
 
     html += '</tbody></table></div>';
-
-    // 2. Mobile Decision Rows
-    html += '<div class="wl-mobile-cards">';
-    filtered.forEach(function (item) {
-      var last = item.last_price ? Number(item.last_price).toLocaleString('id-ID') : '—';
-      var chg = item.change_pct != null ? Number(item.change_pct) : null;
-      var chgText = chg != null ? ((chg >= 0 ? '+' : '') + chg.toFixed(2) + '%') : '—';
-      var chgClass = chg != null ? (chg > 0 ? 'ac-num-positive' : (chg < 0 ? 'ac-num-negative' : 'ac-num-neutral')) : 'ac-num-neutral';
-      var chgColor = chg != null ? (chg > 0 ? 'var(--ac-gain,#10b981)' : (chg < 0 ? 'var(--ac-loss,#ef4444)' : 'var(--ac-text-muted,#9ca3af)')) : 'var(--ac-text-muted,#9ca3af)';
-
-      var mobileAlertsHtml = '';
-      if (item.alerts && item.alerts.length) {
-        mobileAlertsHtml = item.alerts.map(function (a) {
-          var cond = String(a.condition_type || a.condition || '').toUpperCase();
-          var targetPrice = a.target_price != null ? Number(a.target_price).toLocaleString('id-ID') : '—';
-          var label = (cond === 'PRICE_ABOVE' || cond === 'ABOVE') ? ('▲ > Rp' + targetPrice) :
-                      ((cond === 'PRICE_BELOW' || cond === 'BELOW') ? ('▼ < Rp' + targetPrice) :
-                      (cond ? (cond + ' Rp' + targetPrice) : ('Target Rp' + targetPrice)));
-          var statusBadge = a.is_triggered ?
-            '<span class="wl-badge-triggered">Triggered</span>' :
-            '<span class="wl-badge-active bg-[var(--ac-gain,#059669)]/15">Aktif</span>';
-
-          return '<div class="wl-alert-row">' +
-            '<span class="wl-alert-label font-mono tabular-nums">' + escapeHtml(label) + '</span> ' + statusBadge +
-            ' <button onclick="window.openEditAlertModal(\'' + escapeAttr(a.id) + '\', \'' + escapeAttr(item.ticker) + '\', \'' + escapeAttr(a.condition_type || a.condition || 'PRICE_ABOVE') + '\', ' + Number(a.target_price || 0) + ')" class="wl-icon-btn" title="Edit Alert">✎</button>' +
-            '<button onclick="window.deleteUserAlert(\'' + escapeAttr(a.id) + '\')" class="wl-icon-btn wl-icon-danger" title="Hapus Alert">×</button></div>';
-        }).join('');
-      } else {
-        mobileAlertsHtml = '<span class="wl-no-alert">Belum ada alert</span>';
-      }
-
-      var mobileNoteHtml = item.notes ?
-        '<div data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-mobile-note" title="Klik untuk edit catatan">📝 ' + escapeHtml(item.notes) + '</div>' :
-        '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-note-btn">+ Tambah Catatan</button>';
-
-      html += '<div class="wl-mobile-card">';
-      html += '  <div class="wl-mobile-card-top">';
-      html += '    <div class="wl-mobile-card-symbol-wrap">';
-      html += '      <span class="wl-mobile-ticker cursor-pointer" onclick="if(typeof navigateTo===\'function\')navigateTo(\'analisis\',null,\'' + escapeAttr(item.ticker) + '\')">' + escapeHtml(item.ticker) + '</span>';
-      html += '    </div>';
-      html += '    <div class="wl-mobile-card-price-wrap">';
-      html += '      <span class="wl-mobile-price font-mono tabular-nums lining-nums">' + last + '</span>';
-      html += '      <span class="wl-mobile-change font-mono tabular-nums lining-nums ' + chgClass + '" style="color:' + chgColor + '">' + chgText + '</span>';
-      html += '    </div>';
-      html += '  </div>';
-      html += '  <div class="wl-mobile-card-note">' + mobileNoteHtml + '</div>';
-      html += '  <div class="wl-mobile-card-alerts">' + mobileAlertsHtml + '</div>';
-      html += '  <div class="wl-mobile-card-actions">';
-      html += '    <button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-mobile-btn">📝 Catatan</button>';
-      html += '    <button onclick="window.openCreateAlertModal(\'' + escapeAttr(item.ticker) + '\')" class="wl-mobile-btn wl-mobile-btn-alert">🔔 + Alert</button>';
-      html += '    <button onclick="window.toggleWatchlistTicker(\'' + escapeAttr(item.ticker) + '\', null, event)" class="wl-mobile-btn wl-mobile-btn-danger">Hapus</button>';
-      html += '  </div>';
-      html += '</div>';
-    });
-    html += '</div>';
-
     container.innerHTML = html;
 
     if (container && !container.__notesDelegationBound) {
