@@ -915,6 +915,14 @@ html #appContent #page-screener .scr-head-act > * { flex: none; white-space: now
   .pane { flex: 1 1 100%; border-left: none; border-top: 1px solid var(--ac-hair); }
 }
 
+/* ---- Kelompok 5: Sektor Hot (SektorHot.dc.html) ---- */
+.hm { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--ac-hair); border-top: 1px solid var(--ac-hair); }
+.hm button { all: unset; box-sizing: border-box; cursor: pointer; min-height: 132px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; transition: filter 140ms var(--ease), transform 140ms var(--ease); }
+.hm button:hover { filter: brightness(.97); }
+.hm button:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: -2px; }
+.flow { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12px; }
+@media (max-width: 980px) { .hm { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 
 
 

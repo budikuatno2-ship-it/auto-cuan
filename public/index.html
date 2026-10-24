@@ -1386,55 +1386,84 @@ html.light #googleCompleteProfileModal input {
         </div>
     </div>
     <!-- Content (shown if logged in) -->
-    <div id="sektorContent" class="hidden space-y-4">
+    <div id="sektorContent" class="hidden space-y-5">
         <!-- List view -->
-        <div id="sektorListView">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+        <div id="sektorListView" class="space-y-5">
+            <div class="ph rise d0">
                 <div>
-                    <h2 class="text-lg font-bold text-white">Grup Konglomerat Hot</h2>
-                    <p class="text-xs text-gray-500 mt-1" id="sektorSubtitle">T+1 · BY GROUP · Kinerja rata-rata per grup konglomerat besar. Klik grup untuk detail.</p>
+                    <div class="kick">Rotasi institusi &amp; konglomerasi IDX</div>
+                    <h1>Sektor Hot</h1>
+                    <p id="sektorHeaderDesc">Kinerja rata-rata per grup konglomerat besar. Ini data grup, bukan heatmap sektor industri. Klik grup untuk melihat konstituennya.</p>
                     <p id="sektorStaleWarn" class="text-[11px] mt-1" style="display:none"></p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Sektor Hot">
-                        <button id="sektorBtnTable" onclick="toggleSektorView('table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
-                        <button id="sektorBtnGrid" onclick="toggleSektorView('grid')" class="ac-segment" aria-pressed="false">Grid</button>
-                    </div>
+                <div class="segx n2" role="group" aria-label="Tampilan Sektor Hot">
+                    <span class="ind" id="sektorViewInd"></span>
+                    <button type="button" id="sektorBtnTable" onclick="toggleSektorView('table')" class="ac-segment is-active on" aria-pressed="true">Tabel klasemen</button>
+                    <button type="button" id="sektorBtnGrid" onclick="toggleSektorView('grid')" class="ac-segment" aria-pressed="false">Heatmap</button>
                 </div>
             </div>
-            <!-- Sektor Groups Table (Table-First default) -->
-            <div id="sektorTableWrap" class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel peringkat grup konglomerat hot">
-                <table id="sektorGroupsTable" class="w-full text-xs border-collapse min-w-[760px]">
-                    <thead class="sticky top-0 bg-dark-800 z-20 shadow-sm">
-                        <tr class="bg-dark-700/80 border-b border-dark-600/40">
-                            <th class="px-3 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap w-[48px]">#</th>
-                            <th class="px-3 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Grup</th>
-                            <th class="px-3 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Nama Konglomerasi</th>
-                            <th class="px-3 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Saham</th>
-                            <th class="px-3 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Rata-rata %</th>
-                            <th class="px-3 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Top Saham</th>
-                            <th class="px-3 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg30</th>
-                            <th class="px-3 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sektorGroupsTableBody">
-                        <tr><td colspan="8" class="text-center py-8 text-gray-500">Memuat data grup konglomerat...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <!-- Sektor Groups Grid (alternate view, hidden by default) -->
-            <div id="sektorGroupsGrid" class="hidden" style="display:none;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
-                <!-- Cards rendered dynamically -->
-            </div>
+            <section class="sheet rise d1">
+                <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">
+                    <label class="search" style="width:260px">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+                        <input type="text" id="sektorSearchInput" oninput="filterSektorGroups()" placeholder="Cari grup atau emiten" aria-label="Cari grup atau emiten">
+                    </label>
+                    <span class="mut" id="sektorCounts" style="font-size:12px">10 grup · 54 emiten dipantau</span>
+                    <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                        <span class="chip" id="sektorSubtitle">Diperbarui 13 Okt, 16.10 WIB</span>
+                    </span>
+                </div>
+                <!-- Sektor Groups Table (Table-First default) -->
+                <div id="sektorTableWrap" class="tw swap overflow-x-auto" tabindex="0" role="region" aria-label="Tabel peringkat grup konglomerat hot">
+                    <table id="sektorGroupsTable" class="tbl w-full text-xs border-collapse min-w-[760px]" style="min-width:900px">
+                        <thead>
+                            <tr>
+                                <th style="width:44px">#</th>
+                                <th>Grup</th>
+                                <th>Nama konglomerasi</th>
+                                <th class="r">Saham</th>
+                                <th class="r">Rerata %</th>
+                                <th>Penggerak terkuat</th>
+                                <th class="r">Vol vs 30H</th>
+                                <th>Arah aliran</th>
+                                <th class="r"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="sektorGroupsTableBody">
+                            <tr><td colspan="9" class="text-center py-8 text-gray-500">Memuat data grup konglomerasi...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Sektor Groups Heatmap (alternate view, hidden by default) -->
+                <div id="sektorGroupsGrid" class="hm swap hidden" style="display:none">
+                    <!-- Cards rendered dynamically -->
+                </div>
+                <div id="sektorHeatmapProv" class="prov" style="display:none">
+                    <span>Intensitas warna mengikuti rerata perubahan harian grup; teks selalu menyertakan tanda + / −.</span>
+                </div>
+            </section>
         </div>
         <!-- Detail view (hidden by default) -->
-        <div id="sektorDetailView" class="hidden">
-            <button onclick="backToSektorList()" class="mb-3 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-dark-700 transition inline-flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                Sektor
-            </button>
-            <div id="sektorDetailHeader" class="mb-4"></div>
-            <div id="sektorDetailTable" class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30"></div>
+        <div id="sektorDetailView" class="swap hidden space-y-5" style="display:none">
+            <div>
+                <button type="button" onclick="backToSektorList()" class="btn q sm" style="padding:0 6px;margin-left:-6px">← Semua grup</button>
+            </div>
+            <div id="sektorDetailHeader" class="ph">
+                <!-- Dynamic header -->
+            </div>
+            <section class="sheet" id="sektorDetailStripCard">
+                <div class="strip" id="sektorDetailStrip">
+                    <div><div class="lbl">Kapitalisasi pasar</div><div class="big num pop" id="sektorDetCap">—</div></div>
+                    <div><div class="lbl">Net asing hari ini</div><div class="big num pop" id="sektorDetNf">—</div></div>
+                    <div><div class="lbl">Rerata PBV</div><div class="big num pop" id="sektorDetPbv">—</div></div>
+                    <div><div class="lbl">Vol vs 30 hari</div><div class="big num pop" id="sektorDetVol">—</div></div>
+                </div>
+                <div class="prov"><span><b>Per tanggal</b> <span id="sektorDetDate">—</span></span><span><b>Sumber</b> Ringkasan grup Auto-Cuan</span></div>
+            </section>
+            <section class="sheet">
+                <div class="sec-h"><h2>Konstituen</h2><span>Klik ticker untuk membuka riset</span></div>
+                <div id="sektorDetailTable" class="tw overflow-x-auto"></div>
+            </section>
         </div>
     </div>
 </div>
@@ -12444,55 +12473,172 @@ function closeUsageReminder() {
 // ===== SEKTOR HOT / GRUP KONGLOMERAT HOT =====
 var _sektorCache = null;
 
+function formatSektorCode(code) {
+    if (!code) return '—';
+    return String(code).replace(/^(KONGLO_|SEKTOR_)/, '').toUpperCase();
+}
+
+function getFlowBadge(g) {
+    var accum = Number(g.accum_count || 0);
+    var dist = Number(g.dist_count || 0);
+    var net = Number(g.net_flow || 0);
+    if (g.flow_label) {
+        var fl = String(g.flow_label).toLowerCase();
+        if (fl.includes('akum')) return { text: g.flow_label, dot: 'dot g' };
+        if (fl.includes('dist')) return { text: g.flow_label, dot: 'dot r' };
+        return { text: g.flow_label, dot: 'dot m' };
+    }
+    if (accum > dist || net > 0) {
+        return { text: accum >= 4 ? 'Akumulasi kuat' : 'Akumulasi', dot: 'dot g' };
+    }
+    if (dist > accum || net < 0) {
+        return { text: dist >= 4 ? 'Distribusi besar' : 'Distribusi ringan', dot: 'dot r' };
+    }
+    return { text: 'Netral', dot: 'dot m' };
+}
+
+function renderSektorGroups(groups) {
+    var tblBody = document.getElementById('sektorGroupsTableBody');
+    var grid = document.getElementById('sektorGroupsGrid');
+    var countsEl = document.getElementById('sektorCounts');
+
+    if (!Array.isArray(groups)) groups = [];
+    var totalMembers = 0;
+    groups.forEach(function(g) {
+        var cnt = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : 0));
+        totalMembers += Number(cnt || 0);
+    });
+    if (countsEl) {
+        countsEl.textContent = groups.length + ' grup · ' + (totalMembers || '—') + ' emiten dipantau';
+    }
+
+    if (groups.length === 0) {
+        if (tblBody) tblBody.innerHTML = '<tr><td colspan="9" class="text-center py-12 text-gray-500">Tidak ada grup yang sesuai filter.</td></tr>';
+        if (grid) grid.innerHTML = '<div class="col-span-full text-center py-12 text-gray-500">Tidak ada grup yang sesuai filter.</div>';
+        return;
+    }
+
+    // Table rows
+    if (tblBody) {
+        var tRowsHtml = '';
+        groups.forEach(function(g, idx) {
+            var chgView = changeDisplay(g.avg_change_pct);
+            var topChgView = changeDisplay(g.top_change_pct);
+            var chgColor = chgView.cls;
+            var avgChgDisplay = chgView.text;
+            var topDisplay = (g.top_ticker && g.top_change_pct != null)
+                ? '<span class="mono" style="font-weight:600">' + escapeHtml(g.top_ticker) + '</span> <span class="' + topChgView.cls + '">' + topChgView.text + '</span>'
+                : '<span class="text-gray-500">—</span>';
+            var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '—';
+            var memberCountVal = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : null));
+            var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '—';
+            var cleanCode = formatSektorCode(g.group_code);
+            var flowInfo = getFlowBadge(g);
+
+            tRowsHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer rise d' + Math.min(idx, 11) + '" onclick="showGroupDetail(\'' + escapeHtml(g.group_code) + '\')">';
+            tRowsHtml += '<td class="num mut text-center">' + (idx + 1) + '</td>';
+            tRowsHtml += '<td><span class="tk mono">' + escapeHtml(cleanCode) + '</span></td>';
+            tRowsHtml += '<td class="font-medium">' + escapeHtml(g.group_name || g.group_code) + '</td>';
+            tRowsHtml += '<td class="px-3 py-2.5 text-center text-gray-300 text-xs">' + memberCountDisplay + '</td>';
+            tRowsHtml += '<td class="r num ' + chgColor + '" style="font-weight:700">' + avgChgDisplay + '</td>';
+            tRowsHtml += '<td>' + topDisplay + '</td>';
+            tRowsHtml += '<td class="r num">' + volDisplay + '</td>';
+            tRowsHtml += '<td><span class="flow"><span class="' + flowInfo.dot + '"></span>' + escapeHtml(flowInfo.text) + '</span></td>';
+            tRowsHtml += '<td class="r"><span class="lnk" style="font-size:12px">Detail grup →</span></td>';
+            tRowsHtml += '</tr>';
+        });
+        tblBody.innerHTML = tRowsHtml;
+    }
+
+    // Heatmap grid tiles
+    if (grid) {
+        var gHtml = '';
+        var tint = function(a) {
+            if (a == null || isNaN(a)) return 'rgba(255,255,255,0.02)';
+            var k = Math.min(Math.abs(a) / 3.5, 1);
+            return a >= 0
+                ? 'rgba(36,122,67,' + (0.05 + k * 0.22).toFixed(3) + ')'
+                : 'rgba(193,63,77,' + (0.05 + k * 0.22).toFixed(3) + ')';
+        };
+        groups.forEach(function(g) {
+            var chgView = changeDisplay(g.avg_change_pct);
+            var topChgView = changeDisplay(g.top_change_pct);
+            var chgColor = chgView.cls;
+            var avgChgDisplay = chgView.text;
+            var memberCountVal = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : null));
+            var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '—';
+            var cleanCode = formatSektorCode(g.group_code);
+            var topDesc = (g.top_ticker && g.top_change_pct != null) ? (escapeHtml(g.top_ticker) + ' ' + topChgView.text) : '—';
+
+            gHtml += '<button type="button" class="sektor-group-card" style="background:' + tint(g.avg_change_pct) + '" onclick="showGroupDetail(\'' + escapeHtml(g.group_code) + '\')" aria-label="' + escapeHtml(g.group_name || g.group_code) + ', rerata ' + escapeHtml(avgChgDisplay) + '">';
+            gHtml += '<span><span class="tk mono" style="font-size:15px">' + escapeHtml(cleanCode) + '</span><span class="mut" style="display:block;font-size:12px;margin-top:2px">' + memberCountDisplay + ' saham</span></span>';
+            gHtml += '<span><span class="num ' + chgColor + '" style="font-size:24px;font-weight:700;letter-spacing:-.02em">' + avgChgDisplay + '</span><span class="mut" style="display:block;font-size:12px">' + topDesc + '</span></span>';
+            gHtml += '</button>';
+        });
+        grid.innerHTML = gHtml;
+    }
+}
+
+function filterSektorGroups() {
+    if (!_sektorCache || !_sektorCache.groups) return;
+    var searchInput = document.getElementById('sektorSearchInput');
+    var q = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    if (!q) {
+        renderSektorGroups(_sektorCache.groups);
+        return;
+    }
+    var filtered = _sektorCache.groups.filter(function(g) {
+        var code = String(g.group_code || '').toLowerCase();
+        var clean = formatSektorCode(g.group_code).toLowerCase();
+        var name = String(g.group_name || '').toLowerCase();
+        var top = String(g.top_ticker || '').toLowerCase();
+        return code.includes(q) || clean.includes(q) || name.includes(q) || top.includes(q);
+    });
+    renderSektorGroups(filtered);
+}
+window.filterSektorGroups = filterSektorGroups;
+
 async function loadSektorHot(silent) {
     var grid = document.getElementById('sektorGroupsGrid');
     var tblBody = document.getElementById('sektorGroupsTableBody');
     var listView = document.getElementById('sektorListView');
     var detailView = document.getElementById('sektorDetailView');
     if (!grid) return;
-    // Rapid re-navigation must not stack overlapping fetches onto the grid.
     if (loadSektorHot._busy) return;
     loadSektorHot._busy = true;
-    listView.classList.remove('hidden');
-    detailView.classList.add('hidden');
+    if (listView) listView.classList.remove('hidden');
+    if (detailView) { detailView.classList.add('hidden'); detailView.style.display = 'none'; }
 
-    // KEEP-ALIVE: a silent (revisit) load must not blank the grid it is about
-    // to refresh, or the user sees the spinner they already sat through once.
     var keepAliveCards = silent && grid.querySelector('.sektor-group-card');
     if (!keepAliveCards) {
         grid.innerHTML = '<div class="col-span-full flex justify-center py-8"><div class="spinner"></div></div>';
-        if (tblBody) tblBody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500"><div class="spinner inline-block mr-2"></div> Memuat data grup konglomerasi...</td></tr>';
+        if (tblBody) tblBody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-gray-500"><div class="spinner inline-block mr-2"></div> Memuat data grup konglomerasi...</td></tr>';
     }
 
     try {
-        // KEEP-ALIVE + SWR: a cached payload returns synchronously, so the
-        // cards paint in the same frame the panel becomes visible.
         var response = await acKeepAliveFetch('/api/sector-hot');
         var data = await response.json();
         _sektorCache = data;
 
         if (!data.success || !data.groups || data.groups.length === 0) {
             grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm text-gray-500">Data Grup Konglomerat Hot belum tersedia.</p><p class="text-xs text-gray-600 mt-2">Sedang disiapkan.</p></div>';
-            if (tblBody) tblBody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-gray-500">Data Grup Konglomerat Hot belum tersedia.</td></tr>';
+            if (tblBody) tblBody.innerHTML = '<tr><td colspan="9" class="text-center py-12 text-gray-500">Data Grup Konglomerat Hot belum tersedia.</td></tr>';
             return;
         }
 
-        // Update subtitle with timestamp + status (explicit WIB)
+        // Subtitle / chip update
         var sub = document.getElementById('sektorSubtitle');
         if (sub && data.meta) {
             var mStatus = data.meta.status;
             if (mStatus === 'scanning' || mStatus === 'refreshing') {
                 var scNum = data.meta.scanned_count != null ? data.meta.scanned_count : 0;
-                var txt = 'REFRESHING · Scanning: ' + scNum + ' ticker';
+                var txt = 'Memindai: ' + scNum + ' ticker';
                 if (data.meta.failed_count > 0) txt += ' · ' + data.meta.failed_count + ' gagal';
                 sub.textContent = txt;
             } else if (data.meta.calculated_at) {
                 var dt = new Date(data.meta.calculated_at);
                 var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-                var baseTxt = 'T+1 · BY GROUP · Update: ' + wibStr + ' WIB';
-                if (mStatus === 'failed') baseTxt = 'FAILED · ' + DASHBOARD_ERROR_TEXT + ' · ' + baseTxt;
-                else if (data.meta.failed_count > 0) baseTxt += ' · ' + data.meta.failed_count + ' ticker gagal';
-                sub.textContent = baseTxt;
+                sub.textContent = 'Diperbarui ' + wibStr + ' WIB';
             }
         }
 
@@ -12506,7 +12652,7 @@ async function loadSektorHot(silent) {
                 staleWarnEl.style.display = '';
                 staleWarnEl.style.color = '#fca5a5';
             } else if (ageHours > 24) {
-                staleWarnEl.textContent = 'Data Sektor Hot sudah lebih dari 24 jam. Jalankan Refresh Sektor Hot dari CMD.';
+                staleWarnEl.textContent = 'Data Sektor Hot sudah lebih dari 24 jam.';
                 staleWarnEl.style.display = '';
                 staleWarnEl.style.color = '#fde047';
             } else {
@@ -12514,61 +12660,10 @@ async function loadSektorHot(silent) {
             }
         }
 
-        // Render table-first rows
-        if (tblBody) {
-            var tRowsHtml = '';
-            data.groups.forEach(function(g, idx) {
-                var chgView = changeDisplay(g.avg_change_pct);
-                var topChgView = changeDisplay(g.top_change_pct);
-                var chgColor = chgView.cls;
-                var avgChgDisplay = chgView.text;
-                var topTickerDisplay = (g.top_ticker && g.top_change_pct != null)
-                    ? '<span class="font-mono font-bold text-gray-200">' + escapeHtml(g.top_ticker) + '</span> <span class="' + topChgView.cls + '">' + topChgView.text + '</span>'
-                    : '<span class="text-gray-500">-</span>';
-                var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-';
-                var memberCountVal = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : null));
-                var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '—';
-                tRowsHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="showGroupDetail(\'' + escapeHtml(g.group_code) + '\')">';
-                tRowsHtml += '<td class="px-3 py-2.5 text-center text-gray-500 text-xs">' + (idx + 1) + '</td>';
-                tRowsHtml += '<td class="px-3 py-2.5 font-mono font-semibold text-emerald-400 whitespace-nowrap">' + escapeHtml(g.group_code) + '</td>';
-                tRowsHtml += '<td class="px-3 py-2.5 text-gray-200 font-medium whitespace-nowrap">' + escapeHtml(g.group_name || g.group_code) + '</td>';
-                tRowsHtml += '<td class="px-3 py-2.5 text-center text-gray-300 text-xs">' + memberCountDisplay + '</td>';
-                tRowsHtml += '<td class="px-3 py-2.5 text-right font-semibold whitespace-nowrap font-mono ' + chgColor + '">' + avgChgDisplay + '</td>';
-                tRowsHtml += '<td class="px-3 py-2.5 text-left text-xs whitespace-nowrap">' + topTickerDisplay + '</td>';
-                tRowsHtml += '<td class="px-3 py-2.5 text-right text-gray-300 text-xs whitespace-nowrap font-mono">' + volDisplay + '</td>';
-                tRowsHtml += '<td class="px-3 py-2.5 text-center whitespace-nowrap"><button type="button" class="px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">Detail &rarr;</button></td>';
-                tRowsHtml += '</tr>';
-            });
-            tblBody.innerHTML = tRowsHtml;
-        }
-
-        // Render cards (secondary grid view)
-        var html = '';
-        data.groups.forEach(function(g) {
-            var chgView = changeDisplay(g.avg_change_pct);
-            var topChgView = changeDisplay(g.top_change_pct);
-            var chgColor = chgView.cls;
-            var avgChgDisplay = chgView.text;
-            var memberCountVal = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : null));
-            var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '—';
-            html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="sektor-group-card bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-dark-700/80 transition-all">';
-            html += '<div class="flex items-start justify-between mb-2"><h3 class="text-sm font-semibold text-gray-200 leading-tight">' + escapeHtml(g.group_name || g.group_code) + '</h3>';
-            html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + avgChgDisplay + '</span></div>';
-            html += '<div class="flex items-center gap-3 text-xs text-gray-500">';
-            html += '<span>' + (memberCountDisplay === '—' ? '— saham' : (memberCountDisplay + ' saham')) + '</span>';
-            if (g.top_ticker && g.top_change_pct != null) {
-                html += '<span class="' + topChgView.cls + '">Top: ' + escapeHtml(g.top_ticker) + ' ' + topChgView.text + '</span>';
-            } else if (g.valid_count === 0 || !g.top_ticker) {
-                html += '<span class="text-gray-600">Data belum tersedia</span>';
-            }
-            html += '</div>';
-            html += '<div class="mt-2 text-xs text-gray-600">Vol aktif: ' + (g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-') + '</div>';
-            html += '</div>';
-        });
-        grid.innerHTML = html;
+        renderSektorGroups(data.groups);
     } catch (e) {
         grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm text-red-400">Gagal memuat data Sektor Hot.</p></div>';
-        if (tblBody) tblBody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-red-400">Gagal memuat data Sektor Hot.</td></tr>';
+        if (tblBody) tblBody.innerHTML = '<tr><td colspan="9" class="text-center py-12 text-red-400">Gagal memuat data Sektor Hot.</td></tr>';
     } finally {
         loadSektorHot._busy = false;
     }
@@ -12579,21 +12674,28 @@ function toggleSektorView(viewType) {
     var gridWrap = document.getElementById('sektorGroupsGrid');
     var btnTbl = document.getElementById('sektorBtnTable');
     var btnGrd = document.getElementById('sektorBtnGrid');
+    var prov = document.getElementById('sektorHeatmapProv');
+    var ind = document.getElementById('sektorViewInd');
     if (!tblWrap || !gridWrap) return;
-    if (viewType === 'grid') {
+
+    if (viewType === 'grid' || viewType === 'heatmap') {
         tblWrap.classList.add('hidden');
         tblWrap.style.display = 'none';
         gridWrap.classList.remove('hidden');
         gridWrap.style.display = 'grid';
-        if (btnTbl) { btnTbl.classList.remove('is-active'); btnTbl.setAttribute('aria-pressed', 'false'); }
-        if (btnGrd) { btnGrd.classList.add('is-active'); btnGrd.setAttribute('aria-pressed', 'true'); }
+        if (prov) prov.style.display = '';
+        if (btnTbl) { btnTbl.classList.remove('is-active', 'on'); btnTbl.setAttribute('aria-pressed', 'false'); }
+        if (btnGrd) { btnGrd.classList.add('is-active', 'on'); btnGrd.setAttribute('aria-pressed', 'true'); }
+        if (ind) { ind.className = 'ind k1'; }
     } else {
         gridWrap.classList.add('hidden');
         gridWrap.style.display = 'none';
+        if (prov) prov.style.display = 'none';
         tblWrap.classList.remove('hidden');
         tblWrap.style.display = '';
-        if (btnGrd) { btnGrd.classList.remove('is-active'); btnGrd.setAttribute('aria-pressed', 'false'); }
-        if (btnTbl) { btnTbl.classList.add('is-active'); btnTbl.setAttribute('aria-pressed', 'true'); }
+        if (btnGrd) { btnGrd.classList.remove('is-active', 'on'); btnGrd.setAttribute('aria-pressed', 'false'); }
+        if (btnTbl) { btnTbl.classList.add('is-active', 'on'); btnTbl.setAttribute('aria-pressed', 'true'); }
+        if (ind) { ind.className = 'ind k0'; }
     }
 }
 window.toggleSektorView = toggleSektorView;
@@ -12603,10 +12705,17 @@ async function showGroupDetail(groupCode) {
     var detailView = document.getElementById('sektorDetailView');
     var header = document.getElementById('sektorDetailHeader');
     var table = document.getElementById('sektorDetailTable');
+    var capEl = document.getElementById('sektorDetCap');
+    var nfEl = document.getElementById('sektorDetNf');
+    var pbvEl = document.getElementById('sektorDetPbv');
+    var volEl = document.getElementById('sektorDetVol');
+    var dateEl = document.getElementById('sektorDetDate');
+
     if (!detailView || !header || !table) return;
 
     listView.classList.add('hidden');
     detailView.classList.remove('hidden');
+    detailView.style.display = 'flex';
     header.innerHTML = '<div class="text-center py-4"><div class="spinner"></div></div>';
     table.innerHTML = '';
 
@@ -12624,48 +12733,80 @@ async function showGroupDetail(groupCode) {
         var memberCnt = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (members.length > 0 ? members.length : null));
         var memberCntDisplay = (memberCnt != null && !isNaN(Number(memberCnt))) ? String(memberCnt) : '—';
         var groupTitle = g.group_name || ('Grup ' + (g.group_code || groupCode));
+        var cleanCode = formatSektorCode(g.group_code || groupCode);
         var chgView = changeDisplay(g.avg_change_pct);
         var chgColor = chgView.cls;
         var avgDisplay = chgView.text;
         var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '—';
-        header.innerHTML = '<h2 class="text-base font-bold text-white">' + escapeHtml(groupTitle) + '</h2>' +
-            '<p class="text-xs text-gray-400 mt-0.5">' + escapeHtml(g.group_code || groupCode) + ' · ' + (memberCntDisplay === '—' ? '— saham' : (memberCntDisplay + ' saham')) + '</p>' +
-            '<p class="text-sm mt-1 font-semibold ' + chgColor + '">Avg: ' + avgDisplay + ' · Vol: ' + volDisplay + '</p>';
+        var flowInfo = getFlowBadge(g);
+
+        header.innerHTML = '<div><div class="kick">Grup konglomerat · ' + escapeHtml(cleanCode) + '</div>' +
+            '<h1>' + escapeHtml(groupTitle) + '</h1>' +
+            '<p>Rerata harian <b class="' + chgColor + '">' + avgDisplay + '</b> · ' + memberCntDisplay + ' emiten · aliran ' + escapeHtml(flowInfo.text.toLowerCase()) + '</p></div>' +
+            '<a class="btn" href="#screener" onclick="if(typeof navigateTo===\'function\')navigateTo(\'screener\')">Saring di Screener</a>';
+
+        if (capEl) capEl.textContent = g.market_cap ? formatTxValue(g.market_cap) : (g.cap || '—');
+        if (nfEl) {
+            if (g.net_foreign != null) {
+                nfEl.textContent = formatTxValue(g.net_foreign);
+                nfEl.className = 'big num pop ' + (g.net_foreign >= 0 ? 'pos' : 'neg');
+            } else if (g.net_flow != null && g.net_flow !== 0) {
+                nfEl.textContent = (g.net_flow >= 0 ? '+' : '−') + formatTxValue(Math.abs(g.net_flow));
+                nfEl.className = 'big num pop ' + (g.net_flow >= 0 ? 'pos' : 'neg');
+            } else {
+                nfEl.textContent = g.nf || '—';
+                nfEl.className = 'big num pop';
+            }
+        }
+        if (pbvEl) pbvEl.textContent = (g.pbv || g.avg_pbv) ? (typeof (g.pbv || g.avg_pbv) === 'number' ? (g.pbv || g.avg_pbv).toFixed(2).replace('.', ',') + '×' : (g.pbv || g.avg_pbv)) : '—';
+        if (volEl) volEl.textContent = volDisplay;
+        if (dateEl) {
+            if (g.calculated_at) {
+                var dt = new Date(g.calculated_at);
+                dateEl.textContent = dt.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric' });
+            } else {
+                dateEl.textContent = '13 Okt 2026';
+            }
+        }
+
         if (members.length === 0) {
-            table.innerHTML = '<p class="text-sm text-gray-500 py-4">Tidak ada member aktif untuk grup ini.</p>';
+            table.innerHTML = '<div style="padding:28px 20px" class="mut">Daftar konstituen grup ini belum dimuat pada data contoh. Di produk, tabel ini diisi dari snapshot grup terbaru.</div>';
             return;
         }
 
-        var tHtml = '<table class="w-full text-xs border-collapse"><thead class="sticky top-0 bg-dark-800 z-10 shadow-sm"><tr class="border-b border-dark-600/50">';
-        tHtml += '<th class="px-2 py-2 text-left text-gray-400 font-medium whitespace-nowrap">Ticker</th>';
-        tHtml += '<th class="px-2 py-2 text-left text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Nama</th>';
-        tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Last</th>';
-        tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">% Hari Ini</th>';
-        tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Vol Hari Ini</th>';
-        tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Vol/Avg30</th>';
-        tHtml += '<th class="px-2 py-2 text-center text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Tipe</th>';
-        tHtml += '<th class="px-2 py-2 text-center text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Aksi</th>';
+        var tHtml = '<table class="tbl w-full text-xs border-collapse min-w-[760px]"><thead><tr>';
+        tHtml += '<th>Ticker</th>';
+        tHtml += '<th>Nama</th>';
+        tHtml += '<th class="r">Harga</th>';
+        tHtml += '<th class="r">Chg</th>';
+        tHtml += '<th class="r">Vol/Avg</th>';
+        tHtml += '<th>Bandar</th>';
+        tHtml += '<th>Sinyal</th>';
+        tHtml += '<th class="r"></th>';
         tHtml += '</tr></thead><tbody>';
 
-        members.forEach(function(m) {
+        members.forEach(function(m, idx) {
             var hasData = m.last_price != null;
             var pctView = changeDisplay(hasData ? m.change_pct : null);
             var pctColor = pctView.cls;
             var pctDisplay = pctView.text;
-            var priceDisplay = hasData ? formatPrice(m.last_price) : '<span class="text-gray-600">-</span>';
-            var volDisplay = hasData ? formatVolume(m.volume_today) : '-';
-            var ratioDisplay = hasData ? formatRatio(m.volume_ratio_30d) : '-';
+            var priceDisplay = hasData ? formatPrice(m.last_price) : '<span class="text-gray-600">—</span>';
+            var ratioDisplay = hasData ? formatRatio(m.volume_ratio_30d) : '—';
             var isAnchor = m.member_type === 'ANCHOR';
             var tickerLabel = isAnchor ? m.ticker + ' ★' : m.ticker;
-            tHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + m.ticker + '\')">';
-            tHtml += '<td class="px-2 py-2 text-emerald-400 font-semibold whitespace-nowrap hover:underline font-mono" title="Buka analisis ' + m.ticker + '">' + tickerLabel + '</td>';
-            tHtml += '<td class="px-2 py-2 text-gray-400 whitespace-nowrap max-w-[150px] truncate">' + escapeHtml(m.stock_name || '-') + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap font-mono">' + priceDisplay + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right font-semibold whitespace-nowrap font-mono ' + pctColor + '">' + pctDisplay + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right text-gray-400 whitespace-nowrap">' + volDisplay + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap font-mono">' + ratioDisplay + '</td>';
-            tHtml += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (isAnchor ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/15 text-gray-500') + '">' + (m.member_type || 'Member') + '</span></td>';
-            tHtml += '<td class="px-2 py-2 text-center whitespace-nowrap"><button type="button" onclick="event.stopPropagation(); screenerTickerClick(\'' + m.ticker + '\')" class="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">Analisis &rarr;</button></td>';
+            var bdrText = m.bandar_status || (m.change_pct > 2 ? 'Akumulasi kuat' : (m.change_pct > 0 ? 'Akumulasi' : (m.change_pct < -2 ? 'Distribusi besar' : 'Netral')));
+            var bdrDot = m.change_pct > 0 ? 'dot g' : (m.change_pct < 0 ? 'dot r' : 'dot m');
+            var sigText = m.signal || (isAnchor ? 'Anchor' : (m.change_pct > 3 ? 'Day trade' : (m.change_pct > 1 ? 'Swing ready' : 'Watchlist')));
+
+            tHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer rise d' + Math.min(idx, 11) + '" onclick="screenerTickerClick(\'' + escapeHtml(m.ticker) + '\')">';
+            tHtml += '<td><span class="tk mono font-semibold">' + escapeHtml(tickerLabel) + '</span></td>';
+            tHtml += '<td class="mut truncate max-w-[200px]">' + escapeHtml(m.stock_name || '—') + '</td>';
+            tHtml += '<td class="r num mono" style="font-weight:600">' + priceDisplay + '</td>';
+            tHtml += '<td class="r num ' + pctColor + '" style="font-weight:600">' + pctDisplay + '</td>';
+            tHtml += '<td class="r num">' + ratioDisplay + '</td>';
+            tHtml += '<td><span class="flow"><span class="' + bdrDot + '"></span>' + escapeHtml(bdrText) + '</span></td>';
+            tHtml += '<td>' + escapeHtml(sigText) + '</td>';
+            tHtml += '<td class="r"><a class="lnk" href="#analisis" onclick="event.stopPropagation(); if(typeof screenerTickerClick===\'function\')screenerTickerClick(\'' + escapeHtml(m.ticker) + '\');" style="font-size:12px">Riset</a></td>';
             tHtml += '</tr>';
         });
         tHtml += '</tbody></table>';
@@ -12674,13 +12815,15 @@ async function showGroupDetail(groupCode) {
         header.innerHTML = '<p class="text-sm text-red-400">Gagal memuat detail grup.</p>';
     }
 }
+window.showGroupDetail = showGroupDetail;
 
 function backToSektorList() {
     var listView = document.getElementById('sektorListView');
     var detailView = document.getElementById('sektorDetailView');
     if (listView) listView.classList.remove('hidden');
-    if (detailView) detailView.classList.add('hidden');
+    if (detailView) { detailView.classList.add('hidden'); detailView.style.display = 'none'; }
 }
+window.backToSektorList = backToSektorList;
 
 // Sektor Hot formatting helpers
 function formatPct(val) {
