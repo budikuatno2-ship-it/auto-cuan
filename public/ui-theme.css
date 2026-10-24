@@ -9492,6 +9492,7 @@ html.light :is(
   #loginModal,
   #registerModal,
   #selfResetModal,
+  #authV2ResetModal,
   #resetPasswordModal,
   #authChoiceModal,
   #accountModal,
@@ -9506,6 +9507,7 @@ html.light :is(
   #loginModal,
   #registerModal,
   #selfResetModal,
+  #authV2ResetModal,
   #authChoiceModal,
   #accountModal,
   #subscriptionModal
@@ -9514,6 +9516,33 @@ html.light :is(
   color: #17211e !important;
   border-color: rgba(18,35,29,.10) !important;
   box-shadow: 0 24px 72px rgba(18,35,29,.16) !important;
+}
+
+html.light :is(#loginModal, #registerModal, #selfResetModal, #authV2ResetModal) input {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+html.light :is(#loginModal, #registerModal, #selfResetModal, #authV2ResetModal) input::placeholder {
+  color: #94a3b8 !important;
+}
+html.light :is(#loginModal, #registerModal, #selfResetModal, #authV2ResetModal) label {
+  color: #1e293b !important;
+}
+html.light :is(#loginModal, #registerModal, #selfResetModal, #authV2ResetModal) :is(h1, h2, h3, h4) {
+  color: #0f172a !important;
+}
+html.light :is(#loginModal, #registerModal, #selfResetModal, #authV2ResetModal) p {
+  color: #475569 !important;
+}
+html.light :is(#loginModal, #registerModal, #selfResetModal, #authV2ResetModal) .steps div:not(.on) {
+  color: #64748b !important;
+}
+html.light :is(#loginModal, #registerModal, #selfResetModal, #authV2ResetModal) .steps div i {
+  background: #e2e8f0 !important;
+}
+html.light :is(#loginModal, #registerModal, #selfResetModal, #authV2ResetModal) .strength i:not([style*="background"]) {
+  background: #e2e8f0 !important;
 }
 
 /* Interaction feedback: ~100ms is perceptible, not theatrical. */
@@ -15592,7 +15621,7 @@ html.ac-tab-hidden .mm-lid, html.ac-tab-hidden .mm.talk .mm-mouth { animation-pl
 /* Child combinators keep this check off ordinary DOM changes: a body:has() with
    a descendant argument is re-checked on every mutation in the page (it cost
    about half of each chart hover frame). Same elements, same meaning. */
-body:has(> #loginModal:not(.hidden), > #registerModal:not(.hidden), > #selfResetModal:not(.hidden), > #dashboardScreen > #resetPasswordModal:not(.hidden), > #googleCompleteProfileModal:not(.hidden), > dialog.legacy-gmail-dialog[open]) .mm { display: none !important; }
+body:has(> #loginModal:not(.hidden), > #registerModal:not(.hidden), > #selfResetModal:not(.hidden), > #authV2ResetModal:not(.hidden), > #dashboardScreen > #resetPasswordModal:not(.hidden), > #googleCompleteProfileModal:not(.hidden), > dialog.legacy-gmail-dialog[open]) .mm { display: none !important; }
 html.is-dark .mm-bub { background: #22302B; border: 1px solid #33433D; }
 html.is-dark .mm-body > path:first-child { fill: #2A3C35; stroke: #48C797; stroke-opacity: .7; stroke-width: 2.5; }
 html.is-dark .mm-lid path { fill: #2A3C35; }

@@ -930,47 +930,109 @@
 
 <!-- LOGIN MODAL -->
 <div id="loginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between">
-            <h3 id="loginModalTitle" class="text-base font-bold text-white">Masuk</h3>
-            <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal masuk">&times;</button>
+    <div class="w-full max-w-[440px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <span class="w-[30px] h-[30px] rounded-lg bg-[#1D2724] border border-emerald-500/30 flex items-center justify-center mb-3 text-emerald-400">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg>
+                </span>
+                <h3 id="loginModalTitle" class="text-xl font-bold tracking-tight text-white m-0">Masuk ke Auto-Cuan</h3>
+                <p class="mt-1 text-xs text-gray-400">Akses meja kerja riset saham IDX.</p>
+            </div>
+            <button onclick="closeLoginModal()" class="text-gray-400 hover:text-white text-2xl leading-none bg-transparent border-0 cursor-pointer p-1" aria-label="Tutup modal masuk">&times;</button>
         </div>
-        <form id="loginForm" class="space-y-3" onsubmit="event.preventDefault();doLogin();return false;">
-            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Email atau username</label><input type="text" id="loginUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="email" placeholder="email atau username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><p class="mt-1.5 text-[11px] text-gray-500">Masukkan Gmail atau username. Keduanya dapat digunakan untuk login.</p></div>
-            <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <div id="loginError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
-            <button type="submit" id="loginBtn" onclick="doLogin()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
-            <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
+        <form id="loginForm" class="space-y-3.5" onsubmit="event.preventDefault();doLogin();return false;">
+            <div>
+                <label for="loginUsername" class="block text-xs font-semibold text-gray-300 mb-1">Email atau username</label>
+                <input type="text" id="loginUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="email" placeholder="email atau username" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm">
+                <p class="mt-1.5 text-[11px] text-gray-500">Gunakan Gmail terdaftar. Username lama masih didukung. Masukkan Gmail atau username. Keduanya dapat digunakan untuk login.</p>
+            </div>
+            <div>
+                <div class="flex items-baseline justify-between mb-1">
+                    <label for="loginPassword" class="text-xs font-semibold text-gray-300">Password</label>
+                    <button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-emerald-400 hover:text-emerald-300 bg-transparent border-0 cursor-pointer p-0">Lupa Password?</button>
+                </div>
+                <div class="relative">
+                    <input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="Password Anda" class="w-full px-3.5 py-2.5 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doLogin()">
+                    <button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-200 focus:outline-none bg-transparent border-0 cursor-pointer">&#128065;</button>
+                </div>
+            </div>
+            <div id="loginError" class="hidden text-xs rounded-lg px-3 py-2.5 bg-red-500/10 border border-red-500/25 text-red-300" role="alert" aria-live="assertive"></div>
+            <button type="submit" id="loginBtn" onclick="doLogin()" class="w-full py-2.5 mt-2 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.01] transition-all text-sm">Masuk</button>
+            <p class="text-center text-xs text-gray-400 mt-4 mb-0">Belum punya akun? <button type="button" onclick="closeLoginModal();openRegisterModal()" class="text-emerald-400 hover:underline bg-transparent border-0 cursor-pointer p-0 font-medium">Daftar</button></p>
         </form>
     </div>
 </div>
 
 <!-- REGISTER MODAL -->
 <div id="registerModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between">
-            <h3 id="registerModalTitle" class="text-base font-bold text-white">Daftar</h3>
-            <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal daftar">&times;</button>
+    <div class="w-full max-w-[480px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <h3 id="registerModalTitle" class="text-xl font-bold tracking-tight text-white m-0">Daftar akun baru</h3>
+                <p class="mt-1 text-xs text-gray-400">Wajib menyertakan Gmail aktif sebagai identitas akun.</p>
+            </div>
+            <button onclick="closeRegisterModal()" class="text-gray-400 hover:text-white text-2xl leading-none bg-transparent border-0 cursor-pointer p-1" aria-label="Tutup modal daftar">&times;</button>
+        </div>
+        <div class="steps grid grid-cols-3 gap-1.5 my-3" aria-label="Tahapan">
+            <div class="on text-[11px] font-semibold text-emerald-400"><i class="block h-[3px] rounded bg-emerald-500 mb-1"></i>1 · Buat akun</div>
+            <div class="text-[11px] font-semibold text-gray-500"><i class="block h-[3px] rounded bg-gray-700 mb-1"></i>2 · Verifikasi Telegram</div>
+            <div class="text-[11px] font-semibold text-gray-500"><i class="block h-[3px] rounded bg-gray-700 mb-1"></i>3 · Persetujuan admin</div>
         </div>
         <form id="registerFormFields" class="space-y-3" oninput="syncRegistrationConsent()" onchange="syncRegistrationConsent()" onsubmit="event.preventDefault();doRegister();return false;">
-            <div><label for="regEmail" class="block text-xs font-medium text-gray-400 mb-1">Gmail</label><input type="email" id="regEmail" name="email" autocomplete="email" autocapitalize="none" spellcheck="false" inputmode="email" required placeholder="nama@gmail.com" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><p class="mt-1.5 text-[11px] text-gray-500">Wajib untuk akun baru. Gmail dipakai sebagai identitas login; verifikasi Telegram tetap melalui bot resmi.</p></div>
-            <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" name="password" autocomplete="new-password" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <label class="flex items-start gap-2 text-xs" style="color:var(--text-secondary); cursor:pointer; min-height:44px;"><input type="checkbox" id="regTermsAccepted" name="termsAccepted" class="mt-3 h-5 w-5 rounded shrink-0" style="accent-color:var(--accent-primary);"><span>Saya menyetujui <button type="button" id="regOpenTerms" onclick="event.preventDefault();if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();" style="font:inherit; color:var(--accent-primary); background:transparent; border:none; text-decoration:underline; text-align:left; cursor:pointer; min-height:44px;">Syarat &amp; Ketentuan Layanan Auto-Cuan</button>.</span></label>
-            <div id="registerError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
-            <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1" role="status" aria-live="polite"></div>
-            <button type="submit" id="registerBtn" disabled class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
+            <div>
+                <label for="regEmail" class="block text-xs font-semibold text-gray-300 mb-1">Gmail</label>
+                <input type="email" id="regEmail" name="email" autocomplete="email" autocapitalize="none" spellcheck="false" inputmode="email" required placeholder="nama@gmail.com" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm">
+                <p class="mt-1 text-[11px] text-gray-500">Wajib untuk akun baru. Gmail dipakai sebagai identitas login; verifikasi Telegram tetap melalui bot resmi.</p>
+            </div>
+            <div>
+                <label for="regUsername" class="block text-xs font-semibold text-gray-300 mb-1">Username</label>
+                <input type="text" id="regUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="huruf kecil, angka, garis bawah" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="regPassword" class="block text-xs font-semibold text-gray-300 mb-1">Password</label>
+                    <div class="relative">
+                        <input type="password" id="regPassword" name="password" autocomplete="new-password" placeholder="Min. 8 karakter" oninput="if(window.updateRegPwStrength)window.updateRegPwStrength(this.value)" class="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm">
+                        <button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-200 bg-transparent border-0 cursor-pointer">&#128065;</button>
+                    </div>
+                    <div class="strength grid grid-cols-4 gap-1 mt-1.5" id="regPwStrength" aria-hidden="true"><i class="h-[3px] rounded bg-gray-700 transition-colors"></i><i class="h-[3px] rounded bg-gray-700 transition-colors"></i><i class="h-[3px] rounded bg-gray-700 transition-colors"></i><i class="h-[3px] rounded bg-gray-700 transition-colors"></i></div>
+                    <div class="text-[11px] text-gray-400 mt-1" id="regPwHint">Minimal 8 karakter, gabungkan huruf dan angka.</div>
+                </div>
+                <div>
+                    <label for="regPasswordConfirm" class="block text-xs font-semibold text-gray-300 mb-1">Konfirmasi password</label>
+                    <div class="relative">
+                        <input type="password" id="regPasswordConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password" class="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doRegister()">
+                        <button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-200 bg-transparent border-0 cursor-pointer">&#128065;</button>
+                    </div>
+                </div>
+            </div>
+            <label class="flex items-start gap-2 text-xs text-gray-300 cursor-pointer min-h-[44px] pt-1">
+                <input type="checkbox" id="regTermsAccepted" name="termsAccepted" class="mt-1 h-4 w-4 rounded shrink-0 accent-emerald-500">
+                <span>Saya menyetujui <button type="button" id="regOpenTerms" onclick="event.preventDefault();if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();" class="text-emerald-400 hover:underline bg-transparent border-0 p-0 font-medium">Syarat &amp; Ketentuan Layanan Auto-Cuan</button>.</span>
+            </label>
+            <div id="registerError" class="hidden text-xs rounded-lg px-3 py-2 bg-red-500/10 border border-red-500/25 text-red-300 my-1" role="alert" aria-live="assertive"></div>
+            <div id="registerSuccess" class="hidden text-xs rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 my-1" role="status" aria-live="polite"></div>
+            <button type="submit" id="registerBtn" disabled class="w-full py-2.5 mt-2 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.01] transition-all text-sm">Daftar sekarang</button>
+            <p class="text-center text-xs text-gray-400 mt-3 mb-0">Sudah punya akun? <button type="button" onclick="closeRegisterModal();openLoginModal()" class="text-emerald-400 hover:underline bg-transparent border-0 cursor-pointer p-0 font-medium">Masuk</button></p>
         </form>
-        <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
-            <h4 class="text-lg font-bold text-emerald-300">Pendaftaran berhasil</h4>
-            <p class="text-sm text-gray-300">Akun Anda sedang menunggu persetujuan admin.</p>
-            <p class="text-sm text-gray-300">Kode pengguna: <strong id="registerApprovalCode" class="font-mono tracking-wider text-white"></strong></p>
-            <div class="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3 space-y-1.5">
-                <p class="text-xs font-semibold text-sky-300">Kode verifikasi Telegram (satu kali)</p>
-                <p><strong id="registerVerificationCode" class="font-mono text-lg tracking-widest text-white"></strong></p>
-                <p id="registerVerificationExpiry" class="text-[11px] text-gray-400"></p>
-                <p class="text-[11px] leading-relaxed text-gray-400">Salin kode ini, lalu buka bot verifikasi dan kirim kodenya ke chat bot. Jangan bagikan kode ini ke siapa pun.</p>
+        <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 text-center">
+            <span class="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-400 inline-grid place-items-center mb-1">
+                <svg class="ck" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#247A43" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+            </span>
+            <h4 class="text-lg font-bold text-white m-0">Akun dibuat</h4>
+            <p class="text-xs text-gray-300 m-0">Dua langkah lagi sebelum workspace bisa dibuka.</p>
+            <div class="steps grid grid-cols-3 gap-1.5 my-2" aria-label="Tahapan pendaftaran">
+                <div class="on text-[11px] font-semibold text-emerald-400"><i class="block h-[3px] rounded bg-emerald-500 mb-1"></i>1 · Buat akun</div>
+                <div class="on text-[11px] font-semibold text-amber-400"><i class="block h-[3px] rounded bg-amber-500 mb-1"></i>2 · Verifikasi Telegram</div>
+                <div class="text-[11px] font-semibold text-gray-500"><i class="block h-[3px] rounded bg-gray-700 mb-1"></i>3 · Persetujuan admin</div>
+            </div>
+            <div class="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3.5 space-y-1.5 text-center">
+                <p class="text-xs font-semibold text-sky-300 m-0">Kode verifikasi Telegram · sekali pakai</p>
+                <p class="m-0"><strong id="registerVerificationCode" class="font-mono text-xl tracking-widest text-white"></strong></p>
+                <p id="registerVerificationExpiry" class="text-[11px] text-gray-400 m-0"></p>
+                <p class="text-[11px] leading-relaxed text-gray-400 m-0">Salin kode ini, lalu buka bot verifikasi dan kirim kodenya ke chat bot. Jangan bagikan kode ini ke siapa pun.</p>
+                <p class="text-[11px] text-gray-400 mt-1 m-0">Kode pengguna: <strong id="registerApprovalCode" class="font-mono text-white"></strong></p>
             </div>
             <!-- Prominent single active status card -->
             <div class="approval-active-status" role="status" aria-label="Status pendaftaran akun">
@@ -982,9 +1044,15 @@
                     </div>
                 </div>
             </div>
-            <div class="space-y-2">
-                <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode Verifikasi</button>
-                <a id="openVerificationBot" class="hidden w-full rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition" target="_blank" rel="noopener noreferrer">Buka Bot Verifikasi Telegram</a>
+            <div class="border-t border-gray-800 pt-2 text-xs divide-y divide-gray-800 text-left">
+                <div class="flex items-center justify-between py-1.5"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-gray-200">Akun dibuat</span></span><span class="text-gray-400">Selesai</span></div>
+                <div class="flex items-center justify-between py-1.5"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><span class="text-gray-200">Verifikasi Telegram</span></span><span class="text-amber-400 font-semibold">Menunggu kode</span></div>
+                <div class="flex items-center justify-between py-1.5"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-gray-600"></span><span class="text-gray-200">Persetujuan admin</span></span><span class="text-gray-500">Belum dimulai</span></div>
+            </div>
+            <p class="text-[11px] text-gray-400 mt-2">Menunggu persetujuan bukan berarti pendaftaran gagal. Anda akan menerima notifikasi setelah admin menyetujui.</p>
+            <div class="space-y-2 pt-1">
+                <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode Verifikasi</button>
+                <a id="openVerificationBot" class="hidden w-full rounded-xl bg-sky-500 px-4 py-2.5 text-xs font-semibold text-white hover:bg-sky-400 transition" target="_blank" rel="noopener noreferrer">Buka Bot Verifikasi Telegram</a>
             </div>
         </div>
     </div>
@@ -992,17 +1060,41 @@
 
 <!-- SELF-SERVICE RESET PASSWORD MODAL -->
 <div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="selfResetModalTitle">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <h3 id="selfResetModalTitle" class="text-base font-bold text-white text-center">Reset Password</h3>
-        <p class="text-xs text-gray-500 text-center">Masukkan username dan password baru. Reset hanya bisa dilakukan dari perangkat yang terdaftar.</p>
-        <form id="selfResetForm" class="space-y-4" onsubmit="event.preventDefault();doSelfResetPassword();return false;">
-        <div><label for="selfResetUsername" class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" name="username" autocomplete="username" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label for="selfResetPw" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" name="password" autocomplete="new-password" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label for="selfResetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doSelfResetPassword()"></div>
-        <div id="selfResetError" class="hidden text-sm text-red-400 text-center" role="alert" aria-live="assertive"></div>
-        <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center" role="status" aria-live="polite"></div>
-        <button type="submit" id="selfResetSubmitBtn" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
-        <button type="button" onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
+    <div class="w-full max-w-[460px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <h3 id="selfResetModalTitle" class="text-xl font-bold tracking-tight text-white m-0">Pulihkan password</h3>
+                <p class="mt-1 text-xs text-gray-400">Verifikasi melalui bot Telegram yang terhubung ke akun Anda.</p>
+            </div>
+            <button onclick="closeSelfResetModal()" class="text-gray-400 hover:text-white text-2xl leading-none bg-transparent border-0 cursor-pointer p-1" aria-label="Tutup modal">&times;</button>
+        </div>
+        <div class="wz flex items-center justify-between my-3 text-xs" aria-label="Langkah 1 dari 3">
+            <span class="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center">1</span>
+            <span class="flex-1 h-[2px] bg-gray-700 mx-2"></span>
+            <span class="w-6 h-6 rounded-full bg-gray-800 text-gray-400 font-bold flex items-center justify-center">2</span>
+            <span class="flex-1 h-[2px] bg-gray-700 mx-2"></span>
+            <span class="w-6 h-6 rounded-full bg-gray-800 text-gray-400 font-bold flex items-center justify-center">3</span>
+        </div>
+        <form id="selfResetForm" class="space-y-3.5" onsubmit="event.preventDefault();doSelfResetPassword();return false;">
+            <div>
+                <label for="selfResetUsername" class="block text-xs font-semibold text-gray-300 mb-1">Gmail atau username</label>
+                <input type="text" id="selfResetUsername" name="username" autocomplete="username" placeholder="nama@gmail.com atau username" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
+                <p class="text-[11px] text-gray-500 mt-1">Kode verifikasi dikirim ke Telegram yang sudah tertaut, bukan ke email.</p>
+            </div>
+            <div id="selfResetPwFields" class="space-y-3 hidden">
+                <div>
+                    <label for="selfResetPw" class="block text-xs font-semibold text-gray-300 mb-1">Password Baru</label>
+                    <input type="password" id="selfResetPw" name="password" autocomplete="new-password" placeholder="Minimal 8 karakter, huruf dan angka" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
+                </div>
+                <div>
+                    <label for="selfResetPwConfirm" class="block text-xs font-semibold text-gray-300 mb-1">Konfirmasi Password</label>
+                    <input type="password" id="selfResetPwConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password baru" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doSelfResetPassword()">
+                </div>
+            </div>
+            <div id="selfResetError" class="hidden text-xs rounded-lg px-3 py-2 bg-red-500/10 border border-red-500/25 text-red-300" role="alert" aria-live="assertive"></div>
+            <div id="selfResetSuccess" class="hidden text-xs rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-300" role="status" aria-live="polite"></div>
+            <button type="submit" id="selfResetSubmitBtn" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-sm font-bold text-white hover:scale-[1.01] transition-all">Kirim kode ke Telegram</button>
+            <button type="button" onclick="closeSelfResetModal()" class="w-full py-2 rounded-xl border border-gray-700 text-xs font-medium text-gray-400 hover:text-gray-200 transition bg-transparent cursor-pointer">Batal</button>
         </form>
     </div>
 </div>
@@ -6317,6 +6409,34 @@ async function copyRegistrationApprovalCode() {
 // Must match lib/account-terms.js CURRENT_TERMS_VERSION — the server rejects
 // registration unless this exact version string is echoed back.
 var REGISTRATION_TERMS_VERSION = '2026-08-16-v1';
+
+window.updateRegPwStrength = function(pw) {
+    var el = document.getElementById('regPwStrength');
+    var hint = document.getElementById('regPwHint');
+    if (!el) return;
+    var L = (pw || '').length;
+    var hasNum = /[0-9]/.test(pw);
+    var hasLetter = /[A-Za-z]/.test(pw);
+    var score = L === 0 ? 0 : (L < 8 ? 1 : (hasNum && hasLetter ? (L >= 12 ? 4 : 3) : 2));
+    var bars = el.querySelectorAll('i');
+    bars.forEach(function(b, idx) {
+        if (idx < score) {
+            b.style.backgroundColor = score >= 3 ? '#10b981' : (score === 2 ? '#f59e0b' : '#ef4444');
+        } else {
+            b.style.backgroundColor = '';
+        }
+    });
+    if (hint) {
+        var hints = [
+            'Minimal 8 karakter, gabungkan huruf dan angka.',
+            'Terlalu pendek (minimal 8 karakter)',
+            'Cukup, tambahkan angka dan huruf besar',
+            'Kuat',
+            'Sangat kuat'
+        ];
+        hint.textContent = hints[score] || hints[0];
+    }
+};
 
 function syncRegistrationConsent() {
     var button = document.getElementById('registerBtn');
