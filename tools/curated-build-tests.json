@@ -114,6 +114,7 @@
   "test/auth-security-compliance-integrity.test.js",
   "test/auto-swing-telegram-digest.test.js",
   "test/aux-provenance-scanner.test.js",
+  "test/auxiliary-latest-pointers.test.js",
   "test/backfill-broksum-dynamic-dates.test.js",
   "test/backfill-daily-job-priority.test.js",
   "test/backfill-provider-retry.test.js",
