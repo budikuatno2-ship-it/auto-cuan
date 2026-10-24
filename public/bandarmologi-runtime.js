@@ -4330,195 +4330,286 @@
     }
   }
 
+  
+  var insiderSelectedNode = 'BBCA';
+
+  var CANVAS_INSIDER_NODES = {
+    BBCA: { x: 380, y: 230, t: 'e', label: 'BBCA', sub: 'Bank Central Asia', kind: 'Emiten', desc: 'Bank swasta terbesar berdasarkan kapitalisasi pasar.', rel: [{ k: 'Pengendali', v: 'Dwimuria 54,94%' }, { k: 'Publik (Free Float)', v: '41,82%' }, { k: 'Direksi tercatat', v: '2 orang' }] },
+    DWI: { x: 380, y: 96, t: 'h', label: 'PT Dwimuria Investama Andalan', sub: '54,94% BBCA', kind: 'Perusahaan induk', desc: 'Kendaraan kepemilikan keluarga pengendali.', rel: [{ k: 'Kepemilikan BBCA', v: '54,94%' }, { k: 'Pemilik manfaat', v: '2 orang' }] },
+    RBH: { x: 200, y: 40, t: 'p', label: 'Robert Budi Hartono', sub: 'Pemilik manfaat', kind: 'Orang', desc: 'Terhubung ke 3 emiten melalui perusahaan induk.', rel: [{ k: 'BBCA (tidak langsung)', v: 'via Dwimuria' }, { k: 'TOWR', v: 'tidak langsung' }, { k: 'BELI', v: 'tidak langsung' }] },
+    MBH: { x: 560, y: 40, t: 'p', label: 'Michael Bambang Hartono', sub: 'Pemilik manfaat', kind: 'Orang', desc: 'Terhubung ke 3 emiten melalui perusahaan induk.', rel: [{ k: 'BBCA (tidak langsung)', v: 'via Dwimuria' }, { k: 'TOWR', v: 'tidak langsung' }, { k: 'BELI', v: 'tidak langsung' }] },
+    JS: { x: 150, y: 300, t: 'p', label: 'Jahja Setiaatmadja', sub: 'Presiden Direktur', kind: 'Orang · direksi', desc: 'Kepemilikan langsung kecil di BBCA.', rel: [{ k: 'Saham BBCA', v: '40.811.211 lembar' }, { k: 'Kepemilikan', v: '0,03%' }] },
+    AWH: { x: 250, y: 380, t: 'p', label: 'Armand Wahyudi Hartono', sub: 'Wakil Presiden Direktur', kind: 'Orang · direksi', desc: 'Kepemilikan langsung kecil di BBCA.', rel: [{ k: 'Saham BBCA', v: '19.852.300 lembar' }, { k: 'Kepemilikan', v: '0,02%' }] },
+    TOWR: { x: 640, y: 230, t: 'e', label: 'TOWR', sub: 'Sarana Menara Nusantara', kind: 'Emiten', desc: 'Terhubung melalui pemilik manfaat yang sama.', rel: [{ k: 'Relasi ke BBCA', v: 'pemilik manfaat sama' }] },
+    BELI: { x: 600, y: 360, t: 'e', label: 'BELI', sub: 'Global Digital Niaga', kind: 'Emiten', desc: 'Terhubung melalui pemilik manfaat yang sama.', rel: [{ k: 'Relasi ke BBCA', v: 'pemilik manfaat sama' }] },
+    PUB: { x: 470, y: 380, t: 'h', label: 'Publik', sub: '41,82% · Free Float', kind: 'Kelompok', desc: 'Investor publik di bawah ambang 5%.', rel: [{ k: 'Kepemilikan', v: '41,82%' }, { k: 'Jumlah saham', v: '51.528.167.500 lembar' }] }
+  };
+
+  var CANVAS_INSIDER_EDGES = [
+    ['DWI', 'BBCA', '54,94%'],
+    ['RBH', 'DWI', ''],
+    ['MBH', 'DWI', ''],
+    ['JS', 'BBCA', '0,03%'],
+    ['AWH', 'BBCA', '0,02%'],
+    ['RBH', 'TOWR', ''],
+    ['MBH', 'TOWR', ''],
+    ['RBH', 'BELI', ''],
+    ['MBH', 'BELI', ''],
+    ['PUB', 'BBCA', '41,82%']
+  ];
+
+  function renderCanvasInsiderGraph(s) {
+    s = s || 'BBCA';
+    insiderSelectedNode = s;
+    var N = CANVAS_INSIDER_NODES;
+    var E = CANVAS_INSIDER_EDGES;
+    var linkedKeys = [s];
+    for (var ei = 0; ei < E.length; ei++) {
+      if (E[ei][0] === s && !linkedKeys.includes(E[ei][1])) linkedKeys.push(E[ei][1]);
+      if (E[ei][1] === s && !linkedKeys.includes(E[ei][0])) linkedKeys.push(E[ei][0]);
+    }
+    var C = { e: '#315F9A', h: '#94602B', p: '#7357A6' };
+
+    var svgLines = '';
+    var govEdgeLabels = '';
+    for (var i = 0; i < E.length; i++) {
+      var edge = E[i];
+      var a = N[edge[0]];
+      var b = N[edge[1]];
+      if (!a || !b) continue;
+      var on = (edge[0] === s || edge[1] === s);
+      var col = on ? '#0F7458' : '#9AA6A1';
+      var op = on ? 1 : 0.45;
+      var w = on ? 2 : 1.2;
+      svgLines += '<g><line class="edge" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '" stroke="' + col + '" stroke-opacity="' + op + '" stroke-width="' + w + '"/></g>';
+      if (edge[2] && on) {
+        var lx = (a.x + b.x) / 2 + 18;
+        var ly = (a.y + b.y) / 2;
+        var lst = 'left:' + (lx / 7.6).toFixed(2) + '%;top:' + ((ly - 4) / 4.4).toFixed(2) + '%;font-weight:600';
+        govEdgeLabels += '<span class="glb gs" style="' + lst + '">' + escapeHtml(edge[2]) + '</span>';
+      }
+    }
+
+    var svgNodes = '';
+    var govNodeLabels = '';
+    var keys = Object.keys(N);
+    for (var k = 0; k < keys.length; k++) {
+      var key = keys[k];
+      var n = N[key];
+      var isSel = (key === s);
+      var isP = (n.t === 'p');
+      var rw = Math.max(64, n.label.length * 7.2 + 24);
+      var rx = (n.x - rw / 2).toFixed(0);
+      var ry = n.y - 17;
+      var rr = (n.t === 'e') ? 8 : 2;
+      var isLinked = linkedKeys.includes(key);
+
+      var fill = (n.t === 'e') ? (isSel ? '#315F9A' : '#E9EFF6') : ((n.t === 'h') ? (isSel ? '#94602B' : '#F4EDE4') : (isSel ? '#7357A6' : '#EFEBF6'));
+      var stroke = isSel ? '#0F7458' : C[n.t];
+
+      svgNodes += '<g class="node' + (isLinked ? '' : ' dim') + '" onclick="BandarmologiRuntime.selectInsiderNode(\'' + escapeHtml(key) + '\')">';
+      if (isP) {
+        svgNodes += '<circle class="nb" cx="' + n.x + '" cy="' + n.y + '" r="' + (isSel ? 15 : 12) + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="2"/>';
+      } else {
+        svgNodes += '<rect class="nb" x="' + rx + '" y="' + ry + '" width="' + rw + '" height="34" rx="' + rr + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="2"/>';
+      }
+      svgNodes += '</g>';
+
+      var lText = isP ? n.label.split(' ')[0] : n.label;
+      var sText = isP ? n.label.split(' ').slice(1).join(' ') : n.sub;
+      var ty = isP ? (n.y + 30) : (n.y + 4);
+      var sy = isP ? (n.y + 44) : (n.y + 32);
+
+      var lst = 'left:' + (n.x / 7.6).toFixed(2) + '%;top:' + ((ty - 4) / 4.4).toFixed(2) + '%';
+      var sst = 'left:' + (n.x / 7.6).toFixed(2) + '%;top:' + ((sy - 4) / 4.4).toFixed(2) + '%';
+
+      var lcls = 'glb gl' + ((!isP && isSel) ? ' on' : '') + (isLinked ? '' : ' dim');
+      var scls = 'glb gs ns2' + (isLinked ? '' : ' dim');
+
+      govNodeLabels += '<span class="' + lcls + '" style="' + lst + '">' + escapeHtml(lText) + '</span>';
+      govNodeLabels += '<span class="' + scls + '" style="' + sst + '">' + escapeHtml(sText) + '</span>';
+    }
+
+    var html = '';
+    html += '<svg id="insiderNetworkSvg" viewBox="0 0 760 440" width="100%" role="img" aria-label="Graf relasi kepemilikan BBCA" style="display:block">';
+    html += svgLines;
+    html += svgNodes;
+    html += '</svg>';
+    html += '<div class="gov" aria-hidden="true">';
+    html += govEdgeLabels;
+    html += govNodeLabels;
+    html += '</div>';
+    return html;
+  }
+
+  function renderCanvasInsiderDetail(key) {
+    key = key || 'BBCA';
+    var sel = CANVAS_INSIDER_NODES[key] || CANVAS_INSIDER_NODES['BBCA'];
+    var name = (sel.t === 'e') ? (sel.label + ' · ' + sel.sub) : sel.label;
+
+    var html = '<div class="card-pad" style="padding:18px 20px">';
+    html += '  <div class="lbl" style="margin:0">' + escapeHtml(sel.kind) + '</div>';
+    html += '  <div style="font-weight:700;font-size:18px;letter-spacing:-.01em;margin-top:4px">' + escapeHtml(name) + '</div>';
+    html += '  <div class="mut" style="font-size:13px;margin-top:4px">' + escapeHtml(sel.desc) + '</div>';
+    html += '  <div style="margin-top:14px">';
+    for (var i = 0; i < sel.rel.length; i++) {
+      var r = sel.rel[i];
+      html += '    <div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--ac-hair);font-size:13px"><span>' + escapeHtml(r.k) + '</span><b class="num">' + escapeHtml(r.v) + '</b></div>';
+    }
+    html += '  </div>';
+    if (sel.t === 'e') {
+      html += '  <div style="margin-top:16px"><button type="button" class="btn p" style="width:100%" onclick="BandarmologiRuntime.analyzeInsiderTicker(\'' + escapeHtml(sel.label) + '\')">Analisis Saham ' + escapeHtml(sel.label) + ' →</button></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function selectInsiderNode(key) {
+    if (!key) key = 'BBCA';
+    insiderSelectedNode = key;
+    var wrap = byId('insiderGraphSvgWrap');
+    if (wrap) {
+      wrap.innerHTML = renderCanvasInsiderGraph(key);
+    }
+    var panel = byId('insiderDetailPanel');
+    if (panel) {
+      panel.innerHTML = renderCanvasInsiderDetail(key);
+    }
+    var tbody = byId('insiderRosterTbody');
+    if (tbody) {
+      var rows = tbody.querySelectorAll('tr[data-key]');
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute('data-key') === key) {
+          rows[i].classList.add('sel');
+        } else {
+          rows[i].classList.remove('sel');
+        }
+      }
+    }
+  }
+
   function renderInsiderNetworkUI(container, data) {
     if (!container) return;
     injectBubbleStyles();
 
-    // F-007: first open has no preselected entity. Show a guidance state instead
-    // of loading a fabricated example figure.
     var activeEntityLabel = activeInsiderNetworkEntity || 'Belum dipilih';
-
     var ticker = (typeof data === 'string' ? data : (data && data.ticker)) || currentInsiderRosterTicker || currentBandarTicker || 'BBCA';
     currentInsiderRosterTicker = ticker;
 
     var html = '';
 
-    // 1. Header & Deskripsi
-    html += '<div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 mb-4 shadow-lg backdrop-blur">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3">';
-    html += '    <div>';
-    html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
-    html += '        <span class="text-base">🕸️</span> Visualisasi Jejaring Relasi Insider &amp; Pemegang Saham Multi-Emiten';
-    html += '      </h3>';
-    html += '      <p class="text-xs text-gray-400 mt-0.5">Eksplorasi kepemilikan saham lintas emiten para investor besar, tokoh pasar modal, dan institusi terkemuka.</p>';
-    html += '    </div>';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <span class="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full font-semibold">⚡ Interactive Radial Graph</span>';
-    html += '    </div>';
+    // 1. TOP HEADER SECTION (Canvas Insider.dc.html)
+    html += '<div class="ph rise d0">';
+    html += '  <div><h1>Jejaring Insider</h1><p>Relasi pengendali, direksi, dan kepemilikan silang. Klik simpul untuk menyorot hubungannya.</p></div>';
+    html += '  <div style="display:flex;gap:10px;align-items:center">';
+    html += '    <label class="search" style="width:280px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>';
+    html += '      <input type="search" placeholder="Cari ticker, orang, atau entitas" oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" style="all:unset;width:100%;font-size:13px">';
+    html += '    </label>';
     html += '  </div>';
     html += '</div>';
 
-    // Mobile View Toggle: [ Daftar Pemegang Saham ] [ Graf Jejaring ]
-    var isGraphView = insiderMobileView === 'graph';
-    html += '<div id="insiderMobileTabs" class="insider-mobile-tabs" role="tablist" aria-label="Tampilan Insider">';
-    html += '  <button type="button" role="tab" id="insiderTabRoster" onclick="BandarmologiRuntime.setInsiderMobileView(\'roster\')" class="ac-tab-btn' + (!isGraphView ? ' ac-tab-active' : '') + '" aria-selected="' + (!isGraphView ? 'true' : 'false') + '">Daftar Pemegang Saham</button>';
-    html += '  <button type="button" role="tab" id="insiderTabGraph" onclick="BandarmologiRuntime.setInsiderMobileView(\'graph\')" class="ac-tab-btn' + (isGraphView ? ' ac-tab-active' : '') + '" aria-selected="' + (isGraphView ? 'true' : 'false') + '">Graf Jejaring</button>';
+    // 2. MAIN FLEX ROW: GRAPH (LEFT) & DETAIL (RIGHT)
+    html += '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:16px">';
+
+    // Left: Graf Relasi (flex: 999 1 620px)
+    html += '  <section class="sheet rise d1" style="flex:999 1 620px;min-width:0" id="insiderGraphSection" aria-label="Graf relasi">';
+    html += '    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">';
+    html += '      <div class="legend">';
+    html += '        <span><svg width="14" height="10" aria-hidden="true"><rect width="14" height="10" rx="3" fill="#315F9A"/></svg>Emiten</span>';
+    html += '        <span><svg width="14" height="10" aria-hidden="true"><rect width="14" height="10" fill="#94602B"/></svg>Perusahaan induk</span>';
+    html += '        <span><svg width="10" height="10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#7357A6"/></svg>Orang</span>';
+    html += '      </div>';
+    html += '      <button type="button" class="btn sm" onclick="BandarmologiRuntime.selectInsiderNode(\'BBCA\')">Reset sorotan</button>';
+    html += '    </div>';
+    html += '    <div class="gw" id="insiderGraphSvgWrap">';
+    html += renderCanvasInsiderGraph(insiderSelectedNode || 'BBCA');
+    html += '    </div>';
+    html += '    <div class="prov"><span>Tata letak tetap (bukan simulasi fisika) agar posisi simpul sama di setiap kunjungan.</span><span class="chip i">Per 30 Sep 2026 · KSEI</span></div>';
+    html += '  </section>';
+
+    // Right: Detail Entitas (flex: 1 1 320px)
+    html += '  <aside class="sheet rise d2" style="flex:1 1 320px;min-width:300px" id="insiderDetailPanel" aria-label="Detail entitas">';
+    html += renderCanvasInsiderDetail(insiderSelectedNode || 'BBCA');
+    html += '  </aside>';
     html += '</div>';
 
-    // 2. TABEL TERSTRUKTUR: DAFTAR PEMEGANG SAHAM & INSIDER (DITAMPILKAN LENGKAP DI ATAS GRAF)
-    html += '<div id="insiderRosterSection" class="bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 mb-5 shadow-lg">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3 border-b border-dark-700/60 pb-3">';
-    html += '    <div>';
-    html += '      <h4 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
-    html += '        <span>📋</span> Daftar Pemegang Saham &amp; Insider (<span id="rosterTickerDisplay" class="font-mono text-emerald-400 font-bold">' + escapeHtml(ticker) + '</span>)';
-    html += '      </h4>';
-    html += '      <p class="text-[11px] text-gray-400 mt-0.5">Data kepemilikan resmi bursa efek, direksi, komisaris, dan institusi pengendali terkini.</p>';
-    html += '    </div>';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <span id="insiderRosterCountBadge" class="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">Memuat data...</span>';
-    html += '    </div>';
-    html += '  </div>';
-
-    // Emiten Picker Bar + Quick Chips
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">';
-    html += '    <div class="flex flex-wrap items-center gap-1.5">';
-    html += '      <span class="text-[11px] text-gray-400 font-medium mr-1">Pilih Emiten:</span>';
-    var popularEmitens = ['BBCA', 'BBRI', 'BMRI', 'BREN', 'GPRA', 'AMMN', 'BUMI', 'BRPT', 'CUAN', 'PANI', 'TLKM'];
-    for (var e = 0; e < popularEmitens.length; e++) {
-      var em = popularEmitens[e];
-      var isCurEm = em.toUpperCase() === ticker.toUpperCase();
-      var emClass = isCurEm
-        ? 'bg-emerald-500 text-dark-900 border-emerald-400 font-bold shadow-sm'
-        : 'bg-dark-700/70 text-gray-300 border-dark-600/60 hover:text-emerald-300 hover:border-emerald-500/40';
-      html += '    <button type="button" onclick="BandarmologiRuntime.loadRosterForTicker(\'' + escapeHtml(em) + '\')" class="px-2.5 py-1 rounded-lg text-xs font-mono border transition ' + emClass + '">' + escapeHtml(em) + '</button>';
-    }
-    html += '    </div>';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <input id="insiderRosterTickerInput" type="text" value="' + escapeHtml(ticker) + '" placeholder="Ketik ticker..." onkeydown="if(event.key===\'Enter\')BandarmologiRuntime.loadRosterForTicker(this.value)" class="w-28 bg-dark-900 border border-dark-600 rounded-lg px-2.5 py-1 text-xs font-mono text-gray-100 uppercase focus:outline-none focus:border-emerald-500">';
-    html += '      <button type="button" onclick="BandarmologiRuntime.loadRosterForTicker(byId(\'insiderRosterTickerInput\').value)" class="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-dark-900 font-bold text-xs transition">Cari</button>';
-    html += '    </div>';
-    html += '  </div>';
-
-    // Filter controls within table card
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3 bg-dark-900/60 p-2.5 rounded-lg border border-dark-700/50">';
-    html += '    <div class="relative flex items-center flex-1 min-w-[200px]">';
-    html += '      <span class="absolute left-3 text-gray-400 text-sm pointer-events-none">🔍</span>';
-    html += '      <input type="text" oninput="BandarmologiRuntime.filterRosterTable(this.value)" placeholder="Filter nama atau jabatan dalam tabel..." class="w-full bg-dark-800 border border-dark-600/80 rounded-lg pl-10 pr-3 py-1.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500" style="padding-left: 2.5rem;">';
-    html += '    </div>';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <span class="text-xs text-gray-400">Kategori:</span>';
-    html += '      <select onchange="BandarmologiRuntime.setRosterCategoryFilter(this.value)" class="bg-dark-800 border border-dark-600/80 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-emerald-500">';
-    html += '        <option value="all">Semua Kategori</option>';
-    html += '        <option value="pengendali">👑 Pengendali</option>';
-    html += '        <option value="direksi">💼 Direksi</option>';
-    html += '        <option value="komisaris">🛡️ Komisaris</option>';
-    html += '        <option value="5%">📈 Pemegang Saham &gt;5%</option>';
-    html += '      </select>';
-    html += '    </div>';
-    html += '  </div>';
-
-    // Full Table Container (Without row cutting/truncation)
-    html += '  <div class="overflow-x-auto overflow-y-auto max-h-[460px] scrollbar-thin border border-dark-700/60 rounded-xl" style="max-height: 460px; overflow: auto; pointer-events: auto;">';
-    html += '    <table class="w-full text-xs text-left border-collapse min-w-[720px]">';
-    html += '      <thead class="sticky top-0 bg-dark-900/95 backdrop-blur z-10 border-b border-dark-700/80 text-gray-400 font-semibold">';
+    // 3. BOTTOM SECTION: SHAREHOLDER ROSTER TABLE
+    html += '<section class="sheet rise d3" id="insiderRosterSection" style="margin-top:16px">';
+    html += '  <div class="sec-h"><h2 style="font-size:16px">Daftar Pemegang Saham &amp; Insider · <span id="rosterTickerDisplay">' + escapeHtml(ticker) + '</span></h2><span id="insiderRosterCountBadge">Sumber: KSEI · per 30 Sep 2026</span></div>';
+    html += '  <input type="hidden" id="insiderRosterTickerInput" value="' + escapeHtml(ticker) + '">';
+    html += '  <div class="tw" style="overflow-x:auto">';
+    html += '    <table class="tbl" style="min-width:760px">';
+    html += '      <thead>';
     html += '        <tr>';
-    html += '          <th class="py-2.5 px-3 w-12">No</th>';
-    html += '          <th class="py-2.5 px-3">Nama Pemilik / Insider</th>';
-    html += '          <th class="py-2.5 px-3">Kategori</th>';
-    html += '          <th class="py-2.5 px-3 text-right">Jumlah Lembar Saham</th>';
-    html += '          <th class="py-2.5 px-3 text-right">Persentase (%)</th>';
-    html += '          <th class="py-2.5 px-3 text-right">Perubahan Terakhir</th>';
-    html += '          <th class="py-2.5 px-3 text-center w-28">Aksi</th>';
+    html += '          <th style="width:44px">#</th>';
+    html += '          <th>Nama Pemilik / Insider</th>';
+    html += '          <th>Kategori</th>';
+    html += '          <th class="r">Jumlah lembar</th>';
+    html += '          <th class="r">Kepemilikan</th>';
+    html += '          <th class="r">Perubahan</th>';
+    html += '          <th style="width:110px"></th>';
     html += '        </tr>';
     html += '      </thead>';
-    html += '      <tbody id="insiderRosterTbody" class="divide-y divide-dark-700/30 text-gray-300" style="pointer-events: auto;">';
-    html += '        <tr><td colspan="7" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data kepemilikan saham dari bursa...</td></tr>';
+    html += '      <tbody id="insiderRosterTbody">';
+    html += '        <tr><td colspan="7" class="mut" style="text-align:center;padding:24px 12px;font-size:13px"><div class="spinner mb-2" style="margin:0 auto 8px"></div>Memuat data kepemilikan saham dari KSEI...</td></tr>';
     html += '      </tbody>';
     html += '    </table>';
     html += '  </div>';
-    html += '</div>';
+    html += '</section>';
 
-    // 3. VISUALISASI GRAF RELASI (NETWORK GRAPH) DI BAWAH TABEL
-    html += '<div id="insiderGraphSection">';
-    // Search Bar + Autocomplete & Quick Chips
-    html += '  <div class="bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 mb-4 shadow-md">';
-    html += '    <div class="relative w-full max-w-2xl mb-2">';
-    html += '      <div class="relative flex items-center">';
-    html += '        <span class="absolute left-3.5 text-gray-400 text-sm pointer-events-none">🔍</span>';
-    html += '        <input id="insiderSearchInput" type="text" value="' + escapeHtml(activeInsiderNetworkEntity) + '" placeholder="Ketik nama insider/tokoh untuk melihat relasi (cth: Prajogo Pangestu, Haji Isam, Garibaldi Thohir)..." oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-11 pr-10 py-2.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition" style="padding-left: 2.75rem;">';
-    html += '        <button type="button" id="btnClearInsiderSearch" onclick="BandarmologiRuntime.clearInsiderSearch()" class="absolute right-3 text-gray-400 hover:text-gray-200 text-xs px-1" style="display: none;">✕</button>';
-    html += '      </div>';
-    html += '      <div id="insiderSearchDropdown" class="w-full mt-2 mb-2 bg-dark-900 border border-dark-600/80 rounded-xl shadow-xl overflow-hidden" style="display: none; max-height: 280px; overflow-y: auto;"></div>';
+    // 4. LEGACY CONTROLS PRESERVED IN ALAT LANJUTAN
+    html += '<details class="adv-tools" style="margin-top:20px"><summary>Alat lanjutan</summary>';
+    html += '  <div class="card-pad" style="border-top:1px solid var(--ac-hair);margin-top:12px">';
+    html += '    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    html += '      <h3>Visualisasi Jejaring Relasi Insider &amp; Pemegang Saham Multi-Emiten</h3>';
     html += '    </div>';
-
-    // Quick Chips Tokoh Populer
-    html += '    <div class="flex flex-wrap items-center gap-2 pt-1">';
-    html += '      <span class="text-[11px] text-gray-400 font-medium">Tokoh Populer:</span>';
+    html += '    <div id="insiderMobileTabs" class="insider-mobile-tabs" style="display:none">';
+    html += '      <button type="button" id="insiderTabRoster" onclick="BandarmologiRuntime.setInsiderMobileView(\'roster\')">Daftar Pemegang Saham</button>';
+    html += '      <button type="button" id="insiderTabGraph" onclick="BandarmologiRuntime.setInsiderMobileView(\'graph\')">Graf Jejaring</button>';
+    html += '    </div>';
+    html += '    <div style="margin-bottom:12px">';
+    html += '      <span style="font-size:12px;font-weight:600">Pilih Emiten Cepat:</span>';
+    html += '      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+    var popularEmitens = ['BBCA', 'BBRI', 'BMRI', 'BREN', 'GPRA', 'AMMN', 'BUMI', 'BRPT', 'CUAN', 'PANI', 'TLKM'];
+    for (var e = 0; e < popularEmitens.length; e++) {
+      var em = popularEmitens[e];
+      html += '        <button type="button" onclick="BandarmologiRuntime.loadRosterForTicker(\'' + escapeHtml(em) + '\')" class="btn ' + (em.toUpperCase() === ticker.toUpperCase() ? 'p' : '') + '">' + escapeHtml(em) + '</button>';
+    }
+    html += '      </div>';
+    html += '    </div>';
+    html += '    <div style="margin-bottom:12px">';
+    html += '      <span style="font-size:12px;font-weight:600">Tokoh Populer:</span>';
+    html += '      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
     var popularEntities = ['Belvin Tannadi', 'Prajogo Pangestu', 'Haji Isam', 'Garibaldi Thohir', 'Lo Kheng Hong', 'Anthoni Salim', 'BlackRock Inc.'];
     for (var p = 0; p < popularEntities.length; p++) {
       var popName = popularEntities[p];
-      var isCur = popName.toLowerCase() === activeEntityLabel.toLowerCase();
-      var chipClass = isCur
-        ? 'ac-insider-quick-chip-selected font-bold'
-        : '';
-      html += '      <button type="button" onclick="BandarmologiRuntime.selectInsiderQuickChip(\'' + escapeHtml(popName) + '\')" class="ac-insider-quick-chip px-3 py-1 rounded-full text-xs font-medium border transition ' + chipClass + '">' + escapeHtml(popName) + '</button>';
+      html += '        <button type="button" onclick="BandarmologiRuntime.selectInsiderQuickChip(\'' + escapeHtml(popName) + '\')" class="btn">' + escapeHtml(popName) + '</button>';
     }
-    html += '    </div>';
-    html += '  </div>';
-
-    // Grid Canvas (Left 8 cols) & Detail (Right 4 cols)
-    html += '  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">';
-    html += '    <div class="lg:col-span-8 bg-dark-900/80 border border-dark-600/40 rounded-xl p-4 flex flex-col items-center justify-center relative min-h-[640px] overflow-hidden">';
-    html += '      <div class="w-full flex items-center justify-between text-[11px] text-gray-400 mb-2 px-2">';
-    html += '        <span class="flex items-center gap-1.5 font-mono"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Kanvas Relasi Aktif: <strong id="activeGraphEntityTitle" class="text-gray-200">' + escapeHtml(activeEntityLabel) + '</strong></span>';
-    html += '        <span class="text-[10px] text-gray-500">Klik node emiten untuk rincian</span>';
-    html += '      </div>';
-    html += '      <div id="insiderGraphSvgWrap" class="w-full h-full flex items-center justify-center">';
-
-    // Initial graph generation
-    var graph = getEffectiveInsiderGraph(activeInsiderNetworkEntity);
-    currentInsiderNetworkGraph = graph;
-    if (!activeInsiderNetworkSelectedTicker && graph && graph.edges && graph.edges.length > 0) {
-      activeInsiderNetworkSelectedTicker = graph.edges[0].ticker;
-    }
-    html += renderInsiderNetworkSvg(graph, activeInsiderNetworkSelectedTicker);
-
     html += '      </div>';
     html += '    </div>';
-
-    // Detail Panel
-    html += '    <div class="lg:col-span-4 bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 flex flex-col justify-between">';
-    html += '      <div id="insiderDetailPanel">';
-    html += renderInsiderDetailPanelHtml(graph, activeInsiderNetworkSelectedTicker);
+    html += '    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--ac-hair)">';
+    html += '      <div style="flex:1;min-width:240px;position:relative">';
+    html += '        <input id="insiderSearchInput" type="text" value="' + escapeHtml(activeInsiderNetworkEntity) + '" placeholder="Ketik nama insider/tokoh untuk melihat relasi (cth: Prajogo Pangestu, Haji Isam, Garibaldi Thohir)..." oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" class="pl-11" style="padding-left: 2.75rem; width:100%; border-radius:6px; border:1px solid var(--ac-line); padding-top:6px; padding-bottom:6px">';
+    html += '        <button type="button" id="btnClearInsiderSearch" onclick="BandarmologiRuntime.clearInsiderSearch()" style="display:none">✕</button>';
+    html += '        <div id="insiderSearchDropdown" style="display:none;position:absolute;left:0;right:0;top:100%;background:var(--ac-raised);border:1px solid var(--ac-line);border-radius:6px;z-index:20;max-height:240px;overflow-y:auto"></div>';
+    html += '      </div>';
+    html += '      <div style="display:flex;gap:6px;align-items:center">';
+    html += '        <span style="font-size:12px">Kategori:</span>';
+    html += '        <select onchange="BandarmologiRuntime.setRosterCategoryFilter(this.value)" style="padding:6px 10px;border-radius:6px;border:1px solid var(--ac-line);background:var(--ac-raised);color:var(--ac-ink)">';
+    html += '          <option value="all">Semua Kategori</option>';
+    html += '          <option value="pengendali">Pengendali</option>';
+    html += '          <option value="direksi">Direksi</option>';
+    html += '          <option value="komisaris">Komisaris</option>';
+    html += '          <option value="5%">Pemegang Saham &gt;5%</option>';
+    html += '        </select>';
     html += '      </div>';
     html += '    </div>';
     html += '  </div>';
-    html += '</div>';
+    html += '</details>';
 
     container.innerHTML = html;
     setInsiderMobileView(insiderMobileView);
-
-    // Load full roster for active emiten from VPS
     loadRosterForTicker(ticker);
-
-    if (!activeInsiderNetworkEntity) return;
-
-    fetchRemoteInsiderGraph(activeInsiderNetworkEntity, function (remoteGraph) {
-      if (remoteGraph && remoteGraph.nodes && remoteGraph.nodes.length > 0) {
-        currentInsiderNetworkGraph = remoteGraph;
-        if (!activeInsiderNetworkSelectedTicker && remoteGraph.edges && remoteGraph.edges.length > 0) {
-          activeInsiderNetworkSelectedTicker = remoteGraph.edges[0].ticker;
-        }
-        var w = byId('insiderGraphSvgWrap');
-        if (w) {
-          w.innerHTML = renderInsiderNetworkSvg(remoteGraph, activeInsiderNetworkSelectedTicker);
-        }
-        var p = byId('insiderDetailPanel');
-        if (p) {
-          p.innerHTML = renderInsiderDetailPanelHtml(remoteGraph, activeInsiderNetworkSelectedTicker);
-        }
-      }
-    });
   }
 
   function handleInsiderSearchInput(query) {
@@ -6232,6 +6323,9 @@
       setInsiderActionFilter: setInsiderActionFilter,
       getInsiderActionFilter: getInsiderActionFilter,
       renderInsiderNetworkUI: renderInsiderNetworkUI,
+      selectInsiderNode: selectInsiderNode,
+      renderCanvasInsiderGraph: renderCanvasInsiderGraph,
+      renderCanvasInsiderDetail: renderCanvasInsiderDetail,
       renderInsiderNetworkGraph: renderInsiderNetworkGraph,
       renderInsiderNetworkSvg: renderInsiderNetworkSvg,
       renderInsiderDetailPanelHtml: renderInsiderDetailPanelHtml,
