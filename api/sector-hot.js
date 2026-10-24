@@ -338,7 +338,7 @@ module.exports = async function handler(req, res) {
     // response, because that would bypass the premium read policy.
     const knownActions = new Set([
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
-      'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
+      'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record', 'admin-notes',
       'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi', 'broker-summary', 'available-dates',
       'broker-hunter', 'bandarmologi-intel', 'intel', 'insider-network', 'insider-roster', 'market-structure-list',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
@@ -398,6 +398,12 @@ module.exports = async function handler(req, res) {
     // === TRACK RECORD (PUBLIC / AUTHED READ-ONLY) ===
     if (action === 'track-record') {
       return await handleTrackRecord(req, res, supabase);
+    }
+
+    // === CATATAN ADMIN ===
+    if (action === 'admin-notes') {
+      const adminNotesHandler = require('../lib/admin-notes-handler');
+      return await adminNotesHandler(req, res);
     }
 
     // === BANDARMOLOGI & INSIDER (PUBLIC / AUTHED READ-ONLY) ===

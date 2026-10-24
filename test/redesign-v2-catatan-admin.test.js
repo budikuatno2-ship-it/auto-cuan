@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
-const adminNotesHandler = require('../api/admin-notes.js');
+const adminNotesHandler = require('../lib/admin-notes-handler.js');
 const {
   validateTickSize,
   checkForbiddenWords,

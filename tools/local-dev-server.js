@@ -934,6 +934,13 @@ const server = http.createServer(async (req, res) => {
       pathname = '/api/sector-hot';
     }
 
+    // Alias: /api/admin-notes -> sector-hot?action=admin-notes.
+    if (endpointName === 'admin-notes') {
+      parsedUrl.searchParams.set('action', 'admin-notes');
+      endpointName = 'sector-hot';
+      pathname = '/api/sector-hot';
+    }
+
     // C2: CSP violation reports are collected by lib/security-headers (not an
     // api/ file, to respect the 13-function Vercel budget).
     if (endpointName === 'csp-report') {

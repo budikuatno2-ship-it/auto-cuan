@@ -9,6 +9,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/admin-notes",
+      "destination": "/api/sector-hot?action=admin-notes"
+    },
+    {
       "source": "/api/track-record",
       "destination": "/api/sector-hot?action=track-record"
     },
