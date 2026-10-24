@@ -53,7 +53,7 @@ test('Si Mata copy never tells anyone to buy or sell or promises gains', () => {
 
 test('the mascot is mounted only by script and hidden on auth screens', () => {
   assert.match(html, /<script src="\/ac-motion\.js\?v=[^"]+"><\/script>/);
-  assert.match(css, /body:has\(#loginModal:not\(\.hidden\), #registerModal:not\(\.hidden\), #selfResetModal:not\(\.hidden\)[^)]*\)[^{]*\.mm \{ display: none !important; \}/);
+  assert.match(css, /body:has\(> #loginModal:not\(\.hidden\), > #registerModal:not\(\.hidden\), > #selfResetModal:not\(\.hidden\)[^)]*\)[^{]*\.mm \{ display: none !important; \}/);
 });
 
 test('blink pauses in a background tab and all motion stops for reduced motion', () => {
