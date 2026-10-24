@@ -538,7 +538,7 @@ function getChartPocHtml() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SPIKE 6D: Evaluasi & Uji Stres Engine Chart - Auto-Cuan</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="/vendor/lightweight-charts.standalone.production.js"></script>
   <script src="/chart-workstation.js?v=20261015-v1"></script>
   <link rel="stylesheet" href="/ui-theme.css">
   <style>

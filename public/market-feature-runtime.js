@@ -7,7 +7,7 @@ function loadLightweightCharts() {
     _lwcLoadPromise = new Promise(function(resolve, reject) {
         if (window.LightweightCharts) { _lwcLoaded = true; resolve(); return; }
         var s = document.createElement('script');
-        s.src = 'https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js';
+        s.src = '/vendor/lightweight-charts.standalone.production.js';
         s.async = true;
         s.onload = function() { _lwcLoaded = true; resolve(); };
         s.onerror = reject;

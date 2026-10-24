@@ -4302,14 +4302,10 @@ html.light #googleCompleteProfileModal input {
 // loadPdfLibrary() is called from an export handler.
 (function() {
     var jspdfUrls = [
-        'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js',
-        'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',
-        'https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js'
+        '/vendor/jspdf.umd.min.js'
     ];
     var autoTableUrls = [
-        'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
-        'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',
-        'https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'
+        '/vendor/jspdf.plugin.autotable.min.js'
     ];
     window._pdfLibReady = false;
     window._pdfLibError = false;
