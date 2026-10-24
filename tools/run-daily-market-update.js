@@ -72,9 +72,55 @@ function previousDateNeedsWork(date){
   const brokerComplete=Boolean(brokerMarker&&brokerMarker.version===2&&brokerMarker.complete===true);
   return !(marketComplete&&brokerComplete);
 }
-function pendingDates(now=new Date()){
-  const {dateKey,hour}=broker.getJakartaTimeInfo(now);
+function resolveExplicitDate(options = {}) {
+  if (options && options.date) return String(options.date).trim();
+  const args = (options && options.argv) || (typeof process !== 'undefined' && process.argv ? process.argv.slice(2) : []);
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (typeof a === 'string') {
+      if (a.startsWith('--date=')) return a.slice(7).trim();
+      if (a === '--date' && args[i + 1] && !args[i + 1].startsWith('--')) {
+        return args[i + 1].trim();
+      }
+    }
+  }
+  return null;
+}
+
+function pendingDates(now=new Date(), options={}){
+  if (now && typeof now === 'object' && !(now instanceof Date) && typeof now.getTime !== 'function') {
+    options = now;
+    now = options.now || new Date();
+  }
+
+  const explicitDate = resolveExplicitDate(options);
+  if (explicitDate) return [explicitDate];
+
+  // BUG-03 / BUG-P1-01: Lock evaluation time to runner initiation (startTime)
+  // to prevent premature bail-out if execution crosses midnight (23:30 -> 00:00+ WIB).
+  const evalTime = (options && options.startTime) || now || new Date();
+  const {dateKey,hour}=broker.getJakartaTimeInfo(evalTime);
   const holidays=calendar.getSeedHolidaySet();
+
+  // Midnight rollover tolerance (00:00–04:00 WIB):
+  // If the runner is running in the early morning window to complete yesterday's batch
+  // (e.g. crossing midnight or scheduled recovery), keep processing the prior trading session.
+  const isMidnightRolloverWindow = hour >= 0 && hour < 4;
+  const allowRollover = Boolean(
+    (options && (options.rollover === true || options.allowRollover === true)) ||
+    (options && options.argv && (options.argv.includes('--rollover') || options.argv.includes('--final'))) ||
+    (typeof process !== 'undefined' && process.argv && (process.argv.includes('--rollover') || process.argv.includes('--final')))
+  );
+
+  if (isMidnightRolloverWindow && allowRollover) {
+    const lastTrading = calendar.previousTradingDay(dateKey, holidays);
+    if (lastTrading && previousDateNeedsWork(lastTrading)) {
+      const dates = [lastTrading];
+      const prevPrev = calendar.previousTradingDay(lastTrading, holidays);
+      if (prevPrev && previousDateNeedsWork(prevPrev)) dates.push(prevPrev);
+      return dates;
+    }
+  }
 
   // Hard guard in addition to crontab: EOD work is allowed only from 18:00 WIB
   // on an actual IDX trading day. Weekend / exchange-holiday firings are no-op.
@@ -95,10 +141,22 @@ function pendingDates(now=new Date()){
 async function run(options={}){
   loadEnv();
   const dryRun=options.dryRun===true;
-  const now=options.now || new Date();
+  const startTime = options.startTime || options.now || new Date();
+  const now = startTime;
   const env=options.env || process.env;
-  const {hour,minute}=broker.getJakartaTimeInfo(now);
-  const dates=pendingDates(options.now);
+  const {hour,minute}=broker.getJakartaTimeInfo(startTime);
+  const extraArgs = options.argv || process.argv.slice(2);
+  const explicitDate = resolveExplicitDate(options);
+  const isRolloverWindow = hour >= 0 && hour < 4;
+  const rollover = options.rollover !== undefined
+    ? options.rollover
+    : (isRolloverWindow || extraArgs.includes('--final') || extraArgs.includes('--rollover'));
+
+  const dates=pendingDates(startTime, Object.assign({}, options, {
+    startTime,
+    date: explicitDate,
+    rollover
+  }));
   // BUG-3C-03: the flat-file candle stage alone is not success. The canonical
   // SQLite stock_daily_history must also be synchronized (rolling window of
   // recent trading sessions) or lifecycle consumers keep skipping history.
@@ -250,8 +308,7 @@ async function run(options={}){
     try{
       process.exitCode=undefined;
       const brokerArgs=['--date',date];
-      if(hour===23 && minute>=30)brokerArgs.push('--final');
-      const extraArgs = options.argv || process.argv.slice(2);
+      if((hour===23 && minute>=30) || extraArgs.includes('--final') || options.final === true) brokerArgs.push('--final');
       for(const a of extraArgs){
         if(typeof a === 'string' && (a.startsWith('--accum-source=') || a.startsWith('--insider-mode='))) brokerArgs.push(a);
       }
@@ -306,9 +363,9 @@ async function run(options={}){
     }
   }
   process.exitCode=undefined;
-  if(!dryRun&&pendingDates(options.now).some(date=>{
+  if(!dryRun&&dates.some(date=>{
     try{return JSON.parse(fs.readFileSync(path.join(stateDir(),date+'.json'),'utf8')).complete!==true;}catch(_){return true;}
   }))process.exitCode=3;
 }
-module.exports={run,pendingDates,stateDir,readMarketState,previousDateNeedsWork,loadEnv,eodDonePath,writeEodDone};
+module.exports={run,pendingDates,resolveExplicitDate,stateDir,readMarketState,previousDateNeedsWork,loadEnv,eodDonePath,writeEodDone};
 if(require.main===module)run({dryRun:process.argv.includes('--dry-run')}).catch(error=>{console.error(error.message);process.exitCode=1;});
