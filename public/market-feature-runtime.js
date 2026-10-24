@@ -2331,6 +2331,20 @@ function _renderCompactAnalysis(doc, f, y, maxW, isIndex) {
     return y;
 }
 
+// ===== SCREENER PRINT HOOK (beforeprint) =====
+if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('beforeprint', function() {
+        var el = document.getElementById('scrPrintTimestamp');
+        if (el) {
+            var meta = (document.getElementById('screenerMetaBadge') || {}).textContent || '';
+            var d = new Date();
+            var dateStr = d.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) + ' ' +
+                          d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+            el.textContent = 'Data pasar per: ' + (meta || 'Sesi bursa') + ' · Dicetak pada: ' + dateStr;
+        }
+    });
+}
+
 // ===== KONGLO SCREENER PDF (jsPDF autoTable) =====
 function exportKongloScreenerPDF() {
     var tbody = document.getElementById('screenerTableBody');

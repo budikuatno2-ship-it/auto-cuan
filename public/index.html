@@ -1879,6 +1879,11 @@ html.light #googleCompleteProfileModal input {
     </div>
     <!-- Content -->
     <div id="screenerContent" class="hidden space-y-4">
+        <!-- Print Header & Data Timestamp (shown only on browser print / PDF export) -->
+        <div class="scr-print-meta hidden" aria-hidden="true">
+            <h2 class="print-title">Auto-Cuan &middot; Hasil Screener Saham IDX</h2>
+            <p class="print-sub" id="scrPrintTimestamp">Data radar saham IDX &middot; Dicetak dari Auto-Cuan</p>
+        </div>
         <!-- Redesign v2 header (canvas Screener.dc.html): title, mode text, and
              the three-way mode switch. Ids and switchScreenerType() unchanged. -->
         <div class="ph rise scr-ph">

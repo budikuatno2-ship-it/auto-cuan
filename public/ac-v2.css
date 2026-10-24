@@ -980,6 +980,210 @@ html #appContent #page-screener .scr-head-act > * { flex: none; white-space: now
 .oc.exp { background: var(--ac-hover); color: var(--ac-2); }
 .oc.act { background: var(--ac-info-soft); color: var(--ac-info); }
 
+/* ==================== 15. SCREENER PRINT STYLESHEET ==================== */
+@media print {
+  /* Hide navigation, sidebar, topbar, interactive controls, and mascot */
+  .side,
+  .sidebar,
+  aside.side,
+  .top,
+  .topbar,
+  header.top,
+  .tape,
+  #priceMarqueeTape,
+  .marquee,
+  #siMataMascot,
+  .mata-wrap,
+  .si-mata,
+  .vbtn,
+  .btn,
+  .ph-act,
+  .scr-head-act,
+  .scr-filter-grid,
+  .adv-tools,
+  #kgAdvTools,
+  #dtAdvTools,
+  #nkAdvTools,
+  .scr-modes,
+  .segx,
+  .chip,
+  #toastContainer,
+  #authOverlay,
+  .toast,
+  summary,
+  .scr-view-btn,
+  .ac-segmented,
+  .screener-tab,
+  #kgBtnTable,
+  #kgBtnCard,
+  #dtBtnTable,
+  #dtBtnCard,
+  #nkBtnTable,
+  #nkBtnCard,
+  .ac-split-view__detail,
+  .theme-corner,
+  .thm,
+  nav,
+  #analisisFollowUp,
+  .spinner,
+  .spinner-sm {
+    display: none !important;
+  }
+
+  /* Reset layout, viewport and canvas */
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .app,
+  #appContent,
+  main {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  /* Force screener page visible at 100% width when printing */
+  #page-screener {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+  }
+
+  #screenerContent {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Expand split view and table wraps to full width */
+  .ac-split-view,
+  .ac-split-view__main,
+  #kgSplitView,
+  #dtSplitView,
+  #nkSplitView {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #screenerTableWrap,
+  #dtTableWrap,
+  #nkTableWrap,
+  .overflow-x-auto,
+  .overflow-y-auto {
+    overflow: visible !important;
+    max-height: none !important;
+    width: 100% !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  table {
+    width: 100% !important;
+    min-width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 8.5pt !important;
+    line-height: 1.35 !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  thead tr {
+    background: #f1f5f9 !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  th, td {
+    padding: 4px 6px !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    background: transparent !important;
+  }
+
+  th {
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    text-align: left;
+  }
+
+  /* Formatted number columns and alignment */
+  .num,
+  .mono,
+  td:nth-child(6),
+  td:nth-child(7),
+  td:nth-child(8),
+  td:nth-child(9),
+  td:nth-child(10),
+  td:nth-child(11),
+  td:nth-child(12),
+  td:nth-child(13),
+  td:nth-child(14) {
+    font-family: 'Geist Mono', monospace !important;
+    font-variant-numeric: tabular-nums lining-nums !important;
+  }
+
+  .pos {
+    color: #15803d !important;
+    font-weight: 600 !important;
+  }
+
+  .neg {
+    color: #b91c1c !important;
+    font-weight: 600 !important;
+  }
+
+  .warn-t {
+    color: #b45309 !important;
+  }
+
+  /* Print metadata header */
+  .scr-print-meta {
+    display: block !important;
+    margin-bottom: 12px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 2px solid #0f172a !important;
+  }
+
+  .scr-print-meta .print-title {
+    font-size: 14pt !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    margin: 0 0 2px 0 !important;
+  }
+
+  .scr-print-meta .print-sub {
+    font-size: 9pt !important;
+    color: #475569 !important;
+    margin: 0 !important;
+  }
+}
+
 
 
 
