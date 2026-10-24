@@ -470,6 +470,7 @@ const ROUTE_REWRITES = {
   // Public BYOK registration form (mirrors the Vercel rewrite so the VPS
   // fallback serves the same URL shape).
   '/register': '/register.html',
+  '/ketentuan': '/ketentuan.html',
   // FASE 2: broker-summary ("broksum") and chart viewers. Both are real views of
   // pages that already resolve their initial state from the query string, so
   // these short paths only need to map to the right page + default tab. The tab

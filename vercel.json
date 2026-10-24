@@ -67,6 +67,10 @@
     {
       "source": "/register",
       "destination": "/register.html"
+    },
+    {
+      "source": "/ketentuan",
+      "destination": "/ketentuan.html"
     }
   ],
   "headers": [

@@ -542,6 +542,7 @@
   "test/redesign-v2-icons.test.js",
   "test/redesign-v2-insider.test.js",
   "test/redesign-v2-kelola.test.js",
+  "test/redesign-v2-ketentuan.test.js",
   "test/redesign-v2-landing.test.js",
   "test/redesign-v2-motion.test.js",
   "test/redesign-v2-portfolio.test.js",
