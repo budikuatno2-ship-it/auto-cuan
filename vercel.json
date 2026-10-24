@@ -83,6 +83,14 @@
     {
       "source": "/admin",
       "destination": "/admin-console.html"
+    },
+    {
+      "source": "/maintenance",
+      "destination": "/maintenance.html"
+    },
+    {
+      "source": "/pemeliharaan",
+      "destination": "/maintenance.html"
     }
   ],
   "headers": [

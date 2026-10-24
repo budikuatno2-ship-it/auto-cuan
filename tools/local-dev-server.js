@@ -474,6 +474,8 @@ const ROUTE_REWRITES = {
   '/ketentuan': '/ketentuan.html',
   '/admin-console': '/admin-console.html',
   '/admin': '/admin-console.html',
+  '/maintenance': '/maintenance.html',
+  '/pemeliharaan': '/maintenance.html',
   // FASE 2: broker-summary ("broksum") and chart viewers. Both are real views of
   // pages that already resolve their initial state from the query string, so
   // these short paths only need to map to the right page + default tab. The tab
@@ -1715,6 +1717,7 @@ const server = http.createServer(async (req, res) => {
     if (await serveData(req,res,pathname.slice('/data'.length),{noStore:true,extensionFallback:false})) return;
   }
   if (pathname === '/pattern' || pathname === '/pattern-radar') pathname = '/pattern-radar.html';
+  if (pathname === '/maintenance' || pathname === '/pemeliharaan') pathname = '/maintenance.html';
   if (pathname === '/dashboard' || pathname === '/review' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord' || pathname === '/catatan-admin') pathname = '/index.html';
   if (await servePublic(req,res,pathname)) return;
   if (await servePublic(req,res,'/404.html',{status:404,noStore:true})) return;
