@@ -163,16 +163,40 @@
     return on;
   }
   function setCompact(on) { view.compact = Boolean(on); persist(); syncControls(); isDocked(); }
+  function syncModeSlots(type) {
+    var doc = root.document;
+    if (!doc) return;
+    var prefix = type === 'daytrade' ? 'dt' : (type === 'nonkonglo' ? 'nk' : 'kg');
+    var rrLabel = doc.querySelector('#page-screener .scr-rr-min');
+    var rrSlot = doc.getElementById(prefix + 'RrSlot');
+    if (rrLabel && rrSlot && rrLabel.parentNode !== rrSlot) rrSlot.appendChild(rrLabel);
+    var sharedAdv = doc.getElementById('scrSharedAdv');
+    var advSlot = doc.getElementById(prefix + 'SharedAdvSlot');
+    if (sharedAdv && advSlot && sharedAdv.parentNode !== advSlot) advSlot.appendChild(sharedAdv);
+  }
   if (typeof root.addEventListener === 'function') {
     var dockRaf = 0;
     root.addEventListener('resize', function () { if (dockRaf) return; dockRaf = root.requestAnimationFrame(function () { dockRaf = 0; isDocked(); }); });
   }
   if (root.document) {
     if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', syncControls); else syncControls();
+    if (typeof root.document.addEventListener === 'function') {
+      root.document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        var openAdv = root.document.querySelector('#page-screener details.scr-adv[open]');
+        if (!openAdv) return;
+        var modal = root.document.getElementById('scrDetailModal');
+        if (modal && !modal.classList.contains('hidden')) return;
+        e.preventDefault();
+        openAdv.open = false;
+        var sum = openAdv.querySelector('summary');
+        if (sum && typeof sum.focus === 'function') sum.focus({ preventScroll: true });
+      });
+    }
   }
 
   root.AutoCuanScreenerV2 = {
     summaryHtml: summaryHtml, sortRows: sortRows, setSort: setSort, cycleSort: cycleSort,
-    setCompact: setCompact, isDocked: isDocked, DOCK_FULL: DOCK_FULL, DOCK_COMPACT: DOCK_COMPACT, toggleCompact: function () { setCompact(!view.compact); }, view: view, SORT_LABEL: SORT_LABEL
+    setCompact: setCompact, isDocked: isDocked, DOCK_FULL: DOCK_FULL, DOCK_COMPACT: DOCK_COMPACT, toggleCompact: function () { setCompact(!view.compact); }, syncModeSlots: syncModeSlots, view: view, SORT_LABEL: SORT_LABEL
   };
 })(window);

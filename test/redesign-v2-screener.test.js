@@ -102,3 +102,16 @@ test('compact columns: dock below 1280 px only where the compact table still fit
   assert.equal((html.match(/data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2\.toggleCompact\(\)">Kolom: Lengkap<\/button>/g) || []).length, 3);
   assert.match(html, /return window\.AutoCuanScreenerV2 && typeof window\.AutoCuanScreenerV2\.sortRows === 'function' \? window\.AutoCuanScreenerV2\.sortRows\(rows, type\) : rows;/);
 });
+
+test('Alat lanjutan disclosure houses legacy presets, pattern filter, mode subtitles and extra filters', () => {
+  const start = html.indexOf('<div id="page-screener"');
+  const page = html.slice(start, html.indexOf('<!-- ===== PAGE:', start + 10));
+  ['kgAdvTools', 'nkAdvTools', 'dtAdvTools', 'kgRrSlot', 'nkRrSlot', 'dtRrSlot', 'kgSharedAdvSlot', 'nkSharedAdvSlot', 'dtSharedAdvSlot', 'scrSharedAdv'].forEach((id) => {
+    assert.ok(page.includes('id="' + id + '"'), id);
+  });
+  assert.equal((page.match(/<details class="scr-adv" id="(kg|nk|dt)AdvTools">/g) || []).length, 3, 'all 3 Alat lanjutan disclosures are closed by default');
+  ['screenerPresetsContainer', 'patternFilterContainer', 'screenerSubtitle', 'nkScreenerSubtitle', 'dtScreenerSubtitle', 'kgRiskFilter', 'kgTypeFilter', 'kgHideVeryHigh', 'kgScoreDetails', 'nkRiskFilter', 'dtRiskFilter', 'dtTypeFilter'].forEach((id) => {
+    assert.ok(page.includes('id="' + id + '"'), 'legacy id preserved: ' + id);
+  });
+  assert.match(html, /AutoCuanScreenerV2\.syncModeSlots\(type\)/);
+});

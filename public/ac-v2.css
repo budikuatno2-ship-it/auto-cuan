@@ -9,6 +9,8 @@
 /* ---------- page frame (canvas .page / .ph / .kick) ---------- */
 /* #appContent raises specificity over the legacy per-page padding rules
    (#page-dashboard { padding-top: 18px !important } and friends). */
+html { scrollbar-width: thin; }
+html body { letter-spacing: normal !important; font-feature-settings: normal !important; text-rendering: auto !important; }
 #appContent > .page-content.ac-page[data-ac-ui="v2"] {
   width: 100%;
   max-width: 1560px !important;
@@ -294,20 +296,22 @@ html.is-dark #page-dashboard .dash-ses div.done { background: rgba(72, 199, 151,
 /* =====================================================================
    Screener (canvas Screener.dc.html)
    ===================================================================== */
-html #appContent #page-screener .scr-ph h1.page-title { margin: 0; font-size: 30px !important; line-height: 1.15; letter-spacing: -.02em; font-weight: 700 !important; color: var(--ac-ink) !important; }
-html #appContent #page-screener .scr-ph p { margin: 6px 0 0; color: var(--ac-2); max-width: 640px; line-height: 1.45; }
+html #appContent #page-screener .scr-ph h1.page-title { margin: 0 !important; font-size: 30px !important; line-height: 1.15 !important; letter-spacing: -.02em !important; font-weight: 700 !important; color: var(--ac-ink) !important; }
+html #appContent #page-screener .scr-ph p { margin: 6px 0 0 !important; color: var(--ac-2) !important; max-width: 640px; line-height: 1.45 !important; font-size: 14px !important; }
 html #appContent #page-screener .scr-modes .ac-segment { margin: 0; border: 0 !important; background: transparent !important; box-shadow: none !important; min-width: 0; height: 30px; padding: 0 14px; border-radius: 6px; font: 600 13px var(--ac-font-sans); color: var(--ac-2) !important; }
 html #appContent #page-screener .scr-modes .ac-segment.on { color: var(--ac-ink) !important; }
 html #appContent #page-screener .scr-modes .ind.k1 { transform: translateX(100%); }
 html #appContent #page-screener .scr-modes .ind.k2 { transform: translateX(200%); }
-html #appContent #page-screener #screenerContent { display: flex; flex-direction: column; gap: 16px; }
+html #appContent #page-screener #screenerContent { display: flex; flex-direction: column; gap: 20px !important; }
 html #appContent #page-screener #screenerContent > * { margin: 0 !important; }
 html #appContent #page-screener #screenerContent.hidden { display: none !important; }
-html #appContent #page-screener .scr-rr-min { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ac-2); align-self: flex-start; }
-html #appContent #page-screener .scr-rr-min input { width: 16px; height: 16px; accent-color: var(--ac-brand); }
+html #appContent #page-screener .scr-rr-slot { display: inline-flex; align-items: center; }
+html #appContent #page-screener #screenerContent .scr-filter-grid label.scr-rr-min, html #appContent #page-screener .scr-rr-min { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ac-2) !important; cursor: pointer; align-self: center; margin: 0 !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+html #appContent #page-screener .scr-rr-min input { width: 16px; height: 16px; accent-color: var(--ac-brand); margin: 0; }
+html #appContent #page-screener .scr-rr-dt-note { display: none; }
 
 /* Each mode is one canvas sheet */
-html #appContent #page-screener #screenerKongloPane, html #appContent #page-screener #screenerNonKongloPane, html #appContent #page-screener #screenerDayTradePane { background: var(--ac-surface); border: 1px solid var(--ac-hair); border-radius: 12px; padding: 16px 20px 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+html #appContent #page-screener #screenerKongloPane, html #appContent #page-screener #screenerNonKongloPane, html #appContent #page-screener #screenerDayTradePane { background: var(--ac-surface) !important; border: 1px solid var(--ac-hair) !important; border-radius: 12px !important; padding: 0 !important; display: flex; flex-direction: column; gap: 0 !important; min-width: 0; overflow: hidden; box-shadow: none !important; }
 html #appContent #page-screener #screenerKongloPane.hidden, html #appContent #page-screener #screenerNonKongloPane.hidden, html #appContent #page-screener #screenerDayTradePane.hidden { display: none !important; }
 html #appContent #page-screener [id$="Pane"] > * { margin-top: 0 !important; margin-bottom: 0 !important; }
 html #appContent #page-screener [id$="Pane"] h2 { font-size: 18px !important; font-weight: 700 !important; letter-spacing: -.01em; color: var(--ac-ink) !important; }
@@ -317,16 +321,34 @@ html #appContent #page-screener .scr-info-bar strong { color: var(--ac-ink) !imp
 html #appContent #page-screener .scr-info-bar summary { color: var(--ac-brand) !important; }
 
 /* Stats: canvas meta line, not boxes */
-html #appContent #page-screener #screenerStats, html #appContent #page-screener #nkScreenerStats, html #appContent #page-screener #dtScreenerStats { display: flex !important; flex-wrap: wrap; gap: 6px 20px; padding: 10px 20px; margin: 0 -20px !important; border-top: 1px solid var(--ac-hair); border-bottom: 1px solid var(--ac-hair); background: var(--ac-raised); font-size: 12px; color: var(--ac-2); }
-html #appContent #page-screener #screenerStats > div, html #appContent #page-screener #nkScreenerStats > div, html #appContent #page-screener #dtScreenerStats > div { display: inline-flex !important; align-items: baseline; gap: 6px; padding: 0 !important; border: 0 !important; background: transparent !important; text-align: left !important; }
-html #appContent #page-screener #screenerStats p, html #appContent #page-screener #nkScreenerStats p, html #appContent #page-screener #dtScreenerStats p { margin: 0 !important; font-size: 12px !important; letter-spacing: 0 !important; text-transform: none !important; color: var(--ac-2) !important; font-weight: 400 !important; }
-html #appContent #page-screener #screenerStats p + p, html #appContent #page-screener #nkScreenerStats p + p, html #appContent #page-screener #dtScreenerStats p + p { color: var(--ac-ink) !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+html #appContent #page-screener #screenerStats, html #appContent #page-screener #nkScreenerStats, html #appContent #page-screener #dtScreenerStats { display: flex !important; flex-wrap: wrap; align-items: center; gap: 6px 20px !important; padding: 10px 20px !important; margin: 0 !important; border-top: 1px solid var(--ac-hair) !important; border-bottom: 0 !important; background: var(--ac-raised) !important; font-size: 12px; color: var(--ac-2); box-shadow: none !important; }
+html #appContent #page-screener #screenerStats > *, html #appContent #page-screener #nkScreenerStats > *, html #appContent #page-screener #dtScreenerStats > * { border-right: 0 !important; box-shadow: none !important; }
+html #appContent #page-screener #screenerStats > div, html #appContent #page-screener #nkScreenerStats > div, html #appContent #page-screener #dtScreenerStats > div { display: inline-flex !important; flex: 0 0 auto !important; width: auto !important; min-width: 0 !important; min-height: 0 !important; align-items: baseline; gap: 5px; padding: 0 !important; border: 0 !important; background: transparent !important; text-align: left !important; }
+html #appContent #page-screener #screenerStats > div > p, html #appContent #page-screener #nkScreenerStats > div > p, html #appContent #page-screener #dtScreenerStats > div > p { margin: 0 !important; font: 400 12px/1.45 var(--ac-font-sans) !important; letter-spacing: 0 !important; text-transform: none !important; color: var(--ac-2) !important; }
+html #appContent #page-screener #screenerStats > div > p + p, html #appContent #page-screener #nkScreenerStats > div > p + p, html #appContent #page-screener #dtScreenerStats > div > p + p { color: var(--ac-ink) !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+html #appContent #page-screener #screenerStats > .scr-stat-count > p:first-child, html #appContent #page-screener #nkScreenerStats > .scr-stat-count > p:first-child, html #appContent #page-screener #dtScreenerStats > .scr-stat-count > p:first-child { color: var(--ac-ink) !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+html #appContent #page-screener #screenerStats > .scr-stat-count > p + p, html #appContent #page-screener #nkScreenerStats > .scr-stat-count > p + p, html #appContent #page-screener #dtScreenerStats > .scr-stat-count > p + p { color: var(--ac-2) !important; font-weight: 400 !important; }
+html #appContent #page-screener #screenerStats > .scr-stat-failed, html #appContent #page-screener #nkScreenerStats > .scr-stat-failed, html #appContent #page-screener #dtScreenerStats > .scr-stat-failed { display: none !important; }
+html #appContent #page-screener .scr-adv { margin-left: auto; }
+html #appContent #page-screener .scr-adv > summary { cursor: pointer; list-style: none; user-select: none; }
+html #appContent #page-screener .scr-adv > summary::-webkit-details-marker { display: none; }
+html #appContent #page-screener .scr-adv:not([open]) > .scr-adv-body { display: none !important; }
+html #appContent #page-screener .scr-adv[open] { flex: 1 0 100%; margin-left: 0; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--ac-hair); }
+html #appContent #page-screener .scr-adv-body { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; text-align: left; }
+html #appContent #page-screener .scr-adv-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+html #appContent #page-screener .scr-adv-filters > select { width: auto !important; min-width: 0; height: 32px; padding: 0 28px 0 10px !important; border: 1px solid var(--ac-ctl) !important; border-radius: 8px !important; background: var(--ac-surface) !important; color: var(--ac-ink) !important; font-size: 12px !important; }
+html #appContent #page-screener .scr-adv-filters > label { height: 32px; padding: 0 10px !important; border: 1px solid var(--ac-ctl) !important; border-radius: 8px !important; background: var(--ac-surface) !important; color: var(--ac-2) !important; font-size: 12px !important; }
 
 /* Filters: one toolbar row */
-html #appContent #page-screener .scr-filter-grid { display: flex !important; flex-wrap: wrap; align-items: center; gap: 10px !important; padding: 0 !important; border: 0 !important; background: transparent !important; }
-html #appContent #page-screener .scr-filter-grid > input, html #appContent #page-screener .scr-filter-grid > select, html #appContent #page-screener #patternFilterContainer select { width: auto !important; min-width: 0; height: 36px; padding: 0 12px !important; border: 1px solid var(--ac-ctl) !important; border-radius: 8px !important; background: var(--ac-surface) !important; color: var(--ac-ink) !important; font-size: 13px !important; }
-html #appContent #page-screener .scr-filter-grid > input { width: 240px !important; text-transform: uppercase; }
+html #appContent #page-screener #screenerContent .scr-filter-grid { display: flex !important; flex-wrap: wrap; align-items: center; gap: 10px !important; padding: 14px 20px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; backdrop-filter: none !important; position: static !important; }
+html #appContent #page-screener #screenerContent .scr-filter-grid::after { display: none !important; content: none !important; }
+html #appContent #page-screener .scr-filter-grid > input, html #appContent #page-screener .scr-filter-grid > select, html #appContent #page-screener #patternFilterContainer select { width: auto !important; min-width: 0; height: 36px; padding: 0 12px !important; border: 1px solid var(--ac-ctl) !important; border-radius: 8px !important; background: var(--ac-surface) !important; color: var(--ac-ink) !important; font: 500 13px var(--ac-font-sans) !important; }
+html #appContent #page-screener .scr-filter-grid > input { width: 240px !important; max-width: 100%; padding: 0 12px 0 34px !important; background: var(--ac-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%23857F76' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 11px 50% !important; text-transform: uppercase; }
+html #appContent #page-screener .scr-filter-grid > input:placeholder-shown { text-transform: none !important; }
+html #appContent #page-screener .scr-filter-grid > select { padding: 0 30px 0 12px !important; background: var(--ac-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2359554E' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center !important; appearance: none; }
+html #appContent #page-screener #screenerTierFilter { width: 134px !important; text-overflow: ellipsis; }
 html #appContent #page-screener .scr-filter-grid > input::placeholder { text-transform: none; color: var(--ac-muted); }
+html #appContent #page-screener .scr-bar-end, html #appContent #page-screener .scr-filter-grid > .scr-head-act { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 html #appContent #page-screener .scr-filter-grid > details { flex-basis: 100%; }
 html #appContent #page-screener .scr-filter-grid > details summary { color: var(--ac-2) !important; font-size: 12px !important; }
 html #appContent #page-screener #patternFilterContainer { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }
@@ -337,12 +359,19 @@ html #appContent #page-screener .screener-tab, html #appContent #page-screener [
 html #appContent #page-screener .screener-tab.active, html #appContent #page-screener [id$="Pane"] .ac-segment.is-active { background: var(--ac-brand-soft) !important; border-color: rgba(15, 116, 88, .3) !important; color: var(--ac-brand) !important; }
 
 /* Tables: canvas .tbl */
-html #appContent #page-screener .ac-split-view { gap: 0 !important; margin: 0 -20px !important; width: auto !important; border-top: 1px solid var(--ac-hair); align-items: stretch !important; }
-html #appContent #page-screener .ac-split-view__main > div[id$="TableWrap"] { border: 0 !important; border-radius: 0 !important; max-height: 640px; background: var(--ac-surface) !important; }
+html #appContent #page-screener .ac-split-view { gap: 0 !important; margin: 0 !important; width: auto !important; border-top: 0 !important; align-items: stretch !important; }
+html #appContent #page-screener .ac-split-view__main > div[id$="TableWrap"] { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; scrollbar-gutter: auto !important; max-height: 640px; background: var(--ac-surface) !important; }
+html #appContent #page-screener [id$="TableWrap"]::before { display: none !important; content: none !important; }
 html #appContent #page-screener [id$="TableWrap"] table { font-size: 13px !important; color: var(--ac-ink); }
-html #appContent #page-screener [id$="TableWrap"] thead, html #appContent #page-screener [id$="TableWrap"] thead tr { background: var(--ac-raised) !important; box-shadow: none !important; }
-html #appContent #page-screener [id$="TableWrap"] th { height: 36px; padding: 0 12px !important; background: var(--ac-raised) !important; border-bottom: 1px solid var(--ac-hair) !important; color: var(--ac-2) !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: 0 !important; text-transform: none !important; }
-html #appContent #page-screener [id$="TableWrap"] td { height: 42px; padding: 0 12px !important; border-bottom: 1px solid var(--ac-hair) !important; background: transparent !important; color: var(--ac-ink) !important; font-size: 13px !important; font-variant-numeric: tabular-nums; }
+html #appContent #page-screener [id$="TableWrap"] thead, html #appContent #page-screener [id$="TableWrap"] thead tr { background: var(--ac-raised) !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+html #appContent #page-screener [id$="TableWrap"] th { height: 36px; padding: 0 12px !important; background: var(--ac-raised) !important; border-top: 1px solid var(--ac-hair) !important; border-bottom: 1px solid var(--ac-hair) !important; color: var(--ac-2) !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: 0 !important; text-transform: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+html #appContent #page-screener [id$="TableWrap"] td { height: 42px; padding: 0 12px !important; border-bottom: 1px solid var(--ac-hair) !important; background: transparent !important; color: var(--ac-ink) !important; font: 400 13px/1.45 var(--ac-font-sans) !important; font-variant-numeric: tabular-nums; }
+html #appContent #page-screener #screenerTableWrap td:nth-child(4) { font-weight: 600 !important; }
+html #appContent #page-screener #screenerTableWrap td:nth-child(5) { font-weight: 700 !important; color: var(--ac-ink) !important; }
+html #appContent #page-screener #screenerTableWrap td:nth-child(6) { font: 600 13px/1.45 var(--ac-font-mono) !important; }
+html #appContent #page-screener #screenerTableWrap td:nth-child(7) { font-weight: 600 !important; }
+html #appContent #page-screener #screenerTableWrap th:nth-child(3), html #appContent #page-screener #screenerTableWrap td:nth-child(3), html #appContent #page-screener #screenerTableWrap th:nth-child(4), html #appContent #page-screener #screenerTableWrap td:nth-child(4) { text-align: left !important; }
+html #appContent #page-screener #screenerTableWrap th:nth-child(5), html #appContent #page-screener #screenerTableWrap td:nth-child(5) { text-align: right !important; }
 html #appContent #page-screener [id$="TableWrap"] td.sticky, html #appContent #page-screener [id$="TableWrap"] th.sticky { background: var(--ac-surface) !important; }
 html #appContent #page-screener [id$="TableWrap"] thead th.sticky { background: var(--ac-raised) !important; }
 html #appContent #page-screener [id$="TableWrap"] tbody tr { transition: background 140ms var(--ease); }
@@ -358,16 +387,15 @@ html #appContent #page-screener [id$="TableWrap"] .text-gray-500, html #appConte
 html #appContent #page-screener [id$="TableWrap"] .text-gray-100, html #appContent #page-screener [id$="TableWrap"] .text-gray-200 { color: var(--ac-ink) !important; }
 
 /* Detail pane: canvas aside.pane */
-html #appContent #page-screener .ac-split-view__pane { flex: 0 0 360px !important; width: 360px !important; max-width: 360px !important; min-width: 0 !important; border-left: 1px solid var(--ac-hair); background: var(--ac-surface); }
-html #appContent #page-screener .ac-detail-pane { width: 100% !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; position: sticky; top: 0; max-height: none; }
+html #appContent #page-screener .ac-split-view__pane { flex: 0 0 360px !important; width: 360px !important; max-width: 360px !important; min-width: 0 !important; border-left: 1px solid var(--ac-hair) !important; box-shadow: inset 0 1px 0 var(--ac-hair) !important; background: var(--ac-surface) !important; }
+html #appContent #page-screener .ac-detail-pane { width: 100% !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; position: relative !important; top: 0 !important; max-height: none !important; }
 /* Pane chrome: the canvas pane has no title bar. The close button stays (it
    returns focus to the row), pinned to the top right; the footer action is
    replaced by the summary buttons. */
-html #appContent #page-screener .ac-detail-pane { position: relative; }
-html #appContent #page-screener .ac-detail-pane__header { position: absolute !important; top: 14px; right: 14px; z-index: 2; padding: 0 !important; border: 0 !important; background: none !important; min-height: 0 !important; }
+html #appContent #page-screener .ac-detail-pane__header { position: absolute !important; top: 2px; right: 2px; z-index: 2; padding: 0 !important; border: 0 !important; background: none !important; min-height: 0 !important; }
 html #appContent #page-screener .ac-detail-pane__title { display: none !important; }
-html #appContent #page-screener .ac-detail-pane__close { width: 30px; height: 30px; border-radius: 6px !important; border: 1px solid var(--ac-ctl) !important; background: var(--ac-surface) !important; color: var(--ac-2) !important; }
-html #appContent #page-screener .ac-detail-pane .scr-sum-head { padding-right: 40px; }
+html #appContent #page-screener .ac-detail-pane__close { width: 14px; height: 14px; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; color: transparent !important; opacity: 0; }
+html #appContent #page-screener .ac-detail-pane .scr-sum-head { padding-right: 0; }
 html #appContent #page-screener .ac-detail-pane__footer { display: none !important; }
 html #appContent #page-screener .ac-detail-pane__body { padding: 18px 20px 24px !important; overflow: visible !important; max-height: none !important; }
 html #appContent #page-screener .ac-detail-pane__body .text-gray-300 { color: var(--ac-ink) !important; }
@@ -375,7 +403,7 @@ html #appContent #page-screener .ac-detail-pane__body .text-gray-500 { color: va
 
 
 /* Detail summary (shared by the pane and the phone sheet) */
-.scr-sum[data-ac-ui="v2"] { color: var(--ac-ink); font: 13px/1.45 var(--ac-font-sans); text-align: left; }
+.scr-sum[data-ac-ui="v2"] { color: var(--ac-ink); font: 14px/1.45 var(--ac-font-sans); text-align: left; }
 .scr-sum .scr-sum-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .scr-sum .scr-sum-id { display: flex; align-items: center; gap: 10px; }
 .scr-sum .scr-sum-id .tk { font-size: 20px; }
@@ -439,9 +467,6 @@ html #appContent #page-screener .ac-detail-pane__body .text-gray-500 { color: va
 @media (max-width: 700px) {
   html #appContent #page-screener .scr-ph { align-items: flex-start; }
   html #appContent #page-screener .scr-ph h1.page-title { font-size: 24px !important; }
-  html #appContent #page-screener #screenerKongloPane, html #appContent #page-screener #screenerNonKongloPane, html #appContent #page-screener #screenerDayTradePane { padding: 14px 16px 0; }
-  html #appContent #page-screener #screenerStats, html #appContent #page-screener #nkScreenerStats, html #appContent #page-screener #dtScreenerStats, html #appContent #page-screener .ac-split-view { margin: 0 -16px !important; }
-  html #appContent #page-screener .scr-filter-grid > input, html #appContent #page-screener .scr-filter-grid > select { width: 100% !important; }
 }
 
 /* Screener extras: the old "FILTER" tag, preset pills, phone sheet, modal. */
@@ -468,7 +493,7 @@ html #scrDetailModal #scrDetailContent { background: transparent !important; }
 html #scrDetailModal .scr-sum-head { padding-right: 44px; }
 #page-dashboard #dashboardTop5List .rk .dash-rank { all: unset; color: var(--ac-2); font-variant-numeric: tabular-nums; }
 @media (pointer: coarse) {
-  html #appContent #page-screener .scr-filter-grid > input, html #appContent #page-screener .scr-filter-grid > select, html #appContent #page-screener #patternFilterContainer select { height: 44px; font-size: 16px !important; }
+  html #appContent #page-screener .scr-filter-grid > input, html #appContent #page-screener .scr-filter-grid > select, html #appContent #page-screener .scr-adv-filters > select, html #appContent #page-screener #patternFilterContainer select { height: 44px !important; font-size: 16px !important; }
 }
 
 /* =====================================================================
@@ -641,3 +666,11 @@ html #appContent #page-screener .scr-view-btn { white-space: nowrap; }
    change in the page and cost ~65 ms per chart hover frame (CPU 4x). */
 html #appContent #page-screener .scr-head-act { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
 html #appContent #page-screener .scr-head-act > * { flex: none; white-space: nowrap; }
+@media (min-width: 1280px) and (max-width: 1599px) {
+  html #appContent #page-screener #screenerTableWrap table,
+  html #appContent #page-screener #nkScreenerTableWrap table,
+  html #appContent #page-screener #dtScreenerTableWrap table { min-width: 0 !important; }
+  html #appContent #page-screener #screenerTableWrap tr > :nth-child(n+8):nth-child(-n+11),
+  html #appContent #page-screener #nkScreenerTableWrap tr > :nth-child(n+9):nth-child(-n+12),
+  html #appContent #page-screener #dtScreenerTableWrap tr > :nth-child(n+10):nth-child(-n+16) { display: none; }
+}
