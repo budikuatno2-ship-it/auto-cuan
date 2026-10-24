@@ -730,3 +730,38 @@ html #appContent #page-screener .scr-head-act > * { flex: none; white-space: now
   html #appContent #page-screener #dtScreenerTableWrap tr > :nth-child(n+10):nth-child(-n+16) { display: none; }
 }
 
+/* ---- Portfolio Canvas Redesign Tokens (Portfolio.dc.html) ---- */
+.rng { position: relative; height: 6px; border-radius: 3px; background: linear-gradient(90deg, rgba(193,63,77,.22), var(--ac-hover) 40%, rgba(36,122,67,.22)); min-width: 120px; }
+.rng b { position: absolute; top: -4px; width: 3px; height: 14px; border-radius: 2px; background: var(--ac-inv); transform: translateX(-50%); }
+.out { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--ac-hair); font-size: 14px; }
+.out:last-child { border-bottom: 0; }
+.out > span:first-child { color: var(--ac-2); }
+.verd { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+.verd.ok { background: var(--ac-pos-soft); color: var(--ac-pos); }
+.verd.no { background: var(--ac-warn-soft); color: var(--ac-warn-t); }
+.tl { position: relative; padding-left: 22px; }
+.tl::before { content: ""; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 1px; background: var(--ac-hair); }
+.tl .it { position: relative; padding: 0 0 18px; }
+.tl .it::before { content: ""; position: absolute; left: -20px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--ac-surface); border: 2px solid var(--ac-brand); }
+.act { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--ac-hair); font-size: 14px; }
+.act:last-child { border-bottom: 0; }
+
+/* Portfolio Alat Lanjutan collapsible section */
+.adv-tools { margin-top: 16px; border: 1px solid var(--ac-hair); border-radius: var(--ac-radius, 8px); background: var(--ac-raised); overflow: hidden; }
+.adv-tools summary { padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--ac-2); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; }
+.adv-tools summary:hover { color: var(--ac-ink); background: var(--ac-hover); }
+.adv-tools[open] summary { border-bottom: 1px solid var(--ac-hair); }
+.adv-tools-content { padding: 14px; }
+
+/* Mobile table handling in Portfolio */
+#page-watch .table-wrap, #page-scenarios .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Ensure mobile sidebar toggle remains visible and functional on mobile viewports */
+@media (max-width: 1023px) {
+  body #appShell #appMain > .app-header .workspace-header-brand { display: flex !important; }
+  body #appShell #appMain > .app-header .workspace-header-brand > :not(#workspaceSidebarToggle) { display: none !important; }
+  #workspaceSidebarToggle { display: inline-flex !important; }
+}
+
+
+
