@@ -461,6 +461,7 @@
   "test/market-structure-existing-sync.test.js",
   "test/market-structure-integration.test.js",
   "test/market-structure-risk.test.js",
+  "test/mega-forensic-fixes.test.js",
   "test/midnight-rollover-protection.test.js",
   "test/mobile-nav.test.js",
   "test/mobile-ux-performance.test.js",
