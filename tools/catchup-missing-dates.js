@@ -53,6 +53,31 @@ const TYPES = [
   { key: 'F', dir: 'broker-summary-F' }
 ];
 
+function loadEnvFile() {
+  const candidates = [
+    path.join(__dirname, '..', '.env.ai-eval-once'),
+    path.join(__dirname, '..', '.env.local'),
+    path.join(__dirname, '..', '.env'),
+    '/home/ubuntu/auto-cuan-runner/.env',
+    '/home/ubuntu/auto-cuan/.env'
+  ];
+  for (const file of candidates) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+        const t = line.trim();
+        if (!t || t.startsWith('#')) continue;
+        const eq = t.indexOf('=');
+        if (eq <= 0) continue;
+        const k = t.slice(0, eq).trim();
+        let v = t.slice(eq + 1).trim();
+        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+        if (!process.env[k]) process.env[k] = v;
+      }
+    } catch (_) {}
+  }
+}
+
 function dataDir(env) {
   const e = env || process.env;
   return e.ARJUM_DATA_DIR || path.join(ROOT_DIR, 'data', 'arjum-data');
@@ -137,6 +162,7 @@ function writeDated(baseDir, typeDir, ticker, date, data) {
 }
 
 async function run(argv, deps) {
+  loadEnvFile();
   const d = deps || {};
   const opts = parseArgs(argv || []);
   const env = d.env || process.env;

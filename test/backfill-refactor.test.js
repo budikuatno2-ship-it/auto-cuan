@@ -90,23 +90,23 @@ test('Langkah 4: Refactor backfill-broksum.js unit tests', async (t) => {
   });
 
   await t.test('2c. [BUG FIX C4] Dynamic reserve quota computation handles EOD and weekend rollover', () => {
-    // Mode weekend returns 300
+    // Mode weekend returns 1000
     const weekendReserve = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekend');
-    assert.equal(weekendReserve, 300, 'Weekend reserve must be 300');
+    assert.equal(weekendReserve, 1000, 'Weekend reserve must be 1000');
 
-    // Monday morning (weekday before EOD .done) returns 5100
+    // Monday morning (weekday before EOD .done) returns 5000
     const mondayMorning = new Date('2026-10-19T03:00:00.000Z'); // 10:00 WIB
     const weekdayPreEod = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekday', mondayMorning);
-    assert.equal(weekdayPreEod, 5100, 'Weekday pre-EOD reserve must be 5100');
+    assert.equal(weekdayPreEod, 5000, 'Weekday pre-EOD reserve must be 5000');
 
     // Seed .done sentinel for 2026-10-19
     const eodDir = path.join(targetDir, '_eod');
     fs.mkdirSync(eodDir, { recursive: true });
     fs.writeFileSync(path.join(eodDir, '2026-10-19.done'), '{}');
 
-    // Weekday after EOD .done sentinel returns 800
+    // Weekday after EOD .done sentinel returns 5000
     const weekdayPostEod = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekday', mondayMorning);
-    assert.equal(weekdayPostEod, 800, 'Weekday post-EOD reserve must be 800');
+    assert.equal(weekdayPostEod, 5000, 'Weekday post-EOD reserve must be 5000');
   });
 
   await t.test('3. Prioritas urutan: likuid duluan, tanggal terbaru ke terlama', () => {

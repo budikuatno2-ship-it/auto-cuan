@@ -287,20 +287,7 @@ async function runCandlePass(ctx) {
     } catch (_) { return false; }
   })();
 
-  // 1. Standalone IHSG Benchmark (always from Arjum, 1 request)
-  if (universe.includes('IHSG') && !dryRun) {
-    try {
-      const r = await fetcher.fetchDailyCandles('IHSG', { limit: Number(process.env.CANDLE_LIMIT) || 500, force: true });
-      summary.ihsg_ok = Boolean(r && r.ok);
-    } catch (e) {
-      console.warn('[IHSG-STANDALONE] gagal:', e && e.message);
-      summary.ihsg_ok = false;
-    }
-  }
-
-  // 2. Fetch all stocks from Yahoo Finance first (primary path)
   for (const ticker of universe) {
-    if (ticker === 'IHSG') continue; // Handled standalone above
 
     const hasTarget = () => {
       const cache = fetcher.readCache(ticker);
@@ -318,7 +305,13 @@ async function runCandlePass(ctx) {
     let res = null;
     let usedYahoo = false;
 
-    if (candleSource === 'yahoo') {
+    if (ticker === 'IHSG') {
+      res = await fetcher.fetchDailyCandles(ticker, {
+        limit: Number(process.env.CANDLE_LIMIT) || 500,
+        force: true
+      });
+      summary.ihsg_ok = Boolean(res && res.ok);
+    } else if (candleSource === 'yahoo') {
       res = await fetcher.fetchDailyCandlesYahoo(ticker, { range: '5d', retries: 2 });
       usedYahoo = Boolean(res && res.ok);
 

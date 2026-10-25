@@ -23,18 +23,15 @@ function makeBase(tickers) {
 test('C: the weekday budget keeps the daily jobs safe (J1 + J2 + IHSG + retry + web)', () => {
   const b = tool.computeCatchupBudget(18080, 0);
   assert.equal(b.remaining, 18080);
-  // floor = ceil(4400 * 1.10) + 100 = 4940
-  assert.equal(b.floor, 4940);
-  assert.equal(b.spendable, 18080 - 4940);
+  assert.equal(b.floor, 5000);
+  assert.equal(b.spendable, 18080 - 5000);
 });
 
-test('C: the WEEKEND budget drops the J1/J2 reserve and caps it at 1,500', () => {
+test('C: the WEEKEND budget drops the J1/J2 reserve and caps it at 1,000', () => {
   const b = tool.computeCatchupBudget(18080, 0, { isWeekend: true });
   assert.equal(b.isWeekend, true);
-  assert.equal(b.floor, 1500);
-  assert.equal(b.spendable, 18080 - 1500);
-  const small = tool.computeCatchupBudget(6000, 0, { isWeekend: true });
-  assert.equal(small.floor, 700, 'ceil(6000*0.10)+100 = 700, below the cap');
+  assert.equal(b.floor, 1000);
+  assert.equal(b.spendable, 18080 - 1000);
 });
 
 test('C: Saturday/Sunday are detected in WIB', () => {
@@ -49,7 +46,7 @@ test('C: an exhausted quota leaves nothing to spend', () => {
   assert.equal(b.spendable, 0);
 });
 
-test('C: missing emiten are counted PER TYPE (ALL, F, AKUMULASI, INSIDER)', () => {
+test('C: missing emiten are counted PER TYPE (ALL, F)', () => {
   const { tmp, base } = makeBase(['BBCA', 'BBRI', 'TLKM']);
   // BBCA already has ALL for 22 Oct; nothing else exists.
   fs.writeFileSync(path.join(base, 'broker-summary', 'BBCA', '2026-10-22.json'), '{}');
@@ -57,9 +54,7 @@ test('C: missing emiten are counted PER TYPE (ALL, F, AKUMULASI, INSIDER)', () =
   assert.equal(m.total, 3);
   assert.equal(m.missing.ALL.length, 2, 'BBCA already has ALL');
   assert.equal(m.missing.F.length, 3);
-  assert.equal(m.missing.AKUMULASI.length, 3);
-  assert.equal(m.missing.INSIDER.length, 3);
-  assert.equal(m.missingCells, 11);
+  assert.equal(m.missingCells, 5);
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
@@ -73,14 +68,14 @@ test('C: dry-run lists missing cells per date, newest first, and spends nothing'
 
   assert.equal(summary.dry_run, true);
   assert.equal(summary.is_weekend, true);
-  assert.equal(summary.floor, 1500);
+  assert.equal(summary.floor, 1000);
   assert.equal(summary.plan[0].date, '2026-10-22');
   assert.equal(summary.plan[0].missing.ALL, 2, 'BBCA already has ALL');
   assert.equal(summary.plan[0].missing.F, 3);
-  assert.equal(summary.plan[0].missing_cells, 11);
+  assert.equal(summary.plan[0].missing_cells, 5);
   assert.equal(summary.plan[1].date, '2026-10-21');
-  assert.equal(summary.plan[1].missing_cells, 12);
-  assert.equal(summary.total_missing_cells, 23);
+  assert.equal(summary.plan[1].missing_cells, 6);
+  assert.equal(summary.total_missing_cells, 11);
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
@@ -102,38 +97,34 @@ test('C: a batch with >20% failures stops the run instead of burning quota', asy
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-test('C: a successful batch writes all four types and never overwrites another date', async () => {
+test('C: a successful batch writes ALL and F and never overwrites another date', async () => {
   const { tmp, base } = makeBase(['BBCA']);
   fs.writeFileSync(path.join(base, 'broker-summary', 'BBCA', '2026-10-19.json'), '{"keep":true}');
 
   const client = {
     getConfiguredDailyQuota: () => 18080,
-    fetchBrokerSummary: async (ticker, date, flow) => ({ ok: true, data: { stock_code: ticker, date, flow: flow || 'all' } }),
-    fetchBrokerAccumulation: async (ticker) => ({ ok: true, data: { stock_code: ticker } }),
-    fetchInsiders: async (ticker) => ({ ok: true, data: [{ ticker }] })
+    fetchBrokerSummary: async (ticker, date, flow) => ({ ok: true, data: { stock_code: ticker, date, flow: flow || 'all' } })
   };
   const tracker = { getUsedToday: () => 0 };
   const summary = await tool.run(['--dates', '2026-10-22', '--batch', '10'], { env: { ARJUM_DATA_DIR: base }, client, tracker, todayWib: '2026-10-24' });
 
-  assert.equal(summary.spent, 4, 'ALL + F + accumulation + insider');
-  for (const dir of ['broker-summary', 'broker-summary-F', 'broker-accumulation', 'insiders']) {
+  assert.equal(summary.spent, 2, 'ALL + F');
+  for (const dir of ['broker-summary', 'broker-summary-F']) {
     assert.ok(fs.existsSync(path.join(base, dir, 'BBCA', '2026-10-22.json')), dir + ' must be written');
   }
   assert.equal(fs.readFileSync(path.join(base, 'broker-summary', 'BBCA', '2026-10-19.json'), 'utf8'), '{"keep":true}');
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-test('C: --skip-f fills three types only', async () => {
+test('C: --skip-f fills ALL only', async () => {
   const { tmp, base } = makeBase(['BBCA']);
   const client = {
     getConfiguredDailyQuota: () => 18080,
-    fetchBrokerSummary: async (ticker, date, flow) => ({ ok: true, data: { stock_code: ticker, date, flow: flow || 'all' } }),
-    fetchBrokerAccumulation: async (ticker) => ({ ok: true, data: { stock_code: ticker } }),
-    fetchInsiders: async (ticker) => ({ ok: true, data: [{ ticker }] })
+    fetchBrokerSummary: async (ticker, date, flow) => ({ ok: true, data: { stock_code: ticker, date, flow: flow || 'all' } })
   };
   const tracker = { getUsedToday: () => 0 };
   const summary = await tool.run(['--dates', '2026-10-22', '--batch', '10', '--skip-f'], { env: { ARJUM_DATA_DIR: base }, client, tracker, todayWib: '2026-10-24' });
-  assert.equal(summary.spent, 3);
+  assert.equal(summary.spent, 1);
   assert.ok(!fs.existsSync(path.join(base, 'broker-summary-F', 'BBCA', '2026-10-22.json')));
   fs.rmSync(tmp, { recursive: true, force: true });
 });

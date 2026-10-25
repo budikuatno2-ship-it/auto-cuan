@@ -8563,8 +8563,29 @@ function isTop5PickRow(row) {
     return true;
   }
 
+  if (
+    source === 'daytrade' ||
+    source === 'day_trade' ||
+    source === 'daytrade_signal' ||
+    source === 'swing_nk' ||
+    source === 'swing_non_konglo' ||
+    source === 'swing_konglo'
+  ) {
+    return false;
+  }
+
   var cat = String(row.category || raw.category || '').trim().toLowerCase().replace(/\s+/g, '_');
-  if (!cat || cat.indexOf('swing') >= 0 || cat.indexOf('top5') >= 0 || cat.indexOf('daytrade') >= 0 || cat.indexOf('day_trade') >= 0) return true;
+  if (
+    cat === 'daytrade' ||
+    cat === 'day_trade' ||
+    cat.indexOf('non_konglo') >= 0 ||
+    cat.indexOf('non-konglo') >= 0 ||
+    cat === 'swing_nk'
+  ) {
+    return false;
+  }
+
+  if (!cat || cat.indexOf('swing') >= 0 || cat.indexOf('top5') >= 0) return true;
   return false;
 }
 

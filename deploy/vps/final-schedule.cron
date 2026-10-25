@@ -82,7 +82,7 @@ CRON_TZ=Asia/Jakarta
 */15 8-20 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-idx-suspension-guard.sh >> /home/ubuntu/auto-cuan-runner/logs/idx-suspension-guard.log 2>&1
 
 # ── LIVE BURSA (Senin-Jumat, 09:00-16:00 WIB) ────────────────────────────
-2,17,32,47 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade-producer.sh --execute >> /home/ubuntu/auto-cuan-runner/logs/daytrade-producer.log 2>&1
+2,17,32,47 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade-producer.sh --execute --speed full >> /home/ubuntu/auto-cuan-runner/logs/daytrade-producer.log 2>&1
 */5 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-fastwatcher.sh --send >> /home/ubuntu/auto-cuan-runner/logs/fastwatcher.log 2>&1
 
 # ── PRODUCER SCREENER (Full universe sweep via VPS daemon + Snapshot) ────

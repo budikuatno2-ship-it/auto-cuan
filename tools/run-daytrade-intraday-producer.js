@@ -56,8 +56,8 @@ function cleanStaleLockFile(lockPath = '/tmp/daytrade.lock', maxAgeMs = 12 * 60 
 }
 
 function parseArgs(argv) {
-  const defaultSpeed = process.env.DAYTRADE_RUN_SPEED || 'full';
-  const opts = { execute: false, maxBatches: 120, sleepMs: 500, force: false, syncSnapshot: false, speed: defaultSpeed };
+  const opts = { execute: false, maxBatches: 120, sleepMs: 500, force: false, syncSnapshot: false, speed: 'fast' };
+  if (process.env.DAYTRADE_RUN_SPEED) opts.speed = normalizeSpeed(process.env.DAYTRADE_RUN_SPEED);
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--execute') opts.execute = true;
