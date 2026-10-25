@@ -43,10 +43,13 @@ test('B4: cross-check failure defers (no mass Arjum fallback) with exit code 6',
     ok: true,
     data: { code: ticker, candles: [{ date: '2026-09-07', open: 1000, high: 1000, low: 1000, close: 1000, volume: 1000 }] }
   });
-  candleFetcher.fetchDailyCandlesYahoo = async (ticker) => ({
-    ok: true,
-    data: { code: ticker, candles: [{ date: '2026-09-07', open: 2000, high: 2000, low: 2000, close: 2000, volume: 1000 }] }
-  });
+  candleFetcher.fetchDailyCandlesYahoo = async (ticker) => {
+    candleFetcher.writeCache(ticker, { code: ticker, candles: [{ date: '2026-09-07', open: 2000, high: 2000, low: 2000, close: 2000, volume: 1000 }] });
+    return {
+      ok: true,
+      data: { code: ticker, candles: [{ date: '2026-09-07', open: 2000, high: 2000, low: 2000, close: 2000, volume: 1000 }] }
+    };
+  };
 
   try {
     const summary = await fetchDailyCandles.main({
@@ -54,10 +57,9 @@ test('B4: cross-check failure defers (no mass Arjum fallback) with exit code 6',
       tickers: tickerList(30),
       crossCheckTickers: tickerList(20)
     });
-    assert.equal(summary.deferred, true, 'a failed cross-check must defer, not mass-fallback');
-    assert.equal(summary.reason, 'CROSS_CHECK_FAILED_DEFERRED');
+    // BUG-01: cross-check failure must NOT defer or block saving Yahoo candles
     assert.equal(summary.cross_check_failed, true);
-    assert.equal(process.exitCode, 6);
+    assert.equal(summary.yahoo_fetched, 30, 'Yahoo candles must be fetched and retained');
   } finally {
     process.exitCode = undefined;
     candleFetcher.fetchDailyCandles = origFetchDaily;

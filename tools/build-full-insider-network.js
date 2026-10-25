@@ -463,9 +463,13 @@ function buildFullInsiderNetwork() {
     });
   });
 
-  // Inject conglomerate anchor holdings
+  // Inject conglomerate anchor holdings dynamically
   console.log('Injecting explicit conglomerate anchor connections (6 major groups)...');
-  const allRecords = normalizedRecords.concat(CONGLOMERATE_ANCHORS);
+  const nowKey = new Date().toISOString().slice(0, 10);
+  const dynamicAnchors = CONGLOMERATE_ANCHORS.map(a => Object.assign({}, a, {
+    date: a.date || nowKey
+  }));
+  const allRecords = normalizedRecords.concat(dynamicAnchors);
 
   // Ensure output directory exists
   if (!fs.existsSync(OUTPUT_DIR)) {
@@ -490,6 +494,14 @@ function buildFullInsiderNetwork() {
   });
 
   console.log('=== COMPILATION COMPLETE ===');
+  return { allRecords, aggregated, multiEmitens };
 }
 
-buildFullInsiderNetwork();
+if (require.main === module) {
+  buildFullInsiderNetwork();
+}
+
+module.exports = {
+  buildFullInsiderNetwork,
+  CONGLOMERATE_ANCHORS
+};

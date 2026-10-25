@@ -40,24 +40,43 @@ const quotaTracker = require(path.join(ROOT_DIR, 'lib', 'arjum-quota-tracker'));
 
 const DEFAULT_BATCH = 50;
 const MAX_FAILURE_RATIO = 0.20;
-// Daily-job need that must stay untouched (J1 evening + J2 + IHSG + retry).
-const DAILY_JOB_NEED = 4400;
-const RETRY_RATIO = 0.10;
-const WEB_RESERVE = 100;
-// Weekend (Sat/Sun): there is NO J1 and NO J2, so the 4,940 floor does not
-// apply. Only a small reserve for the live website + retries is kept, capped at
-// 1,500 (owner decision, 23 Oct 2026).
-const WEEKEND_RESERVE_CAP = 1500;
-const WEEKEND_RETRY_RATIO = 0.10;
-const WEEKEND_WEB_RESERVE = 100;
+// Hard quota floors: 5000 (weekday), 1000 (weekend).
+const WEEKDAY_FLOOR = 5000;
+const WEEKEND_FLOOR = 1000;
+const DAILY_JOB_NEED = 5000;
+const WEEKEND_RESERVE_CAP = 1000;
 
-// The four types J1 writes, in the order it writes them.
+// Catchup historical types: ONLY ALL and F.
+// BUG-03: /api/broker-accumulation and /api/insiders have NO date parameter.
 const TYPES = [
   { key: 'ALL', dir: 'broker-summary' },
-  { key: 'F', dir: 'broker-summary-F' },
-  { key: 'AKUMULASI', dir: 'broker-accumulation' },
-  { key: 'INSIDER', dir: 'insiders' }
+  { key: 'F', dir: 'broker-summary-F' }
 ];
+
+function loadEnvFile() {
+  const candidates = [
+    path.join(__dirname, '..', '.env.ai-eval-once'),
+    path.join(__dirname, '..', '.env.local'),
+    path.join(__dirname, '..', '.env'),
+    '/home/ubuntu/auto-cuan-runner/.env',
+    '/home/ubuntu/auto-cuan/.env'
+  ];
+  for (const file of candidates) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+        const t = line.trim();
+        if (!t || t.startsWith('#')) continue;
+        const eq = t.indexOf('=');
+        if (eq <= 0) continue;
+        const k = t.slice(0, eq).trim();
+        let v = t.slice(eq + 1).trim();
+        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+        if (!process.env[k]) process.env[k] = v;
+      }
+    } catch (_) {}
+  }
+}
 
 function dataDir(env) {
   const e = env || process.env;
@@ -90,9 +109,7 @@ function parseArgs(argv) {
 function computeCatchupBudget(limit, used, options) {
   const opts = options || {};
   const isWeekend = opts.isWeekend === true;
-  const floor = isWeekend
-    ? Math.min(WEEKEND_RESERVE_CAP, Math.ceil(Number(limit) * WEEKEND_RETRY_RATIO) + WEEKEND_WEB_RESERVE)
-    : Math.ceil(DAILY_JOB_NEED * (1 + RETRY_RATIO)) + WEB_RESERVE;
+  const floor = isWeekend ? WEEKEND_FLOOR : WEEKDAY_FLOOR;
   const remaining = Math.max(0, Number(limit) - Number(used));
   return { limit, used, remaining, floor, spendable: Math.max(0, remaining - floor), isWeekend };
 }
@@ -145,6 +162,7 @@ function writeDated(baseDir, typeDir, ticker, date, data) {
 }
 
 async function run(argv, deps) {
+  loadEnvFile();
   const d = deps || {};
   const opts = parseArgs(argv || []);
   const env = d.env || process.env;
@@ -161,7 +179,7 @@ async function run(argv, deps) {
   const weekend = isWeekendWib(todayWib);
   const budget = computeCatchupBudget(limit, used, { isWeekend: weekend });
 
-  const dates = opts.dates.length ? opts.dates : ['2026-10-22', '2026-10-21', '2026-10-20', '2026-10-19'];
+  const dates = opts.dates.length ? opts.dates : ['2026-10-23', '2026-10-22', '2026-10-21', '2026-10-20', '2026-10-19'];
   const plan = dates.map((date) => {
     const m = missingForDate(baseDir, date, { skipF: opts.skipF });
     return { date, total: m.total, missing: m.missing, missingCells: m.missingCells };
@@ -199,72 +217,57 @@ async function run(argv, deps) {
   const results = [];
   for (const p of plan) {
     if (spent >= budget.spendable || spent >= opts.limit) break;
-    // Batch = the first N emiten that still miss ANY type for this date.
     const union = Array.from(new Set(Object.values(p.missing).flat())).sort();
-    const batch = union.slice(0, opts.batch);
-    const perType = { ALL: { ok: 0, failed: 0 }, F: { ok: 0, failed: 0 }, AKUMULASI: { ok: 0, failed: 0 }, INSIDER: { ok: 0, failed: 0 } };
-    let attempted = 0;
-    let failed = 0;
+    let batchOffset = 0;
 
-    for (const ticker of batch) {
+    while (batchOffset < union.length) {
       if (spent >= budget.spendable || spent >= opts.limit) break;
-      let tickerFailed = false;
+      const batch = union.slice(batchOffset, batchOffset + opts.batch);
+      batchOffset += opts.batch;
 
-      // 1. ALL
-      if (p.missing.ALL.includes(ticker)) {
-        attempted += 1;
-        try {
-          // bypassMarketGuard: the catch-up runs at 00:07 WIB (outside the IDX
-          // session) and fetches HISTORICAL dates. The guard only applies to
-          // "today", but passing the flag keeps the intent explicit and matches
-          // the backfill worker. The guard itself is unchanged for web/live.
-          const res = await client.fetchBrokerSummary(ticker, p.date, 'all', null, { allData: true, fresh: true, forceLive: true, noFallback: true, bypassMarketGuard: true });
-          spent += 1;
-          if (res && res.ok && res.data) { writeDated(baseDir, 'broker-summary', ticker, p.date, res.data); perType.ALL.ok += 1; }
-          else { perType.ALL.failed += 1; failed += 1; tickerFailed = true; }
-        } catch (_) { perType.ALL.failed += 1; failed += 1; tickerFailed = true; }
+      const perType = { ALL: { ok: 0, failed: 0 }, F: { ok: 0, failed: 0 } };
+      let attempted = 0;
+      let failed = 0;
+
+      for (const ticker of batch) {
+        if (spent >= budget.spendable || spent >= opts.limit) break;
+        let tickerFailed = false;
+
+        // 1. ALL
+        if (p.missing.ALL && p.missing.ALL.includes(ticker)) {
+          attempted += 1;
+          try {
+            const res = await client.fetchBrokerSummary(ticker, p.date, 'all', null, { allData: true, fresh: true, forceLive: true, noFallback: true, bypassMarketGuard: true });
+            spent += 1;
+            if (res && res.ok && res.data) { writeDated(baseDir, 'broker-summary', ticker, p.date, res.data); perType.ALL.ok += 1; }
+            else { perType.ALL.failed += 1; failed += 1; tickerFailed = true; }
+          } catch (_) { perType.ALL.failed += 1; failed += 1; tickerFailed = true; }
+        }
+
+        // 2. F (only when ALL succeeded for this ticker, mirroring J1)
+        if (!tickerFailed && !opts.skipF && p.missing.F && p.missing.F.includes(ticker)) {
+          attempted += 1;
+          try {
+            const res = await client.fetchBrokerSummary(ticker, p.date, 'F', null, { allData: true, fresh: true, forceLive: true, noFallback: true, bypassMarketGuard: true });
+            spent += 1;
+            if (res && res.ok && res.data) { writeDated(baseDir, 'broker-summary-F', ticker, p.date, res.data); perType.F.ok += 1; }
+            else { perType.F.failed += 1; failed += 1; tickerFailed = true; }
+          } catch (_) { perType.F.failed += 1; failed += 1; tickerFailed = true; }
+        }
       }
 
-      // 2. F (only when ALL succeeded for this ticker, mirroring J1)
-      if (!tickerFailed && !opts.skipF && p.missing.F.includes(ticker)) {
-        attempted += 1;
-        try {
-          const res = await client.fetchBrokerSummary(ticker, p.date, 'F', null, { allData: true, fresh: true, forceLive: true, noFallback: true, bypassMarketGuard: true });
-          spent += 1;
-          if (res && res.ok && res.data) { writeDated(baseDir, 'broker-summary-F', ticker, p.date, res.data); perType.F.ok += 1; }
-          else { perType.F.failed += 1; failed += 1; tickerFailed = true; }
-        } catch (_) { perType.F.failed += 1; failed += 1; tickerFailed = true; }
+      const ratio = attempted ? failed / attempted : 0;
+      results.push({ date: p.date, batch_start: batchOffset - batch.length, tickers: batch.length, attempted, failed, failure_ratio: Number(ratio.toFixed(3)), per_type: perType });
+      if (ratio > MAX_FAILURE_RATIO) {
+        summary.stopped = 'failure_ratio_exceeded';
+        summary.stopped_on = p.date;
+        break;
       }
 
-      // 3. Accumulation
-      if (!tickerFailed && p.missing.AKUMULASI.includes(ticker)) {
-        attempted += 1;
-        try {
-          const res = await client.fetchBrokerAccumulation(ticker, { forceLive: true, noFallback: true });
-          spent += 1;
-          if (res && res.ok && res.data) { writeDated(baseDir, 'broker-accumulation', ticker, p.date, res.data); perType.AKUMULASI.ok += 1; }
-          else { perType.AKUMULASI.failed += 1; failed += 1; tickerFailed = true; }
-        } catch (_) { perType.AKUMULASI.failed += 1; failed += 1; tickerFailed = true; }
+      // Small pause between batches
+      if (batchOffset < union.length && spent < budget.spendable && spent < opts.limit) {
+        await new Promise(resolve => setTimeout(resolve, 250));
       }
-
-      // 4. Insiders
-      if (!tickerFailed && p.missing.INSIDER.includes(ticker)) {
-        attempted += 1;
-        try {
-          const res = await client.fetchInsiders(ticker, 1, 15, { forceLive: true, noFallback: true });
-          spent += 1;
-          if (res && res.ok && res.data) { writeDated(baseDir, 'insiders', ticker, p.date, res.data); perType.INSIDER.ok += 1; }
-          else { perType.INSIDER.failed += 1; failed += 1; tickerFailed = true; }
-        } catch (_) { perType.INSIDER.failed += 1; failed += 1; tickerFailed = true; }
-      }
-    }
-
-    const ratio = attempted ? failed / attempted : 0;
-    results.push({ date: p.date, tickers: batch.length, attempted, failed, failure_ratio: Number(ratio.toFixed(3)), per_type: perType });
-    if (ratio > MAX_FAILURE_RATIO) {
-      summary.stopped = 'failure_ratio_exceeded';
-      summary.stopped_on = p.date;
-      break;
     }
   }
 

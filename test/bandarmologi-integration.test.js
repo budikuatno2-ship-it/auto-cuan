@@ -23,13 +23,13 @@ test('arjumClient: getConfiguredDailyQuota reads ARJUM_DAILY_QUOTA env var, fall
   try {
     delete process.env.ARJUM_DAILY_QUOTA;
     delete process.env.ARJUM_DAILY_LIMIT;
-    assert.equal(arjumClient.getConfiguredDailyQuota(), 12060, 'must fall back to the documented plan quota, not a stale small default');
+    assert.equal(arjumClient.getConfiguredDailyQuota(), 18080, 'must fall back to the documented plan quota, not a stale small default');
 
     process.env.ARJUM_DAILY_QUOTA = '25000';
     assert.equal(arjumClient.getConfiguredDailyQuota(), 25000, 'must be overridable via env var without a code change');
 
     process.env.ARJUM_DAILY_QUOTA = 'not-a-number';
-    assert.equal(arjumClient.getConfiguredDailyQuota(), 12060, 'must ignore a garbage env value rather than returning NaN');
+    assert.equal(arjumClient.getConfiguredDailyQuota(), 18080, 'must ignore a garbage env value rather than returning NaN');
   } finally {
     if (origLimit !== undefined) process.env.ARJUM_DAILY_LIMIT = origLimit;
     else delete process.env.ARJUM_DAILY_LIMIT;

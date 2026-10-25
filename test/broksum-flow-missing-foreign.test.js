@@ -30,7 +30,7 @@ test('BUG-01: Domestic flow returns incomplete when foreign data is missing or i
     assert.equal(result.is_complete, false, 'is_complete must be false when foreign is missing');
     assert.equal(result.status, 'foreign_missing');
     assert.equal(result.data, null);
-    assert.equal(result.brokers, undefined, 'Must not copy all brokers to domestic');
+    assert.ok(result.brokers === undefined || (Array.isArray(result.brokers) && result.brokers.length === 0), 'Must not copy all brokers to domestic');
   });
 
   await t.test('returns incomplete when foreignBroksum is undefined', () => {

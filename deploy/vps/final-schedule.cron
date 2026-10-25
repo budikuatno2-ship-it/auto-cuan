@@ -18,17 +18,18 @@ CRON_TZ=Asia/Jakarta
 # DIJEDA 20261023 sampai J1 terkejar
 # 5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
 
-# Backfill otomatis broker summary asing (Hari kerja slot 1: 00:07 WIB)
-# DIJEDA 20261023 sampai J1 terkejar
-# 7 0 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
+# Backfill otomatis broker summary asing (Hari kerja slot 1: 00:15 WIB)
+15 0 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum.log 2>&1
 
-# Backfill otomatis broker summary asing (Hari kerja slot 2: 19:30 WIB)
-# DIJEDA 20261023 sampai J1 terkejar
-# 30 19 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
+# Backfill otomatis broker summary asing (Hari kerja slot 2: 02:30 WIB)
+30 2 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum.log 2>&1
 
-# Backfill otomatis broker summary asing (Akhir pekan: Sabtu & Minggu 00:07 WIB)
-# DIJEDA 20261023 sampai J1 terkejar
-# 7 0 * * 6,0 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekend --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
+# Backfill otomatis broker summary asing (Hari kerja slot 3: 19:30 WIB)
+30 19 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum.log 2>&1
+
+# Backfill otomatis broker summary asing (Akhir pekan: Sabtu & Minggu 00:15 & 12:00 WIB)
+15 0 * * 6,0 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekend >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum.log 2>&1
+0 12 * * 6,0 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekend >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum.log 2>&1
 
 # C (2026-10-23): PENGECORAN TANGGAL BOLONG — Sabtu 24 Okt 00:07 WIB.
 # Tidak ada J1/J2 di akhir pekan, jadi cadangan kecil (maks 1.500) saja.
@@ -81,7 +82,7 @@ CRON_TZ=Asia/Jakarta
 */15 8-20 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-idx-suspension-guard.sh >> /home/ubuntu/auto-cuan-runner/logs/idx-suspension-guard.log 2>&1
 
 # ── LIVE BURSA (Senin-Jumat, 09:00-16:00 WIB) ────────────────────────────
-2,17,32,47 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade-producer.sh --execute >> /home/ubuntu/auto-cuan-runner/logs/daytrade-producer.log 2>&1
+2,17,32,47 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade-producer.sh --execute --speed full >> /home/ubuntu/auto-cuan-runner/logs/daytrade-producer.log 2>&1
 */5 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-fastwatcher.sh --send >> /home/ubuntu/auto-cuan-runner/logs/fastwatcher.log 2>&1
 
 # ── PRODUCER SCREENER (Full universe sweep via VPS daemon + Snapshot) ────
@@ -95,6 +96,9 @@ CRON_TZ=Asia/Jakarta
 # sudah ditulis J1. Tidak memakai kuota Arjum (baca disk saja). Tanpa baris ini
 # index tetap basi sejak 12 Sep, seperti sebelum perbaikan ini.
 45 22 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-broker-hunter-indexer.sh >> /home/ubuntu/auto-cuan-runner/logs/broker-hunter-indexer.log 2>&1
+
+# INSIDER NETWORK & COMPILATION — 23:00 WIB (Senin-Jumat & Minggu)
+0 23 * * 0-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/build-full-insider-network.js >> /home/ubuntu/auto-cuan-runner/logs/build-insider-network.log 2>&1
 
 # BACKLOG AGE ALARM (B3, 2026-10-22) — 19:45 WIB, setelah jendela EOD.
 # Kalau antrean isi ulang H-1 lebih tua dari 24 jam DAN tidak berkurang, kirim
