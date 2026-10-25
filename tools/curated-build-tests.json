@@ -661,6 +661,7 @@
   "test/telegram-templates.test.js",
   "test/telegram-unified-subscription.test.js",
   "test/telegram-verification-v2.test.js",
+  "test/template-env-sanitization.test.js",
   "test/terms-payment-checkbox.test.js",
   "test/top10-command-selection.test.js",
   "test/top5-fusion-engine.test.js",
