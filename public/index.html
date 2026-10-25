@@ -2927,10 +2927,10 @@ html.light #googleCompleteProfileModal input {
     <!-- Table Container Sheet -->
     <section class="sheet rise d2">
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)" id="watchlistFilterTabs">
-            <button type="button" onclick="filterWatchlist('all')" class="fchip on" data-wl-filter="all" aria-pressed="true">Semua</button>
-            <button type="button" onclick="filterWatchlist('alert')" class="fchip" data-wl-filter="alert" aria-pressed="false">Ada alert</button>
-            <button type="button" onclick="filterWatchlist('gain')" class="fchip" data-wl-filter="gain" aria-pressed="false">Naik hari ini</button>
-            <button type="button" onclick="filterWatchlist('loss')" class="fchip" data-wl-filter="loss" aria-pressed="false">Turun hari ini</button>
+            <button type="button" onclick="filterWatchlist('all')" class="fchip wl-filter-btn on active" data-wl-filter="all" aria-pressed="true">Semua</button>
+            <button type="button" onclick="filterWatchlist('alert')" class="fchip wl-filter-btn" data-wl-filter="alert" aria-pressed="false">Ada alert</button>
+            <button type="button" onclick="filterWatchlist('gain')" class="fchip wl-filter-btn" data-wl-filter="gain" aria-pressed="false">Naik hari ini</button>
+            <button type="button" onclick="filterWatchlist('loss')" class="fchip wl-filter-btn" data-wl-filter="loss" aria-pressed="false">Turun hari ini</button>
             <span class="chip i" style="margin-left:auto">Data asli</span>
         </div>
         <div id="wlErrorBanner" class="hidden mx-4 my-2 px-3 py-2 text-xs rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300"></div>
@@ -5321,7 +5321,7 @@ function handleAppRoute(opts) {
         return;
     }
 
-    if (route.page === 'news' || route.page === 'analisis') {
+    if (route.page === 'news' || route.page === 'analisis' || route.page === 'catatan-admin') {
         enterApp({
             replaceHistory: opts.duringInit,
             allowGuest: true,

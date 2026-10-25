@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pattern Radar · Auto-Cuan</title>
+  <link rel="stylesheet" href="/ac.css">
   <link rel="stylesheet" href="/ac-v2.css">
   <link rel="stylesheet" href="/assets/css/unified-design-tokens.css">
   <link rel="stylesheet" href="/fonts/ac-fonts.css">
@@ -229,7 +230,7 @@
       if (data && data.success && data.allowed) {
         setAdminState(true, data.username || 'Admin');
       } else {
-        setAdminState(false);
+        setAdminState(isAdminLocal, localStorage.getItem('autocuan_user') || 'Admin');
       }
     }).catch(function() {
       setAdminState(isAdminLocal, localStorage.getItem('autocuan_user') || 'Admin');

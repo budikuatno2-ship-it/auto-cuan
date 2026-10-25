@@ -357,6 +357,7 @@ function getPreviewInjectionHtml(module, options = {}) {
         return;
       }
 
+      if (typeof setTopLevelView === 'function') setTopLevelView('app');
       if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
       if (typeof applyPremiumAccessUi === 'function') applyPremiumAccessUi();
       if (typeof syncHeaderUsername === 'function') syncHeaderUsername();
@@ -1109,6 +1110,9 @@ const server = http.createServer(async (req, res) => {
               }
             }
           });
+        }
+        if (action === 'account-google-status') {
+          return res.status(200).json({ success: true, linked: false, google_email: null });
         }
         if (action === 'portfolio-state-load') {
           return res.status(200).json({

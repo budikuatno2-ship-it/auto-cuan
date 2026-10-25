@@ -4563,9 +4563,9 @@
     html += '    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
     html += '      <h3>Visualisasi Jejaring Relasi Insider &amp; Pemegang Saham Multi-Emiten</h3>';
     html += '    </div>';
-    html += '    <div id="insiderMobileTabs" class="insider-mobile-tabs" style="display:none">';
-    html += '      <button type="button" id="insiderTabRoster" onclick="BandarmologiRuntime.setInsiderMobileView(\'roster\')">Daftar Pemegang Saham</button>';
-    html += '      <button type="button" id="insiderTabGraph" onclick="BandarmologiRuntime.setInsiderMobileView(\'graph\')">Graf Jejaring</button>';
+    html += '    <div id="insiderMobileTabs" class="insider-mobile-tabs">';
+    html += '      <button type="button" id="insiderTabRoster" class="ac-tab-btn ac-tab-active" onclick="BandarmologiRuntime.setInsiderMobileView(\'roster\')">Daftar Pemegang Saham</button>';
+    html += '      <button type="button" id="insiderTabGraph" class="ac-tab-btn" onclick="BandarmologiRuntime.setInsiderMobileView(\'graph\')">Graf Jejaring</button>';
     html += '    </div>';
     html += '    <div style="margin-bottom:12px">';
     html += '      <span style="font-size:12px;font-weight:600">Pilih Emiten Cepat:</span>';
