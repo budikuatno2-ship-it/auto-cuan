@@ -119,6 +119,9 @@ CRON_TZ=Asia/Jakarta
 */30 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh --force-local >> /home/ubuntu/auto-cuan-runner/logs/sector-hot.log 2>&1
 
 # ── ORACLE ANTI-SUSPEND KEEP-ALIVE (ringan, setiap jam) ──────────────────
+# ── TELEGRAM MEMBER LIFECYCLE (Reminder, Review & Auto-kick — 02:15 WIB) ─────
+15 2 * * * /home/ubuntu/auto-cuan/deploy/vps/run-telegram-lifecycle.sh --execute --kick-expired >> /home/ubuntu/auto-cuan-runner/logs/telegram-lifecycle.log 2>&1
+
 0 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-keepalive.sh >> /home/ubuntu/auto-cuan-runner/logs/keepalive.log 2>&1
 */5 * * * * /bin/bash /home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh >> /home/ubuntu/auto-cuan-runner/logs/verify-poller-watchdog.log 2>&1
 
