@@ -5,9 +5,9 @@ const assert = require('node:assert/strict');
 const { escapeMarkdownV2 } = require('../lib/telegram-notifier');
 
 test('BUG-16: MarkdownV2 reserved character escaping for Telegram', async (t) => {
-  await t.test('1. escapes all 18 Telegram MarkdownV2 reserved characters', () => {
-    // Reserved characters: _ * [ ] ( ) ~ ` > # + - = | { } . !
-    const reservedChars = '_*[]()~`>#+-=|{}.!';
+  await t.test('1. escapes all 19 Telegram MarkdownV2 reserved characters', () => {
+    // Reserved characters: _ * [ ] ( ) ~ ` > # + - = | { } . ! \
+    const reservedChars = '_*[]()~`>#+-=|{}.!\\';
     const escaped = escapeMarkdownV2(reservedChars);
 
     for (const ch of reservedChars) {
@@ -20,6 +20,7 @@ test('BUG-16: MarkdownV2 reserved character escaping for Telegram', async (t) =>
     const escaped = escapeMarkdownV2(rawReason);
 
     assert.equal(escaped, 'BBCA break\\-out at 9\\.500 \\(target: \\+5\\.5%\\! \\[alert\\]\\)');
+    assert.equal(escapeMarkdownV2('C:\\test\\dir'), 'C:\\\\test\\\\dir');
   });
 
   await t.test('3. handles null, undefined, and empty string gracefully', () => {
