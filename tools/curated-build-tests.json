@@ -446,6 +446,7 @@
   "test/login-localstorage-resilience.test.js",
   "test/login-password-toggle.test.js",
   "test/login-throttle.test.js",
+  "test/logrotate-autocuan-config.test.js",
   "test/maintenance-and-hidden-resilience.test.js",
   "test/maintenance-gate.test.js",
   "test/major-zone-volume-profile.test.js",
