@@ -33,6 +33,7 @@ function printHelp() {
     '  --execute        Claim and send (otherwise dry-run only)',
     '  --reminders-only Only process verification reminders',
     '  --reviews-only   Only process 30-day review requests',
+    '  --kick-expired   Also remove members whose subscription has expired',
     '  --limit <n>      Max rows per batch (default 100)',
     '  --json           Print only the JSON summary',
     '  -h, --help       Show this help',
@@ -42,12 +43,13 @@ function printHelp() {
 }
 
 function parseArgs(argv) {
-  const opts = { execute: false, remindersOnly: false, reviewsOnly: false, json: false, limit: 100, help: false };
+  const opts = { execute: false, remindersOnly: false, reviewsOnly: false, kickExpired: false, json: false, limit: 100, help: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--execute') opts.execute = true;
     else if (arg === '--reminders-only') opts.remindersOnly = true;
     else if (arg === '--reviews-only') opts.reviewsOnly = true;
+    else if (arg === '--kick-expired') opts.kickExpired = true;
     else if (arg === '--json') opts.json = true;
     else if (arg === '--limit') {
       const value = Number(argv[i + 1]);
@@ -85,6 +87,7 @@ async function main() {
   const summary = { mode: opts.execute ? 'execute' : 'dry_run', limit: opts.limit };
   if (!opts.reviewsOnly) summary.reminders = await lifecycle.runVerificationReminders(deps, runOpts);
   if (!opts.remindersOnly) summary.reviews = await lifecycle.runReviewRequests(deps, runOpts);
+  if (opts.kickExpired) summary.expired_kick = await lifecycle.runExpiredMemberKick(deps, runOpts);
 
   console.log(JSON.stringify(summary, null, 2));
   return 0;
