@@ -40,11 +40,11 @@ const quotaTracker = require(path.join(ROOT_DIR, 'lib', 'arjum-quota-tracker'));
 
 const DEFAULT_BATCH = 50;
 const MAX_FAILURE_RATIO = 0.20;
-// Hard quota floors: 5000 (weekday), 1000 (weekend).
+// Hard quota floors: 5000 (weekday), 0 (weekend: 100% quota usable).
 const WEEKDAY_FLOOR = 5000;
-const WEEKEND_FLOOR = 1000;
+const WEEKEND_FLOOR = 0;
 const DAILY_JOB_NEED = 5000;
-const WEEKEND_RESERVE_CAP = 1000;
+const WEEKEND_RESERVE_CAP = 0;
 
 // Catchup historical types: ONLY ALL and F.
 // BUG-03: /api/broker-accumulation and /api/insiders have NO date parameter.

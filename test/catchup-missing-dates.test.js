@@ -27,11 +27,11 @@ test('C: the weekday budget keeps the daily jobs safe (J1 + J2 + IHSG + retry + 
   assert.equal(b.spendable, 18080 - 5000);
 });
 
-test('C: the WEEKEND budget drops the J1/J2 reserve and caps it at 1,000', () => {
+test('C: the WEEKEND budget drops the J1/J2 reserve to 0 (100% quota usable)', () => {
   const b = tool.computeCatchupBudget(18080, 0, { isWeekend: true });
   assert.equal(b.isWeekend, true);
-  assert.equal(b.floor, 1000);
-  assert.equal(b.spendable, 18080 - 1000);
+  assert.equal(b.floor, 0);
+  assert.equal(b.spendable, 18080);
 });
 
 test('C: Saturday/Sunday are detected in WIB', () => {
@@ -68,7 +68,7 @@ test('C: dry-run lists missing cells per date, newest first, and spends nothing'
 
   assert.equal(summary.dry_run, true);
   assert.equal(summary.is_weekend, true);
-  assert.equal(summary.floor, 1000);
+  assert.equal(summary.floor, 0);
   assert.equal(summary.plan[0].date, '2026-10-22');
   assert.equal(summary.plan[0].missing.ALL, 2, 'BBCA already has ALL');
   assert.equal(summary.plan[0].missing.F, 3);

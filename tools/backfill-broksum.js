@@ -55,9 +55,14 @@ const broksumValidator = require('../lib/broksum-validator');
 // Default pacing: 8 req/sec (125ms delay) as verified in benchmark
 const DEFAULT_DELAY_MS = 125;
 const SLOWDOWN_DELAY_MS = 200; // 5 req/sec on rate burst
-// Hard quota floors: Weekday floor 5,000 for J1; Weekend floor 1,000 for web/retries.
-const WEEKDAY_RESERVE = Math.max(5000, Number(process.env.BACKFILL_RESERVE_AFTER_EOD) || 5000);
-const WEEKEND_RESERVE = Math.max(1000, Number(process.env.BACKFILL_RESERVE_WEEKEND) || 1000);
+// Hard quota floors:
+// Weekday pre-EOD: 5,000 reserved for J1 job.
+// Weekday post-EOD (J1 complete): 0 (or buffer small).
+// Weekend (Saturday/Sunday WIB): 0 (100% quota usable).
+const WEEKDAY_RESERVE = Math.max(0, Number(process.env.BACKFILL_RESERVE_AFTER_EOD) || 0);
+const WEEKEND_RESERVE = process.env.BACKFILL_RESERVE_WEEKEND !== undefined
+  ? Math.max(0, Number(process.env.BACKFILL_RESERVE_WEEKEND))
+  : 0;
 const DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD = 5000;
 const WEEKDAY_RESERVE_BEFORE_EOD = Math.max(5000, Number(process.env.BACKFILL_RESERVE_BEFORE_EOD) || DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD);
 
@@ -163,20 +168,31 @@ function computeBackfillReserve(options = {}) {
   const remaining = (options.remaining === null || options.remaining === undefined)
     ? null
     : Number(options.remaining);
+  const mode = options.mode === 'weekend' ? 'weekend' : 'weekday';
+
+  if (mode === 'weekend') {
+    const floor = options.weekendFloor !== undefined ? Number(options.weekendFloor) : WEEKEND_RESERVE;
+    const reserve = Math.max(0, floor);
+    if (!Number.isFinite(remaining)) {
+      return { reserve, spendable: 0, dailyNeed: 0, retryBuffer: 0, remaining: null, mode };
+    }
+    const spendable = Math.max(0, Math.floor(remaining - reserve));
+    return { reserve, spendable, dailyNeed: 0, retryBuffer: 0, remaining, mode };
+  }
+
   const dailyNeed = Number.isFinite(options.dailyNeed) && options.dailyNeed > 0
     ? options.dailyNeed
     : DAILY_JOB_BASE_NEED;
   const retryBuffer = Number.isFinite(options.retryBuffer)
     ? options.retryBuffer
     : Math.ceil(dailyNeed * DAILY_JOB_RETRY_RATIO);
-  const mode = options.mode === 'weekend' ? 'weekend' : 'weekday';
 
   // The floor: quota that must remain available for the daily jobs.
   const reserve = Math.max(0, Math.ceil(dailyNeed + retryBuffer));
   if (!Number.isFinite(remaining)) {
     // Unknown remaining quota -> be conservative and keep the old fixed reserve.
     return {
-      reserve: Math.max(reserve, mode === 'weekend' ? WEEKEND_RESERVE : WEEKDAY_RESERVE),
+      reserve: Math.max(reserve, WEEKDAY_RESERVE),
       spendable: 0,
       dailyNeed, retryBuffer, remaining: null, mode
     };
@@ -211,6 +227,12 @@ function countMissingForDate(baseDir, date, tickers) {
 // A ticker's missing day is counted once per date, so a ticker that is missing
 // on both days is counted twice (it really does need two days of data).
 function computePendingDailyNeed(baseDir, todayKey, tickers) {
+  // If today is a weekend or closed market day in WIB, there is no pending daily work
+  const d = new Date(todayKey + 'T00:00:00Z');
+  const day = d.getUTCDay();
+  if (day === 0 || day === 6 || !isTradingDaySafe(todayKey)) {
+    return 0;
+  }
   let need = countMissingForDate(baseDir, todayKey, tickers) * DAILY_REQUESTS_PER_TICKER;
   const prevKey = previousTradingDayKey(todayKey);
   if (prevKey) {
@@ -249,15 +271,34 @@ function previousTradingDayKey(dateKey) {
 function resolveBackfillReserveFloor(options = {}) {
   const baseDir = options.baseDir;
   const explicitMode = options.explicitModeArg || null;
-  const mode = options.mode || 'weekday';
-  const todayKey = wibDateKey();
+  const now = options.now || new Date();
+  const todayKey = wibDateKey(now);
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jakarta', weekday: 'short'
+  }).format(now);
+  const isWeekendDay = parts === 'Sun' || parts === 'Sat';
+
+  let currentMode = explicitMode;
+  if (!currentMode) {
+    if (options.mode) {
+      currentMode = options.mode;
+    } else {
+      currentMode = (isWeekendDay || !isTradingDaySafe(todayKey)) ? 'weekend' : 'weekday';
+    }
+  }
+
+  if (currentMode === 'weekend') {
+    return WEEKEND_RESERVE;
+  }
+
   if (eodDoneExists(baseDir, todayKey)) {
-    return resolveDynamicReserveQuota(baseDir, explicitMode);
+    return resolveDynamicReserveQuota(baseDir, explicitMode, now);
   }
   const pendingNeed = Number.isFinite(options.pendingDailyNeed) && options.pendingDailyNeed > 0
     ? options.pendingDailyNeed
     : DAILY_JOB_BASE_NEED;
-  return computeBackfillReserve({ remaining: options.remaining, mode, dailyNeed: pendingNeed }).reserve;
+  return computeBackfillReserve({ remaining: options.remaining, mode: currentMode, dailyNeed: pendingNeed }).reserve;
 }
 
 function resolveDynamicReserveQuota(baseDir, explicitMode = null, now = new Date()) {
@@ -269,11 +310,7 @@ function resolveDynamicReserveQuota(baseDir, explicitMode = null, now = new Date
 
   let currentMode = explicitMode;
   if (!currentMode) {
-    currentMode = isWeekendDay ? 'weekend' : 'weekday';
-  }
-
-  if (currentMode === 'weekday' && !isTradingDaySafe(todayKey)) {
-    currentMode = 'weekend';
+    currentMode = (isWeekendDay || !isTradingDaySafe(todayKey)) ? 'weekend' : 'weekday';
   }
 
   if (currentMode === 'weekend') {
