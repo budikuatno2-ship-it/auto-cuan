@@ -120,7 +120,7 @@
     if (document.querySelector('link[data-autocuan-account-center-css]')) return;
     var link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = '/account-center-v1.css?v=20261024-v4';
+    link.href = '/account-center-v1.css?v=20261025-v5';
     link.setAttribute('data-autocuan-account-center-css', '1');
     document.head.appendChild(link);
   }

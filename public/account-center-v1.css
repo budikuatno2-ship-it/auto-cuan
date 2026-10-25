@@ -1,6 +1,6 @@
 /* Auto-Cuan Account Center — design token driven, full dark/light theme parity, canvas parity. */
 #acAccountCenter[hidden] { display: none !important; }
-#acAccountCenter { position: fixed; inset: 0; z-index: var(--ac-z-modal, 100050); display: grid; place-items: center; padding: 18px; background: var(--backdrop-surface, rgba(15, 23, 42, 0.75)); }
+#acAccountCenter { position: fixed; inset: 0; z-index: var(--ac-z-modal, 100050); display: flex; justify-content: center; align-items: flex-start; padding: 86px 18px 24px; background: var(--backdrop-surface, rgba(15, 23, 42, 0.75)); }
 .ac-center-shell { width: min(1040px, 100%); max-height: min(90dvh, 860px); overflow: hidden; display: grid; grid-template-rows: auto minmax(0,1fr); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl, 16px); background: var(--surface); box-shadow: var(--ac-shadow-2); color: var(--text-primary); }
 .ac-center-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px 14px; border-bottom: 1px solid var(--border-hairline); }
 .ac-center-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }

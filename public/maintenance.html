@@ -10,7 +10,7 @@
   <script src="/theme-boot.js"></script>
   <style>
     body { margin: 0; background: var(--ac-canvas, #0b0e14); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--ac-text, #f8fafc); }
-    .stage { min-height: 100vh; background: var(--ac-canvas, #0b0e14); display: grid; place-items: center; padding: 40px 20px; position: relative; overflow: hidden; box-sizing: border-box; }
+    .stage { min-height: 860px; background: var(--ac-canvas, #0b0e14); display: grid; place-items: center; padding: 40px 20px; position: relative; overflow: hidden; box-sizing: border-box; }
     .card { width: 100%; max-width: 560px; background: var(--ac-surface, #131722); border: 1px solid var(--ac-hair, rgba(148,163,184,0.14)); border-radius: 16px; padding: 32px; box-shadow: 0 30px 60px -36px rgba(0,0,0,0.45); box-sizing: border-box; position: relative; z-index: 2; }
     .track { position: relative; height: 6px; border-radius: 3px; background: var(--ac-hover, rgba(148,163,184,0.12)); overflow: hidden; margin: 18px 0 8px; }
     .track i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--ac-warn, #eab308); transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1); }
@@ -111,7 +111,7 @@
           var reasonEl = document.getElementById('maintenanceReasonText');
           if (reasonEl) reasonEl.textContent = data.config.message;
         }
-        if (data.config.maintenanceMode === false) {
+        if (data.config.maintenanceMode === false && !window.location.pathname.includes('maintenance')) {
           // Maintenance completed! Redirect to home
           window.location.href = '/';
         }
