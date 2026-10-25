@@ -55,12 +55,10 @@ const broksumValidator = require('../lib/broksum-validator');
 // Default pacing: 8 req/sec (125ms delay) as verified in benchmark
 const DEFAULT_DELAY_MS = 125;
 const SLOWDOWN_DELAY_MS = 200; // 5 req/sec on rate burst
-const WEEKDAY_RESERVE = Math.max(800, Number(process.env.BACKFILL_RESERVE_AFTER_EOD) || 800);
-const WEEKEND_RESERVE = 300;
-// B1: Cadangan backfill sebelum .done = maks(5.000, (kebutuhan sore tertinggi 7 hari + live website) * 1.12).
-// Puncak 7 hari: J1 All (962) + F (834) + Accum (834) + Ins (834) + J2 Candle (962) = 4.426 req.
-// (4.426 EOD peak + 100 live web) * 1.12 = 5.069,12 -> di-floor ke minimal 5.100 req.
-const DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD = 5100;
+// Hard quota floors: Weekday floor 5,000 for J1; Weekend floor 1,000 for web/retries.
+const WEEKDAY_RESERVE = Math.max(5000, Number(process.env.BACKFILL_RESERVE_AFTER_EOD) || 5000);
+const WEEKEND_RESERVE = Math.max(1000, Number(process.env.BACKFILL_RESERVE_WEEKEND) || 1000);
+const DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD = 5000;
 const WEEKDAY_RESERVE_BEFORE_EOD = Math.max(5000, Number(process.env.BACKFILL_RESERVE_BEFORE_EOD) || DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD);
 
 // 2c: read the EOD completion sentinel written by run-daily-market-update.js.

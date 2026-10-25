@@ -27,8 +27,37 @@ const runner = require(path.join(ROOT, 'tools', 'run-all-screeners-vps'));
 const snapshotBuilder = require(path.join(ROOT, 'tools', 'build-screener-snapshot'));
 const snapshotAlarm = require(path.join(ROOT, 'lib', 'daytrade-snapshot-alarm'));
 
+function cleanStaleLockFile(lockPath = '/tmp/daytrade.lock', maxAgeMs = 12 * 60 * 1000) {
+  try {
+    const fsInstance = require('node:fs');
+    if (!fsInstance.existsSync(lockPath)) return false;
+    const stat = fsInstance.statSync(lockPath);
+    const ageMs = Date.now() - (stat.mtimeMs || stat.mtime.getTime());
+    if (ageMs > maxAgeMs) {
+      let pidActive = false;
+      try {
+        const content = fsInstance.readFileSync(lockPath, 'utf8').trim();
+        const pid = parseInt(content, 10);
+        if (Number.isFinite(pid) && pid > 0) {
+          process.kill(pid, 0);
+          pidActive = true;
+        }
+      } catch (_) {
+        pidActive = false;
+      }
+      if (!pidActive) {
+        fsInstance.unlinkSync(lockPath);
+        console.warn(`[DAYTRADE-PRODUCER] Stale lockfile ${lockPath} removed (age: ${Math.round(ageMs / 60000)}m, PID inactive).`);
+        return true;
+      }
+    }
+  } catch (_) {}
+  return false;
+}
+
 function parseArgs(argv) {
-  const opts = { execute: false, maxBatches: 120, sleepMs: 500, force: false, syncSnapshot: false, speed: 'fast' };
+  const defaultSpeed = process.env.DAYTRADE_RUN_SPEED || 'full';
+  const opts = { execute: false, maxBatches: 120, sleepMs: 500, force: false, syncSnapshot: false, speed: defaultSpeed };
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--execute') opts.execute = true;
@@ -195,6 +224,7 @@ async function maybeAlertStaleSnapshot(ctx) {
 }
 
 async function run(options, deps) {
+  cleanStaleLockFile();
   const opts = options || parseArgs(process.argv);
   deps = deps || {};
   const log = deps.log || console.log;

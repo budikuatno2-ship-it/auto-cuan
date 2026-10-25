@@ -274,61 +274,34 @@ async function mainUnlocked(options) {
 async function runCandlePass(ctx) {
   const { options, universe, targetDate, dryRun, candleSource, crossCheckEnabled, summary, tradingDay } = ctx;
 
-  if (candleSource === 'yahoo' && crossCheckEnabled && !dryRun && universe.length > 20 && !options.skipCrossCheck) {
+  // BUG-01 Fix: Yahoo Finance is the primary, free, quota-less source for all 962 stocks.
+  // Cross-check to Arjum is an analytical verification, NOT a blocker that aborts saving Yahoo candles!
+  // At 16:40 WIB, Arjum often has not published EOD yet, but Yahoo already has it.
+  // Yahoo candles must ALWAYS be fetched and persisted immediately without waiting for 23:30 WIB.
+
+  const isNightPass = (() => {
     try {
-      const check = await performDailyCrossCheck(targetDate, {
-        tickers: options.crossCheckTickers || DEFAULT_CROSSCHECK_TICKERS
-      });
-      summary.cross_check = {
-        total: check.total, passed: check.passed, failed: check.failed, ok: check.ok
-      };
-      if (!check.ok) {
-        summary.cross_check_failed = true;
-        console.warn(`[CROSS-CHECK-FAILED] ${check.failed}/${check.total} sample diffs > 0.5%.`);
-      } else {
-        console.log(`[CROSS-CHECK-OK] ${check.passed}/${check.total} samples matched <= 0.5%.`);
-      }
-    } catch (err) {
-      summary.cross_check_failed = true;
-      summary.cross_check = { error: err && err.message };
-      console.warn(`[CROSS-CHECK-ERROR] ${err && err.message}.`);
+      const cal = require('../lib/idx-trading-calendar');
+      const nowWib = cal.getJakartaTime ? cal.getJakartaTime() : { hour: new Date().getUTCHours() + 7 };
+      return nowWib.hour >= 23;
+    } catch (_) { return false; }
+  })();
+
+  // 1. Standalone IHSG Benchmark (always from Arjum, 1 request)
+  if (universe.includes('IHSG') && !dryRun) {
+    try {
+      const r = await fetcher.fetchDailyCandles('IHSG', { limit: Number(process.env.CANDLE_LIMIT) || 500, force: true });
+      summary.ihsg_ok = Boolean(r && r.ok);
+    } catch (e) {
+      console.warn('[IHSG-STANDALONE] gagal:', e && e.message);
+      summary.ihsg_ok = false;
     }
   }
 
-  // B4 (2026-10-20): a failed cross-check must NOT trigger a mass fallback to
-  // Arjum. On 2026-10-19 the 16:40 run cross-checked 20/20 as "failed" (Arjum's
-  // own EOD candle for today was not published yet), then mass-fell-back to
-  // Arjum for ALL tickers: 943 requests burned, 0 usable bars, exit code 0 and
-  // no alarm. Instead: DEFER to the 23:30 pass, which is what actually
-  // recovers. An explicit override (env CANDLE_ALLOW_MASS_FALLBACK_ON_CROSSCHECK=1
-  // or options.allowMassFallbackOnCrossCheckFail=true) keeps the old behavior
-  // for manual use.
-  const allowMassFallback = options.allowMassFallbackOnCrossCheckFail === true
-    || process.env.CANDLE_ALLOW_MASS_FALLBACK_ON_CROSSCHECK === '1';
-  if (summary.cross_check_failed && !allowMassFallback) {
-    console.warn('[CROSS-CHECK-DEFER] Cross-check gagal; mass fallback ke Arjum DITOLAK untuk menghemat kuota. '
-      + 'Candle hari ini akan dicoba lagi pada pass 23:30 WIB.');
-    // B5 (2026-10-20): IHSG is a 1-request benchmark and must ALWAYS stay fresh,
-    // independent of the per-stock cross-check. Fetch it here (it never uses the
-    // Yahoo path) before bailing out, so a deferred stock pass still leaves the
-    // index bar current.
-    let ihsgOk = summary.ihsg_ok === true;
-    if (universe.includes('IHSG')) {
-      try {
-        const r = await fetcher.fetchDailyCandles('IHSG', { limit: Number(process.env.CANDLE_LIMIT) || 500, force: true });
-        ihsgOk = Boolean(r && r.ok);
-        summary.ihsg_ok = ihsgOk;
-      } catch (e) {
-        console.warn('[IHSG-STANDALONE] gagal:', e && e.message);
-      }
-    }
-    const deferred = Object.assign({}, summary, { deferred: true, reason: 'CROSS_CHECK_FAILED_DEFERRED', ihsg_ok: ihsgOk });
-    console.log(JSON.stringify({ mode: dryRun ? 'DRY_RUN' : 'LIVE', ...deferred }, null, 2));
-    if (!dryRun) process.exitCode = 6;
-    return deferred;
-  }
-
+  // 2. Fetch all stocks from Yahoo Finance first (primary path)
   for (const ticker of universe) {
+    if (ticker === 'IHSG') continue; // Handled standalone above
+
     const hasTarget = () => {
       const cache = fetcher.readCache(ticker);
       return (cache && cache.candles || []).some(row => String(row.date || '').slice(0,10) === targetDate &&
@@ -342,21 +315,17 @@ async function runCandlePass(ctx) {
     summary.stale++;
     if (dryRun) continue;
 
-    let res;
+    let res = null;
     let usedYahoo = false;
 
-    if (ticker === 'IHSG') {
-      // IHSG is ALWAYS fetched from Arjum canonical benchmark
-      res = await fetcher.fetchDailyCandles(ticker, {
-        limit: Number(process.env.CANDLE_LIMIT) || 500,
-        force: true
-      });
-    } else if (candleSource === 'yahoo' && !summary.cross_check_failed) {
+    if (candleSource === 'yahoo') {
       res = await fetcher.fetchDailyCandlesYahoo(ticker, { range: '5d', retries: 2 });
       usedYahoo = Boolean(res && res.ok);
-      if (!res.ok) {
-        // Fallback to Arjum for this ticker
-        console.warn(`[CANDLE-FALLBACK] Yahoo failed for ${ticker} (${res.error}), falling back to Arjum.`);
+
+      // Only fall back to Arjum for failed Yahoo tickers during late night pass (23:30)
+      // or if explicitly requested, saving Arjum quota during afternoon pass
+      if (!usedYahoo && (isNightPass || options.allowArjumFallback || process.env.CANDLE_ALLOW_ARJUM_FALLBACK === '1')) {
+        console.warn(`[CANDLE-FALLBACK] Yahoo failed for ${ticker} (${res ? res.error : 'unknown'}), falling back to Arjum.`);
         res = await fetcher.fetchDailyCandles(ticker, {
           limit: Number(process.env.CANDLE_LIMIT) || 500,
           force: true
@@ -388,6 +357,28 @@ async function runCandlePass(ctx) {
     // Pacing delay (50ms) between remote calls
     await new Promise(r => setTimeout(r, 50));
     if (summary.fetched % 50 === 0 && summary.fetched > 0) console.log('fetched=' + summary.fetched + ' last=' + ticker);
+  }
+
+  // Non-blocking cross-check after Yahoo fetch
+  if (candleSource === 'yahoo' && crossCheckEnabled && !dryRun && universe.length > 20 && !options.skipCrossCheck) {
+    try {
+      const check = await performDailyCrossCheck(targetDate, {
+        tickers: options.crossCheckTickers || DEFAULT_CROSSCHECK_TICKERS
+      });
+      summary.cross_check = {
+        total: check.total, passed: check.passed, failed: check.failed, ok: check.ok
+      };
+      if (!check.ok) {
+        summary.cross_check_failed = true;
+        console.warn(`[CROSS-CHECK-AUDIT] ${check.failed}/${check.total} sample diffs > 0.5% (Arjum EOD might still be compiling). Yahoo candles safely retained.`);
+      } else {
+        console.log(`[CROSS-CHECK-OK] ${check.passed}/${check.total} samples matched <= 0.5%.`);
+      }
+    } catch (err) {
+      summary.cross_check_failed = true;
+      summary.cross_check = { error: err && err.message };
+      console.warn(`[CROSS-CHECK-AUDIT-ERROR] ${err && err.message}. Yahoo candles safely retained.`);
+    }
   }
 
   console.log(JSON.stringify({
