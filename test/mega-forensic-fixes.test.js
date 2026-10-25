@@ -91,7 +91,7 @@ describe('Mega Forensic 12 Bug Fixes Regression Suite', () => {
   it('BUG-08: telegram-notifier escapeHtml properly escapes HTML special characters', () => {
     const { escapeHtml } = require('../lib/telegram-notifier');
     const escaped = escapeHtml('Profit > 5% & loss < 2%');
-    assert.strictEqual(escaped, 'Profit > 5% & loss < 2%');
+    assert.strictEqual(escaped, 'Profit ' + '&' + 'gt; 5% ' + '&' + 'amp; loss ' + '&' + 'lt; 2%');
   });
 
   it('BUG-10: build-full-insider-network exports buildFullInsiderNetwork function', () => {
