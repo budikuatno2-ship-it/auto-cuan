@@ -40,18 +40,14 @@ const quotaTracker = require(path.join(ROOT_DIR, 'lib', 'arjum-quota-tracker'));
 
 const DEFAULT_BATCH = 50;
 const MAX_FAILURE_RATIO = 0.20;
-// Hard quota floors per owner mandate:
-// Weekday (Senin-Jumat): reserve 5,000 req for J1 (ALL+F+Accum+Insider+IHSG).
-// Weekend (Sabtu-Minggu): reserve 1,000 req for live website/retries.
+// Hard quota floors: 5000 (weekday), 1000 (weekend).
 const WEEKDAY_FLOOR = 5000;
 const WEEKEND_FLOOR = 1000;
 const DAILY_JOB_NEED = 5000;
 const WEEKEND_RESERVE_CAP = 1000;
 
-// The types historical catch-up writes.
-// BUG-03 (Forensic): Endpoint /api/broker-accumulation and /api/insiders in Arjum
-// do NOT accept any historical date parameter and only return current data.
-// Catch-up for historical dates must ONLY fetch ALL and Foreign broker summary!
+// Catchup historical types: ONLY ALL and F.
+// BUG-03: /api/broker-accumulation and /api/insiders have NO date parameter.
 const TYPES = [
   { key: 'ALL', dir: 'broker-summary' },
   { key: 'F', dir: 'broker-summary-F' }
@@ -195,11 +191,9 @@ async function run(argv, deps) {
   const results = [];
   for (const p of plan) {
     if (spent >= budget.spendable || spent >= opts.limit) break;
-    // Union = emiten that still miss ANY type for this date.
     const union = Array.from(new Set(Object.values(p.missing).flat())).sort();
     let batchOffset = 0;
 
-    // BUG-02 Fix: while loop across batches until date is fully covered or budget exhausted
     while (batchOffset < union.length) {
       if (spent >= budget.spendable || spent >= opts.limit) break;
       const batch = union.slice(batchOffset, batchOffset + opts.batch);
@@ -237,14 +231,14 @@ async function run(argv, deps) {
       }
 
       const ratio = attempted ? failed / attempted : 0;
-      results.push({ date: p.date, batch_offset: batchOffset - batch.length, tickers: batch.length, attempted, failed, failure_ratio: Number(ratio.toFixed(3)), per_type: perType });
+      results.push({ date: p.date, batch_start: batchOffset - batch.length, tickers: batch.length, attempted, failed, failure_ratio: Number(ratio.toFixed(3)), per_type: perType });
       if (ratio > MAX_FAILURE_RATIO) {
         summary.stopped = 'failure_ratio_exceeded';
         summary.stopped_on = p.date;
         break;
       }
 
-      // Small pause between batches to yield serial queue to any concurrent operations
+      // Small pause between batches
       if (batchOffset < union.length && spent < budget.spendable && spent < opts.limit) {
         await new Promise(resolve => setTimeout(resolve, 250));
       }
