@@ -639,6 +639,7 @@
   "test/telegram-join-request-gate.test.js",
   "test/telegram-lifecycle-autokick.test.js",
   "test/telegram-magic-link-auth.test.js",
+  "test/telegram-markdown-escaping.test.js",
   "test/telegram-member-expiry-audit.test.js",
   "test/telegram-member-lifecycle.test.js",
   "test/telegram-monitor-dedup.test.js",
