@@ -651,6 +651,49 @@ body {
 
     <!-- TAB 5: JOB & DATA PIPELINE -->
     <div id="panelTab5" class="admin-panel" style="display:none">
+      <section class="sheet" style="margin-bottom:20px">
+        <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2>Pemeriksa Kesehatan &amp; Kelengkapan Data</h2>
+            <span>Inspeksi read-only integritas semesta 962 emiten &amp; arsip bursa lokal</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span id="healthOverallBadge" class="st a">Memeriksa...</span>
+            <button id="btnRefreshDataHealth" class="btn sm p" onclick="refreshDataHealth()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              Periksa Ulang Status Data
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin:16px 0 20px;padding:12px 16px;background:var(--ac-subtle, rgba(255,255,255,0.03));border-radius:10px;border:1px solid var(--ac-hair);font-size:13px">
+          <div><span class="mut">Semesta Emiten:</span> <b class="num" style="color:var(--ac-ink)">962 emiten</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Total Kategori:</span> <b class="num" style="color:var(--ac-ink)">7 Kategori</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Sehat &amp; Lengkap:</span> <b id="statHealthOk" class="num" style="color:var(--ac-brand,#10B981)">—</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Parsial:</span> <b id="statHealthWarn" class="num" style="color:var(--ac-warn,#F59E0B)">—</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Terakhir Diperiksa:</span> <span id="healthLastChecked" class="num mut">—</span></div>
+        </div>
+
+        <div class="tw">
+          <table class="tbl" style="min-width:880px">
+            <thead>
+              <tr>
+                <th style="min-width:240px">Kategori Data</th>
+                <th>Cakupan &amp; Metrik</th>
+                <th>Tanggal Mutakhir</th>
+                <th>Status Integritas</th>
+              </tr>
+            </thead>
+            <tbody id="dataHealthTbody">
+              <tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Memuat status integritas dataset...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prov" style="margin-top:12px">
+          <span><b>Inspeksi murni read-only:</b> Membaca langsung struktur arsip lokal dan indeks tanpa beban tulis database dan tanpa memakai kuota API luar.</span>
+        </div>
+      </section>
+
       <section class="sheet">
         <div class="sec-h">
           <h2>Job &amp; Data Pipeline</h2>
@@ -786,6 +829,9 @@ body {
       var tabOn = document.getElementById('tabOnlineCount');
       if (tabOn) tabOn.textContent = s.online_now;
     }
+    if (data.data_health) {
+      renderDataHealth(data.data_health);
+    }
   }
 
   // Tab Switching
@@ -804,7 +850,92 @@ body {
       }
     }
     if (idx === 1) loadOnlineList();
+    if (idx === 5) refreshDataHealth();
   };
+
+  // Data Health Inspector
+  window.refreshDataHealth = async function() {
+    var btn = document.getElementById('btnRefreshDataHealth');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Memeriksa...';
+    }
+    try {
+      var res = await fetch('/api/admin-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'data_health_inspect' })
+      });
+      if (res.ok) {
+        var data = await res.json().catch(function() { return {}; });
+        if (data && data.success && data.data_health) {
+          renderDataHealth(data.data_health);
+        }
+      }
+    } catch (_) {}
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Periksa Ulang Status Data';
+    }
+  };
+
+  function renderDataHealth(health) {
+    if (!health) return;
+
+    var badge = document.getElementById('healthOverallBadge');
+    if (badge) {
+      badge.className = 'st ' + (health.overall_status === 'ok' ? 'g' : (health.overall_status === 'warn' ? 'a' : 'r'));
+      badge.textContent = health.overall_label;
+    }
+
+    var okEl = document.getElementById('statHealthOk');
+    if (okEl) okEl.textContent = health.ok_count;
+    var warnEl = document.getElementById('statHealthWarn');
+    if (warnEl) warnEl.textContent = health.warn_count;
+
+    var timeEl = document.getElementById('healthLastChecked');
+    if (timeEl) timeEl.textContent = health.inspected_at_formatted || '—';
+
+    var tbody = document.getElementById('dataHealthTbody');
+    if (!tbody || !health.categories) return;
+
+    tbody.innerHTML = health.categories.map(function(c) {
+      var metricsHtml = '';
+      var m = c.metrics || {};
+      if (c.id === 'broker_summary_all') {
+        metricsHtml = '<b class="num">' + m.complete_count + '</b> / ' + m.total_universe + ' emiten (' + m.coverage_pct + '%)<span class="mut" style="display:block;font-size:11px">' + escapeHtml(c.details) + '</span>';
+      } else if (c.id === 'broker_summary_foreign') {
+        metricsHtml = '<span class="mut">Ketercakupan:</span> <b class="num">' + (m.foreign_archive_count === '—' ? '—' : m.foreign_archive_count + ' / ' + m.total_universe) + '</b><span class="mut" style="display:block;font-size:11px">' + escapeHtml(c.details) + '</span>';
+      } else if (c.id === 'broker_summary_domestic') {
+        metricsHtml = '<span class="mono mut">Rumus: ' + escapeHtml(m.calculation_formula) + '</span> · <span class="mut">Menunggu:</span> <b class="num">' + m.waiting_foreign_count + '</b> emiten<span class="mut" style="display:block;font-size:11px">' + escapeHtml(c.details) + '</span>';
+      } else if (c.id === 'candle_eod_volume') {
+        metricsHtml = '<b class="num">' + m.active_candle_count + '</b> emiten aktif (' + m.total_candles + ' bar) · <span class="num mut">' + m.anomaly_bars_count + ' anomali/vol 0</span><span class="mut" style="display:block;font-size:11px">' + escapeHtml(m.ihsg_status) + '</span>';
+      } else if (c.id === 'broker_accumulation_hunter') {
+        metricsHtml = '<b class="num">' + m.hunter_indexes_count + '</b> berkas indeks hunter · <span class="mut">' + m.accumulation_horizons.join(', ') + '</span><span class="mut" style="display:block;font-size:11px">' + escapeHtml(c.details) + '</span>';
+      } else if (c.id === 'insider_network_ksei') {
+        metricsHtml = '<b class="num">' + Number(m.total_entities).toLocaleString('id-ID') + '</b> entitas · <b class="num">' + m.total_tickers + '</b> emiten<span class="mut" style="display:block;font-size:11px">' + escapeHtml(c.details) + '</span>';
+      } else if (c.id === 'hot_sectors_intel_screener') {
+        metricsHtml = '<b class="num">' + m.intel_catalogs_count + '</b> katalog aktif · <span class="mut">Snapshot ' + escapeHtml(m.snapshot_freshness) + '</span><span class="mut" style="display:block;font-size:11px">' + escapeHtml(c.details) + '</span>';
+      } else {
+        metricsHtml = '<span class="mut">' + escapeHtml(c.details) + '</span>';
+      }
+
+      var dateStr = '—';
+      if (m.latest_trade_date) dateStr = m.latest_trade_date;
+      else if (m.latest_foreign_date) dateStr = m.latest_foreign_date;
+      else if (m.latest_candle_date) dateStr = m.latest_candle_date;
+      else if (m.latest_compilation) dateStr = m.latest_compilation;
+      else if (m.ksei_release_date) dateStr = m.ksei_release_date;
+      else if (m.last_signal_scan) dateStr = m.last_signal_scan;
+
+      return '<tr>' +
+        '<td><b style="font-size:13.5px">' + escapeHtml(c.name) + '</b></td>' +
+        '<td>' + metricsHtml + '</td>' +
+        '<td class="num mut" style="font-size:12px">' + escapeHtml(dateStr) + '</td>' +
+        '<td><span class="' + escapeHtml(c.badge_class) + '">' + escapeHtml(c.status_label) + '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
 
   // Online Tab & Heartbeat
   async function loadOnlineList() {

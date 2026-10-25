@@ -4,20 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pemeliharaan Sistem · Auto-Cuan</title>
+  <link rel="stylesheet" href="/ac.css">
   <link rel="stylesheet" href="/ac-v2.css">
   <link rel="stylesheet" href="/assets/css/unified-design-tokens.css">
   <link rel="stylesheet" href="/fonts/ac-fonts.css">
   <script src="/theme-boot.js"></script>
   <style>
-    body { margin: 0; background: var(--ac-canvas, #0b0e14); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--ac-text, #f8fafc); }
-    .stage { min-height: 860px; background: var(--ac-canvas, #0b0e14); display: grid; place-items: center; padding: 40px 20px; position: relative; overflow: hidden; box-sizing: border-box; }
-    .card { width: 100%; max-width: 560px; background: var(--ac-surface, #131722); border: 1px solid var(--ac-hair, rgba(148,163,184,0.14)); border-radius: 16px; padding: 32px; box-shadow: 0 30px 60px -36px rgba(0,0,0,0.45); box-sizing: border-box; position: relative; z-index: 2; }
-    .track { position: relative; height: 6px; border-radius: 3px; background: var(--ac-hover, rgba(148,163,184,0.12)); overflow: hidden; margin: 18px 0 8px; }
-    .track i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--ac-warn, #eab308); transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+    body { margin: 0; background: var(--ac-canvas); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--ac-ink); }
+    .stage { min-height: 860px; background: var(--ac-canvas); display: grid; place-items: center; padding: 40px 20px; position: relative; overflow: hidden; box-sizing: border-box; }
+    .card { width: 100%; max-width: 560px; background: var(--ac-surface); border: 1px solid var(--ac-hair); border-radius: 16px; padding: 32px; box-shadow: 0 30px 60px -36px rgba(29,39,36,0.35); box-sizing: border-box; position: relative; z-index: 2; }
+    .track { position: relative; height: 6px; border-radius: 3px; background: var(--ac-hover); overflow: hidden; margin: 18px 0 8px; }
+    .track i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--ac-warn); transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1); }
     .wave { position: absolute; inset: auto 0 0 0; height: 220px; opacity: 0.45; pointer-events: none; z-index: 1; }
-    .row { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--ac-hair, rgba(148,163,184,0.14)); font-size: 14px; line-height: 1.5; color: var(--ac-text, #e2e8f0); }
+    .row { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--ac-hair); font-size: 14px; line-height: 1.5; color: var(--ac-ink); }
     .row svg { flex: none; margin-top: 2px; }
-    .spin { width: 14px; height: 14px; border: 2px solid var(--ac-hair, rgba(148,163,184,0.2)); border-top-color: var(--ac-brand, #34D399); border-radius: 50%; animation: rot 700ms linear infinite; display: inline-block; }
+    .spin { width: 14px; height: 14px; border: 2px solid var(--ac-hair); border-top-color: var(--ac-brand); border-radius: 50%; animation: rot 700ms linear infinite; display: inline-block; }
     .theme-corner { position: absolute; top: 16px; right: 16px; z-index: 10; }
     @keyframes rot { to { transform: rotate(360deg); } }
   </style>
@@ -37,19 +38,19 @@
 
   <main class="card dlg" role="main" aria-labelledby="maintenanceTitle">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
-      <span style="width:30px;height:30px;border-radius:8px;background:var(--ac-inv, #1f293d);display:grid;place-items:center">
+      <span style="width:30px;height:30px;border-radius:8px;background:var(--ac-inv);display:grid;place-items:center">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg>
       </span>
-      <b style="font-size:15px;color:var(--ac-text,#f8fafc)">Auto-Cuan</b>
+      <b style="font-size:15px;color:var(--ac-ink)">Auto-Cuan</b>
       <span class="chip w" style="margin-left:auto;font-size:11px;font-weight:600">Pemeliharaan terjadwal</span>
     </div>
 
-    <h1 id="maintenanceTitle" style="margin:0 0 8px;font-size:26px;letter-spacing:-.02em;color:var(--ac-text,#f8fafc)">Kami sedang memperbarui sistem</h1>
-    <p id="maintenanceReasonText" class="mut" style="margin:0;font-size:15px;line-height:1.6;color:var(--ac-text-mut,#94a3b8)">Kami sedang memperbarui data pasar dan server. Posisi di sekuritas Anda tidak terpengaruh. Pantau langsung di aplikasi sekuritas selama pemeliharaan.</p>
+    <h1 id="maintenanceTitle" style="margin:0 0 8px;font-size:26px;letter-spacing:-.02em;color:var(--ac-ink)">Kami sedang memperbarui sistem</h1>
+    <p id="maintenanceReasonText" class="mut" style="margin:0;font-size:15px;line-height:1.6;color:var(--ac-2)">Kami sedang memperbarui data pasar dan server. Posisi di sekuritas Anda tidak terpengaruh. Pantau langsung di aplikasi sekuritas selama pemeliharaan.</p>
 
     <div class="track" aria-hidden="true"><i id="maintenanceProgressTrack" style="width:42%"></i></div>
 
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ac-text-mut,#94a3b8)" class="mut num">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ac-2)" class="mut num">
       <span id="maintenanceStartTime">Mulai 05.00 WIB</span>
       <span id="maintenanceEtaTime" class="mono">Perkiraan selesai 07.00 WIB · 18 Okt 2026</span>
     </div>

@@ -10,7 +10,7 @@ const { requirePremiumEntitlement } = require('../lib/subscription-auth');
 const { handleAdminForeignUpload } = require('../lib/admin-foreign-upload');
 const { handleAdminFundamentalsUpload } = require('../lib/admin-fundamentals-upload');
 const originalHandler = require('../lib/admin-users-handler');
-const { recordHeartbeat, getOnlineList, getDatasetFreshness, getJobPipeline } = require('../lib/admin-console-service');
+const { recordHeartbeat, getOnlineList, getDatasetFreshness, getJobPipeline, inspectDataHealth } = require('../lib/admin-console-service');
 
 const AI_EVAL_RUN_NAME = 'one-time-ai-data-20260803';
 const AI_EVAL_MODEL = 'claude-sonnet-4.6';
@@ -497,12 +497,24 @@ async function handler(req, res) {
     const freshness = getDatasetFreshness();
     const jobs = getJobPipeline();
     const onlineSummary = getOnlineList().summary;
+    const dataHealth = inspectDataHealth();
     return res.status(200).json({
       success: true,
       admin: auth.session.un,
       ...freshness,
       jobs,
-      online_summary: onlineSummary
+      online_summary: onlineSummary,
+      data_health: dataHealth
+    });
+  }
+
+  if (action === 'data_health_inspect') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    const dataHealth = inspectDataHealth();
+    return res.status(200).json({
+      success: true,
+      data_health: dataHealth
     });
   }
 

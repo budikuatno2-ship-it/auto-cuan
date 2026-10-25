@@ -135,16 +135,30 @@ html.is-dark [data-ac-ui="v2"] .vbtn.p { color: #06140E; }
   [data-ac-ui="v2"] .strip > div:nth-child(3) { border-left: 0; }
   [data-ac-ui="v2"] .strip > div:nth-child(n+3) { border-top: 1px solid var(--ac-hair); }
 }
+/* Canvas review banner/tool must NEVER appear in app */
+.stp-bar, #autocuan-mock-banner, #autocuan-preview-bar {
+  display: none !important;
+}
+
 @media (max-width: 760px) {
-  /* Room for the phone tab bar. */
-  #appContent > .page-content.ac-page[data-ac-ui="v2"] { padding-bottom: 88px !important; }
+  /* Room for phone bottom tab bar: ensure bottom cards are never obscured */
+  .page-content,
+  #appContent,
+  #appContent > .page-content,
+  #appContent > .page-content.ac-page,
+  #appContent > .page-content.ac-page[data-ac-ui="v2"],
+  .ac-center-body,
+  .app-page-wrapper {
+    padding-bottom: 96px !important;
+  }
 }
 @media (max-width: 700px) {
   [data-ac-ui="v2"] .ph h1 { font-size: 24px; }
   [data-ac-ui="v2"] .sheet { overflow-x: auto; }
 }
 @media (max-width: 560px) {
-  #appContent > .page-content.ac-page[data-ac-ui="v2"] { padding: 20px 16px 88px !important; }
+  .page-content,
+  #appContent > .page-content.ac-page[data-ac-ui="v2"] { padding: 20px 16px 96px !important; }
   [data-ac-ui="v2"] .strip { grid-template-columns: 1fr; }
   [data-ac-ui="v2"] .strip > div { border-left: 0; border-top: 1px solid var(--ac-hair); }
   [data-ac-ui="v2"] .strip > div:first-child { border-top: 0; }
