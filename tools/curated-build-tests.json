@@ -576,6 +576,7 @@
   "test/security-headers-csp-hsts.test.js",
   "test/security-phase1.test.js",
   "test/sensitive-area-compliance.test.js",
+  "test/shell-watchdog-exit-codes.test.js",
   "test/signal-followup-failclosed-regression.test.js",
   "test/signal-gate-transparency.test.js",
   "test/smart-setup-labels.test.js",
