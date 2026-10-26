@@ -743,10 +743,10 @@ body {
   <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialogTitle">
     <h2 id="dialogTitle" style="margin:0 0 8px;font-size:18px;font-weight:700">Konfirmasi Aksi</h2>
     <p id="dialogBody" class="mut" style="margin:0 0 16px;font-size:13px;line-height:1.55">Aksi ini memiliki dampak langsung pada operasional sistem.</p>
-    
+
     <label class="flabel" for="dialogConfirmInput">Ketik <span class="mono" id="dialogWordTarget" style="font-weight:700;color:var(--ac-warn)">KONFIRMASI</span> untuk melanjutkan:</label>
     <input id="dialogConfirmInput" class="inp mono" style="text-transform:uppercase" autocomplete="off" oninput="checkConfirmWord()">
-    
+
     <div id="dialogReasonWrap" style="margin-top:14px">
       <label class="flabel" for="dialogReasonInput">Alasan Aksi (wajib, minimal 10 karakter):</label>
       <input id="dialogReasonInput" class="inp" placeholder="Contoh: Pembaruan rutin server atau perbaikan data" oninput="checkConfirmWord()">

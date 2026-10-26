@@ -16,7 +16,7 @@ const { createSessionToken, buildSessionCookie } = require('../lib/admin-session
 
 test('Admin Console enforces authentication and 403 Forbidden for non-admin on server endpoints', async () => {
   process.env.SESSION_SECRET = 'test_secret_32_bytes_super_safe_admin_test';
-  
+
   // 1. Unauthenticated request -> 401
   const reqUnauth = {
     method: 'POST',

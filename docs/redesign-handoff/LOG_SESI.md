@@ -1,7 +1,7 @@
 # Log Sesi · Redesign v2 (Fase 3 Kelompok 7 & Penutupan Fase 4)
 
-**Tanggal:** 24 Oktober 2026  
-**Branch:** `redesign/v2`  
+**Tanggal:** 24 Oktober 2026
+**Branch:** `redesign/v2`
 **Status Pengiriman:** Siap untuk tinjauan pemilik (HOLD PUSH aktif, belum push/merge/deploy).
 
 ---

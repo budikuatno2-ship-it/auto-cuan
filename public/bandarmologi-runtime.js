@@ -4330,7 +4330,7 @@
     }
   }
 
-  
+
   var insiderSelectedNode = 'BBCA';
 
   var CANVAS_INSIDER_NODES = {

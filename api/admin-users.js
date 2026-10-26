@@ -521,10 +521,10 @@ async function handler(req, res) {
   if (action === 'pattern_radar_scan') {
     const auth = requireAdminSession(req);
     if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
-    
+
     const minSim = Number(req.body && req.body.min_similarity) || 80;
     const patternFilter = String(req.body && req.body.pattern || 'all');
-    
+
     const patterns = [
       {
         ticker: 'BBRI',

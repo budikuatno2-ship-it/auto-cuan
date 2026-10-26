@@ -18,7 +18,7 @@ test('Portfolio redesign: partials and public partials are identical and in sync
 test('Portfolio redesign: tabStrip defines all 7 primary tabs matching Portfolio.dc.html', () => {
   const partialHtml = fs.readFileSync(PARTIAL_PATH, 'utf8');
   const expectedTabs = ['today', 'planner', 'watch', 'risk', 'scenarios', 'journal', 'ai'];
-  
+
   expectedTabs.forEach(tab => {
     assert.ok(
       partialHtml.includes(`data-tab="${tab}"`),
@@ -30,7 +30,7 @@ test('Portfolio redesign: tabStrip defines all 7 primary tabs matching Portfolio
   const tabStripMatch = partialHtml.match(/<nav id="tabStrip"[\s\S]*?<\/nav>/);
   assert.ok(tabStripMatch, 'tabStrip must exist in partial');
   const tabStrip = tabStripMatch[0];
-  
+
   const matches = [...tabStrip.matchAll(/data-tab="([^"]+)"/g)].map(m => m[1]);
   assert.deepEqual(matches, expectedTabs, 'tabStrip must contain strictly 7 tabs in order');
 });
@@ -40,7 +40,7 @@ test('Portfolio redesign: mobile section selector includes all 7 options', () =>
   const selectMatch = partialHtml.match(/<select id="pccMobileSectionSelect"[\s\S]*?<\/select>/);
   assert.ok(selectMatch, 'pccMobileSectionSelect must exist');
   const selectHtml = selectMatch[0];
-  
+
   const expectedOptions = ['today', 'planner', 'watch', 'risk', 'scenarios', 'journal', 'ai'];
   const matches = [...selectHtml.matchAll(/value="([^"]+)"/g)].map(m => m[1]);
   assert.deepEqual(matches, expectedOptions, 'pccMobileSectionSelect must contain all 7 options');
@@ -113,7 +113,7 @@ test('Portfolio redesign: index.html template stays aligned with 7 primary tabs 
   const tplMatch = indexHtml.match(/<template id="tpl-portfolio-command-center">([\s\S]*?)<\/template>/);
   assert.ok(tplMatch, 'tpl-portfolio-command-center must exist in index.html');
   const tpl = tplMatch[1];
-  
+
   const expectedTabs = ['today', 'planner', 'watch', 'risk', 'scenarios', 'journal', 'ai'];
   const tabStripMatch = tpl.match(/<nav id="tabStrip"[\s\S]*?<\/nav>/);
   assert.ok(tabStripMatch, 'tabStrip must exist in tpl-portfolio-command-center');

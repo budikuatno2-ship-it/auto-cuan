@@ -129,4 +129,3 @@ test('SVG elements across public scripts toggle hidden attribute, not .hidden pr
     assert.doesNotMatch(js, /\b(spark|svg|icon|shadingSvg)\.hidden\s*=/, `${f} must not assign to .hidden on SVG elements`);
   }
 });
-
