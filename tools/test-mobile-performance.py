@@ -6,9 +6,9 @@ ROOT=Path(__file__).resolve().parents[1]
 OUT=Path(os.environ.get('PRECISION_TEST_OUTPUT','/mnt/data/mobile-verified'));OUT.mkdir(parents=True,exist_ok=True)
 ENGINE=os.environ.get('BROWSER_ENGINE','chromium')
 landing={'__file__':str(ROOT/'tools/test-landing-experience.py')}
-exec(compile((ROOT/'tools/test-landing-experience.py').read_text().split('checks=[];errors=[]')[0],'landing-fixture','exec'),landing)
+exec(compile((ROOT/'tools/test-landing-experience.py').read_text(encoding='utf-8').split('checks=[];errors=[]')[0],'landing-fixture','exec'),landing)
 finance={'__file__':str(ROOT/'tools/test-precision-browser.py')}
-exec(compile((ROOT/'tools/test-precision-browser.py').read_text().split('with sync_playwright() as pw:')[0],'finance-fixture','exec'),finance)
+exec(compile((ROOT/'tools/test-precision-browser.py').read_text(encoding='utf-8').split('with sync_playwright() as pw:')[0],'finance-fixture','exec'),finance)
 viewport=r"""window.__viewport=new EventTarget();Object.assign(__viewport,{width:innerWidth,height:innerHeight,offsetTop:0,offsetLeft:0,scale:1});Object.defineProperty(window,'visualViewport',{value:__viewport,configurable:true});window.__geometry=x=>{Object.assign(__viewport,x);__viewport.dispatchEvent(new Event('resize'));};"""
 checks=[];errors=[];metrics={}
 def check(name,value):
@@ -21,13 +21,19 @@ def geometry(page,**values):
     page.wait_for_function("x=>{const s=window.AutoCuanViewport&&AutoCuanViewport.snapshot();return s&&Object.entries(x).every(([key,value])=>s[({offsetTop:'top',offsetLeft:'left'})[key]||key]===value)&&document.documentElement.classList.contains('ac-keyboard-open')===Boolean(s.keyboard)}",arg=values,timeout=5000)
     page.evaluate("()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))")
 with sync_playwright() as pw:
-    browser=pw.webkit.launch(headless=True) if ENGINE=='webkit' else pw.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH','/usr/bin/chromium'),headless=True,args=['--no-sandbox'])
+    if ENGINE=='webkit':
+        browser=pw.webkit.launch(headless=True)
+    else:
+        exec_path=os.environ.get('CHROMIUM_PATH','/usr/bin/chromium')
+        kw={'headless':True,'args':['--no-sandbox']}
+        if os.path.exists(exec_path): kw['executable_path']=exec_path
+        browser=pw.chromium.launch(**kw)
     page=browser.new_page(viewport={'width':390,'height':844},reduced_motion='reduce')
     page.route('**/*',lambda r:r.abort());page.on('pageerror',lambda e:errors.append(str(e)))
     try:
         page.set_content(landing['fixture'],wait_until='domcontentloaded')
         page.add_script_tag(content=viewport)
-        page.add_script_tag(content=(ROOT/'public/viewport-runtime.js').read_text())
+        page.add_script_tag(content=(ROOT/'public/viewport-runtime.js').read_text(encoding='utf-8'))
         page.add_script_tag(content='\n'.join(landing[k] for k in ['mock','handlers','theme','sidebar','manager']))
         # This fixture exercises VisualViewport/IME geometry, not registration
         # eligibility. openRegisterModal() legitimately invokes the production

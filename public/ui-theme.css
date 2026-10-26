@@ -15195,6 +15195,10 @@ body #appShell > #appSidebar .brand-mark {
   display: grid;
   place-items: center;
 }
+body #appShell > #appSidebar .brand-mark svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
 html.is-dark body #appShell > #appSidebar .brand-mark { background: #24302C !important; }
 body #appShell > #appSidebar .sidebar-brand-text strong {
   font-size: 16px;
@@ -15462,7 +15466,7 @@ html.is-dark .thm .moon { display: none; }
 
 @media (max-width: 760px) {
   /* The sidebar becomes the compact sticky top bar: logo + "Menu". */
-  #dashboardScreen #appShell { flex-direction: column; }
+  :is(#dashboardScreen, body) #appShell { flex-direction: column; }
   #acBottomBar[data-ac-ui="v2"] {
     height: calc(64px + env(safe-area-inset-bottom, 0px));
     z-index: 90;
@@ -15511,7 +15515,7 @@ html.is-dark .thm .moon { display: none; }
     background: var(--ac-surface-raised);
   }
   /* Full-screen menu. */
-  #dashboardScreen #appShell > #appSidebar.app-sidebar.mobile-open {
+  :is(#dashboardScreen, body) #appShell > #appSidebar.app-sidebar.mobile-open {
     position: fixed !important;
     inset: 0;
     height: 100dvh !important;
