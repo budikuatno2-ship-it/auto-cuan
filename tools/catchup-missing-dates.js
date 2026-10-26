@@ -40,9 +40,10 @@ const quotaTracker = require(path.join(ROOT_DIR, 'lib', 'arjum-quota-tracker'));
 
 const DEFAULT_BATCH = 50;
 const MAX_FAILURE_RATIO = 0.20;
-// Hard quota floors: 5000 (weekday), 0 (weekend: 100% quota usable).
-const WEEKDAY_FLOOR = 5000;
-const WEEKEND_FLOOR = 0;
+// Quota floors are read dynamically from arjum-client (ARJUM_WEEKDAY_RESERVE / ARJUM_WEEKEND_RESERVE env vars).
+// Call resolveWeekdayFloor() / resolveWeekendFloor() at runtime to get the latest values.
+function resolveWeekdayFloor() { return arjumClient.getArjumWeekdayReserve(); }
+function resolveWeekendFloor() { return arjumClient.getArjumWeekendReserve(); }
 const DAILY_JOB_NEED = 5000;
 const WEEKEND_RESERVE_CAP = 0;
 
@@ -109,7 +110,7 @@ function parseArgs(argv) {
 function computeCatchupBudget(limit, used, options) {
   const opts = options || {};
   const isWeekend = opts.isWeekend === true;
-  const floor = isWeekend ? WEEKEND_FLOOR : WEEKDAY_FLOOR;
+  const floor = isWeekend ? resolveWeekendFloor() : resolveWeekdayFloor();
   const remaining = Math.max(0, Number(limit) - Number(used));
   return { limit, used, remaining, floor, spendable: Math.max(0, remaining - floor), isWeekend };
 }

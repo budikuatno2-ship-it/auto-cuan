@@ -55,16 +55,12 @@ const broksumValidator = require('../lib/broksum-validator');
 // Default pacing: 8 req/sec (125ms delay) as verified in benchmark
 const DEFAULT_DELAY_MS = 125;
 const SLOWDOWN_DELAY_MS = 200; // 5 req/sec on rate burst
-// Hard quota floors:
-// Weekday pre-EOD: 5,000 reserved for J1 job.
-// Weekday post-EOD (J1 complete): 0 (or buffer small).
-// Weekend (Saturday/Sunday WIB): 0 (100% quota usable).
-const WEEKDAY_RESERVE = Math.max(0, Number(process.env.BACKFILL_RESERVE_AFTER_EOD) || 0);
-const WEEKEND_RESERVE = process.env.BACKFILL_RESERVE_WEEKEND !== undefined
-  ? Math.max(0, Number(process.env.BACKFILL_RESERVE_WEEKEND))
-  : 0;
-const DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD = 5000;
-const WEEKDAY_RESERVE_BEFORE_EOD = Math.max(5000, Number(process.env.BACKFILL_RESERVE_BEFORE_EOD) || DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD);
+// Quota floors are read dynamically from arjum-client getters at runtime.
+// The getters respect ARJUM_WEEKDAY_RESERVE, ARJUM_WEEKEND_RESERVE,
+// ARJUM_POST_EOD_RESERVE env vars with sensible defaults (5000 / 0 / 0).
+function weekReserve() { return arjumClient.getArjumWeekdayReserve(); }
+function endReserve() { return arjumClient.getArjumWeekendReserve(); }
+function postEodReserve() { return arjumClient.getArjumPostEodReserve(); }
 
 // 2c: read the EOD completion sentinel written by run-daily-market-update.js.
 function eodDoneExists(baseDir, wibDateKey) {
@@ -171,7 +167,7 @@ function computeBackfillReserve(options = {}) {
   const mode = options.mode === 'weekend' ? 'weekend' : 'weekday';
 
   if (mode === 'weekend') {
-    const floor = options.weekendFloor !== undefined ? Number(options.weekendFloor) : WEEKEND_RESERVE;
+    const floor = options.weekendFloor !== undefined ? Number(options.weekendFloor) : endReserve();
     const reserve = Math.max(0, floor);
     if (!Number.isFinite(remaining)) {
       return { reserve, spendable: 0, dailyNeed: 0, retryBuffer: 0, remaining: null, mode };
@@ -190,11 +186,18 @@ function computeBackfillReserve(options = {}) {
   // The floor: hard minimum of 5000 for weekday daily jobs (J1 + J2 + IHSG).
   // Even if computePendingDailyNeed returns a smaller value (e.g. missing files
   // already filled), the floor must never drop below 5000.
-  const reserve = Math.max(WEEKDAY_RESERVE_BEFORE_EOD, Math.ceil(dailyNeed + retryBuffer));
+  // If the owner has explicitly set ARJUM_WEEKDAY_RESERVE, honour it verbatim.
+  // Otherwise, default to max(5000, dailyNeed + retryBuffer).
+  const envReserve = process.env.ARJUM_WEEKDAY_RESERVE !== undefined
+    ? weekReserve()
+    : null;
+  const reserve = envReserve !== null
+    ? envReserve
+    : Math.max(5000, Math.ceil(dailyNeed + retryBuffer));
   if (!Number.isFinite(remaining)) {
     // Unknown remaining quota -> be conservative and keep the old fixed reserve.
     return {
-      reserve: Math.max(reserve, WEEKDAY_RESERVE_BEFORE_EOD),
+      reserve: Math.max(reserve, envReserve !== null ? envReserve : 5000),
       spendable: 0,
       dailyNeed, retryBuffer, remaining: null, mode
     };
@@ -291,7 +294,7 @@ function resolveBackfillReserveFloor(options = {}) {
   }
 
   if (currentMode === 'weekend') {
-    return WEEKEND_RESERVE;
+    return endReserve();
   }
 
   if (eodDoneExists(baseDir, todayKey)) {
@@ -316,11 +319,11 @@ function resolveDynamicReserveQuota(baseDir, explicitMode = null, now = new Date
   }
 
   if (currentMode === 'weekend') {
-    return WEEKEND_RESERVE;
+    return endReserve();
   }
 
   const doneExists = eodDoneExists(baseDir, todayKey);
-  return doneExists ? WEEKDAY_RESERVE : WEEKDAY_RESERVE_BEFORE_EOD;
+  return doneExists ? postEodReserve() : weekReserve();
 }
 
 function getBaseDir(overrideDir) {

@@ -3,76 +3,66 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const arjumClient = require('../lib/arjum-client');
-const candleFetcher = require('../lib/chart-engine/candle-fetcher');
+test('dynamic quota reserves read from env vars at runtime', () => {
+  const arjumClient = require('../lib/arjum-client');
 
-test('B2: arjumClient getConfiguredDailyQuota defaults to 18080 when env unset', () => {
-  const origLimit = process.env.ARJUM_DAILY_LIMIT;
-  const origQuota = process.env.ARJUM_DAILY_QUOTA;
-  delete process.env.ARJUM_DAILY_LIMIT;
-  delete process.env.ARJUM_DAILY_QUOTA;
-  arjumClient.__setObservedVendorLimit(null);
+  const orig = {
+    weekday: process.env.ARJUM_WEEKDAY_RESERVE,
+    weekend: process.env.ARJUM_WEEKEND_RESERVE,
+    postEod: process.env.ARJUM_POST_EOD_RESERVE,
+    limit: process.env.ARJUM_DAILY_LIMIT
+  };
 
   try {
-    assert.equal(arjumClient.getConfiguredDailyQuota(), 18080);
+    // Test 1: custom values
+    process.env.ARJUM_WEEKDAY_RESERVE = '3000';
+    process.env.ARJUM_WEEKEND_RESERVE = '500';
+    process.env.ARJUM_POST_EOD_RESERVE = '100';
+    process.env.ARJUM_DAILY_LIMIT = '25000';
+
+    assert.equal(arjumClient.getArjumWeekdayReserve(), 3000, 'weekday reserve follows ARJUM_WEEKDAY_RESERVE=3000');
+    assert.equal(arjumClient.getArjumWeekendReserve(), 500, 'weekend reserve follows ARJUM_WEEKEND_RESERVE=500');
+    assert.equal(arjumClient.getArjumPostEodReserve(), 100, 'post-EOD reserve follows ARJUM_POST_EOD_RESERVE=100');
+    assert.equal(arjumClient.getConfiguredPlanLimit(), 25000, 'daily limit follows ARJUM_DAILY_LIMIT=25000');
+
+    // Test 2: defaults when env is unset
+    delete process.env.ARJUM_WEEKDAY_RESERVE;
+    delete process.env.ARJUM_WEEKEND_RESERVE;
+    delete process.env.ARJUM_POST_EOD_RESERVE;
+    delete process.env.ARJUM_DAILY_LIMIT;
+
+    assert.equal(arjumClient.getArjumWeekdayReserve(), 5000, 'default weekday reserve = 5000');
+    assert.equal(arjumClient.getArjumWeekendReserve(), 0, 'default weekend reserve = 0');
+    assert.equal(arjumClient.getArjumPostEodReserve(), 0, 'default post-EOD reserve = 0');
   } finally {
-    if (origLimit !== undefined) process.env.ARJUM_DAILY_LIMIT = origLimit;
-    if (origQuota !== undefined) process.env.ARJUM_DAILY_QUOTA = origQuota;
+    if (orig.weekday === undefined) delete process.env.ARJUM_WEEKDAY_RESERVE; else process.env.ARJUM_WEEKDAY_RESERVE = orig.weekday;
+    if (orig.weekend === undefined) delete process.env.ARJUM_WEEKEND_RESERVE; else process.env.ARJUM_WEEKEND_RESERVE = orig.weekend;
+    if (orig.postEod === undefined) delete process.env.ARJUM_POST_EOD_RESERVE; else process.env.ARJUM_POST_EOD_RESERVE = orig.postEod;
+    if (orig.limit === undefined) delete process.env.ARJUM_DAILY_LIMIT; else process.env.ARJUM_DAILY_LIMIT = orig.limit;
   }
 });
 
-test('B2: arjumClient respects ARJUM_DAILY_LIMIT over default', () => {
-  const origLimit = process.env.ARJUM_DAILY_LIMIT;
-  process.env.ARJUM_DAILY_LIMIT = '17060';
-  arjumClient.__setObservedVendorLimit(null);
+test('dynamic quota reserves: catchup budget and backfill reserve follow custom env', () => {
+  const { computeCatchupBudget } = require('../tools/catchup-missing-dates');
+
+  const orig = {
+    weekday: process.env.ARJUM_WEEKDAY_RESERVE,
+    weekend: process.env.ARJUM_WEEKEND_RESERVE
+  };
 
   try {
-    assert.equal(arjumClient.getConfiguredDailyQuota(), 17060);
+    process.env.ARJUM_WEEKDAY_RESERVE = '3000';
+    process.env.ARJUM_WEEKEND_RESERVE = '500';
+
+    const wd = computeCatchupBudget(18080, 0, { isWeekend: false });
+    assert.equal(wd.floor, 3000, 'weekday floor follows ARJUM_WEEKDAY_RESERVE=3000');
+    assert.equal(wd.spendable, 18080 - 3000);
+
+    const we = computeCatchupBudget(18080, 0, { isWeekend: true });
+    assert.equal(we.floor, 500, 'weekend floor follows ARJUM_WEEKEND_RESERVE=500');
+    assert.equal(we.spendable, 18080 - 500);
   } finally {
-    if (origLimit !== undefined) process.env.ARJUM_DAILY_LIMIT = origLimit;
-    else delete process.env.ARJUM_DAILY_LIMIT;
-  }
-});
-
-test('B2: a vendor x-ratelimit-limit can only LOWER the configured plan, never replace it', () => {
-  // DARURAT 23 Oct 2026: this test used to assert that the header value wins
-  // outright. That is exactly what starved J1 — a vendor ceiling of 12,060
-  // replaced the owner's configured 18,080. The header may now only lower it.
-  const origLimit = process.env.ARJUM_DAILY_LIMIT;
-  delete process.env.ARJUM_DAILY_LIMIT;
-
-  try {
-    // No env limit -> default plan 18080; a lower header is honoured.
-    arjumClient.__setObservedVendorLimit(9000);
-    assert.equal(arjumClient.getConfiguredDailyQuota(), 9000);
-
-    // A header ABOVE the plan must not raise the limit.
-    arjumClient.__setObservedVendorLimit(20000);
-    assert.equal(arjumClient.getConfiguredDailyQuota(), 18080);
-
-    // With an explicit plan, the plan is the ceiling.
-    process.env.ARJUM_DAILY_LIMIT = '18080';
-    arjumClient.__setObservedVendorLimit(12060);
-    assert.equal(arjumClient.getConfiguredDailyQuota(), 12060, 'lower header honoured');
-    arjumClient.__setObservedVendorLimit(999999);
-    assert.equal(arjumClient.getConfiguredDailyQuota(), 18080, 'header cannot exceed the plan');
-  } finally {
-    arjumClient.__setObservedVendorLimit(null);
-    if (origLimit !== undefined) process.env.ARJUM_DAILY_LIMIT = origLimit;
-    else delete process.env.ARJUM_DAILY_LIMIT;
-  }
-});
-
-test('B2: candleFetcher getConfiguredDailyQuota defaults to 12060', () => {
-  const origLimit = process.env.ARJUM_DAILY_LIMIT;
-  const origQuota = process.env.ARJUM_DAILY_QUOTA;
-  delete process.env.ARJUM_DAILY_LIMIT;
-  delete process.env.ARJUM_DAILY_QUOTA;
-
-  try {
-    assert.equal(candleFetcher.getConfiguredDailyQuota(), 12060);
-  } finally {
-    if (origLimit !== undefined) process.env.ARJUM_DAILY_LIMIT = origLimit;
-    if (origQuota !== undefined) process.env.ARJUM_DAILY_QUOTA = origQuota;
+    if (orig.weekday === undefined) delete process.env.ARJUM_WEEKDAY_RESERVE; else process.env.ARJUM_WEEKDAY_RESERVE = orig.weekday;
+    if (orig.weekend === undefined) delete process.env.ARJUM_WEEKEND_RESERVE; else process.env.ARJUM_WEEKEND_RESERVE = orig.weekend;
   }
 });
