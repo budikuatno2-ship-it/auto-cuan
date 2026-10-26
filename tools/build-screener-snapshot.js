@@ -205,14 +205,41 @@ function buildScreenerSnapshot(payloads, options) {
   // `data.swing`. Keep it explicit rather than relying on the alias above.
   if (!snapshot.swing && snapshot.swing_konglo) snapshot.swing = snapshot.swing_konglo;
 
-  // FIX-TOP5: auto-select top 5 from swing-konglo when telegram-daily-picks returns 0 rows
-  // This prevents the dashboard from showing "0 Top 5" all day until the 22:15 cron runs.
+  // FIX-TOP5: auto-select top 5 from swing-konglo when telegram-daily-picks returns 0 rows.
+  // Strict quality filter: NEVER include Avoid/D-grade, RR < 1.2, or non-actionable candidates.
+  // Fall back to swing-non-konglo if swing-konglo yields fewer than 5 quality picks.
   if ((!snapshot.top5 || snapshot.top5.length === 0) && snapshot.swing && snapshot.swing.length > 0) {
-    var top5Candidates = snapshot.swing.filter(function(r) {
-      return r && r.ticker && r.unified_score != null;
-    }).sort(function(a, b) {
-      return (b.unified_score || 0) - (a.unified_score || 0);
-    }).slice(0, 5);
+    function isQualityTop5Candidate(r) {
+      if (!r || !r.ticker || r.unified_score == null) return false;
+      var grade = String(r.grade || r.quality_grade || r.rating || '').toUpperCase();
+      var status = String(r.status || r.final_status || r.action || r.recommendation || r.signal_action || '').toUpperCase();
+      var avoidGrade = grade === 'AVOID' || grade === 'D' || grade === 'F' || grade === 'SELL';
+      var avoidStatus = status.indexOf('AVOID') >= 0 || status.indexOf('WAIT') >= 0 || status.indexOf('SELL') >= 0 || status.indexOf('REJECT') >= 0;
+      if (avoidGrade || avoidStatus) return false;
+      var rr = Number(r.risk_reward != null ? r.risk_reward : r.trade_plan_v2 ? r.trade_plan_v2.tp1_target_r : null);
+      if (rr != null && rr < 1.2) return false;
+      return true;
+    }
+    function scoreTop5Candidate(r) {
+      var s = r.unified_score || 0;
+      var grade = String(r.grade || r.quality_grade || '').toUpperCase();
+      if (grade === 'A') s += 10; else if (grade === 'B') s += 5;
+      var rr = Number(r.risk_reward != null ? r.risk_reward : r.trade_plan_v2 ? r.trade_plan_v2.tp1_target_r : null);
+      if (rr != null && rr >= 1.5) s += 3;
+      return s;
+    }
+    // Pool: swing-konglo first, then swing-non-konglo as supplement
+    var kongloPool = (snapshot.swing || []).filter(isQualityTop5Candidate);
+    var nonKongloPool = (snapshot.swing_non_konglo || []).filter(isQualityTop5Candidate);
+    // Sort each pool by quality score descending
+    kongloPool.sort(function(a, b) { return scoreTop5Candidate(b) - scoreTop5Candidate(a); });
+    nonKongloPool.sort(function(a, b) { return scoreTop5Candidate(b) - scoreTop5Candidate(a); });
+    // Prefer konglo, fill remaining from non-konglo
+    var top5Candidates = kongloPool.slice(0, 5);
+    if (top5Candidates.length < 5) {
+      top5Candidates = top5Candidates.concat(nonKongloPool.slice(0, 5 - top5Candidates.length));
+    }
+    // Only publish if at least 1 quality candidate
     if (top5Candidates.length > 0) {
       snapshot.top5 = top5Candidates.map(function(r, i) {
         var locked = Object.assign({}, r);
