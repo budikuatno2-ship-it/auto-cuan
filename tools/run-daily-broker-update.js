@@ -1,5 +1,6 @@
 'use strict';
 
+
 /**
  * Daily Bandarmologi Update (Bagian 3) — Broker Summary + Broker Accumulation
  * + Insiders refresh for TODAY's trading date, for the full ticker universe.
@@ -52,6 +53,45 @@ const idxTradingCalendar = require('../lib/idx-trading-calendar');
 const eodSessionState = require('../lib/eod-session-state');
 const brokerAccumulationLocal = require('../lib/broker-accumulation-local');
 const arjumFailureLog = require('../lib/arjum-failure-log');
+
+function writeAuxiliaryLatestPointers(baseDir, date, metadata = {}) {
+  try {
+    const accLatestPath = path.join(baseDir, 'broker-accumulation', 'latest.json');
+    const insLatestPath = path.join(baseDir, 'insiders', 'latest.json');
+
+    fs.mkdirSync(path.dirname(accLatestPath), { recursive: true });
+    fs.mkdirSync(path.dirname(insLatestPath), { recursive: true });
+
+    const accPayload = {
+      target_date: date,
+      date: date,
+      updated_at: new Date().toISOString(),
+      status: 'complete',
+      endpoint: 'broker-accumulation',
+      count: metadata.accumulation_count || 0
+    };
+
+    const insPayload = {
+      target_date: date,
+      date: date,
+      updated_at: new Date().toISOString(),
+      status: 'complete',
+      endpoint: 'insiders',
+      count: metadata.insider_count || 0
+    };
+
+    const tempAcc = accLatestPath + '.' + process.pid + '.tmp';
+    fs.writeFileSync(tempAcc, JSON.stringify(accPayload, null, 2), 'utf8');
+    fs.renameSync(tempAcc, accLatestPath);
+
+    const tempIns = insLatestPath + '.' + process.pid + '.tmp';
+    fs.writeFileSync(tempIns, JSON.stringify(insPayload, null, 2), 'utf8');
+    fs.renameSync(tempIns, insLatestPath);
+  } catch (err) {
+    console.warn('[AUX-LATEST] Warning: Gagal menulis auxiliary latest.json:', err && err.message ? err.message : err);
+  }
+}
+
 
 // Same .env loading convention as tools/backfill-arjum-data.js /
 // tools/run-daily-afternoon-recap.js.
@@ -643,6 +683,9 @@ async function run(argv) {
             if (localAcc) {
               bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', localAcc);
               persistDatedCache('broker-accumulation', ticker, dateArg, localAcc);
+              if (shouldAdvanceLatestBrokerSummary(ticker, dateArg)) {
+                bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'latest', localAcc);
+              }
             }
           } catch (_) {}
         } else {
@@ -653,6 +696,9 @@ async function run(argv) {
           if (accRes.ok && accRes.data && !accRes.from_cache && !accRes.fallback) {
             bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', accRes.data);
             persistDatedCache('broker-accumulation', ticker, dateArg, accRes.data);
+            if (shouldAdvanceLatestBrokerSummary(ticker, dateArg)) {
+              bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'latest', accRes.data);
+            }
           } else if (checkApiQuota(accRes)) {
             break;
           } else {
@@ -706,6 +752,9 @@ async function run(argv) {
           });
           bandarmologiService.writeDiskCache('insiders', ticker, 'p1', stampedInsiderPayload);
           persistDatedCache('insiders', ticker, dateArg, stampedInsiderPayload);
+          if (shouldAdvanceLatestBrokerSummary(ticker, dateArg)) {
+            bandarmologiService.writeDiskCache('insiders', ticker, 'latest', stampedInsiderPayload);
+          }
           if (!hasNewTrades) {
             // Honest accounting: no real trade for this session.
             insiderNoNewTradesCount++;
@@ -822,6 +871,16 @@ async function run(argv) {
     accumulation_count: tickers.filter(t => bandarmologiService.readDiskCache('broker-accumulation', t, dateArg)).length,
     insider_count: tickers.filter(t => bandarmologiService.readDiskCache('insiders', t, dateArg)).length
   };
+
+  if (!dryRun) {
+    const dataRoot = process.env.ARJUM_DATA_DIR || path.join(__dirname, '..', 'data', 'arjum-data');
+    if (complete || markerQuality.accumulation_count > 0 || markerQuality.insider_count > 0) {
+      writeAuxiliaryLatestPointers(dataRoot, dateArg, {
+        accumulation_count: markerQuality.accumulation_count,
+        insider_count: markerQuality.insider_count
+      });
+    }
+  }
 
   if (complete) {
     writeMarker(dateArg, {
@@ -942,4 +1001,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { run, getJakartaDateString, getJakartaTimeInfo, resolveTargetDate, markerPath, readMarker, writeMarker, brokerSummaryPayloadDate, shouldAdvanceLatestBrokerSummary, readTargetCandleEvidence, latestInsiderTradeDate };
+module.exports = { run, getJakartaDateString, getJakartaTimeInfo, resolveTargetDate, markerPath, readMarker, writeMarker, writeAuxiliaryLatestPointers, brokerSummaryPayloadDate, shouldAdvanceLatestBrokerSummary, readTargetCandleEvidence, latestInsiderTradeDate };

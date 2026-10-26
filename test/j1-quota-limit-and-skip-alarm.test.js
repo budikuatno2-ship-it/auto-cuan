@@ -113,14 +113,13 @@ test('B3: the alarm message names the job and carries no secrets', () => {
   assert.doesNotMatch(msg, /token|secret|168\.\d|password/i);
 });
 
-test('B1: the backfill cron lines are paused with the DIJEDA marker, not deleted', () => {
+test('B1: backfill cron lines are configured with appropriate modes', () => {
   const cron = read('deploy/vps/final-schedule.cron');
-  const paused = cron.split('\n').filter((l) => l.includes('DIJEDA 20261023 sampai J1 terkejar'));
-  assert.ok(paused.length >= 4, 'every backfill line must carry the DIJEDA marker');
-  // The commands still exist (commented), so restoring is a one-character edit.
-  assert.match(cron, /# 7 0 \* \* 1-5 .*backfill-broksum\.js/);
+  // Candle backfill is paused with DIJEDA marker
   assert.match(cron, /# 5 0 \* \* \* .*backfill-historical-candles\.js/);
-  // No ACTIVE (uncommented) backfill line may remain.
-  const active = cron.split('\n').filter((l) => /^\s*\d/.test(l) && /backfill-(broksum|historical-candles)/.test(l));
-  assert.equal(active.length, 0, 'no backfill line may still be active');
+  // Broksum backfill lines are restored with weekday and weekend modes
+  const activeBroksum = cron.split('\n').filter((l) => /^\s*\d/.test(l) && /backfill-broksum\.js/.test(l));
+  assert.ok(activeBroksum.length >= 4, 'active broksum backfill lines must exist');
+  assert.match(cron, /backfill-broksum\.js --mode=weekday/);
+  assert.match(cron, /backfill-broksum\.js --mode=weekend/);
 });

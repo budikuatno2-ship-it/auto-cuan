@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const arjumClient = require('../lib/arjum-client');
 const candleFetcher = require('../lib/chart-engine/candle-fetcher');
 
-test('B2: arjumClient getConfiguredDailyQuota defaults to 12060 when env unset', () => {
+test('B2: arjumClient getConfiguredDailyQuota defaults to 18080 when env unset', () => {
   const origLimit = process.env.ARJUM_DAILY_LIMIT;
   const origQuota = process.env.ARJUM_DAILY_QUOTA;
   delete process.env.ARJUM_DAILY_LIMIT;
@@ -14,7 +14,7 @@ test('B2: arjumClient getConfiguredDailyQuota defaults to 12060 when env unset',
   arjumClient.__setObservedVendorLimit(null);
 
   try {
-    assert.equal(arjumClient.getConfiguredDailyQuota(), 12060);
+    assert.equal(arjumClient.getConfiguredDailyQuota(), 18080);
   } finally {
     if (origLimit !== undefined) process.env.ARJUM_DAILY_LIMIT = origLimit;
     if (origQuota !== undefined) process.env.ARJUM_DAILY_QUOTA = origQuota;
@@ -42,13 +42,13 @@ test('B2: a vendor x-ratelimit-limit can only LOWER the configured plan, never r
   delete process.env.ARJUM_DAILY_LIMIT;
 
   try {
-    // No env limit -> default plan 12060; a lower header is honoured.
+    // No env limit -> default plan 18080; a lower header is honoured.
     arjumClient.__setObservedVendorLimit(9000);
     assert.equal(arjumClient.getConfiguredDailyQuota(), 9000);
 
     // A header ABOVE the plan must not raise the limit.
     arjumClient.__setObservedVendorLimit(20000);
-    assert.equal(arjumClient.getConfiguredDailyQuota(), 12060);
+    assert.equal(arjumClient.getConfiguredDailyQuota(), 18080);
 
     // With an explicit plan, the plan is the ceiling.
     process.env.ARJUM_DAILY_LIMIT = '18080';

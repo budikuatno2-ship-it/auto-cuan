@@ -8,6 +8,7 @@
 #   1. Jika proses tidak online  -> restart (atau start bila hilang).
 #   2. Jika log terakhir lebih tua dari 6 menit -> restart (proses macet).
 #   3. Simpan state PM2 agar tetap hidup setelah reboot.
+#   4. Kembalikan exit code non-nol (exit 1) jika pemulihan/restart gagal.
 #
 # Crontab (2026-10-13 fix):
 #   */5 * * * * /bin/bash /home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh >> \
@@ -40,7 +41,30 @@ restart_poller() {
   echo "[$(date '+%F %T %Z')] $reason -> restart" >> "$LOG"
   pm2 restart autocuan-verify-bot --update-env >/dev/null 2>&1 \
     || pm2 start "$REPO/tools/telegram-verify-bot.js" --name autocuan-verify-bot --cwd "$REPO" >/dev/null 2>&1
+  local cmd_code=$?
   pm2 save >/dev/null 2>&1
+
+  # BUG-17: Verifikasi status proses setelah tindakan restart
+  sleep 2
+  local verify_state
+  verify_state=$("$NODE_BIN" -e '
+let d="";
+process.stdin.on("data",(c)=>{d+=c;}).on("end",()=>{
+  try{
+    const p=JSON.parse(d).find((x)=>x.name==="autocuan-verify-bot");
+    if(!p){console.log("missing");return;}
+    console.log(p.pm2_env.status);
+  }catch(e){console.log("unknown");}
+});
+' <<< "$(pm2 jlist 2>/dev/null)")
+
+  if [ "$verify_state" = "online" ]; then
+    echo "[$(date '+%F %T %Z')] restart SUCCEEDED: autocuan-verify-bot is online" >> "$LOG"
+    return 0
+  else
+    echo "[$(date '+%F %T %Z')] [ALERT] restart FAILED: autocuan-verify-bot status=$verify_state" >> "$LOG"
+    return 1
+  fi
 }
 
 STATE=$("$NODE_BIN" -e '
@@ -57,8 +81,11 @@ process.stdin.on("data",(c)=>{d+=c;}).on("end",()=>{
 STATUS=$(echo "$STATE" | cut -d' ' -f1)
 
 if [ "$STATUS" != "online" ]; then
-  restart_poller "status=$STATUS"
-  exit 0
+  if restart_poller "status=$STATUS"; then
+    exit 0
+  else
+    exit 1
+  fi
 fi
 
 # Stall check: log terakhir harus lebih baru dari STALE_SECONDS.
@@ -69,8 +96,11 @@ if [ -f "$OUT_LOG" ]; then
     NOW_EPOCH=$(date +%s)
     AGE=$(( NOW_EPOCH - LAST_EPOCH ))
     if [ "$LAST_EPOCH" -gt 0 ] && [ "$AGE" -gt "$STALE_SECONDS" ]; then
-      restart_poller "stale_log ${AGE}s"
-      exit 0
+      if restart_poller "stale_log ${AGE}s"; then
+        exit 0
+      else
+        exit 1
+      fi
     fi
   fi
 fi

@@ -164,6 +164,16 @@ async function main() {
   });
   const port = Number(process.env.BOT_WEBVIEW_PORT || 3010);
   const server = bot.createWebServer();
+  server.on('error', (err) => {
+    log('error', 'web_server_error ' + (err && err.message ? err.message : 'unknown'));
+    if (err && err.code === 'EADDRINUSE') {
+      log('warn', `Port ${port} in use, will retry listening in 5s...`);
+      setTimeout(() => {
+        try { server.close(); } catch (_) {}
+        server.listen(port, '127.0.0.1');
+      }, 5000);
+    }
+  });
   server.listen(port, '127.0.0.1');
   const api = createTelegramApi(token, globalThis.fetch);
   let offset = 0;
@@ -183,7 +193,7 @@ async function main() {
   // the real message and code, and the wait backs off exponentially
   // (2s -> 5s -> 10s, capped) so a persistent upstream outage cannot spin the
   // process at full speed. A successful poll resets the backoff.
-  const BACKOFF_SCHEDULE_MS = [2000, 5000, 10000];
+  const BACKOFF_SCHEDULE_MS = [2000, 5000, 10000, 15000];
   let pollFailureStreak = 0;
 
   function nextBackoffMs(streak) {

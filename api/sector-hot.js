@@ -5651,9 +5651,9 @@ function candidatePassesTelegramCandidateDigestGate(candidate, mode) {
   if (executionStatus === 'ARA_HIT' || executionStatus === 'ARB_HIT') return false;
   if (r.buy_execution_realistic === false && executionStatus !== 'UNKNOWN_LIMITS') return false;
   if (r.sell_risk_near_arb === true) return false;
-  // Invalid candle / data rusak berat
+  // Invalid candle / data rusak berat / data volume belum lengkap
   var dataQualityStatus = String(r.data_quality_status || '').trim().toUpperCase();
-  if (dataQualityStatus === 'INVALID_CANDLE' || r.data_quality_valid === false) return false;
+  if (dataQualityStatus === 'INVALID_CANDLE' || dataQualityStatus === 'DATA_INCOMPLETE' || r.data_quality_valid === false) return false;
   // Expired fatal setup
   var freshnessStatus = String(r.setup_freshness_status || r.freshness_status || '').trim().toUpperCase();
   if (freshnessStatus === 'EXPIRED') return false;
@@ -6422,17 +6422,32 @@ function buildFusionForeignFrame(ticker) {
   var clean = normalizeForeignTicker(ticker);
   if (!clean) return { net_1d: null, net_3d: null, net_7d: null, positive_days_7d: 0, streak: 0 };
   try {
-    var dates = bandarmologiService.listDiskDates('broker-summary', clean);
+    // BUG-05 Fix: Read authentic foreign flow from broker-summary-F (with fallback to broker-summary)
+    var dates = bandarmologiService.listDiskDates('broker-summary-F', clean);
+    if (!dates || dates.length === 0) {
+      dates = bandarmologiService.listDiskDates('broker-summary', clean);
+    }
     if (!dates || dates.length === 0) {
       return { net_1d: null, net_3d: null, net_7d: null, positive_days_7d: 0, streak: 0 };
     }
     var daily = [];
     for (var i = 0; i < dates.length && daily.length < 7; i++) {
+      var rawF = bandarmologiService.readDiskCache('broker-summary-F', clean, dates[i]);
+      if (rawF) {
+        var normF = bandarmologiService.normalizeBrokerSummary(rawF, dates[i], clean);
+        if (normF) {
+          var fNet = toNum(normF.net_flow != null ? normF.net_flow : normF.foreign_net);
+          if (fNet != null) {
+            daily.push(fNet);
+            continue;
+          }
+        }
+      }
       var raw = bandarmologiService.readDiskCache('broker-summary', clean, dates[i]);
       if (!raw) continue;
       var norm = bandarmologiService.normalizeBrokerSummary(raw, dates[i], clean);
       if (!norm) continue;
-      var net = toNum(norm.foreign_net);
+      var net = toNum(norm.foreign_net != null ? norm.foreign_net : norm.net_flow);
       if (net == null) continue;
       daily.push(net);
     }
@@ -8574,6 +8589,19 @@ function isTop5PickRow(row) {
   ).trim().toLowerCase().replace(/\s+/g, '_');
 
   if (source === 'daily_top5' || source === 'top5') return true;
+
+  var lockSource = String(raw.lock_source || '').trim().toLowerCase();
+  if (
+    lockSource.indexOf('top5') >= 0 ||
+    lockSource.indexOf('telegram-daily-picks') >= 0 ||
+    raw.web_daily_locked_at ||
+    raw.telegram_daily_sent_at ||
+    row.is_locked ||
+    row.locked
+  ) {
+    return true;
+  }
+
   if (
     source === 'daytrade' ||
     source === 'day_trade' ||
@@ -8596,18 +8624,6 @@ function isTop5PickRow(row) {
     return false;
   }
 
-  var lockSource = String(raw.lock_source || '').trim().toLowerCase();
-  if (
-    lockSource.indexOf('top5') >= 0 ||
-    lockSource.indexOf('telegram-daily-picks') >= 0 ||
-    raw.web_daily_locked_at ||
-    raw.telegram_daily_sent_at ||
-    row.is_locked ||
-    row.locked
-  ) {
-    return true;
-  }
-
   if (!cat || cat.indexOf('swing') >= 0 || cat.indexOf('top5') >= 0) return true;
   return false;
 }
@@ -8628,8 +8644,8 @@ function isSafeDashboardLockedTop5Row(row) {
     payload.data_quality_status, payload.notes
   ]).toUpperCase();
   if (candidateHasStructuredSell(payload)) return false;
-  if (includesAny(safetyText.toLowerCase(), ['low_tp', 'very high risk', 'stale_level', 'needs_revalidation', 'history_insufficient', 'new_listing'])) return false;
-  if (payload.corporate_action_guard === 'BLOCKED' || payload.data_quality_valid === false ||
+  if (includesAny(safetyText.toLowerCase(), ['low_tp', 'very high risk', 'stale_level', 'needs_revalidation', 'history_insufficient', 'new_listing', 'data_incomplete'])) return false;
+  if (payload.corporate_action_guard === 'BLOCKED' || payload.data_quality_valid === false || payload.data_quality_status === 'DATA_INCOMPLETE' ||
       payload.is_stale === true || payload.freshness_is_stale === true) return false;
   return true;
 }
