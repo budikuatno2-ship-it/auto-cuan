@@ -268,11 +268,6 @@ async function run(options, deps) {
     return { ok: true, skipped: true, reason: 'MARKET_CLOSED', market };
   }
 
-  // Alert once per incident when the snapshot is stale during market hours.
-  // Runs BEFORE the scan so a broken producer still notifies on every firing
-  // (the alarm module applies its own per-episode cooldown).
-  await maybeAlertStaleSnapshot({ deps, log, now, market });
-
   if (!env.CRON_SECRET) throw new Error('CRON_SECRET is required.');
   runner.assertNotServerlessForExecute(baseUrl, opts.execute);
 
@@ -421,6 +416,8 @@ async function run(options, deps) {
         };
       }
       log('  snapshot : materialized (' + Number(snapshot.rows || 0) + ' rows)');
+      // FIX-2: alert ONLY after scan completes — if scan succeeded, mtime is fresh → no false alarm
+      await maybeAlertStaleSnapshot({ deps, log, now: new Date(), market });
       return {
         ok: true,
         status,
