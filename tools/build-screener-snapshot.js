@@ -189,6 +189,10 @@ function buildScreenerSnapshot(payloads, options) {
       // Fresh data available — write it
       snapshot.source_dates[src.mode] = sourceDate;
       for (const key of src.keys) snapshot[key] = rows;
+    } else if (src.action === 'telegram-daily-picks') {
+      // FIX-TOP5: NEVER preserve stale top5 from previous snapshot — the fallback
+      // below selects fresh quality candidates from swing-konglo/non-konglo.
+      snapshot.source_dates[src.mode] = sourceDate;
     } else if (previous && previous.source_dates && previous.source_dates[src.mode]) {
       // FIX-3: preserve previous snapshot data when fetch fails/times out (0 rows)
       // This prevents screener=0 from overwriting valid swing-konglo data
