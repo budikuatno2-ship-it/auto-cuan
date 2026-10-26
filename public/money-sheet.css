@@ -289,6 +289,10 @@ html.is-dark .money-sheet #mmAddRow { color: #06140E; }
   cursor: cell;
   transition: background 140ms var(--ease-standard);
 }
+html.light #page-money-management #mmCashflowSpreadsheetTable.ms-grid td,
+html.light #page-money-management #mmCashflowSpreadsheetTable.ms-grid :is(input, select, textarea) {
+  background: #ffffff !important;
+}
 #page-money-management #mmCashflowSpreadsheetTable.ms-grid tr:hover td:not(.ms-row-number) { background: var(--ac-surface-raised) !important; }
 #page-money-management #mmCashflowSpreadsheetTable.ms-grid tr:hover { transform: none !important; }
 #page-money-management #mmCashflowSpreadsheetTable.ms-grid :is(td.ms-row-number, th.ms-row-number),

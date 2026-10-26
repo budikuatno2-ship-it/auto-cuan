@@ -35,7 +35,11 @@ def luminance(css):
     return sum(v*w for v,w in zip(linear,[.2126,.7152,.0722]))
 
 with sync_playwright() as pw:
-    browser=pw.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH','/usr/bin/chromium'),headless=True,args=['--no-sandbox'])
+    exec_path = os.environ.get('CHROMIUM_PATH', '/usr/bin/chromium')
+    launch_kwargs = {'headless': True, 'args': ['--no-sandbox']}
+    if os.path.exists(exec_path):
+        launch_kwargs['executable_path'] = exec_path
+    browser=pw.chromium.launch(**launch_kwargs)
     page=browser.new_page(viewport={'width':1440,'height':1000},reduced_motion='reduce')
     page.on('pageerror',lambda error:errors.append(str(error)))
     page.route('**/*',network)
