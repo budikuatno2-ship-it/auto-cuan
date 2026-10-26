@@ -55,11 +55,12 @@ const broksumValidator = require('../lib/broksum-validator');
 // Default pacing: 8 req/sec (125ms delay) as verified in benchmark
 const DEFAULT_DELAY_MS = 125;
 const SLOWDOWN_DELAY_MS = 200; // 5 req/sec on rate burst
-// Hard quota floors: Weekday floor 5,000 for J1; Weekend floor 1,000 for web/retries.
-const WEEKDAY_RESERVE = Math.max(5000, Number(process.env.BACKFILL_RESERVE_AFTER_EOD) || 5000);
-const WEEKEND_RESERVE = Math.max(1000, Number(process.env.BACKFILL_RESERVE_WEEKEND) || 1000);
-const DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD = 5000;
-const WEEKDAY_RESERVE_BEFORE_EOD = Math.max(5000, Number(process.env.BACKFILL_RESERVE_BEFORE_EOD) || DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD);
+// Quota floors are read dynamically from arjum-client getters at runtime.
+// The getters respect ARJUM_WEEKDAY_RESERVE, ARJUM_WEEKEND_RESERVE,
+// ARJUM_POST_EOD_RESERVE env vars with sensible defaults (5000 / 0 / 0).
+function weekReserve() { return arjumClient.getArjumWeekdayReserve(); }
+function endReserve() { return arjumClient.getArjumWeekendReserve(); }
+function postEodReserve() { return arjumClient.getArjumPostEodReserve(); }
 
 // 2c: read the EOD completion sentinel written by run-daily-market-update.js.
 function eodDoneExists(baseDir, wibDateKey) {
@@ -163,20 +164,40 @@ function computeBackfillReserve(options = {}) {
   const remaining = (options.remaining === null || options.remaining === undefined)
     ? null
     : Number(options.remaining);
+  const mode = options.mode === 'weekend' ? 'weekend' : 'weekday';
+
+  if (mode === 'weekend') {
+    const floor = options.weekendFloor !== undefined ? Number(options.weekendFloor) : endReserve();
+    const reserve = Math.max(0, floor);
+    if (!Number.isFinite(remaining)) {
+      return { reserve, spendable: 0, dailyNeed: 0, retryBuffer: 0, remaining: null, mode };
+    }
+    const spendable = Math.max(0, Math.floor(remaining - reserve));
+    return { reserve, spendable, dailyNeed: 0, retryBuffer: 0, remaining, mode };
+  }
+
   const dailyNeed = Number.isFinite(options.dailyNeed) && options.dailyNeed > 0
     ? options.dailyNeed
     : DAILY_JOB_BASE_NEED;
   const retryBuffer = Number.isFinite(options.retryBuffer)
     ? options.retryBuffer
     : Math.ceil(dailyNeed * DAILY_JOB_RETRY_RATIO);
-  const mode = options.mode === 'weekend' ? 'weekend' : 'weekday';
 
-  // The floor: quota that must remain available for the daily jobs.
-  const reserve = Math.max(0, Math.ceil(dailyNeed + retryBuffer));
+  // The floor: hard minimum of 5000 for weekday daily jobs (J1 + J2 + IHSG).
+  // Even if computePendingDailyNeed returns a smaller value (e.g. missing files
+  // already filled), the floor must never drop below 5000.
+  // If the owner has explicitly set ARJUM_WEEKDAY_RESERVE, honour it verbatim.
+  // Otherwise, default to max(5000, dailyNeed + retryBuffer).
+  const envReserve = process.env.ARJUM_WEEKDAY_RESERVE !== undefined
+    ? weekReserve()
+    : null;
+  const reserve = envReserve !== null
+    ? envReserve
+    : Math.max(5000, Math.ceil(dailyNeed + retryBuffer));
   if (!Number.isFinite(remaining)) {
     // Unknown remaining quota -> be conservative and keep the old fixed reserve.
     return {
-      reserve: Math.max(reserve, mode === 'weekend' ? WEEKEND_RESERVE : WEEKDAY_RESERVE),
+      reserve: Math.max(reserve, envReserve !== null ? envReserve : 5000),
       spendable: 0,
       dailyNeed, retryBuffer, remaining: null, mode
     };
@@ -211,6 +232,12 @@ function countMissingForDate(baseDir, date, tickers) {
 // A ticker's missing day is counted once per date, so a ticker that is missing
 // on both days is counted twice (it really does need two days of data).
 function computePendingDailyNeed(baseDir, todayKey, tickers) {
+  // If today is a weekend or closed market day in WIB, there is no pending daily work
+  const d = new Date(todayKey + 'T00:00:00Z');
+  const day = d.getUTCDay();
+  if (day === 0 || day === 6 || !isTradingDaySafe(todayKey)) {
+    return 0;
+  }
   let need = countMissingForDate(baseDir, todayKey, tickers) * DAILY_REQUESTS_PER_TICKER;
   const prevKey = previousTradingDayKey(todayKey);
   if (prevKey) {
@@ -249,15 +276,34 @@ function previousTradingDayKey(dateKey) {
 function resolveBackfillReserveFloor(options = {}) {
   const baseDir = options.baseDir;
   const explicitMode = options.explicitModeArg || null;
-  const mode = options.mode || 'weekday';
-  const todayKey = wibDateKey();
+  const now = options.now || new Date();
+  const todayKey = wibDateKey(now);
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jakarta', weekday: 'short'
+  }).format(now);
+  const isWeekendDay = parts === 'Sun' || parts === 'Sat';
+
+  let currentMode = explicitMode;
+  if (!currentMode) {
+    if (options.mode) {
+      currentMode = options.mode;
+    } else {
+      currentMode = (isWeekendDay || !isTradingDaySafe(todayKey)) ? 'weekend' : 'weekday';
+    }
+  }
+
+  if (currentMode === 'weekend') {
+    return endReserve();
+  }
+
   if (eodDoneExists(baseDir, todayKey)) {
-    return resolveDynamicReserveQuota(baseDir, explicitMode);
+    return resolveDynamicReserveQuota(baseDir, explicitMode, now);
   }
   const pendingNeed = Number.isFinite(options.pendingDailyNeed) && options.pendingDailyNeed > 0
     ? options.pendingDailyNeed
     : DAILY_JOB_BASE_NEED;
-  return computeBackfillReserve({ remaining: options.remaining, mode, dailyNeed: pendingNeed }).reserve;
+  return computeBackfillReserve({ remaining: options.remaining, mode: currentMode, dailyNeed: pendingNeed }).reserve;
 }
 
 function resolveDynamicReserveQuota(baseDir, explicitMode = null, now = new Date()) {
@@ -269,19 +315,15 @@ function resolveDynamicReserveQuota(baseDir, explicitMode = null, now = new Date
 
   let currentMode = explicitMode;
   if (!currentMode) {
-    currentMode = isWeekendDay ? 'weekend' : 'weekday';
-  }
-
-  if (currentMode === 'weekday' && !isTradingDaySafe(todayKey)) {
-    currentMode = 'weekend';
+    currentMode = (isWeekendDay || !isTradingDaySafe(todayKey)) ? 'weekend' : 'weekday';
   }
 
   if (currentMode === 'weekend') {
-    return WEEKEND_RESERVE;
+    return endReserve();
   }
 
   const doneExists = eodDoneExists(baseDir, todayKey);
-  return doneExists ? WEEKDAY_RESERVE : WEEKDAY_RESERVE_BEFORE_EOD;
+  return doneExists ? postEodReserve() : weekReserve();
 }
 
 function getBaseDir(overrideDir) {
