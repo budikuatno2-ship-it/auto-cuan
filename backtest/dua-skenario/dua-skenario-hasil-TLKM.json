@@ -1,0 +1,610 @@
+{
+ "target": "TLKM",
+ "bars": 2898,
+ "from": "2015-01-02",
+ "to": "2026-10-16",
+ "poolTickers": 79,
+ "params": {
+  "L": 20,
+  "H": 10,
+  "K": 30,
+  "minGap": 10,
+  "warmup": 60,
+  "minCandidates": 250,
+  "ctxWeight": 0.5,
+  "minQuality": 0.35,
+  "minAnalogs": 15
+ },
+ "stride": 5,
+ "runs": [
+  {
+   "label": "Hanya TLKM",
+   "cutOOS": "2023-02-14",
+   "all": {
+    "n": 314,
+    "effectiveN": 172,
+    "hitRate": 0.5127388535031847,
+    "brier": 0.25287682362360653,
+    "brierBase": 0.2573491048668339,
+    "brierSkill": 0.01737826617093352,
+    "band25_75": 0.4554140127388535,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 21,
+      "predicted": 0.291,
+      "actual": 0.333
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 65,
+      "predicted": 0.404,
+      "actual": 0.462
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 109,
+      "predicted": 0.499,
+      "actual": 0.477
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 77,
+      "predicted": 0.597,
+      "actual": 0.455
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 42,
+      "predicted": 0.706,
+      "actual": 0.595
+     }
+    ]
+   },
+   "oos": {
+    "n": 156,
+    "effectiveN": 82,
+    "hitRate": 0.532051282051282,
+    "brier": 0.2458641115153361,
+    "brierBase": 0.2599684114458991,
+    "brierSkill": 0.05425389897225341,
+    "band25_75": 0.48717948717948717,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 11,
+      "predicted": 0.288,
+      "actual": 0.273
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 30,
+      "predicted": 0.397,
+      "actual": 0.333
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 53,
+      "predicted": 0.494,
+      "actual": 0.472
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 38,
+      "predicted": 0.595,
+      "actual": 0.526
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 24,
+      "predicted": 0.71,
+      "actual": 0.583
+     }
+    ]
+   },
+   "byYear": {
+    "2016": {
+     "n": 0
+    },
+    "2017": {
+     "n": 1,
+     "hitRate": 0,
+     "brierSkill": -0.024
+    },
+    "2018": {
+     "n": 12,
+     "hitRate": 0.5,
+     "brierSkill": 0.314
+    },
+    "2019": {
+     "n": 29,
+     "hitRate": 0.552,
+     "brierSkill": 0.248
+    },
+    "2020": {
+     "n": 29,
+     "hitRate": 0.379,
+     "brierSkill": -0.113
+    },
+    "2021": {
+     "n": 40,
+     "hitRate": 0.475,
+     "brierSkill": 0.047
+    },
+    "2022": {
+     "n": 43,
+     "hitRate": 0.558,
+     "brierSkill": 0.129
+    },
+    "2023": {
+     "n": 44,
+     "hitRate": 0.477,
+     "brierSkill": 0.14
+    },
+    "2024": {
+     "n": 44,
+     "hitRate": 0.545,
+     "brierSkill": -0.022
+    },
+    "2025": {
+     "n": 41,
+     "hitRate": 0.537,
+     "brierSkill": 0.146
+    },
+    "2026": {
+     "n": 31,
+     "hitRate": 0.581,
+     "brierSkill": 0.274
+    }
+   },
+   "gate": {
+    "brierSkillPositive": true,
+    "enoughIndependent": true,
+    "calibrationMonotone": true,
+    "pass": true
+   }
+  },
+  {
+   "label": "Kolam 79 saham",
+   "cutOOS": "2023-02-14",
+   "all": {
+    "n": 401,
+    "effectiveN": 230,
+    "hitRate": 0.5087281795511222,
+    "brier": 0.25714658470160495,
+    "brierBase": 0.25255686336291083,
+    "brierSkill": -0.018173021622061247,
+    "band25_75": 0.5012468827930174,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 26,
+      "predicted": 0.301,
+      "actual": 0.346
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 95,
+      "predicted": 0.411,
+      "actual": 0.484
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 157,
+      "predicted": 0.5,
+      "actual": 0.478
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 94,
+      "predicted": 0.596,
+      "actual": 0.457
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 29,
+      "predicted": 0.693,
+      "actual": 0.552
+     }
+    ]
+   },
+   "oos": {
+    "n": 137,
+    "effectiveN": 74,
+    "hitRate": 0.48905109489051096,
+    "brier": 0.25671510204054426,
+    "brierBase": 0.2607153720192464,
+    "brierSkill": 0.015343437357452139,
+    "band25_75": 0.48175182481751827,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 11,
+      "predicted": 0.283,
+      "actual": 0.364
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 41,
+      "predicted": 0.414,
+      "actual": 0.439
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 55,
+      "predicted": 0.5,
+      "actual": 0.527
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 28,
+      "predicted": 0.593,
+      "actual": 0.429
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 2,
+      "predicted": 0.708,
+      "actual": 0.5
+     }
+    ]
+   },
+   "byYear": {
+    "2015": {
+     "n": 12,
+     "hitRate": 0.667,
+     "brierSkill": 0.022
+    },
+    "2016": {
+     "n": 37,
+     "hitRate": 0.486,
+     "brierSkill": 0.072
+    },
+    "2017": {
+     "n": 32,
+     "hitRate": 0.563,
+     "brierSkill": 0.074
+    },
+    "2018": {
+     "n": 27,
+     "hitRate": 0.444,
+     "brierSkill": 0.142
+    },
+    "2019": {
+     "n": 35,
+     "hitRate": 0.543,
+     "brierSkill": 0.053
+    },
+    "2020": {
+     "n": 35,
+     "hitRate": 0.6,
+     "brierSkill": 0.191
+    },
+    "2021": {
+     "n": 42,
+     "hitRate": 0.5,
+     "brierSkill": 0.115
+    },
+    "2022": {
+     "n": 38,
+     "hitRate": 0.5,
+     "brierSkill": 0.081
+    },
+    "2023": {
+     "n": 39,
+     "hitRate": 0.385,
+     "brierSkill": 0.13
+    },
+    "2024": {
+     "n": 38,
+     "hitRate": 0.579,
+     "brierSkill": 0.051
+    },
+    "2025": {
+     "n": 38,
+     "hitRate": 0.421,
+     "brierSkill": 0.046
+    },
+    "2026": {
+     "n": 28,
+     "hitRate": 0.536,
+     "brierSkill": 0.22
+    }
+   },
+   "gate": {
+    "brierSkillPositive": true,
+    "enoughIndependent": true,
+    "calibrationMonotone": true,
+    "pass": true
+   }
+  }
+ ],
+ "latestSelf": {
+  "status": "OK",
+  "reason": null,
+  "date": "2026-10-16",
+  "close": 1900,
+  "H": 10,
+  "nAnalogs": 30,
+  "nCandidates": 2808,
+  "quality": 0.4650469282402865,
+  "pUp": 0.8471981460271475,
+  "pDown": 0.1528018539728525,
+  "scenarioA": {
+   "n": 25,
+   "median": [
+    1925,
+    1980,
+    1995,
+    2000,
+    2020,
+    2040,
+    2020,
+    2020,
+    2040,
+    2040
+   ],
+   "p25": [
+    1905,
+    1930,
+    1940,
+    1940,
+    1965,
+    1955,
+    1965,
+    1970,
+    2010,
+    2010
+   ],
+   "p75": [
+    1970,
+    2030,
+    2070,
+    2100,
+    2050,
+    2140,
+    2120,
+    2090,
+    2120,
+    2110
+   ],
+   "endPct": 7.172106143446744
+  },
+  "scenarioB": {
+   "n": 5,
+   "median": [
+    1910,
+    1940,
+    1980,
+    1915,
+    1935,
+    1900,
+    1860,
+    1770,
+    1770,
+    1625
+   ],
+   "p25": [
+    1890,
+    1910,
+    1925,
+    1890,
+    1910,
+    1875,
+    1780,
+    1735,
+    1755,
+    1510
+   ],
+   "p75": [
+    1950,
+    2110,
+    2010,
+    2000,
+    1960,
+    1940,
+    1885,
+    1900,
+    1855,
+    1700
+   ],
+   "endPct": -14.35454269103522
+  },
+  "confirmA": 1995,
+  "confirmB": 1980,
+  "analogs": [
+   {
+    "ticker": "TLKM",
+    "date": "2022-12-06",
+    "distance": 0.939,
+    "fwdPct": 5.74
+   },
+   {
+    "ticker": "TLKM",
+    "date": "2024-04-24",
+    "distance": 1.092,
+    "fwdPct": 2.43
+   },
+   {
+    "ticker": "TLKM",
+    "date": "2025-10-17",
+    "distance": 1.157,
+    "fwdPct": 14.8
+   },
+   {
+    "ticker": "TLKM",
+    "date": "2025-02-11",
+    "distance": 1.161,
+    "fwdPct": 7.17
+   },
+   {
+    "ticker": "TLKM",
+    "date": "2024-11-14",
+    "distance": 1.193,
+    "fwdPct": 12.81
+   },
+   {
+    "ticker": "TLKM",
+    "date": "2018-08-16",
+    "distance": 1.217,
+    "fwdPct": 6.87
+   },
+   {
+    "ticker": "TLKM",
+    "date": "2017-11-01",
+    "distance": 1.254,
+    "fwdPct": 7.72
+   },
+   {
+    "ticker": "TLKM",
+    "date": "2024-03-26",
+    "distance": 1.268,
+    "fwdPct": -20.6
+   }
+  ]
+ },
+ "latestPool": {
+  "status": "OK",
+  "reason": null,
+  "date": "2026-10-16",
+  "close": 1900,
+  "H": 10,
+  "nAnalogs": 30,
+  "nCandidates": 173939,
+  "quality": 1,
+  "pUp": 0.6223913937448877,
+  "pDown": 0.3776086062551123,
+  "scenarioA": {
+   "n": 18,
+   "median": [
+    1900,
+    2000,
+    2030,
+    2080,
+    2070,
+    2080,
+    2080,
+    2120,
+    2050,
+    2080
+   ],
+   "p25": [
+    1900,
+    1910,
+    1945,
+    1940,
+    2010,
+    1960,
+    1965,
+    1970,
+    2010,
+    2010
+   ],
+   "p75": [
+    1970,
+    2110,
+    2160,
+    2120,
+    2090,
+    2160,
+    2190,
+    2170,
+    2180,
+    2190
+   ],
+   "endPct": 9.380051982438342
+  },
+  "scenarioB": {
+   "n": 12,
+   "median": [
+    1875,
+    1855,
+    1810,
+    1905,
+    1895,
+    1840,
+    1865,
+    1800,
+    1735,
+    1780
+   ],
+   "p25": [
+    1825,
+    1840,
+    1795,
+    1760,
+    1730,
+    1670,
+    1730,
+    1715,
+    1620,
+    1620
+   ],
+   "p75": [
+    1920,
+    1875,
+    2030,
+    2060,
+    2000,
+    1935,
+    1940,
+    1895,
+    1860,
+    1865
+   ],
+   "endPct": -6.222619043098421
+  },
+  "confirmA": 2030,
+  "confirmB": 1810,
+  "analogs": [
+   {
+    "ticker": "TLKM",
+    "date": "2022-12-06",
+    "distance": 0.587,
+    "fwdPct": 5.74
+   },
+   {
+    "ticker": "BBRI",
+    "date": "2018-05-21",
+    "distance": 0.604,
+    "fwdPct": 17.21
+   },
+   {
+    "ticker": "BRIS",
+    "date": "2019-11-28",
+    "distance": 0.621,
+    "fwdPct": 4.74
+   },
+   {
+    "ticker": "BRIS",
+    "date": "2022-07-04",
+    "distance": 0.631,
+    "fwdPct": 40.61
+   },
+   {
+    "ticker": "ARCI",
+    "date": "2022-07-04",
+    "distance": 0.637,
+    "fwdPct": 1.52
+   },
+   {
+    "ticker": "ADRO",
+    "date": "2015-07-08",
+    "distance": 0.66,
+    "fwdPct": -8.87
+   },
+   {
+    "ticker": "AMRT",
+    "date": "2016-10-13",
+    "distance": 0.686,
+    "fwdPct": 9.63
+   },
+   {
+    "ticker": "ANTM",
+    "date": "2020-02-28",
+    "distance": 0.707,
+    "fwdPct": -14.72
+   }
+  ]
+ }
+}

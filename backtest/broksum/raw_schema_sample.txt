@@ -1,0 +1,94 @@
+--- ALL TOP LEVEL KEYS ---
+[
+  'stock_code',
+  'brokers',
+  'broker_levels',
+  'broker_start_date',
+  'broker_end_date',
+  'broker_date_min',
+  'broker_date_max',
+  'broker_net',
+  'flow'
+]
+
+--- ALL DISTINCT KEY PATHS (SCHEMA TREE) ---
+[
+  'stock_code',
+  'brokers',
+  'brokers.[0].broker_code',
+  'brokers.[0].broker_name',
+  'brokers.[0].bval',
+  'brokers.[0].bvol',
+  'brokers.[0].bfrq',
+  'brokers.[0].sfrq',
+  'brokers.[0].sval',
+  'brokers.[0].svol',
+  'brokers.[0].nval',
+  'brokers.[0].nvol',
+  'broker_levels',
+  'broker_levels.[0].buy',
+  'broker_levels.[0].buy.broker_code',
+  'broker_levels.[0].buy.broker_name',
+  'broker_levels.[0].buy.bval',
+  'broker_levels.[0].buy.bvol',
+  'broker_levels.[0].buy.bfrq',
+  'broker_levels.[0].buy.bavg',
+  'broker_levels.[0].sell',
+  'broker_levels.[0].sell.broker_code',
+  'broker_levels.[0].sell.broker_name',
+  'broker_levels.[0].sell.sval',
+  'broker_levels.[0].sell.svol',
+  'broker_levels.[0].sell.sfrq',
+  'broker_levels.[0].sell.savg',
+  'broker_start_date',
+  'broker_end_date',
+  'broker_date_min',
+  'broker_date_max',
+  'broker_net',
+  'flow'
+]
+
+--- POTENTIAL FOREIGN / INVESTOR MATCHES ---
+[]
+
+--- DETAILED INSPECTION OF FLOW & BROKER_NET ---
+flow: all
+broker_net: false
+broker_start_date: 2026-09-08
+broker_end_date: 2026-09-08
+broker_date_min: 2020-01-02
+broker_date_max: 2026-09-08
+
+--- SAMPLE BROKER[0] RAW JSON ---
+{
+  "broker_code": "YP",
+  "broker_name": "MIRAE ASSET SEKURITAS INDONESIA",
+  "bval": 8600155500,
+  "bvol": 4861500,
+  "bfrq": 1246,
+  "sfrq": 423,
+  "sval": 2967711500,
+  "svol": 1674400,
+  "nval": 5632444000,
+  "nvol": 3187100
+}
+
+--- SAMPLE BROKER_LEVELS[0] RAW JSON ---
+{
+  "buy": {
+    "broker_code": "XL",
+    "broker_name": "STOCKBIT SEKURITAS DIGITAL",
+    "bval": 16643098500,
+    "bvol": 9403700,
+    "bfrq": 4344,
+    "bavg": 1769.8457522039198
+  },
+  "sell": {
+    "broker_code": "CC",
+    "broker_name": "MANDIRI SEKURITAS",
+    "sval": 18477875500,
+    "svol": 10431600,
+    "sfrq": 3124,
+    "savg": 1771.3366597645615
+  }
+}

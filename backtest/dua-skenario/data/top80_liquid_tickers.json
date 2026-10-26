@@ -1,0 +1,482 @@
+[
+  {
+    "ticker": "BBCA",
+    "sessions": 60,
+    "medianTurnover": 724156650000,
+    "medianTurnoverMiliar": 724.16
+  },
+  {
+    "ticker": "BBRI",
+    "sessions": 60,
+    "medianTurnover": 515869521000,
+    "medianTurnoverMiliar": 515.87
+  },
+  {
+    "ticker": "BMRI",
+    "sessions": 60,
+    "medianTurnover": 510415776000,
+    "medianTurnoverMiliar": 510.42
+  },
+  {
+    "ticker": "BUMI",
+    "sessions": 60,
+    "medianTurnover": 498913717500,
+    "medianTurnoverMiliar": 498.91
+  },
+  {
+    "ticker": "TPIA",
+    "sessions": 60,
+    "medianTurnover": 399078867000,
+    "medianTurnoverMiliar": 399.08
+  },
+  {
+    "ticker": "DSSA",
+    "sessions": 60,
+    "medianTurnover": 388581648000,
+    "medianTurnoverMiliar": 388.58
+  },
+  {
+    "ticker": "AMMN",
+    "sessions": 60,
+    "medianTurnover": 310901248000,
+    "medianTurnoverMiliar": 310.9
+  },
+  {
+    "ticker": "CUAN",
+    "sessions": 60,
+    "medianTurnover": 287868093500,
+    "medianTurnoverMiliar": 287.87
+  },
+  {
+    "ticker": "ANTM",
+    "sessions": 60,
+    "medianTurnover": 281803029000,
+    "medianTurnoverMiliar": 281.8
+  },
+  {
+    "ticker": "TLKM",
+    "sessions": 60,
+    "medianTurnover": 253202544000,
+    "medianTurnoverMiliar": 253.2
+  },
+  {
+    "ticker": "PTRO",
+    "sessions": 60,
+    "medianTurnover": 217588537500,
+    "medianTurnoverMiliar": 217.59
+  },
+  {
+    "ticker": "ASII",
+    "sessions": 60,
+    "medianTurnover": 208562460000,
+    "medianTurnoverMiliar": 208.56
+  },
+  {
+    "ticker": "DEWA",
+    "sessions": 60,
+    "medianTurnover": 195906324800,
+    "medianTurnoverMiliar": 195.91
+  },
+  {
+    "ticker": "BRMS",
+    "sessions": 60,
+    "medianTurnover": 182504040000,
+    "medianTurnoverMiliar": 182.5
+  },
+  {
+    "ticker": "TINS",
+    "sessions": 60,
+    "medianTurnover": 171282954000,
+    "medianTurnoverMiliar": 171.28
+  },
+  {
+    "ticker": "BRPT",
+    "sessions": 60,
+    "medianTurnover": 152626950000,
+    "medianTurnoverMiliar": 152.63
+  },
+  {
+    "ticker": "BULL",
+    "sessions": 60,
+    "medianTurnover": 144853061400,
+    "medianTurnoverMiliar": 144.85
+  },
+  {
+    "ticker": "EMAS",
+    "sessions": 60,
+    "medianTurnover": 128801350000,
+    "medianTurnoverMiliar": 128.8
+  },
+  {
+    "ticker": "BBNI",
+    "sessions": 60,
+    "medianTurnover": 119375536000,
+    "medianTurnoverMiliar": 119.38
+  },
+  {
+    "ticker": "ENRG",
+    "sessions": 60,
+    "medianTurnover": 116238225500,
+    "medianTurnoverMiliar": 116.24
+  },
+  {
+    "ticker": "ISAT",
+    "sessions": 60,
+    "medianTurnover": 106500927000,
+    "medianTurnoverMiliar": 106.5
+  },
+  {
+    "ticker": "AADI",
+    "sessions": 60,
+    "medianTurnover": 95309080000,
+    "medianTurnoverMiliar": 95.31
+  },
+  {
+    "ticker": "UNTR",
+    "sessions": 60,
+    "medianTurnover": 93609600000,
+    "medianTurnoverMiliar": 93.61
+  },
+  {
+    "ticker": "BNBR",
+    "sessions": 60,
+    "medianTurnover": 93395342600,
+    "medianTurnoverMiliar": 93.4
+  },
+  {
+    "ticker": "MDKA",
+    "sessions": 60,
+    "medianTurnover": 92446400000,
+    "medianTurnoverMiliar": 92.45
+  },
+  {
+    "ticker": "INET",
+    "sessions": 60,
+    "medianTurnover": 83432089600,
+    "medianTurnoverMiliar": 83.43
+  },
+  {
+    "ticker": "ADRO",
+    "sessions": 60,
+    "medianTurnover": 81936085000,
+    "medianTurnoverMiliar": 81.94
+  },
+  {
+    "ticker": "PTBA",
+    "sessions": 60,
+    "medianTurnover": 73575266000,
+    "medianTurnoverMiliar": 73.58
+  },
+  {
+    "ticker": "BREN",
+    "sessions": 60,
+    "medianTurnover": 68460833000,
+    "medianTurnoverMiliar": 68.46
+  },
+  {
+    "ticker": "PACK",
+    "sessions": 60,
+    "medianTurnover": 68446561600,
+    "medianTurnoverMiliar": 68.45
+  },
+  {
+    "ticker": "KOTA",
+    "sessions": 60,
+    "medianTurnover": 68192880000,
+    "medianTurnoverMiliar": 68.19
+  },
+  {
+    "ticker": "MEDC",
+    "sessions": 60,
+    "medianTurnover": 68012393000,
+    "medianTurnoverMiliar": 68.01
+  },
+  {
+    "ticker": "BIPI",
+    "sessions": 60,
+    "medianTurnover": 67621102500,
+    "medianTurnoverMiliar": 67.62
+  },
+  {
+    "ticker": "VKTR",
+    "sessions": 60,
+    "medianTurnover": 65097912000,
+    "medianTurnoverMiliar": 65.1
+  },
+  {
+    "ticker": "INCO",
+    "sessions": 60,
+    "medianTurnover": 63931875000,
+    "medianTurnoverMiliar": 63.93
+  },
+  {
+    "ticker": "BUVA",
+    "sessions": 60,
+    "medianTurnover": 62325595500,
+    "medianTurnoverMiliar": 62.33
+  },
+  {
+    "ticker": "IATA",
+    "sessions": 60,
+    "medianTurnover": 58844016000,
+    "medianTurnoverMiliar": 58.84
+  },
+  {
+    "ticker": "CPIN",
+    "sessions": 60,
+    "medianTurnover": 55436061000,
+    "medianTurnoverMiliar": 55.44
+  },
+  {
+    "ticker": "INDY",
+    "sessions": 60,
+    "medianTurnover": 55256514000,
+    "medianTurnoverMiliar": 55.26
+  },
+  {
+    "ticker": "RAJA",
+    "sessions": 60,
+    "medianTurnover": 53667993000,
+    "medianTurnoverMiliar": 53.67
+  },
+  {
+    "ticker": "MBMA",
+    "sessions": 60,
+    "medianTurnover": 52369050000,
+    "medianTurnoverMiliar": 52.37
+  },
+  {
+    "ticker": "KLBF",
+    "sessions": 60,
+    "medianTurnover": 50944624000,
+    "medianTurnoverMiliar": 50.94
+  },
+  {
+    "ticker": "ERAA",
+    "sessions": 60,
+    "medianTurnover": 48199000000,
+    "medianTurnoverMiliar": 48.2
+  },
+  {
+    "ticker": "ESSA",
+    "sessions": 60,
+    "medianTurnover": 45316436000,
+    "medianTurnoverMiliar": 45.32
+  },
+  {
+    "ticker": "AMRT",
+    "sessions": 60,
+    "medianTurnover": 45296875000,
+    "medianTurnoverMiliar": 45.3
+  },
+  {
+    "ticker": "COCO",
+    "sessions": 60,
+    "medianTurnover": 44664566500,
+    "medianTurnoverMiliar": 44.66
+  },
+  {
+    "ticker": "MDIA",
+    "sessions": 60,
+    "medianTurnover": 44182100900,
+    "medianTurnoverMiliar": 44.18
+  },
+  {
+    "ticker": "ADMR",
+    "sessions": 60,
+    "medianTurnover": 44135568000,
+    "medianTurnoverMiliar": 44.14
+  },
+  {
+    "ticker": "PGAS",
+    "sessions": 60,
+    "medianTurnover": 41595950000,
+    "medianTurnoverMiliar": 41.6
+  },
+  {
+    "ticker": "ARCI",
+    "sessions": 60,
+    "medianTurnover": 41063344000,
+    "medianTurnoverMiliar": 41.06
+  },
+  {
+    "ticker": "INDF",
+    "sessions": 60,
+    "medianTurnover": 40201280000,
+    "medianTurnoverMiliar": 40.2
+  },
+  {
+    "ticker": "JGLE",
+    "sessions": 60,
+    "medianTurnover": 37055700000,
+    "medianTurnoverMiliar": 37.06
+  },
+  {
+    "ticker": "PSAB",
+    "sessions": 60,
+    "medianTurnover": 36445698500,
+    "medianTurnoverMiliar": 36.45
+  },
+  {
+    "ticker": "WIFI",
+    "sessions": 60,
+    "medianTurnover": 36258390000,
+    "medianTurnoverMiliar": 36.26
+  },
+  {
+    "ticker": "ITMG",
+    "sessions": 60,
+    "medianTurnover": 35427700000,
+    "medianTurnoverMiliar": 35.43
+  },
+  {
+    "ticker": "NCKL",
+    "sessions": 60,
+    "medianTurnover": 35138691000,
+    "medianTurnoverMiliar": 35.14
+  },
+  {
+    "ticker": "INKP",
+    "sessions": 60,
+    "medianTurnover": 32854222500,
+    "medianTurnoverMiliar": 32.85
+  },
+  {
+    "ticker": "JARR",
+    "sessions": 60,
+    "medianTurnover": 32754400000,
+    "medianTurnoverMiliar": 32.75
+  },
+  {
+    "ticker": "RATU",
+    "sessions": 60,
+    "medianTurnover": 32543928000,
+    "medianTurnoverMiliar": 32.54
+  },
+  {
+    "ticker": "DOOH",
+    "sessions": 60,
+    "medianTurnover": 31077177800,
+    "medianTurnoverMiliar": 31.08
+  },
+  {
+    "ticker": "RMKE",
+    "sessions": 60,
+    "medianTurnover": 30991848800,
+    "medianTurnoverMiliar": 30.99
+  },
+  {
+    "ticker": "CDIA",
+    "sessions": 60,
+    "medianTurnover": 30480075500,
+    "medianTurnoverMiliar": 30.48
+  },
+  {
+    "ticker": "TAPG",
+    "sessions": 60,
+    "medianTurnover": 30453150000,
+    "medianTurnoverMiliar": 30.45
+  },
+  {
+    "ticker": "SSIA",
+    "sessions": 60,
+    "medianTurnover": 29588400000,
+    "medianTurnoverMiliar": 29.59
+  },
+  {
+    "ticker": "BRIS",
+    "sessions": 60,
+    "medianTurnover": 29121279000,
+    "medianTurnoverMiliar": 29.12
+  },
+  {
+    "ticker": "PANI",
+    "sessions": 60,
+    "medianTurnover": 29006904000,
+    "medianTurnoverMiliar": 29.01
+  },
+  {
+    "ticker": "ICBP",
+    "sessions": 60,
+    "medianTurnover": 27217400000,
+    "medianTurnoverMiliar": 27.22
+  },
+  {
+    "ticker": "KETR",
+    "sessions": 60,
+    "medianTurnover": 27193727000,
+    "medianTurnoverMiliar": 27.19
+  },
+  {
+    "ticker": "KIJA",
+    "sessions": 60,
+    "medianTurnover": 25737186900,
+    "medianTurnoverMiliar": 25.74
+  },
+  {
+    "ticker": "SGER",
+    "sessions": 60,
+    "medianTurnover": 25610656500,
+    "medianTurnoverMiliar": 25.61
+  },
+  {
+    "ticker": "JPFA",
+    "sessions": 60,
+    "medianTurnover": 25060615000,
+    "medianTurnoverMiliar": 25.06
+  },
+  {
+    "ticker": "TOWR",
+    "sessions": 60,
+    "medianTurnover": 24150574800,
+    "medianTurnoverMiliar": 24.15
+  },
+  {
+    "ticker": "SMGR",
+    "sessions": 60,
+    "medianTurnover": 24060465000,
+    "medianTurnoverMiliar": 24.06
+  },
+  {
+    "ticker": "LUCY",
+    "sessions": 15,
+    "medianTurnover": 22608718200,
+    "medianTurnoverMiliar": 22.61
+  },
+  {
+    "ticker": "GGRM",
+    "sessions": 60,
+    "medianTurnover": 22182440000,
+    "medianTurnoverMiliar": 22.18
+  },
+  {
+    "ticker": "MMIX",
+    "sessions": 60,
+    "medianTurnover": 21139041000,
+    "medianTurnoverMiliar": 21.14
+  },
+  {
+    "ticker": "UNVR",
+    "sessions": 60,
+    "medianTurnover": 20956320000,
+    "medianTurnoverMiliar": 20.96
+  },
+  {
+    "ticker": "AKRA",
+    "sessions": 60,
+    "medianTurnover": 20840677000,
+    "medianTurnoverMiliar": 20.84
+  },
+  {
+    "ticker": "DMAS",
+    "sessions": 60,
+    "medianTurnover": 19811214400,
+    "medianTurnoverMiliar": 19.81
+  },
+  {
+    "ticker": "EMTK",
+    "sessions": 60,
+    "medianTurnover": 19360640000,
+    "medianTurnoverMiliar": 19.36
+  }
+]

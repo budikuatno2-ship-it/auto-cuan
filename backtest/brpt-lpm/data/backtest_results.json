@@ -1,0 +1,191 @@
+{
+  "metadata": {
+    "ticker": "BRPT",
+    "timeframe": "1D",
+    "total_bars": 1199,
+    "in_sample_range": {
+      "start": "2021-10-18",
+      "end": "2025-04-15",
+      "count": 839
+    },
+    "out_of_sample_range": {
+      "start": "2025-04-16",
+      "end": "2026-10-16",
+      "count": 360
+    },
+    "assumptions": {
+      "buy_fee_pct": 0.15,
+      "sell_fee_pct": 0.25,
+      "slippage_ticks": 1,
+      "max_holding_days": 10,
+      "risk_gate_min_rr": 1.5,
+      "intrabar_conflict_rule": "SL_FIRST_CONSERVATIVE"
+    }
+  },
+  "strategies": {
+    "S1_LPM_Bullish_Divergence": {
+      "in_sample": {
+        "trade_count": 26,
+        "win_rate_pct": 34.6,
+        "wins": 9,
+        "losses": 12,
+        "time_exits": 5,
+        "profit_factor": 0.88,
+        "avg_r": -0.08,
+        "expectancy_pct": -0.49,
+        "max_drawdown_pct": 36.95,
+        "avg_duration_bars": 5.3,
+        "sample_size_warning": "N = 26 (Ukuran sampel kecil, tidak cukup untuk kesimpulan definitif)"
+      },
+      "out_of_sample": {
+        "trade_count": 17,
+        "win_rate_pct": 70.6,
+        "wins": 12,
+        "losses": 3,
+        "time_exits": 2,
+        "profit_factor": 5.21,
+        "avg_r": 0.85,
+        "expectancy_pct": 6.7,
+        "max_drawdown_pct": 9.11,
+        "avg_duration_bars": 4.1,
+        "sample_size_warning": "N = 17 (Ukuran sampel kecil, tidak cukup untuk kesimpulan definitif)"
+      },
+      "full_sample": {
+        "trade_count": 43,
+        "win_rate_pct": 48.8,
+        "wins": 21,
+        "losses": 15,
+        "time_exits": 7,
+        "profit_factor": 1.78,
+        "avg_r": 0.29,
+        "expectancy_pct": 2.36,
+        "max_drawdown_pct": 36.95,
+        "avg_duration_bars": 4.8,
+        "sample_size_warning": null
+      }
+    },
+    "S2_Momentum_Accumulation_Spike": {
+      "in_sample": {
+        "trade_count": 21,
+        "win_rate_pct": 33.3,
+        "wins": 7,
+        "losses": 13,
+        "time_exits": 1,
+        "profit_factor": 0.73,
+        "avg_r": -0.19,
+        "expectancy_pct": -1.41,
+        "max_drawdown_pct": 57.01,
+        "avg_duration_bars": 4.9,
+        "sample_size_warning": "N = 21 (Ukuran sampel kecil, tidak cukup untuk kesimpulan definitif)"
+      },
+      "out_of_sample": {
+        "trade_count": 16,
+        "win_rate_pct": 31.3,
+        "wins": 5,
+        "losses": 10,
+        "time_exits": 1,
+        "profit_factor": 0.63,
+        "avg_r": -0.27,
+        "expectancy_pct": -2.16,
+        "max_drawdown_pct": 59.81,
+        "avg_duration_bars": 3.2,
+        "sample_size_warning": "N = 16 (Ukuran sampel kecil, tidak cukup untuk kesimpulan definitif)"
+      },
+      "full_sample": {
+        "trade_count": 37,
+        "win_rate_pct": 32.4,
+        "wins": 12,
+        "losses": 23,
+        "time_exits": 2,
+        "profit_factor": 0.68,
+        "avg_r": -0.22,
+        "expectancy_pct": -1.74,
+        "max_drawdown_pct": 91.55,
+        "avg_duration_bars": 4.2,
+        "sample_size_warning": null
+      }
+    },
+    "S3_Foreign_Flow_Turnaround": {
+      "full_sample": {
+        "trade_count": 1,
+        "win_rate_pct": 0,
+        "wins": 0,
+        "losses": 0,
+        "time_exits": 1,
+        "profit_factor": 0,
+        "avg_r": -0.22,
+        "expectancy_pct": -1.73,
+        "max_drawdown_pct": 1.73,
+        "avg_duration_bars": 10,
+        "sample_size_warning": "N = 1 (Ukuran sampel kecil, tidak cukup untuk kesimpulan definitif)"
+      }
+    },
+    "BASELINE_RANDOM": {
+      "in_sample": {
+        "trade_count": 19,
+        "win_rate_pct": 26.3,
+        "wins": 5,
+        "losses": 11,
+        "time_exits": 3,
+        "profit_factor": 0.41,
+        "avg_r": -0.4,
+        "expectancy_pct": -2.03,
+        "max_drawdown_pct": 38.57,
+        "avg_duration_bars": 4.7,
+        "sample_size_warning": "N = 19 (Ukuran sampel kecil, tidak cukup untuk kesimpulan definitif)"
+      },
+      "out_of_sample": {
+        "trade_count": 14,
+        "win_rate_pct": 35.7,
+        "wins": 5,
+        "losses": 8,
+        "time_exits": 1,
+        "profit_factor": 0.84,
+        "avg_r": -0.17,
+        "expectancy_pct": -0.71,
+        "max_drawdown_pct": 56.09,
+        "avg_duration_bars": 3.3,
+        "sample_size_warning": "N = 14 (Ukuran sampel kecil, tidak cukup untuk kesimpulan definitif)"
+      },
+      "full_sample": {
+        "trade_count": 33,
+        "win_rate_pct": 30.3,
+        "wins": 10,
+        "losses": 19,
+        "time_exits": 4,
+        "profit_factor": 0.62,
+        "avg_r": -0.3,
+        "expectancy_pct": -1.47,
+        "max_drawdown_pct": 56.09,
+        "avg_duration_bars": 4.1,
+        "sample_size_warning": null
+      }
+    },
+    "BASELINE_BUY_AND_HOLD": {
+      "in_sample": {
+        "start_date": "2021-10-18",
+        "end_date": "2025-04-15",
+        "start_price": 949,
+        "end_price": 705,
+        "net_return_pct": -26.05,
+        "max_drawdown_pct": 65.75
+      },
+      "out_of_sample": {
+        "start_date": "2025-04-16",
+        "end_date": "2026-10-16",
+        "start_price": 730,
+        "end_price": 1210,
+        "net_return_pct": 65.19,
+        "max_drawdown_pct": 71.73
+      },
+      "full_sample": {
+        "start_date": "2021-10-18",
+        "end_date": "2026-10-16",
+        "start_price": 949,
+        "end_price": 1210,
+        "net_return_pct": 27.03,
+        "max_drawdown_pct": 71.73
+      }
+    }
+  }
+}

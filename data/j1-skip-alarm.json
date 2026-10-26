@@ -1,0 +1,12 @@
+{
+  "consecutive_skips": 0,
+  "last_success_at": "2026-10-23T07:07:52.925Z",
+  "updated_at": "2026-10-25T06:25:13.337Z",
+  "consecutive_zero_saved": 12,
+  "last_zero_saved_at": "2026-10-25T06:25:13.337Z",
+  "last_zero_saved_attempted": 0,
+  "last_alert_at": "2026-10-25T06:25:13.337Z",
+  "last_alert_reason": "zero_saved",
+  "last_alert_sent": true,
+  "last_alert_skip_reason": null
+}
