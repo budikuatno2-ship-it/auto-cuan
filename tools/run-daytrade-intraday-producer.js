@@ -196,30 +196,36 @@ async function maybeAlertStaleSnapshot(ctx) {
 
   if (!decision.shouldAlert) {
     if (decision.reason === 'fresh' && lastAlertAt) {
-      // Re-arm for the next incident.
+      // Re-arm for the next incident — KEEP last_alert_at so cooldown still works
       try {
-        fsInstance.writeFileSync(statePath, JSON.stringify({ last_alert_at: null, last_reason: null, rearmed_at: new Date().toISOString() }, null, 2));
+        fsInstance.writeFileSync(statePath, JSON.stringify({ last_alert_at: lastAlertAt, last_reason: null, rearmed_at: new Date().toISOString(), age_minutes: decision.ageMinutes }, null, 2));
       } catch (_) {}
     }
     return decision;
   }
 
+  // FIX-2: always provide fallback notifier so send() never crashes on undefined
+  var notifier = deps.notifier;
+  if (!notifier || typeof notifier.sendTelegramMessage !== 'function') {
+    try { notifier = require(path.join(ROOT, 'lib', 'telegram-notifier')); } catch (_) { notifier = null; }
+  }
+
   log('  ALARM    : snapshot stale (' + decision.reason + ', ' + decision.ageMinutes + ' min) — sending Telegram');
   const sent = await snapshotAlarm.send(
     { ageMinutes: decision.ageMinutes, reason: decision.reason, staleMinutes: deps.staleMinutes },
-    { notifier: deps.notifier }
+    { notifier: notifier }
   );
   log('  ALARM    : ' + (sent.sent ? 'sent' : 'not sent (' + (sent.reason || 'unknown') + ')'));
 
-  if (sent.sent) {
-    try {
-      fsInstance.writeFileSync(statePath, JSON.stringify({
-        last_alert_at: new Date().toISOString(),
-        last_reason: decision.reason,
-        age_minutes: decision.ageMinutes
-      }, null, 2));
-    } catch (_) {}
-  }
+  // FIX-2: ALWAYS write last_alert_at so cooldown works, even if send failed
+  try {
+    fsInstance.writeFileSync(statePath, JSON.stringify({
+      last_alert_at: new Date().toISOString(),
+      last_reason: decision.reason,
+      age_minutes: decision.ageMinutes,
+      send_success: !!sent.sent
+    }, null, 2));
+  } catch (_) {}
   return Object.assign({}, decision, { sent: sent.sent, sendReason: sent.reason || null });
 }
 
