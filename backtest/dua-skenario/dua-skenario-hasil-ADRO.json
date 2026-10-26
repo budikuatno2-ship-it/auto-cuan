@@ -1,0 +1,610 @@
+{
+ "target": "ADRO",
+ "bars": 2898,
+ "from": "2015-01-02",
+ "to": "2026-10-16",
+ "poolTickers": 79,
+ "params": {
+  "L": 20,
+  "H": 10,
+  "K": 30,
+  "minGap": 10,
+  "warmup": 60,
+  "minCandidates": 250,
+  "ctxWeight": 0.5,
+  "minQuality": 0.35,
+  "minAnalogs": 15
+ },
+ "stride": 5,
+ "runs": [
+  {
+   "label": "Hanya ADRO",
+   "cutOOS": "2023-02-14",
+   "all": {
+    "n": 364,
+    "effectiveN": 191,
+    "hitRate": 0.48626373626373626,
+    "brier": 0.2619578710476699,
+    "brierBase": 0.25697993398736696,
+    "brierSkill": -0.01937091734387164,
+    "band25_75": 0.49725274725274726,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 21,
+      "predicted": 0.314,
+      "actual": 0.524
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 65,
+      "predicted": 0.402,
+      "actual": 0.431
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 154,
+      "predicted": 0.502,
+      "actual": 0.552
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 109,
+      "predicted": 0.589,
+      "actual": 0.45
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 15,
+      "predicted": 0.687,
+      "actual": 0.4
+     }
+    ]
+   },
+   "oos": {
+    "n": 162,
+    "effectiveN": 82,
+    "hitRate": 0.4444444444444444,
+    "brier": 0.26222588019816584,
+    "brierBase": 0.2652380100650024,
+    "brierSkill": 0.01135632809980136,
+    "band25_75": 0.5246913580246914,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 5,
+      "predicted": 0.341,
+      "actual": 0.8
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 25,
+      "predicted": 0.411,
+      "actual": 0.44
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 81,
+      "predicted": 0.501,
+      "actual": 0.494
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 44,
+      "predicted": 0.58,
+      "actual": 0.455
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 7,
+      "predicted": 0.692,
+      "actual": 0.429
+     }
+    ]
+   },
+   "byYear": {
+    "2016": {
+     "n": 0
+    },
+    "2017": {
+     "n": 4,
+     "hitRate": 1,
+     "brierSkill": -0.595
+    },
+    "2018": {
+     "n": 25,
+     "hitRate": 0.48,
+     "brierSkill": 0.022
+    },
+    "2019": {
+     "n": 38,
+     "hitRate": 0.447,
+     "brierSkill": 0.065
+    },
+    "2020": {
+     "n": 40,
+     "hitRate": 0.55,
+     "brierSkill": 0.124
+    },
+    "2021": {
+     "n": 45,
+     "hitRate": 0.489,
+     "brierSkill": 0.05
+    },
+    "2022": {
+     "n": 44,
+     "hitRate": 0.591,
+     "brierSkill": 0.196
+    },
+    "2023": {
+     "n": 47,
+     "hitRate": 0.426,
+     "brierSkill": 0.109
+    },
+    "2024": {
+     "n": 45,
+     "hitRate": 0.4,
+     "brierSkill": 0.059
+    },
+    "2025": {
+     "n": 45,
+     "hitRate": 0.422,
+     "brierSkill": -0.072
+    },
+    "2026": {
+     "n": 31,
+     "hitRate": 0.548,
+     "brierSkill": 0.154
+    }
+   },
+   "gate": {
+    "brierSkillPositive": true,
+    "enoughIndependent": true,
+    "calibrationMonotone": false,
+    "pass": false
+   }
+  },
+  {
+   "label": "Kolam 79 saham",
+   "cutOOS": "2023-02-14",
+   "all": {
+    "n": 364,
+    "effectiveN": 213,
+    "hitRate": 0.489010989010989,
+    "brier": null,
+    "brierBase": 0.2559515356841713,
+    "brierSkill": null,
+    "band25_75": 0.4697802197802198,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 27,
+      "predicted": 0.302,
+      "actual": 0.667
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 84,
+      "predicted": 0.408,
+      "actual": 0.571
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 144,
+      "predicted": 0.503,
+      "actual": 0.528
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 80,
+      "predicted": 0.592,
+      "actual": 0.5
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 26,
+      "predicted": 0.681,
+      "actual": 0.462
+     }
+    ]
+   },
+   "oos": {
+    "n": 131,
+    "effectiveN": 73,
+    "hitRate": 0.5267175572519084,
+    "brier": null,
+    "brierBase": 0.269466300017935,
+    "brierSkill": null,
+    "band25_75": 0.48091603053435117,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 13,
+      "predicted": 0.319,
+      "actual": 0.615
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 26,
+      "predicted": 0.406,
+      "actual": 0.5
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 59,
+      "predicted": 0.502,
+      "actual": 0.407
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 26,
+      "predicted": 0.587,
+      "actual": 0.5
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 5,
+      "predicted": 0.678,
+      "actual": 0.6
+     }
+    ]
+   },
+   "byYear": {
+    "2015": {
+     "n": 6,
+     "hitRate": 0.833,
+     "brierSkill": -0.838
+    },
+    "2016": {
+     "n": 33,
+     "hitRate": 0.394,
+     "brierSkill": null
+    },
+    "2017": {
+     "n": 28,
+     "hitRate": 0.393,
+     "brierSkill": -0.028
+    },
+    "2018": {
+     "n": 24,
+     "hitRate": 0.417,
+     "brierSkill": 0.076
+    },
+    "2019": {
+     "n": 29,
+     "hitRate": 0.448,
+     "brierSkill": 0.071
+    },
+    "2020": {
+     "n": 33,
+     "hitRate": 0.485,
+     "brierSkill": 0.083
+    },
+    "2021": {
+     "n": 35,
+     "hitRate": 0.429,
+     "brierSkill": -0.012
+    },
+    "2022": {
+     "n": 40,
+     "hitRate": 0.55,
+     "brierSkill": 0.106
+    },
+    "2023": {
+     "n": 42,
+     "hitRate": 0.595,
+     "brierSkill": 0.233
+    },
+    "2024": {
+     "n": 32,
+     "hitRate": 0.594,
+     "brierSkill": 0.08
+    },
+    "2025": {
+     "n": 36,
+     "hitRate": 0.389,
+     "brierSkill": null
+    },
+    "2026": {
+     "n": 26,
+     "hitRate": 0.577,
+     "brierSkill": null
+    }
+   },
+   "gate": {
+    "brierSkillPositive": false,
+    "enoughIndependent": true,
+    "calibrationMonotone": false,
+    "pass": false
+   }
+  }
+ ],
+ "latestSelf": {
+  "status": "OK",
+  "reason": null,
+  "date": "2026-10-16",
+  "close": 2210,
+  "H": 10,
+  "nAnalogs": 30,
+  "nCandidates": 2808,
+  "quality": 0.4494505549802815,
+  "pUp": 0.3883549383101084,
+  "pDown": 0.6116450616898916,
+  "scenarioA": {
+   "n": 12,
+   "median": [
+    2250,
+    2300,
+    2270,
+    2290,
+    2360,
+    2370,
+    2400,
+    2290,
+    2330,
+    2330
+   ],
+   "p25": [
+    2190,
+    2230,
+    2240,
+    2260,
+    2240,
+    2250,
+    2280,
+    2230,
+    2290,
+    2290
+   ],
+   "p75": [
+    2300,
+    2330,
+    2340,
+    2370,
+    2430,
+    2390,
+    2460,
+    2420,
+    2450,
+    2450
+   ],
+   "endPct": 5.461143946078195
+  },
+  "scenarioB": {
+   "n": 18,
+   "median": [
+    2210,
+    2200,
+    2150,
+    2070,
+    2180,
+    2120,
+    2030,
+    2040,
+    2090,
+    2110
+   ],
+   "p25": [
+    2170,
+    2150,
+    2060,
+    2000,
+    2050,
+    1990,
+    2000,
+    1935,
+    1915,
+    1955
+   ],
+   "p75": [
+    2240,
+    2260,
+    2240,
+    2280,
+    2250,
+    2230,
+    2160,
+    2250,
+    2220,
+    2150
+   ],
+   "endPct": -4.506767239342646
+  },
+  "confirmA": 2270,
+  "confirmB": 2150,
+  "analogs": [
+   {
+    "ticker": "ADRO",
+    "date": "2026-05-20",
+    "distance": 0.857,
+    "fwdPct": -2.9
+   },
+   {
+    "ticker": "ADRO",
+    "date": "2025-02-27",
+    "distance": 0.862,
+    "fwdPct": -11.63
+   },
+   {
+    "ticker": "ADRO",
+    "date": "2021-01-25",
+    "distance": 0.905,
+    "fwdPct": -5.24
+   },
+   {
+    "ticker": "ADRO",
+    "date": "2015-12-02",
+    "distance": 0.932,
+    "fwdPct": -8.37
+   },
+   {
+    "ticker": "ADRO",
+    "date": "2015-05-04",
+    "distance": 0.94,
+    "fwdPct": 7.77
+   },
+   {
+    "ticker": "ADRO",
+    "date": "2018-06-28",
+    "distance": 0.943,
+    "fwdPct": 13.79
+   },
+   {
+    "ticker": "ADRO",
+    "date": "2015-06-15",
+    "distance": 0.949,
+    "fwdPct": -0.73
+   },
+   {
+    "ticker": "ADRO",
+    "date": "2026-09-30",
+    "distance": 0.951,
+    "fwdPct": 4.75
+   }
+  ]
+ },
+ "latestPool": {
+  "status": "OK",
+  "reason": null,
+  "date": "2026-10-16",
+  "close": 2210,
+  "H": 10,
+  "nAnalogs": 30,
+  "nCandidates": 173939,
+  "quality": 0.7048463588098159,
+  "pUp": 0.43551395040195606,
+  "pDown": 0.5644860495980439,
+  "scenarioA": {
+   "n": 13,
+   "median": [
+    2270,
+    2280,
+    2250,
+    2330,
+    2340,
+    2370,
+    2380,
+    2340,
+    2360,
+    2370
+   ],
+   "p25": [
+    2200,
+    2150,
+    2210,
+    2250,
+    2210,
+    2210,
+    2260,
+    2250,
+    2310,
+    2290
+   ],
+   "p75": [
+    2340,
+    2320,
+    2360,
+    2460,
+    2420,
+    2450,
+    2470,
+    2420,
+    2430,
+    2430
+   ],
+   "endPct": 7.323997614051669
+  },
+  "scenarioB": {
+   "n": 17,
+   "median": [
+    2180,
+    2180,
+    2160,
+    2220,
+    2190,
+    2180,
+    2070,
+    2120,
+    2120,
+    2090
+   ],
+   "p25": [
+    2150,
+    2120,
+    2120,
+    2140,
+    2100,
+    2070,
+    2010,
+    1970,
+    1985,
+    2000
+   ],
+   "p75": [
+    2250,
+    2260,
+    2260,
+    2260,
+    2230,
+    2210,
+    2180,
+    2180,
+    2170,
+    2170
+   ],
+   "endPct": -5.418578838134813
+  },
+  "confirmA": 2250,
+  "confirmB": 2160,
+  "analogs": [
+   {
+    "ticker": "ENRG",
+    "date": "2023-11-08",
+    "distance": 0.7,
+    "fwdPct": -0.9
+   },
+   {
+    "ticker": "AKRA",
+    "date": "2023-01-05",
+    "distance": 0.729,
+    "fwdPct": 7.22
+   },
+   {
+    "ticker": "IATA",
+    "date": "2022-12-09",
+    "distance": 0.748,
+    "fwdPct": -1.87
+   },
+   {
+    "ticker": "IATA",
+    "date": "2023-09-18",
+    "distance": 0.752,
+    "fwdPct": 1.89
+   },
+   {
+    "ticker": "ADMR",
+    "date": "2026-05-19",
+    "distance": 0.764,
+    "fwdPct": -6.28
+   },
+   {
+    "ticker": "INET",
+    "date": "2024-12-23",
+    "distance": 0.764,
+    "fwdPct": 7.32
+   },
+   {
+    "ticker": "ADRO",
+    "date": "2025-02-27",
+    "distance": 0.772,
+    "fwdPct": -11.63
+   },
+   {
+    "ticker": "INDF",
+    "date": "2020-03-17",
+    "distance": 0.778,
+    "fwdPct": 2.77
+   }
+  ]
+ }
+}

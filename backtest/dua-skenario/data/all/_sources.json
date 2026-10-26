@@ -1,0 +1,6701 @@
+{
+  "AADI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 440,
+    "from": "2024-12-05",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AALI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ABBA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ABDA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ABMM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ACES": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ACRO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ACST": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ADCP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ADES": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ADHI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ADMF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ADMG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ADMR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ADRO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AEGS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AGAR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AGII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AGRO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AGRS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AHAP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AIMS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AISA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AKKU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AKPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AKRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AKSI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ALDO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ALII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ALKA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ALMI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ALTO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AMAG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AMAN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AMAR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AMFG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AMIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AMMN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AMMS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AMOR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AMRT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ANDI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ANJT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ANTM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "APEX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "APIC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "APII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "APLI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "APLN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ARCI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AREA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ARGO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ARII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ARKA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ARKO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ARMY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ARNA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ARTA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ARTI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ARTO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASBI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASDM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASGR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASHA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASJT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASLC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASLI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASMI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASPR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 310,
+    "from": "2025-07-08",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASRI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASRM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ASSA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ATAP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ATIC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ATLA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AUTO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AVIA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AWAN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AXIO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AYAM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "AYLS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BABP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BABY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BACA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BAIK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BAJA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BALI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BANK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BAPA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BAPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BATA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BATR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BAUT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BAYU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBCA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBHI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBKP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBLD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBMD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBNI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBRI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBRM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBSI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBSS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBTN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BBYB": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BCAP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BCIC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BCIP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BDKR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BDMN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BEBS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BEEF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BEER": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BEKS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BELI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BELL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BESS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BEST": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BFIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BGTG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BHAT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BHIT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BIKA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BIKE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BIMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BINA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BINO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BIPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BIPP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BIRD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BISI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BJBR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BJTM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BKDP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BKSL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BKSW": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BLES": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BLOG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 308,
+    "from": "2025-07-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BLTA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BLTZ": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BLUE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BMAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BMBL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BMHS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BMRI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BMSR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BMTR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BNBA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BNBR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BNGA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BNII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BNLI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BOAT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 456,
+    "from": "2024-11-12",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BOBA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BOGA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BOLA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BOLT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BOSS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BPFI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BPII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BPTR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BRAM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BREN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BRIS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BRMS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BRNA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BRPT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BRRC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 419,
+    "from": "2025-01-09",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BSBK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BSDE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BSIM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BSML": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BSSR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BSWD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BTEK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BTEL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BTON": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BTPN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BTPS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BUAH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BUDI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BUKA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BUKK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BULL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BUMI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BUVA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BVIC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BWPT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "BYAN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CAKK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CAMP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CANI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CARE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CARS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CASA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CASH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CASS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CBDK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 417,
+    "from": "2025-01-13",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CBMF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CBPE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CBRE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CBUT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CCSI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CDIA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 309,
+    "from": "2025-07-09",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CEKA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CENT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CFIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CGAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CHEK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 308,
+    "from": "2025-07-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CHEM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CHIP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CINT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CITA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CITY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CLAY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CLEO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CLPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CMNP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CMNT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CMPP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CMRY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CNKO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CNMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CNTX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-06-25",
+    "to": "2026-07-29",
+    "adjustmentsCount": 0
+  },
+  "COAL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "COCO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "COIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 309,
+    "from": "2025-07-09",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "COWL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CPIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CPRI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CPRO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CRAB": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CRSN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CSAP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CSIS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CSMI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CSRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CTBN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CTRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CTTH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CUAN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "CYBR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DAAZ": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 457,
+    "from": "2024-11-11",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DADA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DART": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DATA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DAYA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DCII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DEAL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DEFI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DEPO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DEWA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DEWI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DFAM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DGIK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DGNS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DGWG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 417,
+    "from": "2025-01-13",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DIGI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DILD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DIVA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DKFT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DKHH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 346,
+    "from": "2025-05-08",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DLTA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DMAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DMMX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DMND": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DNAR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DNET": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DOID": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DOOH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DOSS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DPNS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DPUM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DRMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DSFI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DSNG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DSSA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DUCK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DUTI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DVLA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DWGL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "DYAN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "EAST": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ECII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "EDGE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "EKAD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ELIT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ELPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ELSA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ELTY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "EMAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 257,
+    "from": "2025-09-23",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "EMDE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "EMTK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ENAK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ENRG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ENVY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ENZO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "EPAC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "EPMT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ERAA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ERAL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ERTX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ESIP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ESSA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ESTA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ESTI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ETWA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "EURO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "EXCL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FAPA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FAST": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FASW": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FILM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FIMP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FIRE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FISH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FITT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FLMC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FMII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FOLK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FOOD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FORE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 362,
+    "from": "2025-04-14",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FORU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FPNI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FUJI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FUTR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "FWCT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GAMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GDST": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GDYR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GEMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GEMS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GGRM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GGRP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GHON": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GIAA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GJTL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GLOB": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GLVA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GMFI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GMTD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GOLD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GOLF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GOLL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GOOD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GOTO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GPRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GPSO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GRIA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GRPH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GRPM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GSMF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GTBO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GTRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GTSI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GULA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GUNA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GWSA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "GZCO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HADE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HAIS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HAJJ": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HALO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HATM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HBAT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HDFA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HDIT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HEAL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HELI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HERO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HEXA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HGII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 419,
+    "from": "2025-01-09",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HILL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HITS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HKMU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HMSP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HOKI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HOME": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HOMI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HOPE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HOTL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HRME": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HRTA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HRUM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HUMI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "HYGN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IATA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IBFN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IBOS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IBST": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ICBP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ICON": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IDEA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IDPR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IFII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IFSH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IGAR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IIKP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IKAI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IKAN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IKBI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IKPM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IMAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IMJS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IMPC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INAF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INAI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INCF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INCI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INCO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INDF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INDO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INDR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INDS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INDX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INDY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INET": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INKP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INOV": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INPC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INPP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INPS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INRU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INTA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INTD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "INTP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IOTF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IPAC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IPCC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IPCM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IPOL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IPPE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IPTV": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IRRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "IRSX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ISAP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ISAT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ISEA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ISSP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ITIC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ITMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ITMG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JARR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JAST": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JATI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JAWA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JAYA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JECC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JGLE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JIHD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JKON": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JMAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JPFA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JRPT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JSKY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JSMR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JSPT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "JTPE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KAEF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KAQI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 380,
+    "from": "2025-03-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KARW": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KAYU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KBAG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KBLI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KBLM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KBLV": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KBRI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KDSI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KDTN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KEEN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KEJU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KETR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KIAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KICI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KIJA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KING": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KINO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KIOS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KJEN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KKES": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KKGI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KLAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KLBF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KLIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KMDS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KMTR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KOBX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KOCI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KOIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KOKA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KONI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KOPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KOTA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KPIG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KRAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KREN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KRYA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KSIX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 420,
+    "from": "2025-01-08",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "KUAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LABA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LABS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LAJU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LAND": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LAPD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LCGP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LCKM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LEAD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LFLO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LIFE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LINK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LION": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LIVE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LMAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LMAX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LMPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LMSH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LOPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LPCK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LPGI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LPIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LPKR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LPLI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LPPF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LPPS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LRNA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LSIP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LTLS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LUCK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "LUCY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MABA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MAGP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MAHA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MAIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MANG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MAPA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MAPB": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MAPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MARI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MARK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MASB": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MAXI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MAYA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MBAP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MBMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MBSS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MBTO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MCAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MCOL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MCOR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MDIA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MDIY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 430,
+    "from": "2024-12-19",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MDKA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MDKI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MDLA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 361,
+    "from": "2025-04-15",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MDLN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MDRN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MEDC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MEDS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MEGA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MEJA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MENN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MERI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 308,
+    "from": "2025-07-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MERK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "META": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MFMI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MGLV": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MGNA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MGRO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MHKI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MICE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MIDI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MIKA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MINA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MINE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 380,
+    "from": "2025-03-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MIRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MITI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MKAP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MKNT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MKPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MKTR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MLBI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MLIA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MLPL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MLPT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MMIX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MMLP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MNCN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MOLI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MORA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MPIX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MPMX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MPOW": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MPPA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MPRO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MPXL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MRAT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MREI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MSIE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MSIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MSJA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MSKY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MSTI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MTDL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MTEL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MTFN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MTLA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MTMH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MTPS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MTRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MTSM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MTWI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MUTU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MYOH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MYOR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "MYTX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NAIK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 455,
+    "from": "2024-11-13",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NANO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NASA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NASI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NATO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NAYZ": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NCKL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NELY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NEST": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NETV": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NFCX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NICE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NICK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NICL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NIKL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NINE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NIRO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NISP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NOBU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NPGF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NRCA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NSSS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NTBK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NUSA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "NZIA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "OASA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "OBAT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 417,
+    "from": "2025-01-13",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "OBMD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "OCAP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "OILS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "OKAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "OLIV": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "OMED": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "OMRE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "OPMS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PACK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PADA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PADI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PALM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PAMG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PANI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PANR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PANS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PART": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PBID": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PBRX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PBSA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PCAR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PDES": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PDPP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PEGE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PEHA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PEVE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PGAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PGEO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PGJO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PGLI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PGUN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PICO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PIPA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PJAA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PJHB": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 225,
+    "from": "2025-11-06",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PKPK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PLAN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PLAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PLIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PMJS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PMMP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PMUI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 308,
+    "from": "2025-07-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PNBN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PNBS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PNGO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PNIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PNLF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PNSE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "POLA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "POLI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "POLL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "POLU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "POLY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "POOL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PORT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "POSA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "POWR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PPGL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PPRE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PPRI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PPRO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PRAY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PRDA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PRIM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PSAB": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PSAT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 310,
+    "from": "2025-07-08",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PSDN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PSGO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PSKT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PSSI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTBA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTDU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTIS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTMP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTMR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 481,
+    "from": "2024-10-08",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTPP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTPS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTPW": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTRO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTSN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PTSP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PUDP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PURA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PURE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PURI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PWON": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PYFA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "PZZA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RAAM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RAFI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RAJA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RALS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RANC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RATU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 420,
+    "from": "2025-01-08",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RBMS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RCCC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RDTX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "REAL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RELF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RELI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RGAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RICY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RIGS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RIMO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RISE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RLCO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 203,
+    "from": "2025-12-08",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RMKE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RMKO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ROCK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RODA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RONY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ROTI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RSCH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RSGK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RUIS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "RUNS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SAFE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SAGE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SAME": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SAMF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SAPX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SATU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SBAT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SBMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SCCO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SCMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SCNP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SCPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SDMU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SDPC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SDRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SEMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SFAN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SGER": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SGRO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SHID": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SHIP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SICO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SIDO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SILO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SIMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SIMP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SINI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SIPD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SKBM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SKLT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SKRN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SKYB": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SLIS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMAR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMBR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMCB": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMDM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMDR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMGA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMGR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMIL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMKL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMKM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMLE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMMT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMRU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SMSM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SNLK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SOCI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SOFA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SOHO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SOLA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SONA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SOSS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SOTS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SOUL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SPMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SPRE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SPTO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SQMI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SRAJ": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SRIL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SRSN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SRTG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SSIA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SSMS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SSTM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "STAA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "STAR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "STRK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "STTP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SUGI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SULI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SUNI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SUPA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 196,
+    "from": "2025-12-17",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SUPR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SURE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SURI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SWAT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "SWID": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TALF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TAMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TAMU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TAPG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TARA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TAXI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TAYS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TBIG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TBLA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TBMS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TCID": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TCPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TDPM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TEBE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TECH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TELE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TFAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TFCO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TGKA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TGRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TGUK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TIFA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TINS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TIRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TIRT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TKIM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TLDN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TLKM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TMAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TMPO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TNCA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TOBA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TOOL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TOPS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TOSK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TOTL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TOTO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TOWR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TOYS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TPIA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TPMA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRAM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRGU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRIL": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRIM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRIN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRIO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRIS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRJA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRON": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRST": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRUE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRUK": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TRUS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TSPC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TUGU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "TYRE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UANG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UCID": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UDNG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UFOE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ULTJ": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UNIC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UNIQ": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UNIT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UNSP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UNTD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UNTR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UNVR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "URBN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "UVCR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VAST": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VERN": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 481,
+    "from": "2024-10-08",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VICI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VICO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VINS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VISI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VIVA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VKTR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VOKS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VRNA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "VTNY": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WAPO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WBSA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 127,
+    "from": "2026-04-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WEGE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WEHA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WGSH": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WICO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WIDI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WIFI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WIIM": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WIKA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WINE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WINR": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WINS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WIRG": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WMPP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WMUU": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WOMF": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WOOD": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WOWS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WSBP": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WSKT": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "WTON": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "YELO": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "YOII": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 420,
+    "from": "2025-01-08",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "YPAS": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "YULE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "YUPI": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 369,
+    "from": "2025-03-25",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ZATA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ZBRA": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ZINC": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ZONE": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  },
+  "ZYRX": {
+    "source": "arjum (vps daily-candles 500d)",
+    "bars": 500,
+    "from": "2024-09-10",
+    "to": "2026-10-16",
+    "adjustmentsCount": 0
+  }
+}

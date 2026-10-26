@@ -1017,11 +1017,35 @@ async function fetchYahooQuote(ticker) {
 }
 
 // ===== SUPABASE BOARD FETCH =====
+var BOARD_LOCAL_CACHE = null;
+var BOARD_LOCAL_CACHE_TS = 0;
+var BOARD_LOCAL_CACHE_TTL = 30 * 60 * 1000;
+
+function loadBoardLocalCache() {
+  if (BOARD_LOCAL_CACHE && (Date.now() - BOARD_LOCAL_CACHE_TS < BOARD_LOCAL_CACHE_TTL)) return BOARD_LOCAL_CACHE;
+  try {
+    var fs = require('fs');
+    var path = require('path');
+    var filePath = path.join(__dirname, '..', 'data', 'arjum-data', 'stock-boards.json');
+    if (fs.existsSync(filePath)) {
+      BOARD_LOCAL_CACHE = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      BOARD_LOCAL_CACHE_TS = Date.now();
+      return BOARD_LOCAL_CACHE;
+    }
+  } catch (_) {}
+  return null;
+}
+
 async function fetchBoardData(ticker) {
-  // Check board cache
+  // 1. Check memory cache
   var cached = boardCache[ticker];
-  if (cached && (Date.now() - cached.timestamp < BOARD_CACHE_TTL)) {
-    return cached.data;
+  if (cached && (Date.now() - cached.timestamp < BOARD_CACHE_TTL)) return cached.data;
+
+  // 2. Check local disk cache (FIX-7: hybrid local-first)
+  var local = loadBoardLocalCache();
+  if (local && local[ticker]) {
+    setBoundedCache(boardCache, ticker, local[ticker], BOARD_CACHE_TTL);
+    return local[ticker];
   }
 
   var SUPABASE_URL = process.env.SUPABASE_URL;

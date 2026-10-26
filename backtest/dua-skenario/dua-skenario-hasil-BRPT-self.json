@@ -1,0 +1,314 @@
+{
+ "target": "BRPT",
+ "bars": 2899,
+ "from": "2015-01-02",
+ "to": "2026-10-16",
+ "poolTickers": 1,
+ "params": {
+  "L": 20,
+  "H": 10,
+  "K": 30,
+  "minGap": 10,
+  "warmup": 60,
+  "minCandidates": 250,
+  "ctxWeight": 0.5,
+  "minQuality": 0.35,
+  "minAnalogs": 15
+ },
+ "stride": 1,
+ "runs": [
+  {
+   "label": "Hanya BRPT",
+   "cutOOS": "2023-02-14",
+   "all": {
+    "n": 1895,
+    "effectiveN": 216,
+    "hitRate": 0.5382585751978892,
+    "brier": 0.25398979444603453,
+    "brierBase": 0.25391119793881123,
+    "brierSkill": -0.0003095432886037752,
+    "band25_75": 0.47493403693931396,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 41,
+      "predicted": 0.318,
+      "actual": 0.439
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 229,
+      "predicted": 0.411,
+      "actual": 0.384
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 534,
+      "predicted": 0.503,
+      "actual": 0.461
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 634,
+      "predicted": 0.598,
+      "actual": 0.498
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 457,
+      "predicted": 0.702,
+      "actual": 0.584
+     }
+    ]
+   },
+   "oos": {
+    "n": 798,
+    "effectiveN": 84,
+    "hitRate": 0.5288220551378446,
+    "brier": 0.2568306819674669,
+    "brierBase": 0.26223711329267085,
+    "brierSkill": 0.02061657580546228,
+    "band25_75": 0.47368421052631576,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 24,
+      "predicted": 0.311,
+      "actual": 0.625
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 146,
+      "predicted": 0.409,
+      "actual": 0.377
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 281,
+      "predicted": 0.5,
+      "actual": 0.452
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 266,
+      "predicted": 0.594,
+      "actual": 0.477
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 81,
+      "predicted": 0.692,
+      "actual": 0.519
+     }
+    ]
+   },
+   "byYear": {
+    "2016": {
+     "n": 8,
+     "hitRate": 0.375,
+     "brierSkill": -7.725
+    },
+    "2017": {
+     "n": 102,
+     "hitRate": 0.735,
+     "brierSkill": 0.135
+    },
+    "2018": {
+     "n": 127,
+     "hitRate": 0.614,
+     "brierSkill": 0.133
+    },
+    "2019": {
+     "n": 180,
+     "hitRate": 0.622,
+     "brierSkill": 0.104
+    },
+    "2020": {
+     "n": 214,
+     "hitRate": 0.449,
+     "brierSkill": -0.009
+    },
+    "2021": {
+     "n": 217,
+     "hitRate": 0.488,
+     "brierSkill": -0.018
+    },
+    "2022": {
+     "n": 226,
+     "hitRate": 0.5,
+     "brierSkill": 0.124
+    },
+    "2023": {
+     "n": 218,
+     "hitRate": 0.482,
+     "brierSkill": 0.048
+    },
+    "2024": {
+     "n": 214,
+     "hitRate": 0.547,
+     "brierSkill": 0.011
+    },
+    "2025": {
+     "n": 235,
+     "hitRate": 0.643,
+     "brierSkill": 0.192
+    },
+    "2026": {
+     "n": 154,
+     "hitRate": 0.416,
+     "brierSkill": -0.006
+    }
+   },
+   "gate": {
+    "brierSkillPositive": true,
+    "enoughIndependent": true,
+    "calibrationMonotone": false,
+    "pass": false
+   }
+  }
+ ],
+ "latestSelf": {
+  "status": "OK",
+  "reason": null,
+  "date": "2026-10-16",
+  "close": 1210,
+  "H": 10,
+  "nAnalogs": 30,
+  "nCandidates": 2809,
+  "quality": 0.5363874954703051,
+  "pUp": 0.6018139689778064,
+  "pDown": 0.39818603102219363,
+  "scenarioA": {
+   "n": 19,
+   "median": [
+    1220,
+    1275,
+    1255,
+    1240,
+    1265,
+    1285,
+    1290,
+    1305,
+    1335,
+    1320
+   ],
+   "p25": [
+    1210,
+    1200,
+    1220,
+    1210,
+    1220,
+    1235,
+    1265,
+    1260,
+    1255,
+    1275
+   ],
+   "p75": [
+    1240,
+    1295,
+    1265,
+    1255,
+    1295,
+    1310,
+    1360,
+    1375,
+    1395,
+    1425
+   ],
+   "endPct": 9.280479536317365
+  },
+  "scenarioB": {
+   "n": 11,
+   "median": [
+    1220,
+    1185,
+    1200,
+    1170,
+    1150,
+    1180,
+    1105,
+    1100,
+    1160,
+    1200
+   ],
+   "p25": [
+    1195,
+    1150,
+    1105,
+    1080,
+    1095,
+    1020,
+    1050,
+    1030,
+    1005,
+    970
+   ],
+   "p75": [
+    1240,
+    1250,
+    1275,
+    1250,
+    1235,
+    1250,
+    1220,
+    1190,
+    1195,
+    1210
+   ],
+   "endPct": -0.7071298296209672
+  },
+  "confirmA": 1255,
+  "confirmB": 1200,
+  "analogs": [
+   {
+    "ticker": "BRPT",
+    "date": "2015-09-10",
+    "distance": 0.759,
+    "fwdPct": -14.75
+   },
+   {
+    "ticker": "BRPT",
+    "date": "2026-01-13",
+    "distance": 0.776,
+    "fwdPct": -19.66
+   },
+   {
+    "ticker": "BRPT",
+    "date": "2026-01-28",
+    "distance": 0.779,
+    "fwdPct": -0.71
+   },
+   {
+    "ticker": "BRPT",
+    "date": "2020-09-21",
+    "distance": 0.784,
+    "fwdPct": 24.22
+   },
+   {
+    "ticker": "BRPT",
+    "date": "2020-08-07",
+    "distance": 0.79,
+    "fwdPct": 1.09
+   },
+   {
+    "ticker": "BRPT",
+    "date": "2025-03-18",
+    "distance": 0.827,
+    "fwdPct": 0
+   },
+   {
+    "ticker": "BRPT",
+    "date": "2024-02-19",
+    "distance": 0.879,
+    "fwdPct": 1.83
+   },
+   {
+    "ticker": "BRPT",
+    "date": "2021-03-26",
+    "distance": 0.895,
+    "fwdPct": 2.2
+   }
+  ]
+ }
+}

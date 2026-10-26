@@ -161,6 +161,15 @@ async function fetchAction(baseUrl, secret, action, fetchFn) {
  */
 function buildScreenerSnapshot(payloads, options) {
   const opts = options || {};
+  const rootDir = opts.rootDir || ROOT;
+
+  // FIX-3: load previous snapshot so we can preserve rows when a source fails/times out
+  var previous = null;
+  try {
+    var prevPath = path.join(rootDir, 'data', 'screener-latest.json');
+    if (fs.existsSync(prevPath)) previous = JSON.parse(fs.readFileSync(prevPath, 'utf8'));
+  } catch (_) {}
+
   const snapshot = {
     updated_at: opts.updatedAt || new Date().toISOString(),
     generated_by: 'tools/build-screener-snapshot.js',
@@ -172,16 +181,81 @@ function buildScreenerSnapshot(payloads, options) {
 
   for (const src of SOURCES) {
     const payload = payloads[src.action];
-    snapshot.source_dates[src.mode] = extractSourceDate(payload);
+    var sourceDate = extractSourceDate(payload);
     const rows = usableRows(extractRows(payload));
     counts[src.action] = rows.length;
-    if (!rows.length) continue;
-    for (const key of src.keys) snapshot[key] = rows;
+
+    if (rows.length > 0) {
+      // Fresh data available — write it
+      snapshot.source_dates[src.mode] = sourceDate;
+      for (const key of src.keys) snapshot[key] = rows;
+    } else if (src.action === 'telegram-daily-picks') {
+      // FIX-TOP5: NEVER preserve stale top5 from previous snapshot — the fallback
+      // below selects fresh quality candidates from swing-konglo/non-konglo.
+      snapshot.source_dates[src.mode] = sourceDate;
+    } else if (previous && previous.source_dates && previous.source_dates[src.mode]) {
+      // FIX-3: preserve previous snapshot data when fetch fails/times out (0 rows)
+      // This prevents screener=0 from overwriting valid swing-konglo data
+      snapshot.source_dates[src.mode] = previous.source_dates[src.mode];
+      for (const key of src.keys) {
+        if (previous[key] && previous[key].length > 0) snapshot[key] = previous[key];
+      }
+    } else {
+      snapshot.source_dates[src.mode] = sourceDate;
+    }
   }
 
   // `swing` doubles as the Konglo bucket for the AI reader, which scans
   // `data.swing`. Keep it explicit rather than relying on the alias above.
   if (!snapshot.swing && snapshot.swing_konglo) snapshot.swing = snapshot.swing_konglo;
+
+  // FIX-TOP5: auto-select top 5 from swing-konglo when telegram-daily-picks returns 0 rows.
+  // Strict quality filter: NEVER include Avoid/D-grade, RR < 1.2, or non-actionable candidates.
+  // Fall back to swing-non-konglo if swing-konglo yields fewer than 5 quality picks.
+  if ((!snapshot.top5 || snapshot.top5.length === 0) && snapshot.swing && snapshot.swing.length > 0) {
+    function isQualityTop5Candidate(r) {
+      if (!r || !r.ticker || r.unified_score == null) return false;
+      var grade = String(r.grade || r.quality_grade || r.rating || '').toUpperCase();
+      var status = String(r.status || r.final_status || r.action || r.recommendation || r.signal_action || '').toUpperCase();
+      var avoidGrade = grade === 'AVOID' || grade === 'D' || grade === 'F' || grade === 'SELL';
+      var avoidStatus = status.indexOf('AVOID') >= 0 || status.indexOf('WAIT') >= 0 || status.indexOf('SELL') >= 0 || status.indexOf('REJECT') >= 0;
+      if (avoidGrade || avoidStatus) return false;
+      var rr = Number(r.risk_reward != null ? r.risk_reward : r.trade_plan_v2 ? r.trade_plan_v2.tp1_target_r : null);
+      if (rr != null && rr < 1.2) return false;
+      return true;
+    }
+    function scoreTop5Candidate(r) {
+      var s = r.unified_score || 0;
+      var grade = String(r.grade || r.quality_grade || '').toUpperCase();
+      if (grade === 'A') s += 10; else if (grade === 'B') s += 5;
+      var rr = Number(r.risk_reward != null ? r.risk_reward : r.trade_plan_v2 ? r.trade_plan_v2.tp1_target_r : null);
+      if (rr != null && rr >= 1.5) s += 3;
+      return s;
+    }
+    // Pool: swing-konglo first, then swing-non-konglo as supplement
+    var kongloPool = (snapshot.swing || []).filter(isQualityTop5Candidate);
+    var nonKongloPool = (snapshot.swing_non_konglo || []).filter(isQualityTop5Candidate);
+    // Sort each pool by quality score descending
+    kongloPool.sort(function(a, b) { return scoreTop5Candidate(b) - scoreTop5Candidate(a); });
+    nonKongloPool.sort(function(a, b) { return scoreTop5Candidate(b) - scoreTop5Candidate(a); });
+    // Prefer konglo, fill remaining from non-konglo
+    var top5Candidates = kongloPool.slice(0, 5);
+    if (top5Candidates.length < 5) {
+      top5Candidates = top5Candidates.concat(nonKongloPool.slice(0, 5 - top5Candidates.length));
+    }
+    // Only publish if at least 1 quality candidate
+    if (top5Candidates.length > 0) {
+      snapshot.top5 = top5Candidates.map(function(r, i) {
+        var locked = Object.assign({}, r);
+        locked.is_locked = true;
+        locked.lock_source = 'auto-top5-fallback';
+        locked.web_daily_locked_at = new Date().toISOString();
+        locked.rank = i + 1;
+        return locked;
+      });
+      snapshot.source_dates['top5'] = snapshot.source_dates['swing-konglo'] || snapshot.source_dates['swing'] || null;
+    }
+  }
 
   return { snapshot, counts };
 }

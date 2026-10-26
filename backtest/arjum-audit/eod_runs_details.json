@@ -1,0 +1,168 @@
+Total broker update runs in daily-market-update.log: 98
+[
+  {
+    "run": 1,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE",
+    "reqTotal": "962",
+    "breakdown": "- broker-summary: 962 | accumulation: 0 | insiders: 0",
+    "done": "0/962",
+    "noData": "0",
+    "err": "0",
+    "status": "Status: BELUM LENGKAP — 962 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya."
+  },
+  {
+    "run": 2,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE",
+    "reqTotal": "832",
+    "breakdown": "- broker-summary: 832 | accumulation: 0 | insiders: 0",
+    "done": "0/962",
+    "noData": "0",
+    "err": "0",
+    "status": "Status: BELUM LENGKAP — 832 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya."
+  },
+  {
+    "run": 3,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE",
+    "reqTotal": "2212",
+    "breakdown": "- broker-summary: 832 | accumulation: 690 | insiders: 690",
+    "done": "690/962",
+    "noData": "0",
+    "err": "0",
+    "status": "Status: BELUM LENGKAP — 142 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya."
+  },
+  {
+    "run": 4,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE",
+    "reqTotal": "424",
+    "breakdown": "- broker-summary: 142 | accumulation: 141 | insiders: 141",
+    "done": "831/962",
+    "noData": "0",
+    "err": "1",
+    "status": "Status: BELUM LENGKAP — 1 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya."
+  },
+  {
+    "run": 5,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE",
+    "reqTotal": "3",
+    "breakdown": "- broker-summary: 1 | accumulation: 1 | insiders: 1",
+    "done": "832/962",
+    "noData": "0",
+    "err": "0",
+    "status": "Status: SELESAI — 832 ticker punya broker summary, 130 NO_TRADE, 0 broker-data-unavailable untuk 2026-10-12."
+  },
+  {
+    "run": 6,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE",
+    "reqTotal": "0",
+    "breakdown": "",
+    "done": "",
+    "noData": "",
+    "err": "",
+    "status": ""
+  },
+  {
+    "run": 7,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE",
+    "reqTotal": "0",
+    "breakdown": "",
+    "done": "",
+    "noData": "",
+    "err": "",
+    "status": ""
+  },
+  {
+    "run": 8,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE",
+    "reqTotal": "0",
+    "breakdown": "",
+    "done": "",
+    "noData": "",
+    "err": "",
+    "status": ""
+  },
+  {
+    "run": 9,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE",
+    "reqTotal": "0",
+    "breakdown": "",
+    "done": "",
+    "noData": "",
+    "err": "",
+    "status": ""
+  },
+  {
+    "run": 10,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE",
+    "reqTotal": "0",
+    "breakdown": "",
+    "done": "",
+    "noData": "",
+    "err": "",
+    "status": ""
+  },
+  {
+    "run": 11,
+    "targetDate": "2026-10-12",
+    "mode": "LIVE (FINAL ATTEMPT for tonight)",
+    "reqTotal": "0",
+    "breakdown": "",
+    "done": "",
+    "noData": "",
+    "err": "",
+    "status": ""
+  },
+  {
+    "run": 12,
+    "targetDate": "2026-10-13",
+    "mode": "LIVE (FINAL ATTEMPT for tonight)",
+    "reqTotal": "2622",
+    "breakdown": "- broker-summary: 962 | accumulation: 830 | insiders: 830",
+    "done": "830/962",
+    "noData": "132",
+    "err": "0",
+    "status": "Status: SELESAI — 830 ticker punya broker summary, 0 NO_TRADE, 132 broker-data-unavailable untuk 2026-10-13."
+  },
+  {
+    "run": 13,
+    "targetDate": "2026-10-14",
+    "mode": "LIVE (FINAL ATTEMPT for tonight)",
+    "reqTotal": "2628",
+    "breakdown": "- broker-summary: 962 | accumulation: 833 | insiders: 833",
+    "done": "833/962",
+    "noData": "129",
+    "err": "0",
+    "status": "Status: SELESAI — 833 ticker punya broker summary, 0 NO_TRADE, 129 broker-data-unavailable untuk 2026-10-14."
+  },
+  {
+    "run": 14,
+    "targetDate": "2026-10-15",
+    "mode": "LIVE (FINAL ATTEMPT for tonight)",
+    "reqTotal": "2630",
+    "breakdown": "- broker-summary: 962 | accumulation: 834 | insiders: 834",
+    "done": "834/962",
+    "noData": "128",
+    "err": "0",
+    "status": "Status: SELESAI — 834 ticker punya broker summary, 0 NO_TRADE, 128 broker-data-unavailable untuk 2026-10-15."
+  },
+  {
+    "run": 15,
+    "targetDate": "2026-10-16",
+    "mode": "LIVE (FINAL ATTEMPT for tonight)",
+    "reqTotal": "2628",
+    "breakdown": "- broker-summary: 962 | accumulation: 833 | insiders: 833",
+    "done": "833/962",
+    "noData": "129",
+    "err": "0",
+    "status": "Status: SELESAI — 833 ticker punya broker summary, 0 NO_TRADE, 129 broker-data-unavailable untuk 2026-10-16."
+  }
+]

@@ -8563,13 +8563,14 @@ function isTop5PickRow(row) {
     return true;
   }
 
+  // FIX-5: daytrade/day_trade/daytrade_signal/swing_nk/swing_non_konglo still blocked without lock,
+  // but swing_konglo is a primary Daily Top 5 source and MUST NOT be rejected here
   if (
     source === 'daytrade' ||
     source === 'day_trade' ||
     source === 'daytrade_signal' ||
     source === 'swing_nk' ||
-    source === 'swing_non_konglo' ||
-    source === 'swing_konglo'
+    source === 'swing_non_konglo'
   ) {
     return false;
   }
@@ -14639,6 +14640,12 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 
     if (readErr || !candidates || candidates.length === 0) {
       _dtTelegramLastRunId = runId;
+      // FIX-1: empty heartbeat only when DAYTRADE_SEND_EMPTY_HEARTBEAT=true, default silent
+      var sendHeartbeat = String(process.env.DAYTRADE_SEND_EMPTY_HEARTBEAT || 'false').trim().toLowerCase() === 'true';
+      if (!sendHeartbeat) {
+        _dtTelegramLastRunReason = 'latest_table_empty_or_read_error_silent';
+        return { sent: false, skipped: true, reason: 'empty_heartbeat_disabled', published_count: publishedCount, raw_candidate_count: 0, strict_signal_count: 0, radar_count: 0, hard_reject_count: 0 };
+      }
       var emptyMsg = formatDayTradeEmptyHeartbeatTelegramMessage(options.scanned_count, options.raw_batch_passed_count, 'latest_table_empty_or_read_error');
       var emptySend = await telegramNotifier.sendTelegramMessage(emptyMsg);
       _dtTelegramLastRunId = runId;

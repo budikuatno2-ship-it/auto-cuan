@@ -1,0 +1,177 @@
+[
+  {
+    "ticker": "BRPT",
+    "range": [
+      "2026-06-25",
+      "2026-10-16"
+    ],
+    "days": 81,
+    "apiBrokers": 6,
+    "localBrokers": 6,
+    "topBuyersMatch": false,
+    "topSellersMatch": false,
+    "apiBuy": [
+      "ZP",
+      "OD",
+      "SQ"
+    ],
+    "locBuy": [
+      "ZP",
+      "XL",
+      "AK"
+    ],
+    "apiSell": [
+      "LG",
+      "YU",
+      "AZ"
+    ],
+    "locSell": [
+      "CD",
+      "BS",
+      "IT"
+    ],
+    "pointMatchPct": "72.5%",
+    "pointCount": 80,
+    "pointMatch": 58
+  },
+  {
+    "ticker": "BBCA",
+    "range": [
+      "2026-06-25",
+      "2026-10-16"
+    ],
+    "days": 81,
+    "apiBrokers": 6,
+    "localBrokers": 6,
+    "topBuyersMatch": false,
+    "topSellersMatch": false,
+    "apiBuy": [
+      "YU",
+      "DX",
+      "ZP"
+    ],
+    "locBuy": [
+      "YU",
+      "ZP",
+      "DX"
+    ],
+    "apiSell": [
+      "CC",
+      "BK",
+      "RX"
+    ],
+    "locSell": [
+      "CC",
+      "RX",
+      "HP"
+    ],
+    "pointMatchPct": "65.4%",
+    "pointCount": 399,
+    "pointMatch": 261
+  },
+  {
+    "ticker": "MEDC",
+    "range": [
+      "2026-06-25",
+      "2026-10-16"
+    ],
+    "days": 81,
+    "apiBrokers": 6,
+    "localBrokers": 6,
+    "topBuyersMatch": false,
+    "topSellersMatch": false,
+    "apiBuy": [
+      "AK",
+      "LG",
+      "AZ"
+    ],
+    "locBuy": [
+      "AK",
+      "LG",
+      "CC"
+    ],
+    "apiSell": [
+      "BK",
+      "NI",
+      "TP"
+    ],
+    "locSell": [
+      "TP",
+      "NI",
+      "DX"
+    ],
+    "pointMatchPct": "64.7%",
+    "pointCount": 320,
+    "pointMatch": 207
+  },
+  {
+    "ticker": "ADRO",
+    "range": [
+      "2026-06-25",
+      "2026-10-16"
+    ],
+    "days": 81,
+    "apiBrokers": 6,
+    "localBrokers": 6,
+    "topBuyersMatch": false,
+    "topSellersMatch": false,
+    "apiBuy": [
+      "AK",
+      "DX",
+      "CC"
+    ],
+    "locBuy": [
+      "AK",
+      "CC",
+      "XL"
+    ],
+    "apiSell": [
+      "ZP",
+      "BK",
+      "RX"
+    ],
+    "locSell": [
+      "BK",
+      "QA",
+      "ZR"
+    ],
+    "pointMatchPct": "69.2%",
+    "pointCount": 240,
+    "pointMatch": 166
+  },
+  {
+    "ticker": "CASH",
+    "range": [
+      "2026-06-25",
+      "2026-10-16"
+    ],
+    "days": 81,
+    "apiBrokers": 6,
+    "localBrokers": 6,
+    "topBuyersMatch": true,
+    "topSellersMatch": false,
+    "apiBuy": [
+      "PD",
+      "MG",
+      "XL"
+    ],
+    "locBuy": [
+      "PD",
+      "MG",
+      "XL"
+    ],
+    "apiSell": [
+      "DH",
+      "AZ",
+      "RB"
+    ],
+    "locSell": [
+      "DH",
+      "RB",
+      "NI"
+    ],
+    "pointMatchPct": "83.8%",
+    "pointCount": 297,
+    "pointMatch": 249
+  }
+]

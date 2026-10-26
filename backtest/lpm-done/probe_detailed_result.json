@@ -1,0 +1,147 @@
+[
+  {
+    "test": "Date Probe BRPT 2026-10-16",
+    "status": 200,
+    "elapsedMs": 1640,
+    "bytes": 30252,
+    "totalRecords": 7412,
+    "returnedRows": 100,
+    "dateReturned": "2026-10-16",
+    "headers": {
+      "x-quota-cost": "1",
+      "x-ratelimit-limit": "6328",
+      "x-ratelimit-remaining": "4437"
+    },
+    "firstRow": {
+      "time": "16:10:35",
+      "market_date": "2026-10-16",
+      "market_board": "RG",
+      "price": "1,210",
+      "price_num": 1210,
+      "lot": "15",
+      "qty_num": 15,
+      "value_raw": 1815000,
+      "buyer": "CC",
+      "seller": "MG",
+      "buyer_type": "D",
+      "seller_type": "D",
+      "buy_order_number": "202610160004851521",
+      "sell_order_number": "202610160004563176",
+      "action": "BUY"
+    },
+    "error": null
+  },
+  {
+    "test": "Date Probe BRPT 2026-10-01",
+    "status": 200,
+    "elapsedMs": 503,
+    "bytes": 30395,
+    "totalRecords": 8188,
+    "returnedRows": 100,
+    "dateReturned": "2026-10-01",
+    "headers": {
+      "x-quota-cost": "1",
+      "x-ratelimit-limit": "6328",
+      "x-ratelimit-remaining": "4436"
+    },
+    "firstRow": {
+      "time": "16:14:39",
+      "market_date": "2026-10-01",
+      "market_board": "RG",
+      "price": "1,405",
+      "price_num": 1405,
+      "lot": "100",
+      "qty_num": 100,
+      "value_raw": 14050000,
+      "buyer": "MG",
+      "seller": "AI",
+      "buyer_type": "D",
+      "seller_type": "D",
+      "buy_order_number": "202610010004145213",
+      "sell_order_number": "202610010004189296",
+      "action": "SELL"
+    },
+    "error": null
+  },
+  {
+    "test": "Date Probe BRPT 2026-09-01",
+    "status": 200,
+    "elapsedMs": 477,
+    "bytes": 113,
+    "totalRecords": 0,
+    "returnedRows": 0,
+    "dateReturned": "2026-09-01",
+    "headers": {
+      "x-quota-cost": "1",
+      "x-ratelimit-limit": "6328",
+      "x-ratelimit-remaining": "4435"
+    },
+    "firstRow": null,
+    "error": null
+  },
+  {
+    "test": "Date Probe BRPT 2026-01-02",
+    "status": 200,
+    "elapsedMs": 495,
+    "bytes": 114,
+    "totalRecords": 0,
+    "returnedRows": 0,
+    "dateReturned": "2026-01-02",
+    "headers": {
+      "x-quota-cost": "1",
+      "x-ratelimit-limit": "6328",
+      "x-ratelimit-remaining": "4434"
+    },
+    "firstRow": null,
+    "error": null
+  },
+  {
+    "test": "Paging per_page=200",
+    "status": 422,
+    "elapsedMs": 484,
+    "bytes": 147,
+    "returnedRows": null
+  },
+  {
+    "test": "Paging per_page=500",
+    "status": 422,
+    "returnedRows": null
+  },
+  {
+    "test": "Paging per_page=1000",
+    "status": 422,
+    "returnedRows": null
+  },
+  {
+    "test": "Paging page=2",
+    "status": 200,
+    "page": 2,
+    "returnedRows": 100,
+    "firstRowTime": "15:47:25"
+  },
+  {
+    "test": "Filter board=RG",
+    "status": 200,
+    "totalRecords": 7412,
+    "sampleBoard": "RG"
+  },
+  {
+    "test": "Filter market_board=RG",
+    "status": 200,
+    "totalRecords": 7412
+  },
+  {
+    "test": "BBCA 2026-10-16",
+    "status": 200,
+    "elapsedMs": 489,
+    "bytes": 30114,
+    "totalRecords": 185087,
+    "total_pages": 1851,
+    "returnedRows": 100,
+    "headers": {
+      "x-quota-cost": "1",
+      "x-ratelimit-limit": "6328",
+      "x-ratelimit-remaining": "4427"
+    }
+  }
+]
