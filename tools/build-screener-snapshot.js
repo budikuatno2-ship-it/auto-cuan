@@ -205,6 +205,27 @@ function buildScreenerSnapshot(payloads, options) {
   // `data.swing`. Keep it explicit rather than relying on the alias above.
   if (!snapshot.swing && snapshot.swing_konglo) snapshot.swing = snapshot.swing_konglo;
 
+  // FIX-TOP5: auto-select top 5 from swing-konglo when telegram-daily-picks returns 0 rows
+  // This prevents the dashboard from showing "0 Top 5" all day until the 22:15 cron runs.
+  if ((!snapshot.top5 || snapshot.top5.length === 0) && snapshot.swing && snapshot.swing.length > 0) {
+    var top5Candidates = snapshot.swing.filter(function(r) {
+      return r && r.ticker && r.unified_score != null;
+    }).sort(function(a, b) {
+      return (b.unified_score || 0) - (a.unified_score || 0);
+    }).slice(0, 5);
+    if (top5Candidates.length > 0) {
+      snapshot.top5 = top5Candidates.map(function(r, i) {
+        var locked = Object.assign({}, r);
+        locked.is_locked = true;
+        locked.lock_source = 'auto-top5-fallback';
+        locked.web_daily_locked_at = new Date().toISOString();
+        locked.rank = i + 1;
+        return locked;
+      });
+      snapshot.source_dates['top5'] = snapshot.source_dates['swing-konglo'] || snapshot.source_dates['swing'] || null;
+    }
+  }
+
   return { snapshot, counts };
 }
 
