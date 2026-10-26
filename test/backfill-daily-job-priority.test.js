@@ -17,27 +17,26 @@ const assert = require('node:assert/strict');
 
 const backfill = require('../tools/backfill-broksum');
 
-test('B6: reserve is the daily-job need + retry buffer (the floor that must stay)', () => {
+test('B6: reserve is the WEEKDAY floor of 5000 (hard minimum, never drops below)', () => {
   const dailyNeed = 4400;
   const buffer = Math.ceil(dailyNeed * backfill.DAILY_JOB_RETRY_RATIO); // 440
   const b = backfill.computeBackfillReserve({ remaining: 12980, dailyNeed, mode: 'weekday' });
   assert.equal(b.dailyNeed, dailyNeed);
   assert.equal(b.retryBuffer, buffer);
-  assert.equal(b.reserve, dailyNeed + buffer, 'reserve = need + buffer');
-  assert.equal(b.reserve, 4840);
-  assert.equal(b.spendable, 12980 - 4840, 'spendable = remaining - reserve');
-  assert.equal(b.spendable, 8140);
+  // WEEKDAY_RESERVE_BEFORE_EOD = 5000 is the hard floor, so reserve is 5000, not 4840
+  assert.equal(b.reserve, 5000, 'reserve = max(WEEKDAY_RESERVE_BEFORE_EOD, need+buffer) = 5000');
+  assert.equal(b.spendable, 12980 - 5000, 'spendable = remaining - 5000');
+  assert.equal(b.spendable, 7980);
 });
 
-test('B6: the backfill must never be able to dip into the daily-job reserve', () => {
-  // With only 5.000 left, the backfill may spend 5.000 - 4.840 = 160 and must
-  // then stop, leaving the full 4.840 for the daily jobs.
+test('B6: the backfill must never be able to dip into the weekday reserve of 5000', () => {
+  // With only 5.000 left, the backfill may spend 5.000 - 5.000 = 0
   const b = backfill.computeBackfillReserve({ remaining: 5000, dailyNeed: 4400, mode: 'weekday' });
-  assert.equal(b.reserve, 4840);
-  assert.equal(b.spendable, 160);
-  // The floor can never be negative (an unlimited backfill would be worse).
+  assert.equal(b.reserve, 5000);
+  assert.equal(b.spendable, 0);
+  // The floor can never be negative, reserve stays at 5000
   const c = backfill.computeBackfillReserve({ remaining: 100, dailyNeed: 4400, mode: 'weekday' });
-  assert.equal(c.reserve, 4840);
+  assert.equal(c.reserve, 5000);
   assert.equal(c.spendable, 0, 'no backfill spend when the reserve is not covered');
 });
 
@@ -96,7 +95,7 @@ test('B6: the reserve floor is the daily-job floor while the EOD work is pending
     const pending = backfill.resolveBackfillReserveFloor({
       baseDir: tmp, explicitModeArg: 'weekday', remaining: 5000, mode: 'weekday'
     });
-    assert.equal(pending, 4840, 'the daily-job floor must be protected');
+    assert.equal(pending, 5000, 'the daily-job floor must be protected (min 5000)');
     assert.ok(pending >= backfill.DAILY_JOB_BASE_NEED);
 
     // With today's .done sentinel present -> the daily need is already spent,
@@ -108,7 +107,7 @@ test('B6: the reserve floor is the daily-job floor while the EOD work is pending
     const done = backfill.resolveBackfillReserveFloor({
       baseDir: tmp, explicitModeArg: 'weekday', remaining: 5000, mode: 'weekday'
     });
-    assert.ok(done < 4840, 'after the EOD work the backfill may use the leftover');
+    assert.ok(done < 5000, 'after the EOD work the backfill may use the leftover');
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

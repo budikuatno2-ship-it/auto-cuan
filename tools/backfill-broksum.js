@@ -187,12 +187,14 @@ function computeBackfillReserve(options = {}) {
     ? options.retryBuffer
     : Math.ceil(dailyNeed * DAILY_JOB_RETRY_RATIO);
 
-  // The floor: quota that must remain available for the daily jobs.
-  const reserve = Math.max(0, Math.ceil(dailyNeed + retryBuffer));
+  // The floor: hard minimum of 5000 for weekday daily jobs (J1 + J2 + IHSG).
+  // Even if computePendingDailyNeed returns a smaller value (e.g. missing files
+  // already filled), the floor must never drop below 5000.
+  const reserve = Math.max(WEEKDAY_RESERVE_BEFORE_EOD, Math.ceil(dailyNeed + retryBuffer));
   if (!Number.isFinite(remaining)) {
     // Unknown remaining quota -> be conservative and keep the old fixed reserve.
     return {
-      reserve: Math.max(reserve, WEEKDAY_RESERVE),
+      reserve: Math.max(reserve, WEEKDAY_RESERVE_BEFORE_EOD),
       spendable: 0,
       dailyNeed, retryBuffer, remaining: null, mode
     };
