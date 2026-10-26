@@ -173,16 +173,19 @@
   const monthLabel = value => { const p = value.split('-').map(Number); return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(p[0], p[1] - 1, 1)); };
   function monthValue(value) {
     const select = $('mmSheetMonth');
-    if (!select.options.length) {
-      const now = Model.currentMonth().split('-').map(Number);
-      for (let offset = 12; offset >= -60; offset--) {
-        const d = new Date(now[0], now[1] - 1 + offset, 1), v = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-        select.appendChild(new Option(monthLabel(v), v));
+    if (!select) return;
+    if (select.tagName === 'SELECT' || (select.options && select.options.length !== undefined)) {
+      if (!select.options.length) {
+        const now = Model.currentMonth().split('-').map(Number);
+        for (let offset = 12; offset >= -60; offset--) {
+          const d = new Date(now[0], now[1] - 1 + offset, 1), v = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+          select.appendChild(new Option(monthLabel(v), v));
+        }
       }
-    }
-    if (value && ![...select.options].some(o => o.value === value)) {
-      const option = new Option(monthLabel(value), value), after = [...select.options].find(o => o.value < value);
-      select.insertBefore(option, after || null);
+      if (value && ![...select.options].some(o => o.value === value)) {
+        const option = new Option(monthLabel(value), value), after = [...select.options].find(o => o.value < value);
+        select.insertBefore(option, after || null);
+      }
     }
     select.value = value;
   }

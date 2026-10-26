@@ -3,6 +3,7 @@
   "test/admin-ai-eval-polling.test.js",
   "test/admin-approved-users.test.js",
   "test/admin-command-login.test.js",
+  "test/admin-data-health-inspector.test.js",
   "test/admin-foreign-upload.test.js",
   "test/admin-fundamentals-upload.test.js",
   "test/admin-logs-stored-xss.test.js",
