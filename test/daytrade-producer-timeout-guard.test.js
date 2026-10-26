@@ -174,12 +174,13 @@ test('alarm stays silent outside market hours', () => {
 });
 
 test('alarm fires when the snapshot is older than the 2h threshold', () => {
-  const now = new Date('2026-10-19T12:00:00+07:00');
-  const fresh = alarm.evaluate({ snapshotMtime: new Date('2026-10-19T11:00:00+07:00'), now, marketOpen: true });
+  // FIX-2: use 10:00 WIB (active session, not lunch break) to avoid +150 min break threshold
+  const now = new Date('2026-10-19T10:00:00+07:00');
+  const fresh = alarm.evaluate({ snapshotMtime: new Date('2026-10-19T09:30:00+07:00'), now, marketOpen: true });
   assert.equal(fresh.shouldAlert, false);
   assert.equal(fresh.reason, 'fresh');
 
-  const stale = alarm.evaluate({ snapshotMtime: new Date('2026-10-19T09:00:00+07:00'), now, marketOpen: true });
+  const stale = alarm.evaluate({ snapshotMtime: new Date('2026-10-19T07:00:00+07:00'), now, marketOpen: true });
   assert.equal(stale.shouldAlert, true);
   assert.equal(stale.reason, 'stale');
   assert.equal(stale.ageMinutes, 180);
@@ -192,12 +193,13 @@ test('alarm fires when the snapshot file is missing during market hours', () => 
 });
 
 test('alarm does not repeat inside the cooldown (one message per incident)', () => {
-  const now = new Date('2026-10-19T12:00:00+07:00');
+  // FIX-2: use 10:00 WIB (active session) to avoid lunch break bump
+  const now = new Date('2026-10-19T10:00:00+07:00');
   const d = alarm.evaluate({
-    snapshotMtime: new Date('2026-10-19T09:00:00+07:00'),
+    snapshotMtime: new Date('2026-10-19T07:00:00+07:00'),
     now,
     marketOpen: true,
-    lastAlertAt: new Date('2026-10-19T11:30:00+07:00').toISOString()
+    lastAlertAt: new Date('2026-10-19T09:30:00+07:00').toISOString()
   });
   assert.equal(d.shouldAlert, false);
   assert.equal(d.reason, 'cooldown');
