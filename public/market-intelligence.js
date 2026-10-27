@@ -34,23 +34,35 @@
   // ============================================================
   // 1. DASHBOARD MARKET BREADTH
   // ============================================================
-  async function renderMarketBreadth(containerId) {
+  // `preloaded` lets the Dashboard pass the payload it already fetched for the
+  // market strip, so the detail card does not request it a second time.
+  async function renderMarketBreadth(containerId, preloaded) {
     var container = byId(containerId);
     if (!container) return;
 
-    container.innerHTML = '<div class="ac-breadth-loading text-center py-6 text-gray-500 text-xs">' +
-      '<span class="spinner-sm"></span> Memuat analisis Market Breadth IDX...' +
-      '</div>';
+    if (!preloaded) {
+      container.innerHTML = '<div class="ac-breadth-loading text-center py-6 text-gray-500 text-xs">' +
+        '<span class="spinner-sm"></span> Memuat analisis Market Breadth IDX...' +
+        '</div>';
+    }
 
     try {
-      var resp = await fetch('/api/sector-hot?action=market-breadth');
-      var data = await resp.json();
+      var data = preloaded;
+      if (!data) {
+        var resp = await fetch('/api/sector-hot?action=market-breadth');
+        data = await resp.json();
+      }
       if (!data || !data.success) {
         container.innerHTML = '<div class="text-xs text-gray-500 p-4 text-center">Gagal memuat ringkasan pasar.</div>';
         return;
       }
+      if (data.data_available === false || data.gainerPct == null) {
+        container.innerHTML = '<div class="text-xs text-gray-500 p-4 text-center">Data pasar belum tersedia.</div>';
+        return;
+      }
 
-      var narrative = data.narrativeSummary || 'Pasar bergerak cenderung berimbang dengan 301 saham menguat, 337 melemah, dan 324 stagnan (Total nilai transaksi Rp 8,84 T).';
+      var dash = '<span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span>';
+      var narrative = data.narrativeSummary || '';
       var html = '<div class="ac-market-breadth-card">' +
         '  <div class="ac-breadth-header">' +
         '    <div class="flex items-center gap-2">' +
@@ -95,8 +107,8 @@
         '  </div>' +
         '  <div class="ac-breadth-footer-meta" style="color: #cbd5e1 !important;">' +
         '    <span>Volume: <strong>' + escapeHtml(data.totalVolumeDisplay) + '</strong></span>' +
-        '    <span>Frekuensi: <strong>' + escapeHtml(data.totalFrequencyDisplay) + '</strong></span>' +
-        '    <span>Status Asing: <strong>' + escapeHtml(data.foreignFlowStatus) + '</strong></span>' +
+        '    <span>Frekuensi: <strong>' + (data.totalFrequencyDisplay ? escapeHtml(data.totalFrequencyDisplay) : dash) + '</strong></span>' +
+        '    <span>Status Asing: <strong>' + (data.foreignFlowStatus ? escapeHtml(data.foreignFlowStatus) : dash) + '</strong></span>' +
         '  </div>' +
         '</div>';
 

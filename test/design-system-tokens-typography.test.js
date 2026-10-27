@@ -9,13 +9,25 @@ const ROOT = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const theme = fs.readFileSync(path.join(ROOT, 'public', 'ui-theme.css'), 'utf8');
 
-test('PR 3: Monospace font token --ac-font-mono is defined in :root with JetBrains Mono', () => {
-  assert.match(theme, /--ac-font-mono:\s*['"]?JetBrains Mono['"]?/);
-  assert.match(theme, /--ac-font-sans:\s*['"]?Inter['"]?/);
+// Redesign v2 (HANDOFF §2.3): Plus Jakarta Sans for UI text, Geist Mono for
+// ticker/price/lot, self-hosted woff2 with font-display:swap and a preload per
+// family. Runtime Google Fonts is gone.
+test('Redesign v2: font tokens name Plus Jakarta Sans and Geist Mono', () => {
+  assert.match(theme, /--ac-font-mono:\s*['"]?Geist Mono['"]?/);
+  assert.match(theme, /--ac-font-sans:\s*['"]?Plus Jakarta Sans['"]?/);
 });
 
-test('PR 3: Google Fonts in index.html loads both Inter and JetBrains Mono', () => {
-  assert.match(html, /fonts\.googleapis\.com\/css2\?[^"']*family=Inter[^"']*&family=JetBrains\+Mono/);
+test('Redesign v2: index.html self-hosts both faces and no longer calls Google Fonts', () => {
+  assert.doesNotMatch(html, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
+  assert.match(html, /<link rel="preload" href="\/fonts\/plus-jakarta-sans-latin-wght-normal\.woff2" as="font" type="font\/woff2" crossorigin>/);
+  assert.match(html, /<link rel="preload" href="\/fonts\/geist-mono-latin-wght-normal\.woff2" as="font" type="font\/woff2" crossorigin>/);
+  assert.match(html, /href="\/fonts\/ac-fonts\.css/);
+  const faces = fs.readFileSync(path.join(ROOT, 'public', 'fonts', 'ac-fonts.css'), 'utf8');
+  assert.match(faces, /font-family:\s*'Plus Jakarta Sans'[\s\S]*?font-display:\s*swap/);
+  assert.match(faces, /font-family:\s*'Geist Mono'[\s\S]*?font-display:\s*swap/);
+  for (const file of ['plus-jakarta-sans-latin-wght-normal.woff2', 'geist-mono-latin-wght-normal.woff2', 'OFL-plus-jakarta-sans.txt', 'OFL-geist-mono.txt']) {
+    assert.ok(fs.existsSync(path.join(ROOT, 'public', 'fonts', file)), file + ' must ship with the app');
+  }
 });
 
 test('PR 3: Financial typography tabular-nums and mono utilities are present', () => {
@@ -87,34 +99,42 @@ test('Wave 1T: Canonical v2 tokens are scoped strictly under :where([data-ac-ui=
   assert.ok(v2Match, 'Scoped v2 token block must exist');
   const v2Block = v2Match[1];
 
+  // Values come from the redesign v2 canvas (handoff design/project/ac.css).
   // Ground & Surface (§4.1)
-  assert.match(v2Block, /--ac-canvas:\s*#F3F5F4/i);
-  assert.match(v2Block, /--ac-surface:\s*#FFFFFF/i);
-  assert.match(v2Block, /--ac-surface-raised:\s*#F8FAF9/i);
-  assert.match(v2Block, /--ac-surface-hover:\s*#EEF2F0/i);
+  assert.match(v2Block, /--ac-canvas:\s*#EFF1EC/i);
+  assert.match(v2Block, /--ac-surface:\s*#FCFCFA/i);
+  assert.match(v2Block, /--ac-surface-raised:\s*#F5F7F3/i);
+  assert.match(v2Block, /--ac-surface-hover:\s*#EAEEE8/i);
 
   // Typography / Ink (§4.1)
-  assert.match(v2Block, /--ac-ink:\s*#17211E/i);
-  assert.match(v2Block, /--ac-text-secondary:\s*#52605B/i);
-  assert.match(v2Block, /--ac-text-muted:\s*#5F6C66/i);
+  assert.match(v2Block, /--ac-ink:\s*#1D2724/i);
+  assert.match(v2Block, /--ac-text-secondary:\s*#535F5A/i);
+  assert.match(v2Block, /--ac-text-muted:\s*#5E6A65/i);
 
   // Lines & Control Borders (§4.1)
-  assert.match(v2Block, /--ac-line-hairline:\s*#E2E7E4/i);
-  assert.match(v2Block, /--ac-line-default:\s*rgba\(18,\s*35,\s*29,\s*0?\.14\)/i);
-  assert.match(v2Block, /--ac-line-strong:\s*rgba\(18,\s*35,\s*29,\s*0?\.20?\)/i);
-  assert.match(v2Block, /--ac-control-border:\s*#7D8683/i);
-  assert.match(v2Block, /--ac-control-border-hover:\s*#65726C/i);
+  assert.match(v2Block, /--ac-line-hairline:\s*#DFE4DE/i);
+  assert.match(v2Block, /--ac-line-default:\s*rgba\(29,\s*39,\s*36,\s*0?\.13\)/i);
+  assert.match(v2Block, /--ac-line-strong:\s*rgba\(29,\s*39,\s*36,\s*0?\.20?\)/i);
+  assert.match(v2Block, /--ac-control-border:\s*#848D88/i);
+  assert.match(v2Block, /--ac-control-border-hover:\s*#68746E/i);
 
   // Brand Emerald vs Financial Semantics Separation (§4.1)
-  assert.match(v2Block, /--ac-brand:\s*#0F7458/i);
-  assert.match(v2Block, /--ac-brand-hover:\s*#0B6049/i);
-  assert.match(v2Block, /--ac-brand-soft:\s*#E8F3EE/i);
-  assert.match(v2Block, /--ac-focus:\s*#0F7458/i);
-  assert.match(v2Block, /--ac-positive:\s*#247A43/i);
-  assert.match(v2Block, /--ac-negative:\s*#C13F4D/i);
+  assert.match(v2Block, /--ac-brand:\s*#13785D/i);
+  assert.match(v2Block, /--ac-brand-hover:\s*#0D634C/i);
+  assert.match(v2Block, /--ac-brand-soft:\s*#E3EFE8/i);
+  assert.match(v2Block, /--ac-focus:\s*#13785D/i);
+  assert.match(v2Block, /--ac-positive:\s*#26734A/i);
+  assert.match(v2Block, /--ac-negative:\s*#AD3F52/i);
   assert.match(v2Block, /--ac-warning:\s*#A96D13/i);
-  assert.match(v2Block, /--ac-warning-text:\s*#96610F/i);
+  assert.match(v2Block, /--ac-warning-text:\s*#8A590D/i);
   assert.match(v2Block, /--ac-info:\s*#315F9A/i);
+
+  // Canvas short names resolve to the v2 tokens (one token system, two spellings)
+  assert.match(v2Block, /--ac-hair:\s*var\(--ac-line-hairline\)/);
+  assert.match(v2Block, /--ac-pos:\s*var\(--ac-positive\)/);
+  assert.match(v2Block, /--ac-neg:\s*var\(--ac-negative\)/);
+  assert.match(v2Block, /--ac-warn-t:\s*var\(--ac-warning-text\)/);
+  assert.match(v2Block, /--ac-inv:\s*#1D2724/i);
 
   const brandMatch = v2Block.match(/--ac-brand:\s*(#[0-9a-fA-F]{6})/i);
   const positiveMatch = v2Block.match(/--ac-positive:\s*(#[0-9a-fA-F]{6})/i);
@@ -192,13 +212,16 @@ test('Wave 1T: Dark mode canonical tokens are scoped under v2 dark selectors', (
   assert.ok(darkV2Match, 'Dark v2 block must exist');
   const darkV2Block = darkV2Match[1];
 
-  assert.match(darkV2Block, /--ac-canvas:\s*#090D16/i);
-  assert.match(darkV2Block, /--ac-surface:\s*#10151F/i);
-  assert.match(darkV2Block, /--ac-ink:\s*#F4F6F8/i);
-  assert.match(darkV2Block, /--ac-positive:\s*#34D399/i);
-  assert.match(darkV2Block, /--ac-negative:\s*#FB7185/i);
-  assert.match(darkV2Block, /--ac-warning:\s*#F59E0B/i);
-  assert.match(darkV2Block, /--ac-info:\s*#60A5FA/i);
+  // Dark block of the redesign v2 canvas (HANDOFF §3a)
+  assert.match(darkV2Block, /--ac-canvas:\s*#0E1412/i);
+  assert.match(darkV2Block, /--ac-surface:\s*#141C19/i);
+  assert.match(darkV2Block, /--ac-ink:\s*#E4EBE7/i);
+  assert.match(darkV2Block, /--ac-brand:\s*#48C797/i);
+  assert.match(darkV2Block, /--ac-positive:\s*#4FC383/i);
+  assert.match(darkV2Block, /--ac-negative:\s*#F2808F/i);
+  assert.match(darkV2Block, /--ac-warning:\s*#E2A94B/i);
+  assert.match(darkV2Block, /--ac-info:\s*#86ADE3/i);
+  assert.match(darkV2Block, /--ac-inv:\s*#2F3D38/i);
 });
 
 test('Wave 1W: DESIGN.md §103.1 Categorical chart palette defines exact light and dark tokens and mappings', () => {

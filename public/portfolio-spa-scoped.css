@@ -656,7 +656,7 @@ html.light :where(#portofolioPartialMount) .pcc-mobile-select{
 }
 :where(#portofolioPartialMount) .metric strong,
 :where(#portofolioPartialMount) .metric b{
-  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-family: var(--font-mono, 'Geist Mono', monospace) !important;
   font-variant-numeric: tabular-nums !important;
   font-weight: 800 !important;
   color: #f8fafc !important;
@@ -710,7 +710,7 @@ html.light :where(#portofolioPartialMount) .pcc-mobile-select{
   padding: 9px 10px !important;
   font-size: 12px !important;
   font-weight: 800 !important;
-  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-family: var(--font-mono, 'Geist Mono', monospace) !important;
   font-variant-numeric: tabular-nums !important;
   background-color: #0f172a !important;
   border-top: 2px solid rgba(16, 185, 129, 0.4) !important;

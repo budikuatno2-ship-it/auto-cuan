@@ -482,7 +482,8 @@
       // 3. MONITOR GROUP
       var portfolioAllowed = isDestAuthorized('tabPortfolio') || isDestAuthorized('#appSidebar [data-sidebar-page="portofolio"]');
       var trackrecordAllowed = isDestAuthorized('tabTrackRecord') || isDestAuthorized('#appSidebar [data-sidebar-page="trackrecord"]');
-      if (portfolioAllowed || trackrecordAllowed) {
+      var moneyAllowed = isDestAuthorized('#appSidebar [data-sidebar-page="money-management"]');
+      if (portfolioAllowed || trackrecordAllowed || moneyAllowed) {
         var groupMonitor = doc.createElement('div');
         groupMonitor.className = 'ac-sheet-group';
         var gMonLabel = doc.createElement('p');
@@ -500,6 +501,12 @@
           groupMonitor.appendChild(makeSheetItem('Track Record', '<path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>', function () {
             clickNav('trackrecord');
           }, curPage === 'trackrecord'));
+        }
+
+        if (moneyAllowed) {
+          groupMonitor.appendChild(makeSheetItem('Kelola Keuangan', '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14.5h2"/>', function () {
+            clickNav('money-management', 'nav-money-management');
+          }, curPage === 'money-management'));
         }
         sheetBody.appendChild(groupMonitor);
       }

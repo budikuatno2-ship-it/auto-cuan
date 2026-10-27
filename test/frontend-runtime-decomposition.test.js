@@ -32,10 +32,10 @@ test('market chart and export runtime preserves classic global contracts', () =>
   const runtime = read('public/market-feature-runtime.js');
   // exportDayTradePDF was split out into its own day-trade-specific runtime file.
   const daytradeRuntime = read('public/daytrade-runtime.js');
-  const refAt = html.indexOf('/market-feature-runtime.js?v=20260818-v1');
+  const refAt = html.indexOf('/market-feature-runtime.js?v=20261023-v11');
   const accessibilityAt = html.indexOf('// ===== ACCESSIBILITY:');
   assert.ok(refAt > 0 && accessibilityAt > refAt);
-  assert.equal((html.match(/market-feature-runtime\.js\?v=20260818-v1/g) || []).length, 1);
+  assert.equal((html.match(/market-feature-runtime\.js\?v=20261023-v11/g) || []).length, 1);
   for (const name of ['loadLightweightCharts', 'toggleNewsPanel', 'exportAnalisisPDF']) {
     assert.ok(runtime.includes('function ' + name + '('), name + ' contract missing');
   }
@@ -75,7 +75,7 @@ test('Day Trade runtime is isolated from the cacheable market bundle', () => {
   const daytrade = read('public/daytrade-runtime.js');
   assert.doesNotMatch(market, /DAY TRADE SCREENER — JavaScript Functions/);
   assert.match(daytrade, /DAY TRADE SCREENER — JavaScript Functions/);
-  assert.ok(html.indexOf('/market-feature-runtime.js?v=20260818-v1') < html.indexOf('/daytrade-runtime.js?v=20260818-v1'));
+  assert.ok(html.indexOf('/market-feature-runtime.js?v=20261023-v11') < html.indexOf('/daytrade-runtime.js?v=20260818-v1'));
   const config = JSON.parse(read('vercel.json'));
   const entry = config.headers.find((row) => row.source === '/daytrade-runtime.js');
   assert.ok(entry);

@@ -534,7 +534,7 @@
 #intelSearchInput,
 #insiderRosterTickerInput,
 #rankingSearchInput {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-family: var(--font-mono, 'Geist Mono', monospace) !important;
   font-variant-numeric: tabular-nums !important;
   letter-spacing: 0.03em !important;
   border-radius: 10px !important;
@@ -557,7 +557,7 @@
 
 /* Popular Ticker Pills in Top Bar */
 .unified-top-bar button[onclick*="quickAnalisis"] {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-family: var(--font-mono, 'Geist Mono', monospace) !important;
   font-weight: 600 !important;
   letter-spacing: 0.02em !important;
   border-radius: 8px !important;
@@ -678,7 +678,7 @@
 .broker-summary-table tbody td.text-right,
 #bandarmologiContent table tbody td.text-right,
 #brokerHunterContent table tbody td.text-right {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-family: var(--font-mono, 'Geist Mono', monospace) !important;
   font-variant-numeric: tabular-nums !important;
 }
 
@@ -800,7 +800,7 @@
 
 #rankingTableWrap table tbody td.text-right,
 #insiderRosterSection table tbody td.text-right {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-family: var(--font-mono, 'Geist Mono', monospace) !important;
   font-variant-numeric: tabular-nums !important;
 }
 

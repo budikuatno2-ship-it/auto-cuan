@@ -121,7 +121,9 @@ test('legacy gmail dialog adapts to both light and dark mode with high contrast'
 
 test('Pattern Radar is gated by server admin status and is hidden from regular users', () => {
   assert.match(html, /id="tabAnalisisPattern"[^>]*class="sidebar-item hidden"/);
-  assert.match(html, /<span class="sidebar-label">Pattern Radar<\/span><span class="sidebar-badge">ADMIN<\/span>/);
+  // Redesign v2: the Admin group label replaces the per-item ADMIN badge.
+  assert.match(html, /<section class="sidebar-nav-group sidebar-admin-group" aria-label="Admin">[\s\S]*?id="tabAnalisisPattern"/);
+  assert.match(html, /<span class="sidebar-label">Pattern Radar<\/span>/);
 });
 
 test('AI BYOK modal explains AES-256-GCM encryption and adapts to light mode', () => {

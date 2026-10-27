@@ -1,6 +1,8 @@
 // Auto-Cuan Track Record / Outcome Report UI Runtime
 var _trData = null;
 var _trCategoryFilter = 'all';
+var _trFilterStatus = 'all';
+var _trOpenDetailIndex = null;
 var _trInFlight = false;
 var _trLoadedAt = 0;
 var _trDataUrl = '/api/track-record';
@@ -22,6 +24,44 @@ function formatWibDate(dateStr) {
         return d + ' ' + months[m] + ' ' + y;
     }
     return dateStr;
+}
+
+function formatCanvasDate(dateStr) {
+    if (!dateStr || dateStr === '-') return '—';
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+        var parts = dateStr.slice(0, 10).split('-');
+        var m = parseInt(parts[1], 10) - 1;
+        var d = parseInt(parts[2], 10);
+        return (d < 10 ? '0' + d : d) + ' ' + (months[m] || parts[1]);
+    }
+    return dateStr;
+}
+
+function filterTrStatus(status) {
+    _trFilterStatus = status || 'all';
+    _trOpenDetailIndex = null;
+    var chips = document.querySelectorAll('#trFilterChips .fchip');
+    chips.forEach(function(btn) {
+        var active = btn.getAttribute('data-tr-status') === _trFilterStatus;
+        btn.classList.toggle('on', active);
+    });
+    renderTrackRecordTable();
+}
+
+function onTrSearchInput() {
+    _trOpenDetailIndex = null;
+    var inp = document.getElementById('trSearchInputV2');
+    var legacyInp = document.getElementById('trSearchInput');
+    if (inp && legacyInp && legacyInp.value !== inp.value) {
+        legacyInp.value = inp.value;
+    }
+    renderTrackRecordTable();
+}
+
+function toggleTrRowDetail(idx) {
+    _trOpenDetailIndex = _trOpenDetailIndex === idx ? null : idx;
+    renderTrackRecordTable();
 }
 
 // F-082: escape server/fetch error text before writing it to innerHTML.
@@ -92,7 +132,7 @@ async function loadTrackRecord(force) {
         status.id = 'trRefreshStatus';
         status.setAttribute('role', 'status');
         status.setAttribute('aria-live', 'polite');
-        status.style.cssText = 'min-height:3em;font-size:12px;line-height:1.5;color:var(--ac-text-muted)';
+        status.style.cssText = 'height:24px;min-height:24px;max-height:24px;line-height:24px;overflow:hidden;font-size:12px;color:var(--ac-text-muted);display:block;padding:0 4px';
         var page = document.getElementById('page-trackrecord');
         if (page) page.insertBefore(status, page.children[1] || null);
     }
@@ -204,6 +244,52 @@ function renderTrackRecordUI(data) {
     if (elBestGain) elBestGain.textContent = bestGain ? ('+' + bestGain.gain_pct + '%') : '-';
     if (elBestGainSub) elBestGainSub.textContent = bestGain ? (bestGain.ticker + ' · ' + formatWibDate(bestGain.date)) : 'Belum ada data';
 
+    // Canvas Metrics & Composition Sheet (TrackRecord.dc.html)
+    var signals = data.signals || [];
+    var totalSignals = sum.total_signals != null ? sum.total_signals : signals.length;
+    var actSignals = (sum.running_signals || 0) + (sum.waiting_signals || 0);
+    var doneSignals = sum.total_resolved != null ? sum.total_resolved : Math.max(0, totalSignals - actSignals);
+    var tp1Hits = sum.tp1_hits || 0;
+    var tp2Hits = sum.tp2_hits || 0;
+    var hitSignals = tp1Hits + tp2Hits;
+    var slSignals = sum.sl_hits || 0;
+    var expSignals = sum.expired_signals != null ? sum.expired_signals : Math.max(0, doneSignals - hitSignals - slSignals);
+
+    var hitPctStr = doneSignals > 0 ? ((hitSignals / doneSignals) * 100).toFixed(1).replace('.', ',') + '%' : '—';
+    var slPctStr = doneSignals > 0 ? ((slSignals / doneSignals) * 100).toFixed(1).replace('.', ',') + '%' : '—';
+
+    var elMTotal = document.getElementById('trMetricTotal');
+    var elMDone = document.getElementById('trMetricDone');
+    var elMAct = document.getElementById('trMetricAct');
+    var elMHit = document.getElementById('trMetricHit');
+    var elMHitSub = document.getElementById('trMetricHitSub');
+    var elMSl = document.getElementById('trMetricSl');
+    var elMSlSub = document.getElementById('trMetricSlSub');
+    var elMExp = document.getElementById('trMetricExp');
+
+    if (elMTotal) elMTotal.textContent = totalSignals != null ? totalSignals : '—';
+    if (elMDone) elMDone.textContent = doneSignals != null ? doneSignals : '—';
+    if (elMAct) elMAct.textContent = actSignals != null ? actSignals : '—';
+    if (elMHit) elMHit.textContent = hitSignals != null ? hitSignals : '—';
+    if (elMHitSub) elMHitSub.textContent = hitPctStr !== '—' ? (hitPctStr + ' dari ' + doneSignals + ' selesai') : '—';
+    if (elMSl) elMSl.textContent = slSignals != null ? slSignals : '—';
+    if (elMSlSub) elMSlSub.textContent = slPctStr !== '—' ? (slPctStr + ' dari ' + doneSignals + ' selesai') : '—';
+    if (elMExp) elMExp.textContent = expSignals != null ? expSignals : '—';
+
+    // Provenance chip
+    var elChip = document.getElementById('trProvenanceChip');
+    if (elChip) elChip.textContent = 'dari ' + (totalSignals || 500) + ' sinyal terakhir';
+
+    // Composition bar flex
+    var barTp2 = document.getElementById('trBarTp2');
+    var barTp1 = document.getElementById('trBarTp1');
+    var barExp = document.getElementById('trBarExp');
+    var barSl = document.getElementById('trBarSl');
+    if (barTp2) barTp2.style.flex = tp2Hits;
+    if (barTp1) barTp1.style.flex = tp1Hits;
+    if (barExp) barExp.style.flex = expSignals;
+    if (barSl) barSl.style.flex = slSignals;
+
     // 2. Category Cards Breakdown
     var catGrid = document.getElementById('trCategoryGrid');
     if (catGrid && data.by_category) {
@@ -304,16 +390,27 @@ function renderTrackRecordTable() {
     var tbody = document.getElementById('trTableBody');
     var emptyEl = document.getElementById('trEmptyState');
     var mobileHost = document.getElementById('trMobileList');
-    if (!tbody) return;
+    var canvasTbody = document.getElementById('trCanvasTableBody');
+    var canvasEmpty = document.getElementById('trCanvasEmptyState');
+    var shownEl = document.getElementById('trShownRowsCount');
+    if (!tbody && !canvasTbody) return;
 
     var signals = _trData.signals || [];
     var statusFilter = (document.getElementById('trStatusFilter') && document.getElementById('trStatusFilter').value) || 'all';
-    var search = (document.getElementById('trSearchInput') && document.getElementById('trSearchInput').value.trim().toUpperCase()) || '';
+    var canvasStatus = _trFilterStatus || 'all';
+    var search = (document.getElementById('trSearchInputV2') && document.getElementById('trSearchInputV2').value.trim().toUpperCase()) ||
+                 (document.getElementById('trSearchInput') && document.getElementById('trSearchInput').value.trim().toUpperCase()) || '';
 
     var filtered = signals.filter(function(s) {
         var sourceCat = s.source || s.category || '';
         if (_trCategoryFilter !== 'all' && sourceCat !== _trCategoryFilter && s.source_short !== _trCategoryFilter) return false;
         var outcome = s.outcome || s.status || '';
+        if (canvasStatus !== 'all') {
+            if (canvasStatus === 'act' && outcome !== 'RUNNING' && outcome !== 'WAITING' && outcome !== 'ENTRY_HIT') return false;
+            else if (canvasStatus === 'hit' && outcome !== 'TP1_HIT' && outcome !== 'TP2_HIT') return false;
+            else if (canvasStatus === 'sl' && outcome !== 'SL_HIT') return false;
+            else if (canvasStatus === 'exp' && outcome !== 'EXPIRED') return false;
+        }
         if (statusFilter !== 'all') {
             if (statusFilter === 'TP1_HIT' && outcome !== 'TP1_HIT' && outcome !== 'TP2_HIT') return false;
             else if (statusFilter === 'TP2_HIT' && outcome !== 'TP2_HIT') return false;
@@ -326,19 +423,25 @@ function renderTrackRecordTable() {
         return true;
     });
 
+    if (shownEl) shownEl.textContent = filtered.length + ' baris';
+
     if (!filtered.length) {
-        tbody.innerHTML = '';
+        if (tbody) tbody.innerHTML = '';
         if (mobileHost) mobileHost.innerHTML = '';
         if (emptyEl) emptyEl.classList.remove('hidden');
+        if (canvasTbody) canvasTbody.innerHTML = '';
+        if (canvasEmpty) canvasEmpty.classList.remove('hidden');
         return;
     }
 
     if (emptyEl) emptyEl.classList.add('hidden');
+    if (canvasEmpty) canvasEmpty.classList.add('hidden');
 
     var rowsHtml = '';
     var mobileHtml = '';
+    var cRowsHtml = '';
 
-    filtered.forEach(function(s) {
+    filtered.forEach(function(s, idx) {
         var outcome = s.outcome || s.status || '';
         var isUnentered = outcome === 'WAITING' || outcome === 'NEVER_ENTERED' || outcome === 'EXPIRED';
         var isRunningSignal = outcome === 'RUNNING' || outcome === 'ENTRY_HIT';
@@ -439,11 +542,78 @@ function renderTrackRecordTable() {
                 '<span>⏱️ ' + escapeHtml(s.duration_text || '-') + '</span>' +
             '</div>' +
         '</div>';
+
+        // 3. Canvas table row (TrackRecord.dc.html)
+        var oCls = 'act';
+        var oLabel = 'AKTIF';
+        var outcomeDesc = 'Masih dipantau';
+
+        if (outcome === 'TP2_HIT') {
+            oCls = 'tp2'; oLabel = 'TP2'; outcomeDesc = 'TP2 tersentuh ' + (formatWibDate(s.hit_date || s.date) || '');
+        } else if (outcome === 'TP1_HIT') {
+            oCls = 'tp1'; oLabel = 'TP1'; outcomeDesc = 'TP1 tersentuh ' + (formatWibDate(s.hit_date || s.date) || '');
+        } else if (outcome === 'SL_HIT') {
+            oCls = 'sl'; oLabel = 'STOP LOSS'; outcomeDesc = 'Stop loss tersentuh ' + (formatWibDate(s.hit_date || s.date) || '');
+        } else if (outcome === 'EXPIRED') {
+            oCls = 'exp'; oLabel = 'KEDALUWARSA'; outcomeDesc = 'Kedaluwarsa ' + (formatWibDate(s.hit_date || s.date) || '');
+        }
+
+        var entryStr = entryBounds.length ? entryBounds.map(formatRp).join('–') : '—';
+        var slStr = s.sl != null ? formatRp(s.sl) : '—';
+        var tpStr = s.tp1 != null ? formatRp(s.tp1) : '—';
+        var exitStr = s.price_at_hit != null ? formatRp(s.price_at_hit) : (s.close_price != null ? formatRp(s.close_price) : '—');
+
+        var isExited = outcome.indexOf('TP') !== -1 || outcome === 'SL_HIT';
+        var gainNum = isExited && s.gain_pct != null ? Number(s.gain_pct) : null;
+        var rStr = '—';
+        var rClass = 'r num mut';
+        if (gainNum != null && isFinite(gainNum)) {
+            var isPos = gainNum > 0;
+            var isNeg = gainNum < 0;
+            rStr = (isPos ? '+' : (isNeg ? '−' : '')) + Math.abs(gainNum).toFixed(2).replace('.', ',') + '%';
+            rClass = 'r num ' + (isPos ? 'pos' : (isNeg ? 'neg' : 'mut'));
+        }
+
+        var modeStr = s.source_label || s.source_short || s.category || 'Swing';
+        if (modeStr.toLowerCase().indexOf('day') !== -1) modeStr = 'Day trade';
+        else if (modeStr.toLowerCase().indexOf('swing') !== -1) modeStr = 'Swing';
+
+        var dateStr = formatCanvasDate(s.date || s.signal_time_wib);
+        var durStr = s.duration_text || (s.duration_days != null ? (s.duration_days + ' hari') : '—');
+        var isOpen = _trOpenDetailIndex === idx;
+        var animClass = 'rise d' + Math.min(idx, 11) + (isOpen ? ' sel' : '');
+
+        cRowsHtml += '<tr class="' + animClass + '" onclick="toggleTrRowDetail(' + idx + ')" style="cursor:pointer" aria-expanded="' + isOpen + '">' +
+            '<td class="num mut">' + dateStr + '</td>' +
+            '<td class="tk mono"><a href="/analisis?ticker=' + escapeAttr(s.ticker) + '" onclick="event.stopPropagation();if(typeof navigateTo===\'function\'){navigateTo(\'analisis\',null,\'' + escapeAttr(s.ticker) + '\');return false;}" style="color:inherit;text-decoration:none;font-weight:700">' + escapeHtml(s.ticker) + '</a></td>' +
+            '<td class="mut">' + escapeHtml(modeStr) + '</td>' +
+            '<td class="r num mono">' + entryStr + '</td>' +
+            '<td class="r num mono">' + slStr + '</td>' +
+            '<td class="r num mono">' + tpStr + '</td>' +
+            '<td class="r num mono">' + exitStr + '</td>' +
+            '<td class="' + rClass + '" style="font-weight:600">' + rStr + '</td>' +
+            '<td class="r num">' + durStr + '</td>' +
+            '<td><span class="oc ' + oCls + '">' + oLabel + '</span></td>' +
+        '</tr>';
+
+        if (isOpen) {
+            cRowsHtml += '<tr class="det swap"><td colspan="10" style="padding:14px 20px">' +
+                '<div class="stp">' +
+                    '<span><b>Dikunci</b><span class="mut">' + dateStr + ' · entry ' + entryStr + '</span></span>' +
+                    '<span><b>Level rencana</b><span class="mut">SL ' + slStr + ' · TP1 ' + tpStr + '</span></span>' +
+                    '<span><b>' + oLabel + '</b><span class="mut">' + outcomeDesc + '</span></span>' +
+                '</div>' +
+                '<div class="hint" style="margin-top:10px;font-size:11px;color:var(--ac-muted)">Hasil % dihitung dari harga entry ke harga keluar sinyal. Ini evaluasi aturan sistem, bukan transaksi pengguna.</div>' +
+            '</td></tr>';
+        }
     });
 
-    tbody.innerHTML = rowsHtml;
+    if (tbody) tbody.innerHTML = rowsHtml;
     if (mobileHost) {
         mobileHost.innerHTML = mobileHtml;
+    }
+    if (canvasTbody) {
+        canvasTbody.innerHTML = cRowsHtml;
     }
 }
 
@@ -651,6 +821,9 @@ function triggerBacktestSimulation() {
 if (typeof window !== 'undefined') {
     window.loadTrackRecord = loadTrackRecord;
     window.filterTrackRecordCategory = filterTrackRecordCategory;
+    window.filterTrStatus = filterTrStatus;
+    window.onTrSearchInput = onTrSearchInput;
+    window.toggleTrRowDetail = toggleTrRowDetail;
     window.renderTrackRecordTable = renderTrackRecordTable;
     window.exportTrackRecordCsv = exportTrackRecordCsv;
     window.generateTrackRecordCsv = generateTrackRecordCsv;

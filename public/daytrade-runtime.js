@@ -254,6 +254,9 @@ function renderDtTable(results, data) {
         }
     }
 
+    var dtStatCnt = document.getElementById('dtStatCount');
+    if (dtStatCnt) dtStatCnt.textContent = String(filtered.length);
+
     if (filtered.length === 0) {
         var emptyMsg = typeof getPatternPersonalityEmptyMessage === 'function'
             ? getPatternPersonalityEmptyMessage(getDayTradeEmptyMessage(data))
@@ -319,7 +322,7 @@ function renderDtTable(results, data) {
     if (window.innerWidth >= 1024 && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
         var firstTr = tbody.querySelector('tr[data-ticker]');
         if (firstTr && window.AutoCuanScreener) {
-            window.AutoCuanScreener.selectRow('daytrade', filtered[0].ticker, firstTr);
+            window.AutoCuanScreener.selectRow('daytrade', filtered[0].ticker, firstTr, true);
         }
     }
 }

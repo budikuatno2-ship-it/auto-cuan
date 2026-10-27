@@ -117,7 +117,9 @@ const PREVIEW_MODULE_MAP = {
   'portofolio': 'portofolio',
   'portfolio': 'portofolio',
   'kelola-keuangan': 'kelola-keuangan',
-  'money-management': 'kelola-keuangan'
+  'money-management': 'kelola-keuangan',
+  'catatan-admin': 'catatan-admin',
+  'catatan': 'catatan-admin'
 };
 
 function getPreviewInjectionHtml(module, options = {}) {
@@ -355,6 +357,7 @@ function getPreviewInjectionHtml(module, options = {}) {
         return;
       }
 
+      if (typeof setTopLevelView === 'function') setTopLevelView('app');
       if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
       if (typeof applyPremiumAccessUi === 'function') applyPremiumAccessUi();
       if (typeof syncHeaderUsername === 'function') syncHeaderUsername();
@@ -386,6 +389,8 @@ function getPreviewInjectionHtml(module, options = {}) {
         }, 120);
       } else if (mod === 'kelola-keuangan') {
         if (typeof navigateTo === 'function') navigateTo('money-management');
+      } else if (mod === 'catatan-admin') {
+        if (typeof navigateTo === 'function') navigateTo('catatan-admin');
       }
     }
 
@@ -454,6 +459,7 @@ const ROUTE_REWRITES = {
   '/sektor': '/index.html',
   '/trackrecord': '/index.html',
   '/pattern': '/index.html',
+  '/pattern-radar': '/pattern-radar.html',
   '/review': '/index.html',
   '/analisis-saham': '/analisis-saham.html',
   // FASE 9: the shell embeds the Portfolio Command Center at this exact path,
@@ -462,9 +468,15 @@ const ROUTE_REWRITES = {
   '/portfolio-planner': '/portfolio-command-center-v2.html',
   '/kelola-keuangan': '/index.html',
   '/money-management': '/index.html',
+  '/catatan-admin': '/index.html',
   // Public BYOK registration form (mirrors the Vercel rewrite so the VPS
   // fallback serves the same URL shape).
   '/register': '/register.html',
+  '/ketentuan': '/ketentuan.html',
+  '/admin-console': '/admin-console.html',
+  '/admin': '/admin-console.html',
+  '/maintenance': '/maintenance.html',
+  '/pemeliharaan': '/maintenance.html',
   // FASE 2: broker-summary ("broksum") and chart viewers. Both are real views of
   // pages that already resolve their initial state from the query string, so
   // these short paths only need to map to the right page + default tab. The tab
@@ -527,7 +539,7 @@ function getChartPocHtml() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SPIKE 6D: Evaluasi & Uji Stres Engine Chart - Auto-Cuan</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="/vendor/lightweight-charts.standalone.production.js"></script>
   <script src="/chart-workstation.js?v=20261015-v1"></script>
   <link rel="stylesheet" href="/ui-theme.css">
   <style>
@@ -929,6 +941,13 @@ const server = http.createServer(async (req, res) => {
       pathname = '/api/sector-hot';
     }
 
+    // Alias: /api/admin-notes -> sector-hot?action=admin-notes.
+    if (endpointName === 'admin-notes') {
+      parsedUrl.searchParams.set('action', 'admin-notes');
+      endpointName = 'sector-hot';
+      pathname = '/api/sector-hot';
+    }
+
     // C2: CSP violation reports are collected by lib/security-headers (not an
     // api/ file, to respect the 13-function Vercel budget).
     if (endpointName === 'csp-report') {
@@ -1091,6 +1110,9 @@ const server = http.createServer(async (req, res) => {
               }
             }
           });
+        }
+        if (action === 'account-google-status') {
+          return res.status(200).json({ success: true, linked: false, google_email: null });
         }
         if (action === 'portfolio-state-load') {
           return res.status(200).json({
@@ -1698,7 +1720,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (await serveData(req,res,pathname.slice('/data'.length),{noStore:true,extensionFallback:false})) return;
   }
-  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord') pathname = '/index.html';
+  if (pathname === '/pattern-radar') pathname = '/pattern-radar.html';
+  if (pathname === '/maintenance' || pathname === '/pemeliharaan') pathname = '/maintenance.html';
+  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord' || pathname === '/catatan-admin') pathname = '/index.html';
   if (await servePublic(req,res,pathname)) return;
   if (await servePublic(req,res,'/404.html',{status:404,noStore:true})) return;
   res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:'404 Not Found');

@@ -8,7 +8,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 OUT = Path(os.environ.get('PRECISION_TEST_OUTPUT', '/mnt/data/landing-review'))
 OUT.mkdir(parents=True, exist_ok=True)
-html = (ROOT/'public/index.html').read_text()
+html = (ROOT/'public/index.html').read_text(encoding='utf-8')
 soup = BeautifulSoup(html, 'html.parser')
 def cssfile(p, seen=None):
     seen = set() if seen is None else seen
@@ -17,7 +17,7 @@ def cssfile(p, seen=None):
     def imp(m):
         name = m.group(1).split('?')[0]
         return cssfile(ROOT/'public'/name.lstrip('/') if name.startswith('/') else p.parent/name, seen)
-    return re.sub(r'@import\s+(?:url\()?\s*[\"\']([^\"\']+)[\"\']\s*\)?\s*;', imp, p.read_text())
+    return re.sub(r'@import\s+(?:url\()?\s*[\"\']([^\"\']+)[\"\']\s*\)?\s*;', imp, p.read_text(encoding='utf-8'))
 styles = []
 for element in soup.head.children:
     if getattr(element, 'name', None) == 'link' and 'stylesheet' in element.get('rel', []) and element.get('href', '').startswith('/'):
@@ -36,7 +36,7 @@ def function(name):
     end = re.search(r'(?m)^(?:(?:async )?function |// =====)', html[start+1:])
     return html[start:start+1+end.start()] if end else html[start:]
 handlers = '\n'.join(function(n) for n in ['loadLandingShowcase','openAuthChoiceModal','closeAuthChoiceModal','openLoginModal','closeLoginModal','openRegisterModal','closeRegisterModal','openSelfResetModal','closeSelfResetModal'])
-theme = html[html.index('function applyAppTheme'):html.index('// ===== COLLAPSIBLE WORKSPACE SIDEBAR')]
+theme = html[html.index('var APP_THEME_KEY'):html.index('// ===== COLLAPSIBLE WORKSPACE SIDEBAR')]
 sidebar = html[html.index('var SIDEBAR_COLLAPSE_KEY'):html.index('function renderSidebarSessions')]
 manager = next(s.get_text() for s in soup.find_all('script') if 'var MODAL_CLOSERS' in s.get_text())
 mock = r"""
@@ -72,14 +72,17 @@ def contrast(page, selector):
         const a=luminance(fg),b=luminance(bg);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05)
     }""")
 with sync_playwright() as pw:
-    browser=pw.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH','/usr/bin/chromium'),headless=True,args=['--no-sandbox'])
+    launch_kwargs = {'headless': True, 'args': ['--no-sandbox']}
+    if os.environ.get('CHROMIUM_PATH') and os.path.exists(os.environ['CHROMIUM_PATH']):
+        launch_kwargs['executable_path'] = os.environ['CHROMIUM_PATH']
+    browser=pw.chromium.launch(**launch_kwargs)
     page=browser.new_page(viewport={'width':1440,'height':950})
     page.route('**/*',lambda route:route.abort())
     page.on('pageerror',lambda error:errors.append(str(error)))
     try:
         page.set_content(fixture,wait_until='domcontentloaded')
         page.add_script_tag(content=mock+'\n'+handlers+'\n'+theme+'\n'+sidebar+'\n'+manager)
-        page.add_script_tag(content=(ROOT/'public/landing-experience.js').read_text())
+        page.add_script_tag(content=(ROOT/'public/landing-experience.js').read_text(encoding='utf-8'))
         for color in ['light','dark']:
             page.evaluate('(t)=>applyAppTheme(t)',color)
             page.wait_for_timeout(250)
@@ -104,7 +107,8 @@ with sync_playwright() as pw:
               not page.locator('#landingMenu').is_visible()
               and page.evaluate("(id)=>document.activeElement&&document.activeElement.id===id",expected_target))
         page.evaluate('window.scrollTo(0,0)');page.wait_for_timeout(500)
-        page.locator('.landing-hero .landing-btn-primary').click();page.wait_for_timeout(25)
+        page.locator('.landing-hero .landing-btn-primary').click()
+        page.wait_for_function("document.getElementById('authChoiceModal').contains(document.activeElement)",timeout=1500)
         check('Auth choice focuses inside and locks page',page.evaluate("document.getElementById('authChoiceModal').contains(document.activeElement)&&document.getElementById('landingPage').inert&&document.documentElement.classList.contains('auth-dialog-open')"))
         page.locator('#authChoiceModal .landing-auth-card').nth(1).click()
         page.wait_for_function("document.getElementById('registerModal').contains(document.activeElement)",timeout=1000)
@@ -169,10 +173,11 @@ with sync_playwright() as pw:
         check('Contrast negative control rejects actual CTA label matching its surface',contrast(page,'.landing-hero .landing-btn-primary .landing-cta-label')<4.5)
         label.evaluate("(e,s)=>{if(s===null)e.removeAttribute('style');else e.setAttribute('style',s)}",old_style)
         check('Restored CTA label retains 4.5 minimum',contrast(page,'.landing-hero .landing-btn-primary .landing-cta-label')>=4.5)
-        page.evaluate("document.getElementById('landingPage').classList.add('hidden');document.getElementById('appSidebar').classList.remove('hidden');document.getElementById('appShell').classList.remove('hidden');document.body.classList.add('sidebar-open');")
-        page.locator('#workspaceSidebarToggle').click();page.wait_for_timeout(50)
+        page.evaluate("document.getElementById('landingPage').classList.add('hidden');document.getElementById('appSidebar').classList.remove('hidden');document.getElementById('appShell').classList.remove('hidden');document.body.classList.add('sidebar-open');document.getElementById('workspaceSidebarToggle').focus();")
+        page.locator('#workspaceSidebarToggle').click(force=True);page.wait_for_timeout(50)
         check('Real mobile sidebar makes background inert',page.evaluate("document.getElementById('appMain').inert"))
-        page.evaluate('openMobileSidebar()');page.keyboard.press('Escape');page.wait_for_timeout(50)
+        page.evaluate("closeMobileSidebar();document.getElementById('workspaceSidebarToggle').focus();openMobileSidebar();")
+        page.keyboard.press('Escape');page.wait_for_timeout(50)
         check('Repeated mobile open preserves original focus and inert state',page.evaluate("!document.getElementById('appMain').inert&&document.activeElement.id==='workspaceSidebarToggle'"))
         check('No uncaught errors',not errors)
     finally:
