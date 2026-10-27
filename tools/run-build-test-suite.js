@@ -137,6 +137,7 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
   const res = spawnSync(process.execPath, ['--test', ...batch], {
     cwd: ROOT_DIR,
     stdio: 'inherit',
+    timeout: 180000,
     env: process.env
   });
 
@@ -150,6 +151,7 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
         cwd: ROOT_DIR,
         stdio: 'pipe',
         encoding: 'utf8',
+        timeout: 60000,
         env: process.env
       });
       if (singleRes.status !== 0) {

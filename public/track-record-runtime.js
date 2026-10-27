@@ -132,7 +132,7 @@ async function loadTrackRecord(force) {
         status.id = 'trRefreshStatus';
         status.setAttribute('role', 'status');
         status.setAttribute('aria-live', 'polite');
-        status.style.cssText = 'min-height:3em;font-size:12px;line-height:1.5;color:var(--ac-text-muted)';
+        status.style.cssText = 'height:24px;min-height:24px;max-height:24px;line-height:24px;overflow:hidden;font-size:12px;color:var(--ac-text-muted);display:block;padding:0 4px';
         var page = document.getElementById('page-trackrecord');
         if (page) page.insertBefore(status, page.children[1] || null);
     }

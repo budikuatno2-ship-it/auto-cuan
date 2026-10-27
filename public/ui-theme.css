@@ -15515,7 +15515,7 @@ html.is-dark .thm .moon { display: none; }
     background: var(--ac-surface-raised);
   }
   /* Full-screen menu. */
-  :is(#dashboardScreen, body) #appShell > #appSidebar.app-sidebar.mobile-open {
+  #dashboardScreen #appShell > #appSidebar.app-sidebar.mobile-open {
     position: fixed !important;
     inset: 0;
     height: 100dvh !important;

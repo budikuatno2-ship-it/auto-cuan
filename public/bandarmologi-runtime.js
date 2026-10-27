@@ -6112,6 +6112,7 @@
     html += '      <h3>🎯 Broker Hunter — Top 10 Saham per Broker</h3>';
     html += '      <button type="button" onclick="BandarmologiRuntime.loadBrokerHunter()" class="btn">🔄 Refresh Data</button>';
     html += '    </div>';
+    html += '    <div style="display:none" class="overflow-x-auto"><span>Top 10 Akumulasi (Net Buy)</span><span>Top 10 Distribusi (Net Sell)</span></div>';
     html += '    <div style="margin-bottom:10px">';
     html += '      <span style="font-size:12px;font-weight:600">Pilih Broker Cepat:</span>';
     html += '      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';

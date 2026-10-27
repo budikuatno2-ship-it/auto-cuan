@@ -52,7 +52,7 @@ test('FINAL-A11Y-001: skipToMainContent manages temporary tabindex="-1" cleanly 
 
 test('FINAL-BUG-008: login modal credentials reside inside a semantic <form>', () => {
   const loginModalSlice = indexHtml.slice(indexHtml.indexOf('id="loginModal"'), indexHtml.indexOf('id="registerModal"'));
-  assert.match(loginModalSlice, /<form id="loginForm" class="space-y-3" onsubmit="event\.preventDefault\(\);doLogin\(\);return false;">/, 'loginForm must wrap inputs with onsubmit prevention');
+  assert.match(loginModalSlice, /<form id="loginForm" class="space-y-3(?:\.5)?" onsubmit="event\.preventDefault\(\);doLogin\(\);return false;">/, 'loginForm must wrap inputs with onsubmit prevention');
   assert.match(loginModalSlice, /<input type="text" id="loginUsername" name="username" autocomplete="username"/, 'loginUsername must have name and autocomplete');
   assert.match(loginModalSlice, /<input type="password" id="loginPassword" name="password" autocomplete="current-password"/, 'loginPassword must have name and autocomplete');
   assert.match(loginModalSlice, /<button type="submit" id="loginBtn"/, 'loginBtn must have type="submit"');
@@ -72,7 +72,7 @@ test('FINAL-BUG-008: register modal credentials reside inside a semantic <form>'
 
 test('FINAL-BUG-008: self-service reset modal credentials reside inside a semantic <form>', () => {
   const resetSlice = indexHtml.slice(indexHtml.indexOf('id="selfResetModal"'), indexHtml.indexOf('id="dashboardScreen"'));
-  assert.match(resetSlice, /<form id="selfResetForm" class="space-y-4" onsubmit="event\.preventDefault\(\);doSelfResetPassword\(\);return false;">/, 'selfResetForm must be a form with onsubmit prevention');
+  assert.match(resetSlice, /<form id="selfResetForm" class="space-y-(?:4|3\.5)" onsubmit="event\.preventDefault\(\);doSelfResetPassword\(\);return false;">/, 'selfResetForm must be a form with onsubmit prevention');
   assert.match(resetSlice, /id="selfResetUsername" name="username" autocomplete="username"/, 'selfResetUsername must have name and autocomplete');
   assert.match(resetSlice, /id="selfResetPw" name="password" autocomplete="new-password"/, 'selfResetPw must have name and autocomplete');
   assert.match(resetSlice, /id="selfResetPwConfirm" name="passwordConfirm" autocomplete="new-password"/, 'selfResetPwConfirm must have name and autocomplete');

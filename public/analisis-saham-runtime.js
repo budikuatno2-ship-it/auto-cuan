@@ -135,6 +135,14 @@
   ];
   root.RANKING_COLUMNS_V2 = RANKING_COLUMNS_V2;
 
+  function rankingCellHtml(row, col) {
+    var raw = row && col && (row[col.key] != null ? row[col.key] : row[col.k]);
+    if (raw === null || raw === undefined || !Number.isFinite(Number(raw))) {
+      return '<span class="text-gray-500">—</span>';
+    }
+    return String(raw);
+  }
+
   function idFmtInt(n) {
     if (n == null || !Number.isFinite(Number(n))) return '—';
     return Math.round(Number(n)).toLocaleString('id-ID');
@@ -285,7 +293,7 @@
       return;
     }
 
-    var html = '<table class="tbl rt" style="min-width:1040px">';
+    var html = '<table class="tbl rt tabular-nums lining-nums" style="min-width:1040px">';
     html += '<thead><tr>';
     html += '<th style="width:48px">#</th>';
     RANKING_COLUMNS_V2.forEach(function (col) {
@@ -2240,6 +2248,23 @@
     if (coverageBar && coverageBar.style && coverageBar.style.setProperty) {
       coverageBar.style.setProperty('--ac-financial-coverage', (coverageCount * 25) + '%');
     }
+    var statusBadge = byId('financialStatusBadge');
+    if (statusBadge) {
+      var hasVerifiedProvenance = Boolean(f.verified || f.provenance_verified);
+      if (hasVerifiedProvenance) {
+        statusBadge.textContent = 'Snapshot Terverifikasi';
+        statusBadge.className = 'ac-status-badge ac-status-badge--positive';
+      } else if (coverageCount >= 4) {
+        statusBadge.textContent = 'Data Lengkap 4/4';
+        statusBadge.className = 'ac-status-badge ac-status-badge--positive';
+      } else if (coverageCount > 0) {
+        statusBadge.textContent = 'Sebagian Lengkap ' + coverageCount + '/4';
+        statusBadge.className = 'ac-status-badge ac-status-badge--warning';
+      } else {
+        statusBadge.textContent = 'Data Belum Lengkap';
+        statusBadge.className = 'ac-status-badge ac-status-badge--neutral';
+      }
+    }
 
     var allUnavailEl = byId('financialAllUnavailableState');
     var metricGrid = byId('financialMetricGrid');
@@ -2798,6 +2823,7 @@
       var ctx = payload.snapshot;
       var f = ctx.fundamental || {};
 
+      financialSnapshotCache[ticker] = ctx;
       financialCache[ticker] = ctx;
       financialRenderedTicker = ticker;
       renderFinancialFundamental(ticker, f, ctx.price);
@@ -2812,7 +2838,7 @@
       }
     } catch (error) {
       if (generation !== researchGeneration) return;
-      if (financialRenderedTicker === ticker && financialCache[ticker]) {
+      if (isFinancial && financialSnapshotCache[ticker]) {
         if (content) content.hidden = false;
         if (refreshBanner) {
           refreshBanner.hidden = false;

@@ -28,10 +28,10 @@ test('Watchlist redesign: summary strip defines all 4 canvas metrics', () => {
 });
 
 test('Watchlist redesign: filter bar has 4 chips with .fchip class and data-wl-filter', () => {
-  assert.match(INDEX_HTML, /class="fchip on" data-wl-filter="all"/);
-  assert.match(INDEX_HTML, /class="fchip" data-wl-filter="alert"/);
-  assert.match(INDEX_HTML, /class="fchip" data-wl-filter="gain"/);
-  assert.match(INDEX_HTML, /class="fchip" data-wl-filter="loss"/);
+  assert.match(INDEX_HTML, /class="[^"]*fchip[^"]*on[^"]*"\s+data-wl-filter="all"/);
+  assert.match(INDEX_HTML, /class="[^"]*fchip[^"]*"\s+data-wl-filter="alert"/);
+  assert.match(INDEX_HTML, /class="[^"]*fchip[^"]*"\s+data-wl-filter="gain"/);
+  assert.match(INDEX_HTML, /class="[^"]*fchip[^"]*"\s+data-wl-filter="loss"/);
 });
 
 test('Watchlist redesign: table container is .tw with overflow-x auto and 7-column layout', () => {

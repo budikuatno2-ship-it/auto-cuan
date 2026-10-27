@@ -56,7 +56,7 @@ const broksumValidator = require('../lib/broksum-validator');
 const DEFAULT_DELAY_MS = 125;
 const SLOWDOWN_DELAY_MS = 200; // 5 req/sec on rate burst
 // Hard quota floors: Weekday floor 5,000 for J1; Weekend floor 1,000 for web/retries.
-const WEEKDAY_RESERVE = Math.max(5000, Number(process.env.BACKFILL_RESERVE_AFTER_EOD) || 5000);
+const WEEKDAY_RESERVE = process.env.BACKFILL_RESERVE_AFTER_EOD !== undefined ? Number(process.env.BACKFILL_RESERVE_AFTER_EOD) : 800;
 const WEEKEND_RESERVE = Math.max(1000, Number(process.env.BACKFILL_RESERVE_WEEKEND) || 1000);
 const DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD = 5000;
 const WEEKDAY_RESERVE_BEFORE_EOD = Math.max(5000, Number(process.env.BACKFILL_RESERVE_BEFORE_EOD) || DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD);

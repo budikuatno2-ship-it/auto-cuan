@@ -824,6 +824,11 @@
       label.addEventListener('click', function () { openCenter('profile'); });
       label.addEventListener('keydown', function (event) { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openCenter('profile'); } });
     }
+    var subBtn = byId('sidebarSubscriptionBtn');
+    if (subBtn && !subBtn.classList.contains('ac-profile-trigger')) {
+      subBtn.classList.add('ac-profile-trigger');
+      subBtn.addEventListener('click', function () { openCenter('subscription'); });
+    }
     var sidebarBtns = (typeof document.querySelectorAll === 'function') ? document.querySelectorAll('#appSidebar .sidebar-profile-button, #appSidebar .user-profile-badge') : [];
     if (sidebarBtns.forEach) {
       sidebarBtns.forEach(function (btn) {

@@ -360,7 +360,7 @@
             </details>
         </section>
 
-        <!-- ===== FINANCIAL / FUNDAMENTAL ===== -->
+        <!-- ===== FINANCIAL / FUNDAMENTAL (§79.2) ===== -->
         <section id="panel-tab-financial" class="analisis-tab-panel" style="display:none" data-ac-ui="v2">
             <div class="ph rise d0">
                 <div>
@@ -533,33 +533,63 @@
             </details>
 
             <!-- Legacy Safety Fold -->
-            <details class="adv-tools" style="margin-top:12px">
-                <summary>Alat lanjutan</summary>
-                <span style="display:none">Nilai Buku / Saham · Saham Beredar · Kapitalisasi Pasar · Sumber Fundamental · Sumber Market Cap</span>
-                <div style="padding:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                    <div id="financialRefreshBanner" style="display:none"></div>
-                    <div id="financialDataState" style="display:none"></div>
-                    <div id="financialDataUnavailable" style="display:none"></div>
-                    <div id="financialDataContent" style="display:none"></div>
-                    <div id="financialStatementsTableWrap" style="display:none"></div>
-                    <div id="financialStatementUnavailable" style="display:none"></div>
-                    <div id="financialScrollHint" style="display:none"></div>
-                    <div id="financialStatementModeGroup" style="display:none"></div>
-                    <div id="financialPeriodModeGroup" style="display:none"></div>
-                    <span id="financialPbv" style="display:none"></span>
-                    <span id="financialBvps" style="display:none"></span>
-                    <span id="financialPer" style="display:none"></span>
-                    <span id="financialDer" style="display:none"></span>
-                    <span id="financialMarketCap" style="display:none"></span>
-                    <span id="financialShares" style="display:none"></span>
-                    <span id="financialPeriod" style="display:none"></span>
-                    <span id="financialSource" style="display:none"></span>
-                    <span id="financialUpdatedAt" style="display:none"></span>
+            <div style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden">
+                <div class="ac-financial-container">
+                    <header class="ac-financial-header">
+                        <h2 class="ac-financial-title">Financial</h2>
+                        <p class="ac-financial-subtitle">Snapshot rasio dan nilai buku dari laporan keuangan resmi emiten.</p>
+                    </header>
+                    <div class="ac-financial-metric-strip">
+                        <span id="financialPbv"></span>
+                        <span id="financialBvps"></span>
+                        <span id="financialMarketCap"></span>
+                        <span id="financialShares"></span>
+                        <span id="financialStatusBadge">Memuat...</span>
+                        <span id="financialCoverage">— / 4</span>
+                        <span>Nilai Buku / Saham (BVPS)</span>
+                        <span>Kapitalisasi Pasar</span>
+                    </div>
+                    <div class="ac-financial-note">
+                        <span id="financialPeriod"></span>
+                        <span id="financialSource"></span>
+                        <span id="financialMarketCapSource"></span>
+                        <span id="financialUpdatedAt"></span>
+                    </div>
+                    <div id="financialDataUnavailable">
+                        <span id="financialUnavailableTitle"></span>
+                        <span id="financialUnavailableDesc"></span>
+                    </div>
+                    <div id="financialStatementModeGroup">
+                        <button type="button" class="ac-fin-tab-btn is-active" data-statement-mode="income" aria-selected="true" tabindex="0">Laba Rugi</button>
+                        <button type="button" class="ac-fin-tab-btn" data-statement-mode="balance" aria-selected="false" tabindex="-1">Neraca</button>
+                        <button type="button" class="ac-fin-tab-btn" data-statement-mode="cashflow" aria-selected="false" tabindex="-1">Arus Kas</button>
+                        <button type="button" class="ac-fin-tab-btn" data-statement-mode="ratios" aria-selected="false" tabindex="-1">Rasio</button>
+                    </div>
+                    <div id="financialPeriodModeGroup">
+                        <button type="button" class="ac-fin-period-btn is-active" data-period-mode="quarterly" aria-pressed="true">Kuartalan</button>
+                        <button type="button" class="ac-fin-period-btn" data-period-mode="annual" aria-pressed="false">Tahunan</button>
+                    </div>
+                    <div id="financialStatementsTableWrap">
+                        <table id="financialStatementsTable">
+                            <thead id="financialStatementsTableHead"></thead>
+                            <tbody id="financialStatementsTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="financialStatementUnavailable">
+                        <span id="financialStatementUnavailableTitle"></span>
+                        <span id="financialStatementUnavailableDesc"></span>
+                    </div>
+                    <div id="financialScrollHint"></div>
                 </div>
-            </details>
+                <div id="financialRefreshBanner"></div>
+                <div id="financialDataState"></div>
+                <div id="financialDataContent"></div>
+                <span id="financialPer"></span>
+                <span id="financialDer"></span>
+            </div>
         </section>
 
-                <!-- ===== MARKET STRUCTURE / FREE FLOAT / HSC ===== -->
+        <!-- ===== MARKET STRUCTURE / FREE FLOAT / HSC ===== -->
         <section id="panel-tab-market-structure" class="analisis-tab-panel ac-ui-v2" data-ac-ui="v2" style="display:none">
             <div class="ph rise d0">
                 <div>
@@ -568,7 +598,7 @@
                 </div>
             </div>
 
-            <section class="sheet rise d1">
+            <section class="sheet rise d1" id="marketStructureDataContent">
                 <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px">
                     <label class="search" style="width:260px">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -637,6 +667,10 @@
                 </div>
             </section>
 
+            <div id="marketStructureDataState" class="ac-research-state py-8 text-center" role="status" aria-live="polite" hidden></div>
+            <div id="marketStructureRefreshBanner" class="ac-refresh-banner" role="status" aria-live="polite" hidden></div>
+            <div id="marketStructureAccordionContainer" hidden></div>
+
             <!-- Collapsible legacy controls / details -->
             <details class="adv-tools" style="margin-top:16px">
                 <summary>Alat lanjutan</summary>
@@ -687,14 +721,12 @@
                         </div>
                     </div>
 
-                    <div id="marketStructureAccordionContainer" style="display:none"></div>
                     <div id="marketStructureMobileSheet" style="display:none"></div>
                     <div id="marketStructureSheetBackdrop" style="display:none"></div>
                     <button type="button" id="marketStructureSheetCloseBtn" style="display:none">Tutup</button>
                     <button type="button" id="marketStructureSheetClose" class="min-w-[44px] min-h-[44px]" style="display:none">Tutup</button>
                     <div id="marketStructureCardsContainer" style="display:none"></div>
                     <div id="marketStructureTableSkeleton" style="display:none"></div>
-                    <div id="marketStructureDataState" style="display:none"></div>
                     <div id="marketStructureTableError" style="display:none"></div>
                 </div>
             </details>

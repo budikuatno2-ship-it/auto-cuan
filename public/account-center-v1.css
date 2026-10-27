@@ -154,3 +154,7 @@
   .ac-center-body { padding: 16px; }
   .ac-row { grid-template-columns: 1fr; gap: 6px; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-loading::before { animation: none !important; }
+}

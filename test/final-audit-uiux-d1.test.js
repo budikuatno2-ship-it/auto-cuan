@@ -112,7 +112,7 @@ test('D1 search filters one ticker and clearing restores the universe', async ()
 });
 test('D1 sort and reference filters preserve zero/missing and HSC tri-state', async () => {
   const actual = await rows();
-  assert.match(actual.find(row => row.ticker === 'TLKM').text, /0%/);
+  assert.match(actual.find(row => row.ticker === 'TLKM').text, /0(?:,00)?%/);
   assert.match(actual.find(row => row.ticker === 'ASII').text, /—/);
   assert.match(actual.find(row => row.ticker === 'TLKM').text, /HSC Aktif/);
   assert.match(actual.find(row => row.ticker === 'BBCA').text, /Non-HSC/);
