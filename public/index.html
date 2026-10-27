@@ -262,8 +262,8 @@
   <nav class="landing-nav" aria-label="Navigasi utama">
     <div class="landing-container">
       <button type="button" onclick="showLandingPage()" class="landing-brand text-left" aria-label="Auto-Cuan, halaman utama">
-        <span class="landing-logo" aria-hidden="true"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 17l6-6 4 4 6-9M14 6h6v6"/></svg></span>
-        <span><span class="block font-semibold">Auto-Cuan</span><span class="block text-xs">IDX Workspace</span></span>
+        <span class="landing-logo" aria-hidden="true"><svg width="20" height="20" fill="none" stroke="#34D399" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M4 17l6-6 4 4 6-9M14 6h6v6"/></svg></span>
+        <span class="font-bold text-base tracking-tight text-white">Auto-Cuan</span>
       </button>
       <div id="landingMenu" class="landing-menu items-center" aria-label="Jelajahi Auto-Cuan">
         <a href="#landingMarket">Pasar</a>
@@ -1271,7 +1271,7 @@ html.light #googleCompleteProfileModal input {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>
                 <span class="sidebar-label">Analisis &amp; Chart</span>
             </button>
-            <button id="tabChartWorkstation" type="button" onclick="navigateTo('analisis', 'chart')" class="sidebar-item" data-sidebar-page="chart" data-analysis-tab="chart" data-tab="chart" data-label="Chart Workstation" title="Chart Workstation">
+            <button id="tabChartWorkstation" type="button" onclick="navigateTo('analisis', 'chart')" class="sidebar-item" data-sidebar-page="chart" data-analysis-tab="chart" data-tab="chart" data-label="Chart Workstation" title="Chart Workstation" style="display:none">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16M4 15l4-6 4 4 6-8"/></svg>
                 <span class="sidebar-label">Chart Workstation</span>
             </button>
@@ -4071,6 +4071,13 @@ html.light #googleCompleteProfileModal input {
 
         <!-- SUB-TAB 4: PATTERN RADAR (Admin budi only) -->
         <section id="panel-tab-pattern" class="analisis-tab-panel" style="display:none">
+            <div class="ph rise d0" data-ac-ui="v2" style="margin-bottom:16px">
+                <div>
+                    <div class="kick" style="color:var(--ac-info, #2F72B5);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Admin &middot; akses khusus</div>
+                    <h1 style="font-size:24px;font-weight:800;color:var(--ac-ink, #fff);margin:0 0 6px">Pattern Radar</h1>
+                    <p style="font-size:13px;color:var(--ac-2, #8E9994);margin:0">Deteksi pola harga klasik dengan normalisasi z-score dan korelasi Pearson. Riwayat yang tidak cukup panjang tidak diberi skor.</p>
+                </div>
+            </div>
             <div id="patternSubTabContainer" class="space-y-4">
                 <div id="patternRadarGlobalLoader" class="p-8 text-center text-gray-500 text-xs">
                     <span class="spinner-sm"></span> Menyiapkan Pattern Radar...
@@ -4837,7 +4844,10 @@ function setTopLevelView(state) {
     else if (state !== 'serviceStatus' && state !== 'loading' && serviceStatusUnverified()) state = 'serviceStatus';
 
     /* premium-access-load-trigger */
-    if (state === 'app') setTimeout(function(){ loadPremiumAccess(false); },0);
+    if (state === 'app') {
+        setTimeout(function(){ loadPremiumAccess(false); },0);
+        if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
+    }
     else if (state === 'landing' || state === 'blocked' || state === 'maintenance' || state === 'serviceStatus') resetPremiumAccess();
 
     var ids = { loading:'initialLoader', blocked:'blockedScreen', maintenance:'maintenanceScreen', serviceStatus:'serviceStatusScreen', landing:'landingPage', app:'dashboardScreen' };
@@ -7630,7 +7640,7 @@ function navigateTo(page) {
                 window.UnifiedCockpit.syncActiveTicker(requestedTicker, {
                     loadChart: true,
                     forceChartReload: true,
-                    runAnalysis: Boolean(subTab === 'analisis' || subTab === 'analisis-chart')
+                    runAnalysis: false
                 });
             } else if (subTab === 'analisis-chart' && window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function') {
                 window.UnifiedCockpit.loadUnifiedChart(window.UnifiedCockpit.getActiveTicker() || 'BBCA');
@@ -7855,6 +7865,11 @@ function updateDashGreeting() {
     if (sidebarName) sidebarName.textContent = displayName;
     var sidebarAvatar = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-avatar') : null;
     if (sidebarAvatar) sidebarAvatar.textContent = displayName.charAt(0).toUpperCase() || 'T';
+    var sidebarRoleEl = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-role') : null;
+    if (sidebarRoleEl) {
+        var isAdm = (localStorage.getItem('autocuan_is_admin') === 'true') || displayName.toLowerCase() === 'budi';
+        sidebarRoleEl.textContent = isAdm ? 'Admin \u00B7 Pro Trader' : 'VIP';
+    }
     // Show approved badge for non-guest logged-in users
     var approvedBadge = document.getElementById('approvedBadge');
     if (approvedBadge) {

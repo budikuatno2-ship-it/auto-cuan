@@ -542,6 +542,16 @@
     if (validParentTabs.indexOf(parentTab) < 0) parentTab = 'analisis-chart';
     root.__ACTIVE_ANALISIS_SUBTAB__ = parentTab;
     var workspace = byId('page-analisis');
+    var isAnalisisChartTab = (parentTab === 'analisis-chart');
+    if (workspace && workspace.classList) {
+      if (typeof workspace.classList.toggle === 'function') {
+        workspace.classList.toggle('active-tab-analisis-chart', isAnalisisChartTab);
+      } else if (isAnalisisChartTab) {
+        workspace.classList.add('active-tab-analisis-chart');
+      } else {
+        workspace.classList.remove('active-tab-analisis-chart');
+      }
+    }
     if (workspace && !workspace.classList.contains('hidden') && typeof root.syncWorkspaceSidebarActive === 'function') root.syncWorkspaceSidebarActive('analisis');
     var workspaceTitle = byId('analysisWorkspaceTitle');
     if (workspaceTitle) workspaceTitle.textContent = ({ 'analisis-chart':'Analisis Saham', bandarmologi:'Bandarmologi', intel:'Sinyal Intelijen', hunter:'Broker Hunter', insider:'Jejaring Insider', ranking:'Ranking Harian', financial:'Financial', 'market-structure':'Struktur Pasar', pattern:'Pattern Radar' })[parentTab];
