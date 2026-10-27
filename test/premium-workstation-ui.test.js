@@ -100,8 +100,9 @@ test('premium workstation v4 adds product-grade semantics and trust without beha
   assert.match(html, /class="landing-hero-note"/);
   assert.match(html, /Alat bantu analisis, bukan rekomendasi beli\/jual/);
   assert.match(html, /Keputusan tetap milik Anda/);
-  assert.match(html, /id="ihsgSummaryCard" class="market-band-grid" role="group"/);
-  assert.match(html, /class="radar-panel (?:lg:col-span-3|w-full) panel" aria-label="Top 5 Radar"/);
+  // Redesign v2 Dashboard (Main.dc.html): four-cell market strip, Top 5 sheet.
+  assert.match(html, /id="ihsgSummaryCard" class="strip" role="group"/);
+  assert.match(html, /<section class="sheet[^"]*" aria-labelledby="dashRadarTitle">/);
   assert.match(html, /id="dashboardMonitorUpdated"[^>]*aria-live="polite"/);
   assert.match(css, /AUTO-CUAN PREMIUM WORKSTATION V4/);
   assert.match(css, /\.landing-trust-rail/);

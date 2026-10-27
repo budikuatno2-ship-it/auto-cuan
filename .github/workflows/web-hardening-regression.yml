@@ -28,9 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CHROMIUM_PATH: /usr/bin/google-chrome
-    # The 628-file suite also isolates failed batches; allow that diagnostic
+    # The 778-file suite also isolates failed batches; allow that diagnostic
     # pass to finish rather than cancelling before it can report failures.
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

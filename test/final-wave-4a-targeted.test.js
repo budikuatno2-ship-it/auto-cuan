@@ -30,30 +30,30 @@ function contrastRatio(hex1, hex2) {
 }
 
 // ----------------------------------------------------------------------------
-// SUITE 1: DECOMMISSIONED FEATURE CLEANUP (FINAL-BUG-004)
+// SUITE 1: KELOLA KEUANGAN (FINAL-BUG-004 reversed by the owner, redesign v2)
 // ----------------------------------------------------------------------------
-test('FINAL-BUG-004: Money Management is permanently decommissioned from runtime web shell', () => {
-  // 1. Sidebar button absent
-  assert.equal(INDEX_HTML.includes('data-sidebar-page="money-management"'), false, 'money-management sidebar button must not exist');
-  assert.equal(INDEX_HTML.includes('title="Kelola Keuangan"'), false, 'Kelola Keuangan sidebar title must not exist');
+test('Kelola Keuangan is revived as a premium worksheet page (owner decision, redesign v2)', () => {
+  // 1. Sidebar item under Pantau, premium-gated like the other premium pages
+  assert.match(INDEX_HTML, /<button[^>]*data-sidebar-page="money-management"[^>]*data-premium-nav="true"[^>]*title="Kelola Keuangan"/, 'Kelola Keuangan sidebar item must be premium-gated');
 
-  // 2. Mobile nav button absent
-  assert.equal(INDEX_HTML.includes('data-page="money-management"'), false, 'money-management mobile nav button must not exist');
+  // 2. The phone tab bar stays at four items; Kelola is reached from "Lainnya"
+  assert.equal(INDEX_HTML.includes('data-page="money-management"'), false, 'money-management must not take a phone tab slot');
 
-  // 3. Worksheet container absent
-  assert.equal(INDEX_HTML.includes('id="page-money-management"'), false, 'page-money-management section must not exist in DOM');
-  assert.equal(INDEX_HTML.includes('id="mmCashflowSpreadsheetTable"'), false, 'spreadsheet table must not exist');
+  // 3. Worksheet container present
+  assert.ok(INDEX_HTML.includes('id="page-money-management"'), 'page-money-management section must exist');
+  assert.ok(INDEX_HTML.includes('id="mmCashflowSpreadsheetTable"'), 'spreadsheet table must exist');
 
-  // 4. Lazy loader script removed
-  assert.equal(INDEX_HTML.includes('money-sheet-lazy-loader.js'), false, 'lazy loader script must not be included');
+  // 4. Lazy loader script included
+  assert.ok(INDEX_HTML.includes('money-sheet-lazy-loader.js'), 'lazy loader script must be included');
 
-  // 5. isPremiumFeaturePage does not include money-management
+  // 5. isPremiumFeaturePage lists money-management
   const premMatch = INDEX_HTML.match(/function isPremiumFeaturePage\(page\)\s*\{\s*return\s*(\[[^\]]+\])/);
   assert.ok(premMatch, 'isPremiumFeaturePage must be defined');
-  assert.equal(premMatch[1].includes('money-management'), false, 'money-management must not be listed as premium feature page');
+  assert.ok(premMatch[1].includes('money-management'), 'money-management must be listed as premium feature page');
 
-  // 6. Navigation router has no money-management loader
-  assert.equal(INDEX_HTML.includes("if (page === 'money-management')"), false, 'router must not contain money-management loader');
+  // 6. Router loads the worksheet and keeps /kelola-keuangan as the canonical URL
+  assert.ok(INDEX_HTML.includes("if (page === 'money-management')"), 'router must contain the money-management loader');
+  assert.match(INDEX_HTML, /if \(page === 'money-management'\) \{\s*var qs = searchParams\.toString\(\);\s*return '\/kelola-keuangan'/, 'canonical URL must be /kelola-keuangan');
 });
 
 // ----------------------------------------------------------------------------

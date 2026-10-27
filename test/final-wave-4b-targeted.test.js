@@ -68,9 +68,10 @@ test('FINAL-RISK-003: Riset Pasar sidebar organizes tools into direct navigation
     );
   });
 
-  // Verify all research tools remain present and ordered in the Research group
-  const researchGroupMatch = INDEX_HTML.match(/<section class="sidebar-nav-group" aria-label="Research">([\s\S]*?)<\/section>/);
-  assert.ok(researchGroupMatch, 'Research section must exist in sidebar');
+  // Verify all research tools remain present in the Riset group (redesign v2
+  // names the group in Indonesian); Pattern Radar moved to the Admin group.
+  const researchGroupMatch = INDEX_HTML.match(/<section class="sidebar-nav-group" aria-label="Riset">([\s\S]*?)<\/section>/);
+  assert.ok(researchGroupMatch, 'Riset section must exist in sidebar');
   const researchHtml = researchGroupMatch[1];
   const expectedTools = [
     'tabAnalisisChart',
@@ -80,12 +81,13 @@ test('FINAL-RISK-003: Riset Pasar sidebar organizes tools into direct navigation
     'tabJejaringInsider',
     'tabFinancial',
     'tabMarketStructure',
-    'tabRankingHarian',
-    'tabAnalisisPattern'
+    'tabRankingHarian'
   ];
   expectedTools.forEach(toolId => {
     assert.ok(researchHtml.includes(`id="${toolId}"`), `Research tool ${toolId} must be present`);
   });
+  const adminGroupMatch = INDEX_HTML.match(/<section class="sidebar-nav-group sidebar-admin-group" aria-label="Admin">([\s\S]*?)<\/section>/);
+  assert.ok(adminGroupMatch && adminGroupMatch[1].includes('id="tabAnalisisPattern"'), 'Pattern Radar must be in the Admin group');
 
   // Check CSS rule for subgroup labels and collapsed behavior remains intact
   assert.ok(

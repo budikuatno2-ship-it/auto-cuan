@@ -133,8 +133,8 @@ test('currency figures are monospaced and right-aligned', () => {
   assert.match(declarations, /font-family:\s*var\(--ac-font-mono/);
   assert.match(declarations, /font-variant-numeric:\s*tabular-nums/);
   assert.match(declarations, /text-align:\s*right/);
-  // JetBrains Mono is the brief's first choice and is already the token value.
-  assert.match(theme, /--ac-font-mono:\s*'JetBrains Mono'/);
+  // Redesign v2 (HANDOFF §2.3): Geist Mono for ticker, price and lot.
+  assert.match(theme, /--ac-font-mono:\s*'Geist Mono'/);
 });
 
 test('status badges are slim pills', () => {

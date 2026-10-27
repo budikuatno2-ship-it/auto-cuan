@@ -11,7 +11,7 @@
     const composing=e=>Boolean(e&&(e.isComposing||e.keyCode===229||composingInputs.has(e.target)));
     page.addEventListener('compositionstart',e=>composingInputs.add(e.target),true);
     page.addEventListener('compositionend',e=>composingInputs.delete(e.target),true);
-    const widths=[44,148,146,248,160,250,44];
+    const widths=[44,130,170,350,190,200,40];
     const rows=()=>api.rows();
     const same=(a,b)=>a&&b&&a.id===b.id&&a.col===b.col;
     const cell=element=>{ const input=element.closest('[data-col]'), tr=input&&input.closest('[data-row-id]'); return tr?{id:tr.dataset.rowId,col:Number(input.dataset.col)}:null; };

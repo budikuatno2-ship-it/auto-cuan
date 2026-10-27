@@ -117,148 +117,14 @@ const PREVIEW_MODULE_MAP = {
   'portofolio': 'portofolio',
   'portfolio': 'portofolio',
   'kelola-keuangan': 'kelola-keuangan',
-  'money-management': 'kelola-keuangan'
+  'money-management': 'kelola-keuangan',
+  'catatan-admin': 'catatan-admin',
+  'catatan': 'catatan-admin'
 };
 
 function getPreviewInjectionHtml(module, options = {}) {
-  const hideBar = Boolean(options.hideBar);
   return `
   <!-- AUTO-CUAN PREVIEW ZERO-AUTH BOOTSTRAP - QA & DEV SERVER ONLY (NEVER IN PRODUCTION) -->
-  <style id="autocuan-preview-style">
-    /* ── TOP MOCK-STATE BANNER ─────────────────────────────────────── */
-    #autocuan-mock-banner {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 22px;
-      line-height: 22px;
-      box-sizing: border-box;
-      z-index: 999998;
-      background: rgba(234, 179, 8, 0.92);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      color: #1c1917;
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-align: center;
-      padding: 0 48px 0 12px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      pointer-events: none;
-      user-select: none;
-    }
-    #autocuan-mock-banner .mock-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      line-height: 22px;
-    }
-    #autocuan-mock-banner .mock-sep {
-      opacity: 0.5;
-      margin: 0 6px;
-    }
-    /* Push app content down so it's not hidden behind the 22px banner */
-    body { padding-top: 22px !important; }
-
-    /* Fix sidebar offset: sticky sidebar bottom must not exceed viewport */
-    #sidebar, #appSidebar, .app-sidebar {
-      top: 22px !important;
-      height: calc(100dvh - 22px) !important;
-      max-height: calc(100dvh - 22px) !important;
-    }
-
-    /* ── BOTTOM NAV PILL ────────────────────────────────────────────── */
-    #autocuan-preview-bar {
-      position: fixed;
-      bottom: 14px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 999999;
-      background: rgba(14, 21, 36, 0.94);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 9999px;
-      box-shadow: 0 10px 30px -5px rgba(0,0,0,0.6), 0 0 16px rgba(34, 197, 94, 0.20);
-      padding: 6px 14px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 11px;
-      color: #e2e8f0;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      max-width: 96vw;
-      overflow-x: auto;
-      white-space: nowrap;
-    }
-    #autocuan-preview-bar .preview-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-weight: 700;
-      color: #22c55e;
-      padding-right: 6px;
-      border-right: 1px solid rgba(255, 255, 255, 0.15);
-    }
-    #autocuan-preview-bar .preview-badge-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #22c55e;
-      box-shadow: 0 0 6px #22c55e;
-    }
-    #autocuan-preview-bar a {
-      color: #94a3b8;
-      text-decoration: none;
-      padding: 3px 7px;
-      border-radius: 6px;
-      font-weight: 500;
-      transition: all 0.15s ease;
-    }
-    #autocuan-preview-bar a:hover {
-      color: #f8fafc;
-      background: rgba(255, 255, 255, 0.08);
-    }
-    #autocuan-preview-bar a.active {
-      color: #ffffff;
-      background: #2563eb;
-      font-weight: 600;
-    }
-    #autocuan-preview-bar .close-btn {
-      background: none;
-      border: none;
-      color: #64748b;
-      font-size: 14px;
-      cursor: pointer;
-      padding: 0 4px;
-      margin-left: 4px;
-      line-height: 1;
-    }
-    #autocuan-preview-bar .close-btn:hover {
-      color: #f8fafc;
-    }
-
-    @media (max-width: 768px) {
-      #autocuan-preview-bar {
-        bottom: 8px;
-        padding: 4px 8px;
-        font-size: 10px;
-        gap: 4px;
-        max-width: 98vw;
-      }
-      #autocuan-preview-bar a {
-        padding: 2px 5px;
-      }
-      body:has(#autocuan-preview-bar) {
-        padding-bottom: 56px !important;
-      }
-    }
-  </style>
-
   <script id="autocuan-preview-script">
   (function() {
     // ── SECURITY ISOLATION: Mock auth state is set HERE (dev injection),
@@ -355,6 +221,7 @@ function getPreviewInjectionHtml(module, options = {}) {
         return;
       }
 
+      if (typeof setTopLevelView === 'function') setTopLevelView('app');
       if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
       if (typeof applyPremiumAccessUi === 'function') applyPremiumAccessUi();
       if (typeof syncHeaderUsername === 'function') syncHeaderUsername();
@@ -386,6 +253,8 @@ function getPreviewInjectionHtml(module, options = {}) {
         }, 120);
       } else if (mod === 'kelola-keuangan') {
         if (typeof navigateTo === 'function') navigateTo('money-management');
+      } else if (mod === 'catatan-admin') {
+        if (typeof navigateTo === 'function') navigateTo('catatan-admin');
       }
     }
 
@@ -398,8 +267,7 @@ function getPreviewInjectionHtml(module, options = {}) {
     }
   })();
   </script>
-
-  ${hideBar ? '' : `
+  ${options.hideBar ? '' : `
   <div id="autocuan-preview-bar">
     <span class="preview-badge"><span class="preview-badge-dot"></span> Preview</span>
     <a href="/preview/landing" class="${module === 'landing' ? 'active' : ''}">1. Landing</a>
@@ -454,6 +322,7 @@ const ROUTE_REWRITES = {
   '/sektor': '/index.html',
   '/trackrecord': '/index.html',
   '/pattern': '/index.html',
+  '/pattern-radar': '/pattern-radar.html',
   '/review': '/index.html',
   '/analisis-saham': '/analisis-saham.html',
   // FASE 9: the shell embeds the Portfolio Command Center at this exact path,
@@ -462,9 +331,15 @@ const ROUTE_REWRITES = {
   '/portfolio-planner': '/portfolio-command-center-v2.html',
   '/kelola-keuangan': '/index.html',
   '/money-management': '/index.html',
+  '/catatan-admin': '/index.html',
   // Public BYOK registration form (mirrors the Vercel rewrite so the VPS
   // fallback serves the same URL shape).
   '/register': '/register.html',
+  '/ketentuan': '/ketentuan.html',
+  '/admin-console': '/admin-console.html',
+  '/admin': '/admin-console.html',
+  '/maintenance': '/maintenance.html',
+  '/pemeliharaan': '/maintenance.html',
   // FASE 2: broker-summary ("broksum") and chart viewers. Both are real views of
   // pages that already resolve their initial state from the query string, so
   // these short paths only need to map to the right page + default tab. The tab
@@ -527,7 +402,7 @@ function getChartPocHtml() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SPIKE 6D: Evaluasi & Uji Stres Engine Chart - Auto-Cuan</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="/vendor/lightweight-charts.standalone.production.js"></script>
   <script src="/chart-workstation.js?v=20261015-v1"></script>
   <link rel="stylesheet" href="/ui-theme.css">
   <style>
@@ -929,6 +804,13 @@ const server = http.createServer(async (req, res) => {
       pathname = '/api/sector-hot';
     }
 
+    // Alias: /api/admin-notes -> sector-hot?action=admin-notes.
+    if (endpointName === 'admin-notes') {
+      parsedUrl.searchParams.set('action', 'admin-notes');
+      endpointName = 'sector-hot';
+      pathname = '/api/sector-hot';
+    }
+
     // C2: CSP violation reports are collected by lib/security-headers (not an
     // api/ file, to respect the 13-function Vercel budget).
     if (endpointName === 'csp-report') {
@@ -1091,6 +973,9 @@ const server = http.createServer(async (req, res) => {
               }
             }
           });
+        }
+        if (action === 'account-google-status') {
+          return res.status(200).json({ success: true, linked: false, google_email: null });
         }
         if (action === 'portfolio-state-load') {
           return res.status(200).json({
@@ -1698,7 +1583,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (await serveData(req,res,pathname.slice('/data'.length),{noStore:true,extensionFallback:false})) return;
   }
-  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord') pathname = '/index.html';
+  if (pathname === '/pattern-radar') pathname = '/pattern-radar.html';
+  if (pathname === '/maintenance' || pathname === '/pemeliharaan') pathname = '/maintenance.html';
+  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord' || pathname === '/catatan-admin') pathname = '/index.html';
   if (await servePublic(req,res,pathname)) return;
   if (await servePublic(req,res,'/404.html',{status:404,noStore:true})) return;
   res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:'404 Not Found');

@@ -1,7 +1,7 @@
 (function(root){
  'use strict';
  var loading=null,loaded=new Set();
- var urls=['/money-sheet-formulas.js?v=20260929-v1','/money-sheet-model.js?v=20260929-v2','/money-sheet-grid.js?v=20260929-keyboard-v1','/money-sheet-runtime.js?v=20260929-keyboard-v1'];
+ var urls=['/money-sheet-formulas.js?v=20260929-v1','/money-sheet-model.js?v=20260929-v2','/money-sheet-grid.js?v=20260929-keyboard-v1','/money-sheet-runtime.js?v=20261022-canvas-v2'];
  function script(url){
   if(loaded.has(url))return Promise.resolve();
   return new Promise(function(resolve,reject){

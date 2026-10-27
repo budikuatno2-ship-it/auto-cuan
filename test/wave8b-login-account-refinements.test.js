@@ -3,7 +3,7 @@
  *
  * Wave 8B contract tests:
  *  - Login label changed from "Gmail" to "Email atau username"
- *  - Google "Segera tersedia" button present, non-functional, accessible
+ *  - No Google sign-in button in the login modal (owner decision 2026-10-20)
  *  - openAuthChoiceModal sets data-context on session expiry
  *  - registerApprovalPanel has all three approval state cards
  *  - Account Center compact CSS present
@@ -44,31 +44,22 @@ test('login field placeholder no longer says "nama@gmail.com" (login modal)', ()
 
 // ── Google button ─────────────────────────────────────────────────────────────
 
-test('login modal contains Google sign-in button (active)', () => {
+// Owner decision 2026-10-20: Google login is cancelled. Accounts use a Gmail
+// address typed by hand (Daftar, Lengkapi Gmail). The server OAuth code stays
+// in place untouched; only the login-modal entry point is gone.
+test('login modal has no Google sign-in button', () => {
   const loginModalStart = html.indexOf('id="loginModal"');
-  // loginModal ends at its closing wrapper div ~2000 chars in
   const loginModalEnd = html.indexOf('<!-- REGISTER MODAL', loginModalStart);
   const loginHtml = html.slice(loginModalStart, loginModalEnd);
-  assert.ok(loginHtml.includes('login-google-btn'), 'Google button class must exist in login modal');
-  assert.ok(loginHtml.includes('Masuk dengan Google'), 'button label must read "Masuk dengan Google"');
-  assert.ok(loginHtml.includes('initiateGoogleAuth'), 'Google button must trigger initiateGoogleAuth()');
+  assert.ok(!loginHtml.includes('loginGoogleBtn'), 'Google button must not be rendered in the login modal');
+  assert.ok(!loginHtml.includes('Masuk dengan Google'), 'login modal must not offer "Masuk dengan Google"');
+  assert.ok(!loginHtml.includes('login-google-divider'), 'the "atau" divider before the Google button must be gone');
 });
 
-test('Google button has aria-label for accessibility', () => {
-  assert.ok(html.includes('aria-label="Masuk dengan Google"'),
-    'Google button must have descriptive aria-label');
-});
-
-test('login-google-btn CSS is present in ui-theme.css', () => {
-  assert.ok(css.includes('.login-google-btn'), 'CSS class .login-google-btn must exist');
-  assert.ok(css.includes('cursor: not-allowed'), 'Google button must have not-allowed cursor');
-  assert.ok(css.includes('.login-google-badge'), 'CSS class .login-google-badge must exist');
-  assert.ok(css.includes('.login-google-divider'), 'CSS class .login-google-divider must exist');
-});
-
-test('login-google-btn has min-height 44px (tap target)', () => {
-  const btnRule = css.slice(css.indexOf('.login-google-btn {'), css.indexOf('}', css.indexOf('.login-google-btn {')));
-  assert.ok(btnRule.includes('min-height: 44px'), 'Google button must have 44px min-height tap target');
+test('Google login button styles are removed with the button', () => {
+  assert.ok(!css.includes('.login-google-btn'), 'no orphan .login-google-btn rule');
+  assert.ok(!css.includes('.login-google-divider'), 'no orphan .login-google-divider rule');
+  assert.ok(!css.includes('.login-google-badge'), 'no orphan .login-google-badge rule');
 });
 
 // ── Session expiry emphasis ───────────────────────────────────────────────────

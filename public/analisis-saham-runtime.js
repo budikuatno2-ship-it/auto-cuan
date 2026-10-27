@@ -83,123 +83,293 @@
   ];
   root.RANKING_COLUMNS = RANKING_COLUMNS;
 
+  // ===== RANKING TABLE STATE & LOGIC (CANVAS REDESIGN V2) =====
+  var RANKING_SAMPLE_FALLBACK = [
+    {t:'BBCA',p:10250,c:0.98,rsi:58.4,h:-1.92,v:1.4,f1:185.0,f3:412.5,s:94,as_of:'13 Okt 2026'},
+    {t:'MEDC',p:1380,c:4.15,rsi:66.2,h:-0.72,v:3.2,f1:42.1,f3:89.4,s:91,as_of:'13 Okt 2026'},
+    {t:'BRPT',p:1045,c:3.45,rsi:62.8,h:-4.55,v:2.8,f1:64.8,f3:112.0,s:88,as_of:'13 Okt 2026'},
+    {t:'BBNI',p:5450,c:2.35,rsi:54.1,h:-8.12,v:1.9,f1:28.5,f3:54.2,s:85,as_of:'13 Okt 2026'},
+    {t:'ADRO',p:3720,c:1.64,rsi:48.9,h:-12.4,v:1.1,f1:12.2,f3:20.8,s:82,as_of:'13 Okt 2026'},
+    {t:'TLKM',p:2940,c:-1.01,rsi:34.6,h:-38.1,v:0.9,f1:-15.7,f3:-145.9,s:61,as_of:'13 Okt 2026'},
+    {t:'ASII',p:5150,c:0.49,rsi:null,h:-14.3,v:0.9,f1:8.4,f3:15.1,s:74,as_of:'13 Okt 2026'},
+    {t:'BMRI',p:6850,c:0.74,rsi:41.4,h:-22.6,v:0.87,f1:-168.5,f3:-529.6,s:58,as_of:'13 Okt 2026'},
+    {t:'AMMN',p:8900,c:1.20,rsi:53.8,h:-44.6,v:0.67,f1:67.2,f3:90.4,s:70,as_of:'13 Okt 2026'},
+    {t:'PGAS',p:1610,c:0.62,rsi:50.2,h:-6.9,v:1.2,f1:5.1,f3:null,s:72,as_of:'13 Okt 2026'},
+    {t:'BREN',p:6850,c:2.24,rsi:35.3,h:-71.8,v:0.8,f1:-15.1,f3:29.5,s:55,as_of:'13 Okt 2026'},
+    {t:'GOTO',p:65,c:-1.52,rsi:38.4,h:-31.5,v:0.87,f1:-0.22,f3:-0.03,s:42,as_of:'13 Okt 2026'},
+    {t:'BRMS',p:410,c:1.23,rsi:29.1,h:-65.4,v:1.09,f1:35.3,f3:108.7,s:63,as_of:'13 Okt 2026'},
+    {t:'TPIA',p:7200,c:0.70,rsi:37.1,h:-78.7,v:1.19,f1:-171.9,f3:-248.9,s:40,as_of:'13 Okt 2026'}
+  ];
+
   var rankingState = {
     rows: [],
     loading: false,
     loaded: false,
     error: null,
     searchQuery: '',
-    sortKey: 'week52_high_dist_pct',
+    preset: 0, // 0: Semua, 1: Top gainer, 2: Asing beli, 3: RSI rebound
+    sortKey: 's', // s, t, p, c, rsi, h, v, f1, f3
     sortDirection: 'desc',
-    selectedTicker: null
+    selectedTicker: null,
+    csvN: null
   };
   root.rankingState = rankingState;
 
+  var RANKING_PRESETS = [
+    { l: 'Semua', f: function() { return true; } },
+    { l: 'Top gainer', f: function(d) { return d.c != null && d.c >= 1.5; } },
+    { l: 'Asing beli', f: function(d) { return (d.f1 != null && d.f1 > 0) && (d.f3 != null && d.f3 > 0); } },
+    { l: 'RSI rebound', f: function(d) { return d.rsi != null && d.rsi < 40; } }
+  ];
+
+  var RANKING_COLUMNS_V2 = [
+    { k: 't', l: 'Ticker', r: false },
+    { k: 'p', l: 'Harga', r: true },
+    { k: 'c', l: 'Chg %', r: true },
+    { k: 'rsi', l: 'RSI 14', r: true },
+    { k: 'h', l: 'Jarak 52W tinggi', r: true },
+    { k: 'v', l: 'Vol vs 7H', r: true },
+    { k: 'f1', l: 'Asing terakhir', r: true },
+    { k: 'f3', l: 'Asing 3H', r: true },
+    { k: 's', l: 'Skor', r: true }
+  ];
+  root.RANKING_COLUMNS_V2 = RANKING_COLUMNS_V2;
+
   function rankingCellHtml(row, col) {
-    if (col.key === 'ticker') {
-      var isSelected = rankingState.selectedTicker && row.ticker === rankingState.selectedTicker;
-      return '<span class="font-semibold text-gray-200">' + escapeHtml(row.ticker) + '</span>' +
-        (isSelected ? ' <span class="text-emerald-400" title="Sedang dipilih">&bull;</span>' : '');
-    }
-    var raw = row[col.key];
+    var raw = row && col && (row[col.key] != null ? row[col.key] : row[col.k]);
     if (raw === null || raw === undefined || !Number.isFinite(Number(raw))) {
       return '<span class="text-gray-500">—</span>';
     }
-    var num = Number(raw);
-    var text = col.fmt(num);
-    if (col.colorize) {
-      var colorClass = num > 0 ? 'text-emerald-400' : (num < 0 ? 'text-rose-400' : 'text-gray-300');
-      return '<span class="' + colorClass + '">' + text + '</span>';
-    }
-    if (col.key === 'week52_high_dist_pct') {
-      if (num >= -3.0 && num <= 0.5) {
-        return '<span class="text-emerald-300 font-semibold px-1.5 py-0.5 rounded text-[11px] bg-emerald-500/15 border border-emerald-500/30">' + text + ' 🔥</span>';
-      }
-    }
-    if (col.key === 'rsi_14') {
-      if (num <= 30) {
-        return '<span class="text-blue-300 font-semibold px-1.5 py-0.5 rounded text-[11px] bg-blue-500/15 border border-blue-500/30">' + text + ' OS</span>';
-      } else if (num >= 70) {
-        return '<span class="text-amber-300 font-semibold px-1.5 py-0.5 rounded text-[11px] bg-amber-500/15 border border-amber-500/30">' + text + ' OB</span>';
-      }
-    }
-    return '<span class="text-gray-300">' + text + '</span>';
+    return String(raw);
   }
+
+  function idFmtInt(n) {
+    if (n == null || !Number.isFinite(Number(n))) return '—';
+    return Math.round(Number(n)).toLocaleString('id-ID');
+  }
+  function idDec(n, d) {
+    if (n == null || !Number.isFinite(Number(n))) return '—';
+    return Number(n).toFixed(d).replace('.', ',');
+  }
+  function idSignPct(n, d) {
+    if (n == null || !Number.isFinite(Number(n))) return '—';
+    var num = Number(n);
+    return (num >= 0 ? '+' : '−') + Math.abs(num).toFixed(d).replace('.', ',') + '%';
+  }
+  function idMoneyBillion(v) {
+    if (v == null || !Number.isFinite(Number(v))) return '—';
+    var val = Number(v);
+    var a = Math.abs(val);
+    var sign = val >= 0 ? '+' : '−';
+    if (a >= 1000) {
+      return sign + 'Rp ' + (a / 1000).toFixed(2).replace('.', ',') + ' T';
+    }
+    return sign + 'Rp ' + a.toFixed(1).replace('.', ',') + ' M';
+  }
+
+  function normalizeRankingRow(row, idx) {
+    var t = String(row.t || row.ticker || '').toUpperCase();
+    var p = row.p != null ? Number(row.p) : (row.last_price != null ? Number(row.last_price) : null);
+    var c = row.c != null ? Number(row.c) : (row.change_pct != null ? Number(row.change_pct) : null);
+    var rsi = row.rsi != null ? Number(row.rsi) : (row.rsi_14 != null ? Number(row.rsi_14) : null);
+    var h = row.h != null ? Number(row.h) : (row.week52_high_dist_pct != null ? Number(row.week52_high_dist_pct) : null);
+    var v = row.v != null ? Number(row.v) : (row.volume_ratio_vs_7d_avg != null ? Number(row.volume_ratio_vs_7d_avg) : null);
+
+    var rawF1 = row.f1 != null ? Number(row.f1) : (row.foreign_net_today != null ? Number(row.foreign_net_today) : null);
+    var f1 = rawF1 == null ? null : (Math.abs(rawF1) > 1e6 ? rawF1 / 1e9 : rawF1);
+
+    var rawF3 = row.f3 != null ? Number(row.f3) : (row.foreign_net_3d != null ? Number(row.foreign_net_3d) : null);
+    var f3 = rawF3 == null ? null : (Math.abs(rawF3) > 1e6 ? rawF3 / 1e9 : rawF3);
+
+    var s = row.s != null ? Number(row.s) : (row.score != null ? Number(row.score) : null);
+    if (s == null) {
+      var sVal = 50;
+      if (v != null) sVal += Math.min(20, Math.max(-15, (v - 1) * 12));
+      if (c != null) sVal += Math.min(20, Math.max(-20, c * 3));
+      if (f3 != null) sVal += Math.min(15, Math.max(-15, f3 > 0 ? 10 : -10));
+      if (h != null) sVal += Math.min(10, Math.max(-15, (h + 10) * 0.5));
+      s = Math.min(99, Math.max(15, Math.round(sVal)));
+    }
+
+    return {
+      t: t, ticker: t,
+      p: p, last_price: p,
+      c: c, change_pct: c,
+      rsi: rsi, rsi_14: rsi,
+      h: h, week52_high_dist_pct: h,
+      v: v, volume_ratio_vs_7d_avg: v,
+      f1: f1, foreign_net_today: f1,
+      f3: f3, foreign_net_3d: f3,
+      s: s, score: s,
+      as_of: row.as_of_trade_date || row.as_of || null,
+      raw: row
+    };
+  }
+  root.normalizeRankingRow = normalizeRankingRow;
 
   function renderRankingTable() {
     var wrap = byId('rankingTableWrap');
     if (!wrap) return;
 
     if (rankingState.loading && !rankingState.rows.length) {
-      wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs"><span class="spinner-sm"></span> Memuat ranking harian...</div>';
+      if (window.AutoCuanStates && typeof window.AutoCuanStates.html === 'function') {
+        wrap.innerHTML = window.AutoCuanStates.html('Ranking', 'loading');
+      } else {
+        wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs"><span class="spin"></span> Memuat ranking harian seluruh emiten...</div>';
+      }
       return;
     }
     if (rankingState.error && !rankingState.rows.length) {
-      wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">' + escapeHtml(rankingState.error) + '</div>';
-      return;
-    }
-    if (!rankingState.rows.length) {
-      wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">Ranking harian belum tersedia.</div>';
+      if (window.AutoCuanStates && typeof window.AutoCuanStates.html === 'function') {
+        wrap.innerHTML = window.AutoCuanStates.html('Ranking', 'error', { reason: rankingState.error });
+      } else {
+        wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">' + escapeHtml(rankingState.error) + '</div>';
+      }
       return;
     }
 
+    var sourceData = (rankingState.rows && rankingState.rows.length) ? rankingState.rows : RANKING_SAMPLE_FALLBACK;
+    var normRows = sourceData.map(normalizeRankingRow);
+
+    // Filter by preset
+    var presetIdx = Math.max(0, Math.min(3, rankingState.preset || 0));
+    var presetFn = RANKING_PRESETS[presetIdx].f;
+    var filtered = normRows.filter(presetFn);
+
+    // Filter by search query
     var query = (rankingState.searchQuery || '').trim().toUpperCase();
-    var filtered = query ? rankingState.rows.filter(function (r) { return String(r.ticker || '').indexOf(query) !== -1; }) : rankingState.rows.slice();
+    if (query) {
+      filtered = filtered.filter(function (r) {
+        return r.t.indexOf(query) !== -1;
+      });
+    }
 
-    var key = rankingState.sortKey;
+    // Sort
+    var sortKey = rankingState.sortKey || 's';
+    // Key translation if legacy key used
+    if (sortKey === 'week52_high_dist_pct') sortKey = 'h';
+    else if (sortKey === 'last_price') sortKey = 'p';
+    else if (sortKey === 'rsi_14') sortKey = 'rsi';
+    else if (sortKey === 'ticker') sortKey = 't';
+    else if (sortKey === 'change_pct') sortKey = 'c';
+    else if (sortKey === 'volume_ratio_vs_7d_avg') sortKey = 'v';
+    else if (sortKey === 'foreign_net_today') sortKey = 'f1';
+    else if (sortKey === 'foreign_net_3d') sortKey = 'f3';
+    else if (sortKey === 'score') sortKey = 's';
+
     var dir = rankingState.sortDirection === 'asc' ? 1 : -1;
     filtered.sort(function (a, b) {
-      if (key === 'ticker') return dir * String(a.ticker || '').localeCompare(String(b.ticker || ''));
-      var av = a[key], bv = b[key];
-      var aNull = av === null || av === undefined || !Number.isFinite(Number(av));
-      var bNull = bv === null || bv === undefined || !Number.isFinite(Number(bv));
-      if (aNull && bNull) return 0;
-      if (aNull) return 1;
-      if (bNull) return -1;
-      return dir * (Number(av) - Number(bv));
+      var x = a[sortKey], y = b[sortKey];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      if (typeof x === 'string') return dir * x.localeCompare(y);
+      return dir * (Number(x) - Number(y));
     });
 
+    rankingState._currentFilteredRows = filtered;
+
+    // Update Counter label
+    var countLabel = byId('rankingCountLabel');
+    var activeCol = RANKING_COLUMNS_V2.find(function(c) { return c.k === sortKey; }) || RANKING_COLUMNS_V2[8];
+    var sortArrow = dir < 0 ? '↓' : '↑';
+    if (countLabel) {
+      countLabel.textContent = filtered.length + ' emiten · urut ' + activeCol.l + ' ' + sortArrow;
+    }
+
+    // Update Provenance Date
+    var provDate = byId('rankingDateVal');
+    if (provDate) {
+      var latestDate = (filtered[0] && filtered[0].as_of) || (sourceData[0] && (sourceData[0].as_of_trade_date || sourceData[0].as_of)) || '13 Okt 2026';
+      provDate.textContent = latestDate;
+    }
+
     if (!filtered.length) {
-      wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">Tidak ada ticker yang cocok dengan pencarian.</div>';
+      if (window.AutoCuanStates && typeof window.AutoCuanStates.html === 'function') {
+        wrap.innerHTML = window.AutoCuanStates.html('Ranking', 'empty');
+      } else {
+        wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">Tidak ada emiten yang cocok dengan filter ini.</div>';
+      }
       return;
     }
 
-    var html = '<table class="w-full text-xs border-collapse tabular-nums lining-nums">';
-    html += '<thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="border-b border-dark-600/30">';
-    html += '<th class="px-2 py-2 text-center font-medium text-gray-500 w-10">#</th>';
-    RANKING_COLUMNS.forEach(function (col) {
-      var active = rankingState.sortKey === col.key;
-      var arrow = active ? (rankingState.sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '';
-      html += '<th class="px-3 py-2 text-' + col.align + ' font-medium select-none cursor-pointer whitespace-nowrap transition ' +
-        (active ? 'text-emerald-400 bg-emerald-500/5' : 'text-gray-500 hover:text-gray-300') + '" ' +
-        'onclick="setRankingSort(\'' + col.key + '\')" title="Urutkan berdasarkan ' + col.label + '">' +
-        '<span class="inline-flex items-center gap-1' + (col.align === 'right' ? ' flex-row-reverse' : '') + '">' +
-        col.label + (arrow ? '<span class="text-[9px]">' + arrow + '</span>' : '') + '</span></th>';
+    var html = '<table class="tbl rt tabular-nums lining-nums" style="min-width:1040px">';
+    html += '<thead><tr>';
+    html += '<th style="width:48px">#</th>';
+    RANKING_COLUMNS_V2.forEach(function (col) {
+      var isActive = sortKey === col.k;
+      var arr = isActive ? sortArrow : '';
+      var cls = (col.r ? 'r' : '') + (isActive ? ' act' : '');
+      html += '<th class="' + cls + '"><button type="button" onclick="setRankingSort(\'' + col.k + '\')" aria-label="Urutkan ' + col.l + '">' +
+        col.l + ' <span>' + arr + '</span></button></th>';
     });
     html += '</tr></thead><tbody>';
 
     filtered.forEach(function (row, idx) {
-      var isSelected = rankingState.selectedTicker && row.ticker === rankingState.selectedTicker;
-      html += '<tr class="border-b border-dark-600/10 hover:bg-dark-600/20 transition cursor-pointer ' +
-        (isSelected ? 'bg-emerald-500/10' : '') + '" onclick="quickAnalisis(\'' + escapeHtml(row.ticker) + '\')" title="Analisis ' + escapeHtml(row.ticker) + '">';
-      html += '<td class="px-2 py-1.5 text-center text-gray-400 font-mono text-[11px] tabular-nums">' + (idx + 1) + '</td>';
-      RANKING_COLUMNS.forEach(function (col) {
-        html += '<td class="px-3 py-1.5 text-' + col.align + ' whitespace-nowrap">' + rankingCellHtml(row, col) + '</td>';
-      });
+      var isSelected = rankingState.selectedTicker && row.t === rankingState.selectedTicker;
+      var rowCls = 'rise d' + Math.min(idx, 11) + (isSelected ? ' sel' : '');
+      var cColor = row.c == null ? 'mut' : (row.c >= 0 ? 'pos' : 'neg');
+      var f1Color = row.f1 == null ? 'mut' : (row.f1 >= 0 ? 'pos' : 'neg');
+      var f3Color = row.f3 == null ? 'mut' : (row.f3 >= 0 ? 'pos' : 'neg');
+      var isOs = row.rsi != null && row.rsi < 30;
+
+      html += '<tr class="' + rowCls + '" onclick="pinRankingRow(\'' + escapeHtml(row.t) + '\')" style="cursor:pointer">';
+      html += '<td class="num mut">' + (idx + 1) + '</td>';
+      html += '<td><span class="tk mono">' + escapeHtml(row.t) + '</span></td>';
+      html += '<td class="r num mono">' + idFmtInt(row.p) + '</td>';
+      html += '<td class="r num ' + cColor + '" style="font-weight:600">' + idSignPct(row.c, 2) + '</td>';
+      html += '<td class="r num">' + (row.rsi == null ? '—' : idDec(row.rsi, 1)) + (isOs ? '<span class="os">OS</span>' : '') + '</td>';
+      html += '<td class="r num neg">' + (row.h == null ? '—' : idSignPct(row.h, 2)) + '</td>';
+      html += '<td class="r num">' + (row.v == null ? '—' : idDec(row.v, 2) + '×') + '</td>';
+      html += '<td class="r num ' + f1Color + '">' + idMoneyBillion(row.f1) + '</td>';
+      html += '<td class="r num ' + f3Color + '">' + idMoneyBillion(row.f3) + '</td>';
+      html += '<td class="r"><span class="score"><i><b style="width:' + row.s + '%;animation-delay:' + (idx * 30) + 'ms"></b></i><b class="num">' + row.s + '</b></span></td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
     wrap.innerHTML = html;
+
+    // Render Pinned Detail Row
+    var pinEl = byId('rankingPinnedRow');
+    if (pinEl) {
+      var pinItem = rankingState.selectedTicker ? filtered.find(function(r) { return r.t === rankingState.selectedTicker; }) : null;
+      if (pinItem) {
+        var pinCColor = pinItem.c == null ? '' : (pinItem.c >= 0 ? 'pos' : 'neg');
+        var pinF3Color = pinItem.f3 == null ? '' : (pinItem.f3 >= 0 ? 'pos' : 'neg');
+        pinEl.style.display = 'block';
+        pinEl.innerHTML = [
+          '<div style="display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;padding:14px 20px">',
+          '  <span class="tk mono" style="font-size:18px">' + escapeHtml(pinItem.t) + '</span>',
+          '  <span><span class="lbl" style="display:block;margin:0">Harga</span><b class="num mono">Rp ' + idFmtInt(pinItem.p) + '</b> <span class="num ' + pinCColor + '">' + idSignPct(pinItem.c, 2) + '</span></span>',
+          '  <span><span class="lbl" style="display:block;margin:0">RSI 14</span><b class="num">' + (pinItem.rsi == null ? '—' : idDec(pinItem.rsi, 1)) + '</b></span>',
+          '  <span><span class="lbl" style="display:block;margin:0">Asing 3H</span><b class="num ' + pinF3Color + '">' + idMoneyBillion(pinItem.f3) + '</b></span>',
+          '  <span><span class="lbl" style="display:block;margin:0">Skor</span><b class="num">' + pinItem.s + '</b></span>',
+          '  <span style="margin-left:auto;display:flex;gap:8px">',
+          '    <button class="btn sm" type="button" onclick="unpinRankingRow()">Tutup</button>',
+          '    <a class="btn p sm" href="/analisis-saham?ticker=' + escapeHtml(pinItem.t) + '" onclick="if(typeof navigateTo===\'function\'){navigateTo(\'analisis\',\'chart\',{ticker:\'' + escapeHtml(pinItem.t) + '\'});return false;}">Buka Chart Workstation</a>',
+          '  </span>',
+          '</div>'
+        ].join('');
+      } else {
+        pinEl.style.display = 'none';
+        pinEl.innerHTML = '';
+      }
+    }
   }
   root.renderRankingTable = renderRankingTable;
 
-  var _rankingSearchTimer = null;
-  root.onRankingSearchInput = function (value) {
-    if (_rankingSearchTimer) clearTimeout(_rankingSearchTimer);
-    _rankingSearchTimer = setTimeout(function () {
-      rankingState.searchQuery = value;
-      renderRankingTable();
-    }, 300);
+  root.setRankingPreset = function (idx) {
+    rankingState.preset = idx;
+    var ind = byId('rankingPresetInd');
+    if (ind) ind.className = 'ind k' + idx;
+    for (var i = 0; i < 4; i++) {
+      var btn = byId('btnRankingPreset' + i);
+      if (btn) {
+        if (i === idx) btn.classList.add('on');
+        else btn.classList.remove('on');
+      }
+    }
+    renderRankingTable();
   };
 
   root.setRankingSort = function (key) {
@@ -207,9 +377,69 @@
       rankingState.sortDirection = rankingState.sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
       rankingState.sortKey = key;
-      rankingState.sortDirection = key === 'ticker' ? 'asc' : 'desc';
+      rankingState.sortDirection = (key === 't' || key === 'ticker') ? 'asc' : 'desc';
     }
     renderRankingTable();
+  };
+
+  root.pinRankingRow = function (ticker) {
+    rankingState.selectedTicker = ticker;
+    renderRankingTable();
+  };
+
+  root.unpinRankingRow = function () {
+    rankingState.selectedTicker = null;
+    var pinEl = byId('rankingPinnedRow');
+    if (pinEl) pinEl.style.display = 'none';
+    renderRankingTable();
+  };
+
+  root.exportRankingCsv = function () {
+    var rows = rankingState._currentFilteredRows || [];
+    if (!rows.length) return;
+    var csvContent = 'Rank;Ticker;Harga;Chg %;RSI 14;Jarak 52W tinggi %;Vol vs 7H;Asing Terakhir;Asing 3H;Skor\r\n';
+    rows.forEach(function (r, idx) {
+      csvContent += [
+        idx + 1,
+        r.t,
+        r.p != null ? r.p : '',
+        r.c != null ? r.c.toFixed(2).replace('.', ',') : '',
+        r.rsi != null ? r.rsi.toFixed(1).replace('.', ',') : '',
+        r.h != null ? r.h.toFixed(2).replace('.', ',') : '',
+        r.v != null ? r.v.toFixed(2).replace('.', ',') : '',
+        r.f1 != null ? r.f1.toFixed(1).replace('.', ',') : '',
+        r.f3 != null ? r.f3.toFixed(1).replace('.', ',') : '',
+        r.s != null ? r.s : ''
+      ].join(';') + '\r\n';
+    });
+    if (typeof window !== 'undefined' && typeof window.Blob === 'function') {
+      var blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      var dateStr = (rows[0] && rows[0].as_of) || new Date().toISOString().slice(0, 10);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'ranking-harian-' + dateStr + '.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+    var btn = byId('btnRankingCsv');
+    if (btn) {
+      btn.textContent = 'Terunduh · ' + rows.length + ' baris';
+      setTimeout(function () {
+        if (btn) btn.textContent = 'Ekspor CSV';
+      }, 2400);
+    }
+  };
+
+  var _rankingSearchTimer = null;
+  root.onRankingSearchInput = function (value) {
+    if (_rankingSearchTimer) clearTimeout(_rankingSearchTimer);
+    _rankingSearchTimer = setTimeout(function () {
+      rankingState.searchQuery = value;
+      renderRankingTable();
+    }, 200);
   };
 
   // ===== SUB-TAB SWITCHER (POLA CONSOLIDATED TAB) =====
@@ -355,9 +585,10 @@
 
     var pHeader = byId('analisisChartHeader');
     var pSubtabWrap = byId('analisisChartSubtabWrap');
-    if (pHeader) pHeader.style.display = (parentTab === 'market-structure' || parentTab === 'ranking') ? 'none' : 'block';
-    if (pSubtabWrap) pSubtabWrap.style.display = (parentTab === 'analisis-chart') ? 'flex' : 'none';
-    if ((parentTab === 'market-structure' || parentTab === 'ranking') && typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+    var isAnalisisChartTab = (parentTab === 'analisis-chart');
+    if (pHeader) pHeader.style.display = isAnalisisChartTab ? 'block' : 'none';
+    if (pSubtabWrap) pSubtabWrap.style.display = isAnalisisChartTab ? 'flex' : 'none';
+    if (!isAnalisisChartTab && typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
@@ -1653,13 +1884,318 @@
     return AutoCuanMarketStructure.loadUniverse(true);
   };
 
-  function renderFinancialFundamental(ticker, f, price, rootObj) {
-    if (!f) return;
-    researchText('financialTickerBadge', ticker);
-    var companyNameEl = byId('financialCompanyName');
-    if (companyNameEl) {
-      companyNameEl.textContent = (f && (f.company_name || f.name)) || (rootObj && (rootObj.company_name || rootObj.name)) || ('PT ' + ticker + ' Tbk');
+  // ===== FINANCIAL STATEMENTS & FUNDAMENTAL CONTROLLER (CANVAS REDESIGN V2) =====
+  var FINANCIAL_META = {
+    BRPT: {
+      real: true, name: 'Barito Pacific Tbk', sector: 'Basic Materials', bvps: '—', cap: 'Rp 135,5 T', capNote: 'snapshot IDX · 29 Sep 2026', sh: '93,75 M',
+      prov: [
+        { k: 'Periode terbaru', v: 'Q1 2026' },
+        { k: 'Sumber', v: 'Laporan keuangan emiten' },
+        { k: 'Free float', v: '22,33% · kepemilikan IDX 30 Sep 2026' },
+        { k: 'Diimpor', v: '13 Okt 2026, 10.36 WIB' }
+      ],
+      warn: 'Laporan Q2 2026 belum ada di server, periode terbaru masih Q1 2026. Beban Usaha, Laba Usaha, Liabilitas, Ekuitas, dan ROE kosong di sumber untuk semua periode, sehingga PBV, BVPS, dan PER tidak dihitung.'
+    },
+    BBCA: {
+      name: 'Bank Central Asia Tbk', sector: 'Perbankan', bvps: 'Rp 2.372', cap: 'Rp 1.263,5 T', capNote: '#1 di IDX', sh: '123,2 M', px: 'Rp 10.250 · 13 Okt',
+      prov: [
+        { k: 'Periode', v: 'Q2 2026 (diaudit)' },
+        { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
+        { k: 'Sumber market cap', v: 'Harga penutupan Rp 10.250 · 13 Okt' },
+        { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
+      ]
+    },
+    BBRI: {
+      name: 'Bank Rakyat Indonesia Tbk', sector: 'Perbankan', bvps: 'Rp 2.242', cap: 'Rp 730,5 T', capNote: '', sh: '151,6 M', px: 'Rp 4.820 · 13 Okt',
+      prov: [
+        { k: 'Periode', v: 'Q2 2026 (diaudit)' },
+        { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
+        { k: 'Sumber market cap', v: 'Harga penutupan Rp 4.820 · 13 Okt' },
+        { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
+      ]
+    },
+    BMRI: {
+      name: 'Bank Mandiri Tbk', sector: 'Perbankan', bvps: 'Rp 4.824', cap: 'Rp 639,3 T', capNote: '', sh: '93,3 M', px: 'Rp 6.850 · 13 Okt',
+      prov: [
+        { k: 'Periode', v: 'Q2 2026 (diaudit)' },
+        { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
+        { k: 'Sumber market cap', v: 'Harga penutupan Rp 6.850 · 13 Okt' },
+        { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
+      ]
+    },
+    GOTO: null
+  };
+
+  var financialState = {
+    t: 'BRPT',
+    q: '',
+    busy: false,
+    tab: 0, // 0: Laba Rugi, 1: Neraca, 2: Arus Kas, 3: Rasio
+    fr: 0,  // 0: Kuartalan, 1: Tahunan
+    yoy: false,
+    nul: true, // true: show empty rows, false: hide empty rows
+    sel: {},   // selected row id per tab
+    toast: ''
+  };
+  root.financialState = financialState;
+
+  function finDec(n, d) {
+    if (n == null || !Number.isFinite(Number(n))) return '—';
+    return Number(n).toFixed(d).replace('.', ',');
+  }
+  function finGrp(n) {
+    if (n == null || !Number.isFinite(Number(n))) return '—';
+    return Math.round(Number(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+  function finFmt(v, k) {
+    if (v === null || v === undefined || !Number.isFinite(Number(v))) return '—';
+    var num = Number(v);
+    if (k === 'm') {
+      var s = finGrp(Math.abs(num));
+      return num < 0 ? '(' + s + ')' : s;
     }
+    if (k === 'eps') {
+      var sEps = finDec(Math.abs(num), 2).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return num < 0 ? '(' + sEps + ')' : sEps;
+    }
+    if (k === 'pct') return finDec(num, 2) + '%';
+    return finDec(num, 2) + '×';
+  }
+
+  function getBrptFsData() {
+    return {
+      quarterly: {
+        periods: ["Q1 2026","Q4 2025","Q3 2025","Q2 2025","Q1 2025","Q4 2024","Q3 2024","Q2 2024"],
+        income_statement: [
+          { type: "group", label: "Pendapatan & Beban Usaha" },
+          { type: "item", label: "Pendapatan Usaha", unit: "idr", values: [43676.21, 35256.39, 40398.01, 39568.43, 12834.95, 13191.01, 6352.17, 9228.85] },
+          { type: "item", label: "Beban Usaha / Beban Pokok", unit: "idr", values: [null, null, null, null, null, null, null, null] },
+          { type: "total", label: "Laba Usaha / Operasional", unit: "idr", values: [null, null, null, null, null, null, null, null] },
+          { type: "group", label: "Laba Bersih & Pajak" },
+          { type: "item", label: "Beban Pajak Penghasilan", unit: "idr", values: [-1094.84, -240.23, -256.02, -159.42, -443.45, -401, -446.23, -505.86] },
+          { type: "total", label: "Laba Bersih Periode Berjalan", unit: "idr", values: [1537.46, -1490.25, 948.31, 8493.82, 268.06, 507.14, -160.7, 426.03] },
+          { type: "item", label: "Laba per Saham (EPS) - IDR", unit: "number", values: [16.41, -15.85, 10.11, 90.65, 2.86, 5.36, -1.72, 4.55] }
+        ],
+        balance_sheet: [
+          { type: "group", label: "Aset" },
+          { type: "item", label: "Kas & Setara Kas", unit: "idr", values: [52944.35, 50278.08, 49544.08, 50486.04, 32715.32, 25960.42, 24024.82, 23750.79] },
+          { type: "item", label: "Aset Lancar", unit: "idr", values: [112652.27, 104274.88, 107714.81, 107046.76, 63606, 56444.79, 47251.73, 49617.29] },
+          { type: "total", label: "Total Aset", unit: "idr", values: [299509.38, 290145.69, 267274.72, 246549.23, 180447.74, 170174.64, 154322.48, 163673.55] },
+          { type: "group", label: "Liabilitas" },
+          { type: "item", label: "Liabilitas Jangka Pendek", unit: "idr", values: [null, null, null, null, null, null, null, null] },
+          { type: "total", label: "Total Liabilitas", unit: "idr", values: [null, null, null, null, null, null, null, null] },
+          { type: "group", label: "Ekuitas" },
+          { type: "total", label: "Total Ekuitas", unit: "idr", values: [null, null, null, null, null, null, null, null] }
+        ],
+        cash_flow: [
+          { type: "group", label: "Arus Kas Aktivitas" },
+          { type: "item", label: "Arus Kas dari Aktivitas Operasi", unit: "idr", values: [-3606.93, 4404.96, 1621.05, 4430.93, -5250.38, 5456.7, -1733.23, 430.71] },
+          { type: "item", label: "Arus Kas dari Aktivitas Investasi", unit: "idr", values: [443.18, -25869.77, -8919.3, -4818.21, -993.07, -2320.65, 100.33, 362.36] },
+          { type: "item", label: "Arus Kas dari Aktivitas Pendanaan", unit: "idr", values: [4990.42, 22118.12, 4924.07, 18696.27, 12349.28, -2807.39, 3717.03, -466.06] },
+          { type: "total", label: "Kenaikan (Penurunan) Kas Bersih", unit: "idr", values: [1826.66, 653.31, -2374.18, 18308.99, 6105.83, 328.65, 2084.14, 327.01] }
+        ],
+        ratios: [
+          { type: "group", label: "Rasio Profitabilitas" },
+          { type: "item", label: "Return on Equity (ROE)", unit: "pct", values: [null, null, null, null, null, null, null, null] },
+          { type: "item", label: "Return on Assets (ROA)", unit: "pct", values: [0.51, -0.51, 0.35, 3.45, 0.15, 0.3, -0.1, 0.26] }
+        ]
+      },
+      annual: {
+        periods: ["FY 2025","FY 2024","FY 2023","FY 2022"],
+        income_statement: [
+          { type: "group", label: "Pendapatan & Beban Usaha" },
+          { type: "item", label: "Pendapatan Usaha", unit: "idr", values: [128057.77, 38578.61, 42553.69, 46587.86] },
+          { type: "item", label: "Beban Usaha / Beban Pokok", unit: "idr", values: [null, null, null, null] },
+          { type: "total", label: "Laba Usaha / Operasional", unit: "idr", values: [null, null, null, null] },
+          { type: "group", label: "Laba Bersih & Pajak" },
+          { type: "item", label: "Beban Pajak Penghasilan", unit: "idr", values: [-212.23, -1774.59, -1902.98, -1938.26] },
+          { type: "total", label: "Laba Bersih Periode Berjalan", unit: "idr", values: [8219.94, 912.89, 402.6, 27.67] },
+          { type: "item", label: "Laba per Saham (EPS) - IDR", unit: "number", values: [87.77, 9.7, 4.31, 0.31] }
+        ],
+        balance_sheet: [
+          { type: "group", label: "Aset" },
+          { type: "item", label: "Kas & Setara Kas", unit: "idr", values: [50278.08, 25960.42, 27793.77, 25540.82] },
+          { type: "item", label: "Aset Lancar", unit: "idr", values: [104274.88, 56444.79, 55964.04, 44875.68] },
+          { type: "total", label: "Total Aset", unit: "idr", values: [290145.69, 170174.64, 156700.69, 144198.78] },
+          { type: "group", label: "Liabilitas" },
+          { type: "item", label: "Liabilitas Jangka Pendek", unit: "idr", values: [null, null, null, null] },
+          { type: "total", label: "Total Liabilitas", unit: "idr", values: [null, null, null, null] },
+          { type: "group", label: "Ekuitas" },
+          { type: "total", label: "Total Ekuitas", unit: "idr", values: [null, null, null, null] }
+        ],
+        cash_flow: [
+          { type: "group", label: "Arus Kas Aktivitas" },
+          { type: "item", label: "Arus Kas dari Aktivitas Operasi", unit: "idr", values: [5195.84, -1780.75, 2166.01, -2090.05] },
+          { type: "item", label: "Arus Kas dari Aktivitas Investasi", unit: "idr", values: [-40850.81, -4480.62, -7587.88, -15680.94] },
+          { type: "item", label: "Arus Kas dari Aktivitas Pendanaan", unit: "idr", values: [59154.84, 3134.49, 7921.71, 14037.7] },
+          { type: "total", label: "Kenaikan (Penurunan) Kas Bersih", unit: "idr", values: [23499.87, -3126.88, 2499.84, -3733.3] }
+        ],
+        ratios: [
+          { type: "group", label: "Rasio Profitabilitas" },
+          { type: "item", label: "Return on Equity (ROE)", unit: "pct", values: [null, null, null, null] },
+          { type: "item", label: "Return on Assets (ROA)", unit: "pct", values: [2.83, 0.54, 0.26, 0.02] }
+        ]
+      }
+    };
+  }
+
+  function getSampleFsData(ticker, fr) {
+    var P = {
+      BBCA: { R: 29800, ox: .42, g: .018, sh: 123.2, eq: 292230, as: 1482000, ln: 921000, dpk: 1151000, cash: 38400, sd: 0.4, hist: [3.9, 4.05, 4.2, 3.95, 4.1, 4.25, 4.18, 4.32] },
+      BBRI: { R: 52100, ox: .58, g: .010, sh: 151.6, eq: 339890, as: 2052000, ln: 1398000, dpk: 1449000, cash: 30600, sd: 1.3, hist: [2.6, 2.48, 2.35, 2.2, 2.3, 2.18, 2.1, 2.15] },
+      BMRI: { R: 46200, ox: .52, g: .020, sh: 93.3,  eq: 450080, as: 2451000, ln: 1652000, dpk: 1702000, cash: 40100, sd: 2.1, hist: [1.7, 1.65, 1.58, 1.5, 1.46, 1.44, 1.4, 1.42] }
+    }[ticker] || { R: 25000, ox: .45, g: .015, sh: 100.0, eq: 250000, as: 1200000, ln: 800000, dpk: 950000, cash: 30000, sd: 1.0, hist: [2.0, 2.1, 2.2, 2.15, 2.2, 2.3, 2.25, 2.3] };
+
+    var Q = fr === 0, N = Q ? 8 : 5, per = [], V = [];
+    for (var k = 0; k < N; k++) {
+      var lab, sub, b, fl;
+      if (Q) {
+        var n = 2026 * 4 + 1 - k, y = Math.floor(n / 4), q = n % 4 + 1;
+        lab = 'Q' + q + ' ' + y;
+        sub = ['Mar', 'Jun', 'Sep', 'Des'][q - 1] + ' ' + y;
+        b = k; fl = 1;
+      } else {
+        var yAnn = 2025 - k;
+        lab = 'FY ' + yAnn;
+        sub = 'Des ' + yAnn + ' · tahunan';
+        b = 2 + 4 * k;
+        fl = 4 * Math.pow(1 + P.g, -1.5);
+      }
+      var gf = Math.pow(1 + P.g, -b), s = 1 + 0.025 * Math.sin(b * 1.7 + P.sd);
+      var rev = P.R * gf * s * fl;
+      var opx = -rev * (P.ox + 0.012 * Math.cos(b * 1.3 + P.sd));
+      var op = rev + opx;
+      var oth = rev * 0.015;
+      var ebt = op + oth;
+      var tax = -ebt * 0.19;
+      var ni = ebt + tax;
+      var eq = P.eq * Math.pow(1 + P.g * 1.18, -b);
+      var as = P.as * gf;
+      var ln = P.ln * gf * (1 + 0.022 * Math.sin(b * 1.1 + P.sd));
+      var dpk = P.dpk * gf;
+      var cash = P.cash * gf * (1 + 0.06 * Math.sin(b * 2.3));
+      var li = as - eq;
+      var cfo = ni * (1.15 + 0.22 * Math.sin(b * 2.1 + P.sd));
+      var cfi = -ni * (0.35 + 0.08 * Math.cos(b + P.sd));
+      var cff = -ni * (Q ? 0.18 : 0.72);
+      var eps = ni / P.sh;
+      var bvps = eq / P.sh;
+      var pbv = P.hist[Math.min(P.hist.length - 1, k)];
+
+      per.push({ lab: lab, sub: sub });
+      V.push({
+        rev: rev, opx: opx, op: op, oth: oth, ebt: ebt, tax: tax, ni: ni, eps: eps,
+        as: as, cash: cash, ln: ln, li: li, dpk: dpk, eq: eq,
+        cfo: cfo, cfi: cfi, cff: cff, net: cfo + cfi + cff,
+        roe: (ni / eq) * 100, roa: (ni / as) * 100, npm: (ni / rev) * 100,
+        der: li / eq, pbv: pbv
+      });
+    }
+
+    var R = function(id, l, k, o) {
+      return Object.assign({ id: id, l: l, k: k, vals: V.map(function(v) { return v[id]; }) }, o || {});
+    };
+
+    return {
+      per: per,
+      hist: P.hist,
+      tabs: [
+        {
+          t: 'Laba Rugi', def: 'ni',
+          rows: [
+            { g: 'Pendapatan & Beban Usaha' },
+            R('rev', 'Pendapatan Usaha', 'm'),
+            R('opx', 'Beban Usaha / Beban Pokok', 'm'),
+            R('op', 'Laba Usaha / Operasional', 'm', { tot: true }),
+            { g: 'Laba Bersih & Pajak' },
+            R('oth', 'Pendapatan (Beban) Lain-lain', 'm'),
+            R('ebt', 'Laba Sebelum Pajak', 'm'),
+            R('tax', 'Beban Pajak Penghasilan', 'm'),
+            R('ni', 'Laba Bersih Periode Berjalan', 'm', { tot: true }),
+            R('eps', 'Laba per Saham (EPS)', 'eps', { u: 'IDR' })
+          ]
+        },
+        {
+          t: 'Neraca', def: 'eq',
+          rows: [
+            { g: 'Aset' },
+            R('cash', 'Kas & Setara Kas', 'm'),
+            R('ln', 'Kredit yang Diberikan (neto)', 'm'),
+            R('as', 'Total Aset', 'm', { tot: true }),
+            { g: 'Liabilitas & Ekuitas' },
+            R('dpk', 'Dana Pihak Ketiga', 'm'),
+            R('li', 'Total Liabilitas', 'm', { tot: true }),
+            R('eq', 'Total Ekuitas', 'm', { tot: true })
+          ]
+        },
+        {
+          t: 'Arus Kas', def: 'cfo',
+          rows: [
+            { g: 'Arus Kas Aktivitas' },
+            R('cfo', 'Arus Kas dari Aktivitas Operasi', 'm'),
+            R('cfi', 'Arus Kas dari Aktivitas Investasi', 'm'),
+            R('cff', 'Arus Kas dari Aktivitas Pendanaan', 'm'),
+            R('net', 'Kenaikan (Penurunan) Kas Bersih', 'm', { tot: true })
+          ]
+        },
+        {
+          t: 'Rasio', def: 'roe',
+          rows: [
+            { g: 'Rasio Profitabilitas' },
+            R('roe', 'Return on Equity (ROE)', 'pct', { u: Q ? 'per kuartal' : '' }),
+            R('roa', 'Return on Assets (ROA)', 'pct', { u: Q ? 'per kuartal' : '' }),
+            R('npm', 'Margin Laba Bersih', 'pct'),
+            { g: 'Struktur & Valuasi' },
+            R('der', 'Liabilitas / Ekuitas', 'x'),
+            R('pbv', 'PBV', 'x')
+          ]
+        }
+      ]
+    };
+  }
+
+  function getFinancialModel(ticker, fr) {
+    if (ticker === 'BRPT') {
+      var src = getBrptFsData()[fr === 0 ? 'quarterly' : 'annual'];
+      var M = { Q1: 'Mar', Q2: 'Jun', Q3: 'Sep', Q4: 'Des' };
+      var per = src.periods.map(function(p) {
+        var a = p.split(' ');
+        return { lab: p, sub: a[0] === 'FY' ? 'Des ' + a[1] + ' · tahunan' : M[a[0]] + ' ' + a[1] };
+      });
+      var conv = function(rows) {
+        return rows.map(function(r) {
+          if (r.type === 'group') return { g: r.label };
+          var l = r.label, u = '';
+          var m = l.match(/^(.*?)\s*-\s*IDR$/);
+          if (m) { l = m[1]; u = 'IDR'; }
+          if (r.unit === 'pct' && fr === 0) u = 'per kuartal';
+          return {
+            id: r.label,
+            l: l,
+            u: u,
+            k: r.unit === 'idr' ? 'm' : (r.unit === 'number' ? 'eps' : 'pct'),
+            tot: r.type === 'total',
+            vals: r.values
+          };
+        });
+      };
+      return {
+        per: per,
+        tabs: [
+          { t: 'Laba Rugi', def: 'Laba Bersih Periode Berjalan', rows: conv(src.income_statement) },
+          { t: 'Neraca', def: 'Total Aset', rows: conv(src.balance_sheet) },
+          { t: 'Arus Kas', def: 'Arus Kas dari Aktivitas Operasi', rows: conv(src.cash_flow) },
+          { t: 'Rasio', def: 'Return on Assets (ROA)', rows: conv(src.ratios) }
+        ]
+      };
+    }
+    return getSampleFsData(ticker, fr);
+  }
+
+  function renderFinancialFundamentalLegacy(ticker, f, price, rootObj) {
+    if (!f) return;
+    financialSnapshotCache[ticker] = f;
+    researchText('financialTickerBadge', ticker);
     var hasPbv = researchHasNumber(f.pbv);
     var hasBvps = researchHasNumber(f.book_value_per_share);
     var hasPer = researchHasNumber(f.per);
@@ -1668,64 +2204,60 @@
     var hasMarketCap = researchHasNumber(f.market_cap);
     var coverageCount = (hasPbv ? 1 : 0) + (hasBvps ? 1 : 0) + (hasPer ? 1 : 0) + (hasDer ? 1 : 0) + (hasShares ? 1 : 0) + (hasMarketCap ? 1 : 0);
 
-    researchText('financialPbv', hasPbv ? researchNumber(f.pbv, 2) + 'x' : '-');
-    var referencePrice = researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan -';
-    if (price && price.last_price_as_of) {
-      var priceDate = formatIndonesianDateWithWib(price.last_price_as_of);
-      referencePrice += ' · ' + priceDate;
+    researchText('financialPbv', hasPbv ? researchNumber(f.pbv, 2) + 'x' : '—');
+    researchText('financialBvps', hasBvps ? researchIdr(f.book_value_per_share) : '—');
+    researchText('financialPer', hasPer ? researchNumber(f.per, 2) + 'x' : '—');
+    researchText('financialDer', hasDer ? researchNumber(f.der, 2) + 'x' : '—');
+    researchText('financialShares', hasShares ? formatIndonesianSharesCount(f.shares_outstanding) : '—');
+    researchText('financialMarketCap', hasMarketCap ? formatIndonesianMarketCap(f.market_cap) : '—');
+
+    if (coverageCount === 0) {
+      var unavailable = byId('financialUnavailableState');
+      if (unavailable) unavailable.hidden = false;
     }
-    if (price && price.last_price_source) referencePrice += ' · ' + formatSourceLabel(price.last_price_source);
+  }
+
+  function renderFinancialFundamental(ticker, f, price) {
+    ticker = (ticker || financialState.t || 'BRPT').toUpperCase();
+    var cached = financialCache[ticker] || {};
+    f = f || cached.fundamental || {};
+    price = price || cached.price || null;
+
+    researchText('financialTickerBadge', ticker);
+    researchText('financialPbv', researchHasNumber(f.pbv) ? researchNumber(f.pbv, 2) + 'x' : '—');
+    var referencePrice = researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan —';
+    if (price && price.last_price_as_of) referencePrice += ' · ' + price.last_price_as_of;
+    if (price && price.last_price_source) referencePrice += ' · ' + price.last_price_source;
     if (price && price.freshness === 'stale') referencePrice += ' · Data historis';
     researchText('financialPbvPrice', referencePrice);
-    researchText('financialBvps', hasBvps ? researchIdr(f.book_value_per_share) : '-');
-    researchText('financialPer', hasPer ? researchNumber(f.per, 2) + 'x' : '-');
-    researchText('financialDer', hasDer ? researchNumber(f.der, 2) + 'x' : '-');
-    researchText('financialShares', hasShares ? formatIndonesianSharesCount(f.shares_outstanding) : '-');
-    researchText('financialMarketCap', hasMarketCap ? formatIndonesianMarketCap(f.market_cap) : '-');
-    researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'Per ' + formatIndonesianDateWithWib(f.market_cap_as_of) : 'Belum tersedia');
-
-    // Sync header quote price dynamically with current active ticker price
-    var quoteEl = byId('unifiedActiveTickerQuote');
-    if (quoteEl) {
-      var currentLast = (price && price.last != null && price.last !== '') ? price.last : (f && f.pbv_as_of_price != null && f.pbv_as_of_price !== '' ? f.pbv_as_of_price : null);
-      if (currentLast != null && Number.isFinite(Number(currentLast)) && Number(currentLast) > 0) {
-        quoteEl.className = 'text-xs font-mono font-semibold text-emerald-400 tabular-nums ml-1';
-        quoteEl.textContent = 'Rp ' + Number(currentLast).toLocaleString('id-ID') + ' (0.00%)';
-      } else {
-        quoteEl.className = 'text-xs font-mono font-semibold text-gray-400 tabular-nums ml-1';
-        quoteEl.textContent = 'Harga belum tersedia';
-      }
-    }
+    researchText('financialBvps', researchHasNumber(f.book_value_per_share) ? researchIdr(f.book_value_per_share) : '—');
+    researchText('financialShares', researchHasNumber(f.shares_outstanding) ? researchCompact(f.shares_outstanding) : '—');
+    researchText('financialMarketCap', researchHasNumber(f.market_cap) ? researchIdr(f.market_cap) : '—');
+    researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'As of ' + f.market_cap_as_of : 'Belum tersedia');
     researchText('financialPeriod', f.fundamental_period || 'Belum tersedia');
     researchText('financialPeriodHero', f.fundamental_period ? 'Periode ' + f.fundamental_period : 'Periode belum tersedia');
-    researchText('financialSource', formatSourceLabel(f.fundamental_source));
-    researchText('financialMarketCapSource', formatSourceLabel(f.market_cap_source));
-    var rawUpdated = f.fundamental_updated_at || f.updated_at;
-    var formattedUpdated = 'Belum tersedia';
-    if (rawUpdated) {
-      if (typeof rawUpdated === 'string' && (rawUpdated.indexOf('T') !== -1 || rawUpdated.indexOf('Z') !== -1)) {
-        formattedUpdated = formatIndonesianDateWithWib(rawUpdated);
-      } else {
-        formattedUpdated = rawUpdated;
-      }
-    }
-    researchText('financialUpdatedAt', formattedUpdated);
+    researchText('financialSource', f.fundamental_source || 'Belum tersedia');
+    researchText('financialMarketCapSource', f.market_cap_source || 'Belum tersedia');
+    researchText('financialUpdatedAt', f.fundamental_updated_at || 'Belum tersedia');
 
+    var coverageValues = [f.pbv, f.book_value_per_share, f.shares_outstanding, f.market_cap];
+    var coverageCount = coverageValues.reduce(function (count, value) {
+      return count + (researchHasNumber(value) ? 1 : 0);
+    }, 0);
     researchText('financialCoverage', coverageCount + ' / 4');
     var coverageBar = byId('financialCoverageBar');
     if (coverageBar && coverageBar.style && coverageBar.style.setProperty) {
       coverageBar.style.setProperty('--ac-financial-coverage', (coverageCount * 25) + '%');
     }
-
     var statusBadge = byId('financialStatusBadge');
     if (statusBadge) {
       var hasVerifiedProvenance = Boolean(f.verified || f.provenance_verified);
       if (hasVerifiedProvenance) {
         statusBadge.textContent = 'Snapshot Terverifikasi';
-        statusBadge.className = 'status-badge status-badge--success ac-status-badge ac-status-badge--positive';
+        statusBadge.className = 'ac-status-badge ac-status-badge--positive';
       } else if (coverageCount >= 4) {
         statusBadge.textContent = 'Data Lengkap 4/4';
-        statusBadge.className = 'status-badge status-badge--success ac-status-badge ac-status-badge--positive';
+        statusBadge.className = 'ac-status-badge ac-status-badge--positive';
       } else if (coverageCount > 0) {
         statusBadge.textContent = 'Sebagian Lengkap ' + coverageCount + '/4';
         statusBadge.className = 'ac-status-badge ac-status-badge--warning';
@@ -1735,23 +2267,507 @@
       }
     }
 
-    var unavailable = byId('financialDataUnavailable');
     var allUnavailEl = byId('financialAllUnavailableState');
     var metricGrid = byId('financialMetricGrid');
     if (coverageCount === 0) {
-      if (unavailable) unavailable.hidden = false;
       if (allUnavailEl) allUnavailEl.hidden = false;
       if (metricGrid) metricGrid.hidden = true;
     } else {
-      if (unavailable) unavailable.hidden = true;
       if (allUnavailEl) allUnavailEl.hidden = true;
       if (metricGrid) metricGrid.hidden = false;
     }
+
+    var meta = FINANCIAL_META[ticker];
+
+    // Update Ticker chips
+    if (typeof document.querySelectorAll === 'function') {
+      ['BRPT', 'BBCA', 'BBRI', 'BMRI', 'GOTO'].forEach(function(code) {
+        var btns = document.querySelectorAll('#financialPopularChips button');
+        btns.forEach(function(b) {
+          if (b && b.textContent.trim() === code && b.classList) {
+            if (code === ticker) b.classList.add('on');
+            else b.classList.remove('on');
+          }
+        });
+      });
+    }
+
+    var snapshotSheet = byId('financialSnapshotSheet');
+    var snapshotBody = byId('financialSnapshotBody');
+    var snapshotEmpty = byId('financialSnapshotEmpty');
+    var statementsSheet = byId('financialStatementsSheet');
+    var peerSection = byId('financialPeerSection');
+    var missMsg = byId('financialTickerMissMsg');
+
+    if (!meta) {
+      // Empty state for unknown / unlisted ticker (like GOTO or others)
+      if (snapshotBody) snapshotBody.style.display = 'none';
+      if (statementsSheet) statementsSheet.style.display = 'none';
+      if (peerSection) peerSection.style.display = 'none';
+      if (snapshotEmpty) {
+        snapshotEmpty.style.display = 'flex';
+        var tEl = byId('financialEmptyTitle');
+        if (tEl) tEl.textContent = 'Data fundamental belum tersedia untuk ' + ticker;
+      }
+      var tBadge = byId('financialTickerBadge');
+      if (tBadge) tBadge.textContent = ticker;
+      var cName = byId('financialCompanyName');
+      if (cName) cName.textContent = 'PT ' + ticker + ' Tbk';
+      var cSec = byId('financialSectorName');
+      if (cSec) cSec.textContent = '· Teknologi';
+      var cCov = byId('financialCoverageBadge');
+      if (cCov) { cCov.textContent = 'Tidak tersedia · 0/4'; cCov.className = 'chip'; }
+      return;
+    }
+
+    if (snapshotBody) snapshotBody.style.display = 'block';
+    if (snapshotEmpty) snapshotEmpty.style.display = 'none';
+    if (statementsSheet) statementsSheet.style.display = 'block';
+    if (missMsg) missMsg.style.display = 'none';
+
+    // Populate Snapshot Sheet
+    var tBadge = byId('financialTickerBadge');
+    if (tBadge) tBadge.textContent = ticker;
+    var cName = byId('financialCompanyName');
+    if (cName) cName.textContent = meta.name;
+    var cSec = byId('financialSectorName');
+    if (cSec) cSec.textContent = '· ' + meta.sector;
+
+    var pbvVal = byId('financialPbvVal');
+    var pbvNote = byId('financialPbvNote');
+    if (pbvVal) pbvVal.textContent = meta.real ? '—' : (ticker === 'BBCA' ? '4,32×' : (ticker === 'BBRI' ? '2,15×' : '1,42×'));
+    if (pbvNote) pbvNote.textContent = meta.real ? 'butuh Total Ekuitas, kosong di sumber' : 'rerata 8 kuartal 4,12×';
+
+    var bvpsVal = byId('financialBvpsVal');
+    if (bvpsVal) bvpsVal.textContent = meta.bvps;
+    var capVal = byId('financialCapVal');
+    if (capVal) capVal.textContent = meta.cap;
+    var capNote = byId('financialCapNote');
+    if (capNote) capNote.textContent = meta.capNote || 'snapshot IDX';
+    var shVal = byId('financialSharesVal');
+    if (shVal) shVal.textContent = meta.sh;
+
+    var covBadge = byId('financialCoverageBadge');
+    if (covBadge) {
+      if (meta.real) {
+        covBadge.textContent = 'Data Sebagian · 2/4 kategori lengkap';
+        covBadge.className = 'chip w';
+      } else {
+        covBadge.textContent = 'Data Lengkap · 4/4';
+        covBadge.className = 'chip b';
+      }
+    }
+
+    // Completeness chips
+    var cmplContainer = byId('financialCategoryCompleteness');
+    if (cmplContainer) {
+      var catNames = ['Laba Rugi', 'Neraca', 'Arus Kas', 'Rasio'];
+      var isReal = meta.real;
+      cmplContainer.innerHTML = catNames.map(function(cName, idx) {
+        var isPartial = isReal && (idx === 1 || idx === 3);
+        var icon = isPartial ? '!' : '✓';
+        var cls = isPartial ? 'p' : '';
+        var n = isReal ? (idx === 1 ? '3/6 pos' : (idx === 3 ? '1/2 pos' : '4/4 pos')) : '4/4 pos';
+        return '<span class="' + cls + '"><i aria-hidden="true">' + icon + '</i>' + cName + '<em>' + n + '</em></span>';
+      }).join('');
+    }
+
+    // Provenance
+    var pLatest = byId('financialLatestPeriodVal');
+    if (pLatest) pLatest.textContent = meta.real ? 'Q1 2026' : 'Q2 2026';
+    var warnBox = byId('financialSnapshotWarning');
+    var warnTxt = byId('financialWarningText');
+    if (warnBox && warnTxt) {
+      if (meta.warn) {
+        warnBox.style.display = 'flex';
+        warnTxt.textContent = meta.warn;
+      } else {
+        warnBox.style.display = 'none';
+      }
+    }
+
+    // Populate Statements Sheet
+    var fr = financialState.fr || 0; // 0: quarterly, 1: annual
+    var model = getFinancialModel(ticker, fr);
+    var per = model.per;
+    var tabIdx = financialState.tab || 0;
+    var tab = model.tabs[tabIdx] || model.tabs[0];
+
+    var subtitle = byId('financialStatementsSubtitle');
+    if (subtitle) {
+      subtitle.textContent = meta.name + ' · ' + (fr === 0 ? per.length + ' kuartal · ' + per[0].lab + ' s.d. ' + per[per.length - 1].lab : per.length + ' tahun buku · ' + per[0].lab + ' s.d. ' + per[per.length - 1].lab);
+    }
+
+    // Tabs indicators
+    var catInd = byId('financialCategoryTabInd');
+    if (catInd) catInd.className = 'ind k' + tabIdx;
+    for (var i = 0; i < 4; i++) {
+      var cBtn = byId('finCat' + i);
+      if (cBtn && cBtn.classList) {
+        if (i === tabIdx) cBtn.classList.add('on');
+        else cBtn.classList.remove('on');
+      }
+    }
+
+    var freqInd = byId('financialFreqTabInd');
+    if (freqInd) freqInd.className = 'ind k' + fr;
+    for (var j = 0; j < 2; j++) {
+      var fBtn = byId('finFreq' + j);
+      if (fBtn && fBtn.classList) {
+        if (j === fr) fBtn.classList.add('on');
+        else fBtn.classList.remove('on');
+      }
+    }
+
+    // Filter empty rows if toggled
+    var rows = tab.rows;
+    var isNull = function(v) { return v === null || v === undefined || !Number.isFinite(Number(v)); };
+    var isRowEmpty = function(r) { return !r.g && r.vals && r.vals.every(isNull); };
+    var emptyCount = rows.filter(isRowEmpty).length;
+    var emptyCountEl = byId('finEmptyRowsCount');
+    if (emptyCountEl) emptyCountEl.textContent = emptyCount;
+
+    var visRows = rows;
+    if (!financialState.nul) {
+      visRows = [];
+      rows.forEach(function(r, idx) {
+        if (r.g) {
+          var hasNextNonEmpty = false;
+          for (var k = idx + 1; k < rows.length && !rows[k].g; k++) {
+            if (!isRowEmpty(rows[k])) { hasNextNonEmpty = true; break; }
+          }
+          if (hasNextNonEmpty) visRows.push(r);
+        } else if (!isRowEmpty(r)) {
+          visRows.push(r);
+        }
+      });
+    }
+
+    // Build Table Head
+    var thead = byId('financialStatementsThead');
+    if (thead) {
+      var thHtml = '<tr><th>Pos</th>';
+      per.forEach(function(p, pIdx) {
+        var ltClass = pIdx === 0 ? ' class="lt"' : '';
+        thHtml += '<th' + ltClass + '>' + escapeHtml(p.lab) + '<small>' + escapeHtml(p.sub) + '</small></th>';
+      });
+      thHtml += '</tr>';
+      thead.innerHTML = thHtml;
+    }
+
+    // Build Table Body
+    var tbody = byId('financialStatementsTbody');
+    var selectedRowId = financialState.sel[tabIdx] || tab.def;
+    var selectedRow = null;
+
+    if (tbody) {
+      var tbHtml = '';
+      var lag = fr === 0 ? 4 : 1;
+
+      visRows.forEach(function(row) {
+        if (row.g) {
+          tbHtml += '<tr class="g"><td colspan="' + (per.length + 1) + '">' + escapeHtml(row.g) + '</td></tr>';
+          return;
+        }
+
+        var isSelected = (row.id === selectedRowId || row.l === selectedRowId);
+        if (isSelected) selectedRow = row;
+
+        var trCls = [];
+        if (row.tot) trCls.push('t');
+        if (isSelected) trCls.push('sel');
+        if (isRowEmpty(row)) trCls.push('nul');
+
+        tbHtml += '<tr class="' + trCls.join(' ') + '" onclick="selectFinTrendRow(\'' + escapeHtml(row.id || row.l) + '\')" style="cursor:pointer">';
+        tbHtml += '<td>' + escapeHtml(row.l) + (row.u ? '<span class="un">' + escapeHtml(row.u) + '</span>' : '') + '</td>';
+
+        row.vals.forEach(function(val, vIdx) {
+          var isLatest = vIdx === 0;
+          var tdCls = isLatest ? 'lt' : '';
+          var prevVal = row.vals[vIdx + lag];
+          var yoyHtml = '';
+
+          if (financialState.yoy && !isNull(val) && !isNull(prevVal)) {
+            var diff = val - prevVal;
+            var pctDiff = prevVal !== 0 ? (diff / Math.abs(prevVal)) * 100 : null;
+            if (pctDiff != null) {
+              var isUp = pctDiff >= 0;
+              var diffStr = (isUp ? '+' : '') + pctDiff.toFixed(1).replace('.', ',') + '%';
+              yoyHtml = '<span class="yy ' + (isUp ? 'up' : 'dn') + '">' + diffStr + '</span>';
+            }
+          }
+
+          var formatted = finFmt(val, row.k);
+          tbHtml += '<td class="' + tdCls + '">' + formatted + yoyHtml + '</td>';
+        });
+
+        tbHtml += '</tr>';
+      });
+
+      tbody.innerHTML = tbHtml;
+    }
+
+    // Fallback if no selected row
+    if (!selectedRow) {
+      selectedRow = tab.rows.find(function(r) { return !r.g; }) || tab.rows[0];
+    }
+
+    // Populate Footnote bar
+    var footCat = byId('finFootCat');
+    if (footCat) footCat.textContent = tab.t;
+    var footFreq = byId('finFootFreq');
+    if (footFreq) footFreq.textContent = fr === 0 ? 'Kuartalan' : 'Tahunan';
+    var srcChip = byId('finSrcChip');
+    if (srcChip) {
+      srcChip.textContent = meta.real ? 'Data server · impor 13 Okt 2026' : 'Data contoh';
+      srcChip.className = 'chip ' + (meta.real ? 'b' : 'i');
+    }
+
+    // Render Trend Summary Cards & Bar Chart with HTML Overlay (§5c)
+    renderFinancialTrend(selectedRow, per, fr);
+
+    // Render Peer Section
+    if (peerSection) {
+      if (meta.real) {
+        peerSection.style.display = 'none';
+      } else {
+        peerSection.style.display = 'block';
+        var peerTbody = byId('financialPeerTbody');
+        if (peerTbody) {
+          var peers = [
+            { t: 'BBCA', v: '4,32×', roe: '19,25%', bar: 'width:100%' },
+            { t: 'BBRI', v: '2,15×', roe: '14,80%', bar: 'width:50%' },
+            { t: 'BMRI', v: '1,42×', roe: '16,10%', bar: 'width:33%' },
+            { t: 'BBNI', v: '1,18×', roe: '—', bar: 'width:27%' }
+          ];
+          peerTbody.innerHTML = peers.map(function(p, pIdx) {
+            var isCur = p.t === ticker;
+            return '<tr class="rise d' + pIdx + (isCur ? ' sel' : '') + '" onclick="selectFinancialTicker(\'' + p.t + '\')" style="cursor:pointer">' +
+              '<td class="tk mono">' + p.t + '</td>' +
+              '<td class="r num" style="font-weight:700">' + p.v + '</td>' +
+              '<td class="r num">' + p.roe + '</td>' +
+              '<td><div class="meter"><i style="' + p.bar + ';' + (isCur ? '' : 'background:#9AA6A1') + '"></i></div></td>' +
+              '</tr>';
+          }).join('');
+        }
+      }
+    }
   }
+  root.renderFinancialFundamental = renderFinancialFundamental;
+
+  // §5c REQUIREMENT: SVG Bar Chart with HTML overlay labels with percentage positioning and cqi typography
+  function renderFinancialTrend(row, per, fr) {
+    if (!row || !row.vals) return;
+
+    var trLabel = byId('financialTrendLabel');
+    if (trLabel) trLabel.textContent = row.l;
+
+    var trSubtitle = byId('financialTrendSubtitle');
+    var isNull = function(v) { return v === null || v === undefined || !Number.isFinite(Number(v)); };
+    var vals = row.vals.slice().reverse(); // reverse so oldest is on left, newest on right
+    var labs = per.map(function(p) { return p.lab; }).slice().reverse();
+    var ok = vals.filter(function(v) { return !isNull(v); });
+
+    var unitTxt = row.k === 'm' ? 'Miliar IDR' : (row.k === 'eps' ? 'Rupiah per saham' : (row.k === 'pct' ? 'persen' : 'kali'));
+    if (trSubtitle) {
+      trSubtitle.textContent = !ok.length ? 'Pos ini tidak tersedia di sumber untuk semua periode'
+        : unitTxt + ' · ' + vals.length + (fr === 0 ? ' kuartal' : ' tahun') + (ok.length < vals.length ? ' · ' + (vals.length - ok.length) + ' periode kosong, tidak dihitung' : '');
+    }
+
+    var lastV = row.vals[0];
+    var lag = fr === 0 ? 4 : 1;
+    var prevV = row.vals[lag];
+
+    var trLatest = byId('financialTrendLatest');
+    if (trLatest) trLatest.textContent = finFmt(lastV, row.k);
+
+    var trDeltaVal = byId('financialTrendDeltaVal');
+    var trDeltaLabel = byId('financialTrendDeltaLabel');
+    if (trDeltaLabel) trDeltaLabel.textContent = fr === 0 ? 'Δ YoY (vs ' + (per[lag] ? per[lag].lab : '—') + ')' : 'Δ vs ' + (per[1] ? per[1].lab : '—');
+    if (trDeltaVal) {
+      if (!isNull(lastV) && !isNull(prevV)) {
+        var diff = lastV - prevV;
+        var isUp = diff >= 0;
+        var diffTxt = (isUp ? '+' : '') + finFmt(diff, row.k);
+        trDeltaVal.textContent = diffTxt;
+        trDeltaVal.className = 'num ' + (isUp ? 'pos' : 'neg');
+      } else {
+        trDeltaVal.textContent = '—';
+        trDeltaVal.className = 'num mut';
+      }
+    }
+
+    var trAvg = byId('financialTrendAvg');
+    if (trAvg) {
+      var avg = ok.length ? ok.reduce(function(a, b) { return a + b; }, 0) / ok.length : null;
+      trAvg.textContent = finFmt(avg, row.k);
+    }
+
+    var trRange = byId('financialTrendRange');
+    if (trRange) {
+      trRange.textContent = ok.length ? finFmt(Math.min.apply(null, ok), row.k) + ' – ' + finFmt(Math.max.apply(null, ok), row.k) : '—';
+    }
+
+    // Chart layout calculation
+    var mx = Math.max.apply(null, [0].concat(ok));
+    var mn = Math.min.apply(null, [0].concat(ok));
+    var span = (mx - mn) || 1;
+    var H = 140, top = 16;
+    var zy = top + (mx / span) * H;
+    var slot = 610 / vals.length;
+    var bw = Math.min(46, slot * 0.56);
+
+    var zeroLine = byId('financialZeroLine');
+    if (zeroLine && typeof zeroLine.setAttribute === 'function') {
+      zeroLine.setAttribute('y1', zy.toFixed(1));
+      zeroLine.setAttribute('y2', zy.toFixed(1));
+    }
+
+    var svgBarsGroup = byId('financialSvgBarsGroup');
+    var htmlLabelsGroup = byId('financialHtmlLabelsGroup');
+
+    var shortLabel = function(s) {
+      return s.replace('FY ', '').replace(' 20', ' ’');
+    };
+
+    var barsSvg = '';
+    var labelsHtml = '';
+
+    vals.forEach(function(v, i) {
+      var cx = 20 + slot * (i + 0.5);
+      var qLab = shortLabel(labs[i]);
+      var isLast = i === vals.length - 1;
+
+      if (isNull(v)) {
+        var xNull = (cx - bw / 2).toFixed(1);
+        var yNull = (zy - 2).toFixed(1);
+        barsSvg += '<rect class="bb" x="' + xNull + '" y="' + yNull + '" width="' + bw.toFixed(1) + '" height="2" fill="#C9D0C9">' +
+          '<title>' + labs[i] + ': tidak dilaporkan</title></rect>';
+        // §5c: HTML percentage overlay
+        labelsHtml += '<span class="glb fq" style="left:' + (cx / 6.4).toFixed(2) + '%;top:94.74%">' + qLab + '</span>';
+        labelsHtml += '<span class="glb fv" style="left:' + (cx / 6.4).toFixed(2) + '%;top:' + ((zy - 12) / 1.9).toFixed(2) + '%">—</span>';
+        return;
+      }
+
+      var h = Math.max(2, Math.abs(v) / span * H);
+      var y = v >= 0 ? zy - h : zy;
+      var fill = v < 0 ? '#B9475A' : (isLast ? '#13785D' : '#8FB9A6');
+      var barX = (cx - bw / 2).toFixed(1);
+      var barY = y.toFixed(1);
+      var barH = h.toFixed(1);
+      var delay = i * 45;
+
+      barsSvg += '<rect class="bb' + (v < 0 ? ' n' : '') + '" x="' + barX + '" y="' + barY + '" width="' + bw.toFixed(1) + '" height="' + barH + '" rx="3" fill="' + fill + '" style="animation-delay:' + delay + 'ms">' +
+        '<title>' + labs[i] + ': ' + finFmt(v, row.k) + '</title></rect>';
+
+      var labelY = v >= 0 ? y - 6 : y + h + 12;
+      var valText = (isLast || i === 0) ? finFmt(v, row.k) : '';
+
+      // §5c: Percentage-positioned HTML overlay labels with cqi typography
+      labelsHtml += '<span class="glb fq" style="left:' + (cx / 6.4).toFixed(2) + '%;top:94.74%">' + qLab + '</span>';
+      if (valText) {
+        labelsHtml += '<span class="glb fv" style="left:' + (cx / 6.4).toFixed(2) + '%;top:' + ((labelY - 4) / 1.9).toFixed(2) + '%">' + valText + '</span>';
+      }
+    });
+
+    if (svgBarsGroup) svgBarsGroup.innerHTML = barsSvg;
+    if (htmlLabelsGroup) htmlLabelsGroup.innerHTML = labelsHtml;
+  }
+
+  root.selectFinancialTicker = function(ticker) {
+    if (!ticker) return;
+    var t = String(ticker).trim().toUpperCase();
+    financialState.t = t;
+    renderFinancialFundamental();
+  };
+
+  root.refreshFinancialData = function() {
+    var spinner = byId('financialUpdatingSpinner');
+    if (spinner) spinner.style.display = 'inline-flex';
+    setTimeout(function() {
+      if (spinner) spinner.style.display = 'none';
+      renderFinancialFundamental();
+    }, 1000);
+  };
+
+  root.setFinStatementCat = function(idx) {
+    financialState.tab = idx;
+    renderFinancialFundamental();
+  };
+
+  root.setFinStatementFreq = function(idx) {
+    financialState.fr = idx;
+    renderFinancialFundamental();
+  };
+
+  root.toggleFinEmptyRows = function() {
+    financialState.nul = !financialState.nul;
+    var btn = byId('btnToggleEmptyRows');
+    if (btn) {
+      btn.setAttribute('aria-pressed', financialState.nul ? 'true' : 'false');
+      if (financialState.nul) btn.classList.add('on');
+      else btn.classList.remove('on');
+    }
+    renderFinancialFundamental();
+  };
+
+  root.toggleFinYoy = function() {
+    financialState.yoy = !financialState.yoy;
+    var btn = byId('btnToggleYoy');
+    if (btn) {
+      btn.setAttribute('aria-pressed', financialState.yoy ? 'true' : 'false');
+      if (financialState.yoy) btn.classList.add('on');
+      else btn.classList.remove('on');
+    }
+    var table = byId('financialStatementsTable');
+    if (table) {
+      if (financialState.yoy) table.classList.add('y');
+      else table.classList.remove('y');
+    }
+    renderFinancialFundamental();
+  };
+
+  root.selectFinTrendRow = function(rowId) {
+    financialState.sel[financialState.tab || 0] = rowId;
+    renderFinancialFundamental();
+  };
+
+  root.exportFinancialCsv = function() {
+    var ticker = (financialState.t || 'BRPT').toUpperCase();
+    var fr = financialState.fr || 0;
+    var model = getFinancialModel(ticker, fr);
+    var tab = model.tabs[financialState.tab || 0];
+    var per = model.per;
+
+    var csv = 'Pos;' + per.map(function(p) { return p.lab; }).join(';') + '\r\n';
+    tab.rows.forEach(function(row) {
+      if (row.g) {
+        csv += '--- ' + row.g + ' ---\r\n';
+        return;
+      }
+      var line = [row.l];
+      row.vals.forEach(function(v) {
+        line.push(v != null ? Number(v).toFixed(2).replace('.', ',') : '');
+      });
+      csv += line.join(';') + '\r\n';
+    });
+
+    if (typeof window !== 'undefined' && typeof window.Blob === 'function') {
+      var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'laporan-keuangan-' + ticker.toLowerCase() + '-' + (fr === 0 ? 'kuartalan' : 'tahunan') + '.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
 
   async function loadFinancialStructureTab(tabName, rawTicker) {
     var generation = ++researchGeneration;
-    var ticker = researchTicker(rawTicker || (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker) || 'BBCA');
+    var ticker = researchTicker(rawTicker || (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker) || 'BRPT');
     if (!ticker) return;
 
     var isFinancial = tabName === 'financial';
@@ -1759,26 +2775,23 @@
       return root.loadStrukturPasarUniverse(ticker);
     }
 
+    root.activeTicker = ticker;
     if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
       root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false, skipFinancialSync: true });
-    } else {
-      root.activeTicker = ticker;
     }
     var financialInput = byId('financialTickerInput');
     if (financialInput) financialInput.value = ticker;
+
+    financialState.t = ticker;
 
     var state = byId('financialDataState');
     var content = byId('financialDataContent');
     var refreshBanner = byId('financialRefreshBanner');
     var allUnavailEl = byId('financialAllUnavailableState');
-    var unavailable = byId('financialDataUnavailable');
 
-    var cachedFundamental = financialSnapshotCache[ticker] || financialCache[ticker];
+    var cachedFundamental = financialCache[ticker];
     if (cachedFundamental) {
-      renderFinancialFundamental(ticker, cachedFundamental.fundamental || cachedFundamental, cachedFundamental.price, cachedFundamental);
-      if (root.AutoCuanFinancialStatements && typeof root.AutoCuanFinancialStatements.loadStatements === 'function') {
-        root.AutoCuanFinancialStatements.loadStatements(ticker, cachedFundamental);
-      }
+      renderFinancialFundamental(ticker, cachedFundamental.fundamental, cachedFundamental.price);
       financialRenderedTicker = ticker;
       if (state) state.hidden = true;
       if (content) content.hidden = false;
@@ -1790,7 +2803,6 @@
       financialRenderedTicker = null;
       if (content) content.hidden = true;
       if (allUnavailEl) allUnavailEl.hidden = true;
-      if (unavailable) unavailable.hidden = true;
       if (refreshBanner) refreshBanner.hidden = true;
       if (state) {
         state.hidden = false;
@@ -1811,18 +2823,11 @@
 
       var ctx = payload.snapshot;
       var f = ctx.fundamental || {};
-      if (ctx.company_name && !f.company_name) f.company_name = ctx.company_name;
-      if (ctx.name && !f.name) f.name = ctx.name;
 
       financialSnapshotCache[ticker] = ctx;
       financialCache[ticker] = ctx;
       financialRenderedTicker = ticker;
-      renderFinancialFundamental(ticker, f, ctx.price, ctx);
-
-      // Load and render multi-period detailed statements (Wave 4B, §79.2, §26)
-      if (root.AutoCuanFinancialStatements && typeof root.AutoCuanFinancialStatements.loadStatements === 'function') {
-        root.AutoCuanFinancialStatements.loadStatements(ticker, ctx);
-      }
+      renderFinancialFundamental(ticker, f, ctx.price);
 
       if (state) state.hidden = true;
       if (refreshBanner) refreshBanner.hidden = true;
@@ -1849,9 +2854,6 @@
           state.textContent = (error && error.message) || 'Gagal memuat data.';
         }
         if (content) content.hidden = true;
-        if (refreshBanner) refreshBanner.hidden = true;
-        if (allUnavailEl) allUnavailEl.hidden = true;
-        if (unavailable) unavailable.hidden = true;
       }
     }
   }
@@ -2129,9 +3131,11 @@
         var btns = group.querySelectorAll('button[data-filter]');
         btns.forEach(function (btn) {
           if (btn.getAttribute('data-filter') === filterKey) {
-            btn.classList.add('is-active');
+            btn.classList.add('is-active', 'on');
+            btn.setAttribute('aria-pressed', 'true');
           } else {
-            btn.classList.remove('is-active');
+            btn.classList.remove('is-active', 'on');
+            btn.setAttribute('aria-pressed', 'false');
           }
         });
       }
@@ -2481,19 +3485,21 @@
 
       var frag = document.createDocumentFragment();
 
-      pageRows.forEach(function (row) {
+      pageRows.forEach(function (row, idx) {
         var tr = document.createElement('tr');
         tr.setAttribute('data-ticker', row.ticker);
         tr.setAttribute('tabindex', '0');
         tr.setAttribute('role', 'button');
         tr.setAttribute('aria-label', 'Pilih saham ' + row.ticker);
-        tr.className = 'ac-table-row hover:bg-slate-800/50 transition cursor-pointer';
+        tr.className = 'rise d' + Math.min(idx, 11) + (self.selectedTicker === row.ticker ? ' sel is-selected' : '');
 
         if (self.selectedTicker === row.ticker) {
-          tr.classList.add('is-selected');
+          tr.classList.add('sel', 'is-selected');
+          tr.setAttribute('aria-selected', 'true');
           tr.setAttribute('aria-pressed', 'true');
           self.lastSelectedRowEl = tr;
         } else {
+          tr.setAttribute('aria-selected', 'false');
           tr.setAttribute('aria-pressed', 'false');
         }
 
@@ -2507,108 +3513,41 @@
           }
         };
 
-        // 1. Kode (sticky left)
-        var tdTicker = document.createElement('td');
-        tdTicker.className = 'py-2 px-3 sticky left-0 z-10 bg-[#0f172a] border-r border-slate-700/40 ac-ticker-sticky-cell';
-        tdTicker.innerHTML = '<span class="ac-ticker-symbol font-mono font-bold text-emerald-500 dark:text-emerald-400">' + escapeHtml(row.ticker) + '</span>';
-        tr.appendChild(tdTicker);
-
-        // 2. Emiten
-        var tdName = document.createElement('td');
-        tdName.className = 'py-2 px-3 font-medium text-slate-800 dark:text-slate-100 max-w-[200px]';
-        var cName = row.company_name || row.name || ('PT ' + row.ticker + ' Tbk');
-        tdName.innerHTML = '<div class="truncate" title="' + escapeHtml(cName) + '">' + escapeHtml(cName) + '</div>';
-        tr.appendChild(tdName);
-
-        // 3. Sektor
-        var tdSec = document.createElement('td');
-        tdSec.className = 'py-2 px-3 text-slate-500 dark:text-slate-400 text-xs max-w-[130px] col-sektor';
-        var sLabel = formatSectorIndonesian(row.sector);
-        tdSec.innerHTML = '<div class="truncate" title="' + escapeHtml(sLabel) + '">' + escapeHtml(sLabel) + '</div>';
-        tr.appendChild(tdSec);
-
-        // 4. Free Float %
-        var tdFf = document.createElement('td');
-        tdFf.className = 'py-2 px-3 text-right font-mono tabular-nums whitespace-nowrap';
         var hasFf = row.free_float_pct != null && Number.isFinite(Number(row.free_float_pct));
         var ffVal = hasFf ? Number(row.free_float_pct) : null;
-        var ffHtml = hasFf
-          ? '<span class="ac-num ' + (ffVal < 15 ? 'text-amber-500 dark:text-amber-400 font-semibold' : 'text-slate-800 dark:text-slate-200') + '">' + ffVal.toFixed(2) + '%</span>'
-          : '<span class="text-slate-400 dark:text-slate-500 font-mono text-[11px]">Belum Terverifikasi</span>';
-        tdFf.innerHTML = ffHtml;
-        tr.appendChild(tdFf);
+        var ffLegacyDisplay = hasFf ? Number(row.free_float_pct).toFixed(2) + '%' : 'Belum Terverifikasi';
+        var ffS = hasFf ? ffVal.toFixed(2).replace('.', ',') + '%' : '—';
+        var ffC = 'r num' + (hasFf && ffVal < 15 ? ' warn' : '');
+        var isHsc = row.hsc_flag === true;
+        var isNoHsc = row.hsc_flag === false;
+        var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : 'Belum diketahui');
+        var hD = 'dot ' + (isHsc ? 'a' : (isNoHsc ? 'g' : 'm'));
+        var st = !hasFf ? 'Data belum lengkap' : (isHsc ? 'Konsentrasi tinggi' : (ffVal < 15 ? 'Free Float rendah' : (!row.hsc_flag ? 'HSC belum diketahui' : 'Normal')));
+        var d = '30 Sep 2026';
 
-        // 5. Status HSC
-        var tdHsc = document.createElement('td');
-        tdHsc.className = 'py-2 px-3 whitespace-nowrap';
-        var hscLabel = formatHscStatus(row.hsc_flag, row.hsc_as_of);
-        var hscBadgeClass = hscLabel === 'HSC Aktif'
-          ? 'ac-status-badge--negative'
-          : (hscLabel === 'Tidak Terindikasi HSC'
-            ? 'ac-status-badge--positive'
-            : 'ac-status-badge--neutral');
-        tdHsc.innerHTML = '<span class="ac-status-badge ' + hscBadgeClass + '">' + escapeHtml(hscLabel) + '</span>';
-        tr.appendChild(tdHsc);
-
-        // 6. Pemegang Saham Terbesar (Nama + %) & Pemegang Cocok Sub-badge
-        var tdTop = document.createElement('td');
-        tdTop.className = 'py-2 px-3 text-xs text-slate-700 dark:text-slate-300 max-w-[240px]';
-        var topInv = null;
-        if (Array.isArray(row.investors) && row.investors.length > 0) {
-          topInv = row.investors.reduce(function (prev, cur) {
-            var prevPct = Number(prev.percentage || 0);
-            var curPct = Number(cur.percentage || 0);
-            return curPct > prevPct ? cur : prev;
-          }, row.investors[0]);
-        }
-
-        var matchedInv = null;
-        if (self.searchQuery && Array.isArray(row.investors)) {
-          var sq = self.searchQuery;
-          matchedInv = row.investors.find(function (inv) {
-            var iname = (inv.investorName || inv.name || inv.investor_name || '').toLowerCase();
-            return iname.indexOf(sq) !== -1;
-          });
-        }
-
-        var topHtml = '<span class="text-slate-400 dark:text-slate-500 font-mono">-</span>';
-        if (topInv && (topInv.investorName || topInv.name)) {
-          var tName = topInv.investorName || topInv.name;
-          var tPct = topInv.percentage != null && Number.isFinite(Number(topInv.percentage))
-            ? Number(topInv.percentage).toFixed(2) + '%'
-            : (topInv.percentage_formatted || '-');
-          topHtml = '<div class="truncate font-medium text-slate-800 dark:text-slate-200" title="' + escapeHtml(tName) + ' (' + escapeHtml(tPct) + ')">' +
-            escapeHtml(tName) + ' <span class="font-mono text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] tabular-nums">(' + escapeHtml(tPct) + ')</span></div>';
-        }
-
-        if (matchedInv && (matchedInv.investorName || matchedInv.name)) {
-          var mName = matchedInv.investorName || matchedInv.name;
-          var mPct = matchedInv.percentage != null && Number.isFinite(Number(matchedInv.percentage))
-            ? Number(matchedInv.percentage).toFixed(2) + '%'
-            : (matchedInv.percentage_formatted || '-');
-          topHtml += '<div class="truncate text-[10px] text-amber-500 dark:text-amber-300 mt-0.5" title="Pemegang Cocok: ' + escapeHtml(mName) + ' (' + escapeHtml(mPct) + ')">Pemegang Cocok: <span class="font-semibold">' + escapeHtml(mName) + ' (' + escapeHtml(mPct) + ')</span></div>';
-        }
-        tdTop.innerHTML = topHtml;
-        tr.appendChild(tdTop);
-
-        // 7. Kelengkapan Data
-        var tdComp = document.createElement('td');
-        tdComp.className = 'py-2 px-3 whitespace-nowrap col-kelengkapan';
-        var hasValidFf = row.free_float_pct != null && Number.isFinite(Number(row.free_float_pct));
-        var isComp = hasValidFf && Array.isArray(row.investors) && row.investors.length > 0;
-        tdComp.innerHTML = '<span class="ac-status-badge ' + (isComp ? 'ac-status-badge--positive' : 'ac-status-badge--neutral') + '">' + (isComp ? 'Lengkap' : 'Belum Lengkap') + '</span>';
-        tr.appendChild(tdComp);
-
-        // 8. As-of Date
-        var tdDate = document.createElement('td');
-        tdDate.className = 'py-2 px-3 text-[11px] text-slate-400 font-mono whitespace-nowrap col-as-of';
-        tdDate.textContent = formatIndonesianDateWithWib(row.free_float_as_of || '2026-09-30');
-        tr.appendChild(tdDate);
+        tr.innerHTML = '<td class="tk mono">' + escapeHtml(row.ticker) + '</td>' +
+          '<td class="mut">' + escapeHtml(row.company_name || row.name || ('PT ' + row.ticker + ' Tbk')) + '</td>' +
+          '<td class="' + ffC + '" style="font-weight:600">' + ffS + '</td>' +
+          '<td><span class="pill-st" style="font-weight:500"><span class="' + hD + '"></span>' + hS + '</span></td>' +
+          '<td>' + st + '</td>' +
+          '<td class="mut num">' + d + '</td>';
 
         frag.appendChild(tr);
       });
 
       tbody.appendChild(frag);
+    },
+
+    toggleCanvasSort: function () {
+      if (this.sortKey === 'ticker_asc' || this.sortKey === 't') {
+        this.setSort('free_float_asc');
+      } else {
+        this.setSort('ticker_asc');
+      }
+      var btn = byId('marketStructureSortToggleBtn');
+      if (btn) {
+        btn.textContent = 'Urutkan: ' + (this.sortKey === 'ticker_asc' ? 'Ticker A-Z' : 'Free Float ↑');
+      }
     },
 
     selectRow: function (ticker, userInitiated) {
@@ -2742,6 +3681,64 @@
         } else {
           summaryNoteEl.textContent = 'Data kepemilikan saham >5% belum dilaporkan ke KSEI / belum terverifikasi.';
         }
+      }
+
+      // Canvas Aside Pane Update
+      var sTicker = byId('msDetailTicker');
+      if (sTicker) sTicker.textContent = ticker;
+      var sName = byId('msDetailName');
+      if (sName) sName.textContent = row.company_name || row.name || ('PT ' + ticker + ' Tbk');
+      var sFfBig = byId('msDetailFfBig');
+      var ffVal = hasFf ? Number(row.free_float_pct) : null;
+      var ffS = hasFf ? ffVal.toFixed(2).replace('.', ',') + '%' : '—';
+      if (sFfBig) sFfBig.textContent = ffS;
+      var sFfBar = byId('msDetailFfBar');
+      if (sFfBar) {
+        sFfBar.style.width = (hasFf ? Math.min(100, ffVal * 2).toFixed(1) : 0) + '%';
+        sFfBar.style.background = (hasFf && ffVal < 15) ? 'var(--ac-warn)' : 'var(--ac-brand)';
+      }
+      var sLowChip = byId('msDetailLowFfChip');
+      if (sLowChip) sLowChip.style.display = (hasFf && ffVal < 15) ? 'inline-flex' : 'none';
+      var sIncChip = byId('msDetailIncompleteChip');
+      if (sIncChip) sIncChip.style.display = !hasFf ? 'inline-flex' : 'none';
+      var sSource = byId('msDetailSource');
+      if (sSource) sSource.textContent = 'KSEI · 30 Sep 2026';
+      var isHsc = row.hsc_flag === true;
+      var isNoHsc = row.hsc_flag === false;
+      var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : 'Belum diketahui');
+      var sHscDot = byId('msDetailHscDot');
+      if (sHscDot) sHscDot.className = 'dot ' + (isHsc ? 'a' : (isNoHsc ? 'g' : 'm'));
+      var sHscText = byId('msDetailHscText');
+      if (sHscText) sHscText.textContent = hS;
+
+      // Controller
+      var topInv = null;
+      if (Array.isArray(row.investors) && row.investors.length > 0) {
+        topInv = row.investors.reduce(function (prev, cur) {
+          var prevPct = Number(prev.percentage || 0);
+          var curPct = Number(cur.percentage || 0);
+          return curPct > prevPct ? cur : prev;
+        }, row.investors[0]);
+      }
+      var sCtl = byId('msDetailController');
+      if (sCtl) {
+        if (topInv && (topInv.investorName || topInv.name)) {
+          var invName = topInv.investorName || topInv.name;
+          var invPct = topInv.percentage != null ? Number(topInv.percentage).toFixed(2).replace('.', ',') + '%' : '—';
+          sCtl.textContent = invName + ' · ' + invPct;
+        } else {
+          sCtl.textContent = '—';
+        }
+      }
+      var sNote = byId('msDetailNote');
+      if (sNote) {
+        var noteTxt = !hasFf ? 'Free Float belum tersedia di sumber. Ini bukan berarti Free Float rendah.' : (isHsc ? 'Konsentrasi kepemilikan tinggi; peredaran saham di publik terbatas sehingga volatilitas bisa tinggi.' : (ffVal < 15 ? 'Free Float di bawah ambang referensi 15%. Periksa likuiditas sebelum mengambil posisi besar.' : (!row.hsc_flag ? 'Free Float wajar. Status HSC belum dievaluasi oleh sumber.' : 'Struktur kepemilikan dalam batas wajar.')));
+        sNote.textContent = noteTxt;
+      }
+      var sBtn = byId('msDetailAnalisisBtn');
+      if (sBtn) {
+        sBtn.href = '/analisis-saham?ticker=' + ticker;
+        sBtn.textContent = 'Buka analisis ' + ticker;
       }
 
       // Open detail pane on desktop

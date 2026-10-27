@@ -327,8 +327,8 @@
 
   function modalShell(inner) {
     return [
-      '<div class="fixed inset-0 z-[100000] flex items-center justify-center p-4" style="background:var(--backdrop-surface, rgba(15,23,42,0.75));">',
-      '  <div class="w-full max-w-md rounded-2xl p-6" style="background:var(--surface); border:1px solid var(--border-subtle); color:var(--text-primary); box-shadow:0 20px 40px rgba(0,0,0,0.35);">',
+      '<div class="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">',
+      '  <div class="w-full max-w-[460px] rounded-2xl p-7 shadow-2xl space-y-4" style="background:var(--ac-surface, #111827); border:1px solid var(--ac-hair, rgba(255,255,255,0.1)); color:var(--ac-ink, #ffffff);">',
       inner,
       '  </div>',
       '</div>'
@@ -357,22 +357,36 @@
   function showResetRequest() {
     var modal = ensureResetModal();
     modal.innerHTML = modalShell([
-      '<div class="flex items-start justify-between gap-4">',
-      '  <div><p class="text-xs font-bold uppercase tracking-wider" style="color:var(--accent-primary);">Pemulihan akun</p><h2 class="mt-1 text-xl font-black" style="color:var(--text-primary);">Reset lewat Telegram</h2></div>',
-      '  <button type="button" id="authV2ResetClose" class="text-2xl leading-none" style="color:var(--text-secondary); background:transparent; border:none; cursor:pointer;" aria-label="Tutup">&times;</button>',
+      '<div class="flex items-start justify-between gap-3">',
+      '  <div>',
+      '    <h2 id="authV2ResetTitle" class="text-xl font-bold tracking-tight m-0" style="color:var(--ac-ink, #ffffff);">Pulihkan password</h2>',
+      '    <p class="text-xs mt-1 m-0" style="color:var(--ac-2, #9ca3af);">Verifikasi melalui bot Telegram yang terhubung ke akun Anda.</p>',
+      '  </div>',
+      '  <button type="button" id="authV2ResetClose" class="text-2xl leading-none bg-transparent border-0 cursor-pointer p-1" style="color:var(--ac-muted, #9ca3af);" aria-label="Tutup">&times;</button>',
       '</div>',
-      '<form id="authV2ResetRequestForm" class="mt-3" onsubmit="return false;">',
-      '  <p class="text-sm leading-6" style="color:var(--text-secondary);">Masukkan username. Bot verifikasi akan meminta konfirmasi pada akun Telegram yang sudah terhubung.</p>',
-      '  <label class="mt-5 block text-sm font-medium" style="color:var(--text-secondary);" for="authV2ResetUsername">Username</label>',
-      '  <input id="authV2ResetUsername" name="username" aria-label="Username pemulihan akun" autocomplete="username" class="mt-2 w-full rounded-xl px-4 py-3 outline-none" style="background:var(--canvas); border:1px solid var(--border-subtle); color:var(--text-primary); font-size:16px; min-height:44px;" />',
-      '  <p id="authV2ResetMessage" class="mt-3 hidden rounded-xl border px-3 py-2 text-sm" role="alert" aria-live="assertive"></p>',
-      '  <button type="submit" id="authV2ResetRequestBtn" class="mt-5 w-full rounded-xl px-4 py-3 font-bold" style="background:var(--accent-primary); color:var(--color-on-accent,#ffffff); min-height:44px; border:none; cursor:pointer;">Kirim konfirmasi ke bot</button>',
-      '</form>',
-      '<p class="mt-4 text-xs leading-5" style="color:var(--text-muted);">Password tidak dikirim ke Telegram. Bot hanya menyetujui atau menolak permintaan reset.</p>'
+      '<div class="wz flex items-center justify-between my-3 text-xs" aria-label="Langkah 1 dari 3">',
+      '  <span class="w-6 h-6 rounded-full font-bold flex items-center justify-center text-white" style="background:var(--ac-brand, #10b981);">1</span>',
+      '  <span class="flex-1 h-[2px] mx-2" style="background:var(--ac-hair, rgba(255,255,255,0.15));"></span>',
+      '  <span class="w-6 h-6 rounded-full font-bold flex items-center justify-center" style="background:var(--ac-hover, rgba(255,255,255,0.08)); color:var(--ac-muted, #9ca3af);">2</span>',
+      '  <span class="flex-1 h-[2px] mx-2" style="background:var(--ac-hair, rgba(255,255,255,0.15));"></span>',
+      '  <span class="w-6 h-6 rounded-full font-bold flex items-center justify-center" style="background:var(--ac-hover, rgba(255,255,255,0.08)); color:var(--ac-muted, #9ca3af);">3</span>',
+      '</div>',
+      '<form id="authV2ResetRequestForm" class="space-y-3.5" onsubmit="return false;">',
+      '  <div>',
+      '    <label class="block text-xs font-semibold mb-1" style="color:var(--ac-ink, #e5e7eb);" for="authV2ResetUsername">Gmail atau username</label>',
+      '    <input id="authV2ResetUsername" name="username" aria-label="Username pemulihan akun" autocomplete="username" placeholder="nama@gmail.com atau username" class="w-full rounded-xl px-3.5 py-2.5 outline-none text-sm" style="background:var(--ac-canvas, #0b0e14); border:1px solid var(--ac-ctl, #374151); color:var(--ac-ink, #ffffff); min-height:42px;" />',
+      '    <p class="text-[11px] mt-1 m-0" style="color:var(--ac-2, #9ca3af);">Kode verifikasi dikirim ke Telegram yang sudah tertaut, bukan ke email.</p>',
+      '  </div>',
+      '  <p id="authV2ResetMessage" class="hidden rounded-xl border px-3 py-2 text-xs" role="alert" aria-live="assertive"></p>',
+      '  <button type="submit" id="authV2ResetRequestBtn" class="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all cursor-pointer border-0" style="background:linear-gradient(135deg, #059669, #10b981); min-height:42px;">Kirim kode ke Telegram</button>',
+      '  <button type="button" id="authV2ResetCancelBtn" class="w-full py-2 rounded-xl text-xs font-medium transition cursor-pointer bg-transparent" style="border:1px solid var(--ac-hair, #374151); color:var(--ac-2, #9ca3af);">Batal</button>',
+      '</form>'
     ].join(''));
     modal.classList.remove('hidden');
 
     byId('authV2ResetClose').addEventListener('click', closeResetModal);
+    var cancelBtn = byId('authV2ResetCancelBtn');
+    if (cancelBtn) cancelBtn.addEventListener('click', closeResetModal);
     byId('authV2ResetRequestForm').addEventListener('submit', function (e) {
       e.preventDefault();
       requestResetFromBot();
@@ -385,8 +399,8 @@
     var el = byId('authV2ResetMessage');
     if (!el) return;
     el.textContent = text;
-    el.className = 'mt-3 rounded-xl border px-3 py-2 text-sm ' +
-      (ok ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200');
+    el.className = 'rounded-xl border px-3 py-2 text-xs ' +
+      (ok ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300');
   }
 
   async function requestResetFromBot() {
@@ -394,7 +408,7 @@
     var button = byId('authV2ResetRequestBtn');
     var username = usernameEl ? usernameEl.value.trim().toLowerCase() : '';
     if (!username || username.length < 2) {
-      setResetMessage('Masukkan username yang valid.', false);
+      setResetMessage('Masukkan username atau Gmail yang valid.', false);
       return;
     }
 
@@ -406,12 +420,12 @@
         setResetMessage(result.data.error || 'Pemulihan sementara belum tersedia.', false);
         return;
       }
-      setResetMessage('Cek chat pribadi AutoCuanVerificationBot, lalu tekan Konfirmasi Reset.', true);
+      setResetMessage('Permintaan terkirim! Cek chat pribadi bot verifikasi Auto-Cuan di Telegram, lalu tekan Konfirmasi Reset.', true);
     } catch (_) {
       setResetMessage('Koneksi ke server sedang bermasalah.', false);
     } finally {
       button.disabled = false;
-      button.textContent = 'Kirim konfirmasi ke bot';
+      button.textContent = 'Kirim kode ke Telegram';
     }
   }
 
@@ -423,18 +437,32 @@
   function showResetCompletion(resetToken) {
     var modal = ensureResetModal();
     modal.innerHTML = modalShell([
-      '<div class="flex items-start justify-between gap-4">',
-      '  <div><p class="text-xs font-bold uppercase tracking-wider" style="color:var(--accent-primary);">Telegram terkonfirmasi</p><h2 class="mt-1 text-xl font-black" style="color:var(--text-primary);">Buat password baru</h2></div>',
-      '  <button type="button" id="authV2ResetClose" class="text-2xl leading-none" style="color:var(--text-secondary); background:transparent; border:none; cursor:pointer;" aria-label="Tutup">&times;</button>',
+      '<div class="flex items-start justify-between gap-3">',
+      '  <div>',
+      '    <h2 id="authV2ResetTitle" class="text-xl font-bold tracking-tight m-0" style="color:var(--ac-ink, #ffffff);">Buat password baru</h2>',
+      '    <p class="text-xs mt-1 m-0" style="color:var(--ac-2, #9ca3af);">Telegram terkonfirmasi. Silakan tentukan password baru.</p>',
+      '  </div>',
+      '  <button type="button" id="authV2ResetClose" class="text-2xl leading-none bg-transparent border-0 cursor-pointer p-1" style="color:var(--ac-muted, #9ca3af);" aria-label="Tutup">&times;</button>',
       '</div>',
-      '<form id="authV2ResetCompleteForm" class="mt-3" onsubmit="return false;">',
-      '  <p class="text-sm leading-6" style="color:var(--text-secondary);">Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, dan angka.</p>',
-      '  <label class="mt-5 block text-sm font-medium" style="color:var(--text-secondary);" for="authV2NewPassword">Password baru</label>',
-      '  <input id="authV2NewPassword" name="password" type="password" aria-label="Password baru" autocomplete="new-password" class="mt-2 w-full rounded-xl px-4 py-3 outline-none" style="background:var(--canvas); border:1px solid var(--border-subtle); color:var(--text-primary); font-size:16px; min-height:44px;" />',
-      '  <label class="mt-4 block text-sm font-medium" style="color:var(--text-secondary);" for="authV2NewPasswordConfirm">Konfirmasi password</label>',
-      '  <input id="authV2NewPasswordConfirm" name="passwordConfirm" type="password" aria-label="Konfirmasi password baru" autocomplete="new-password" class="mt-2 w-full rounded-xl px-4 py-3 outline-none" style="background:var(--canvas); border:1px solid var(--border-subtle); color:var(--text-primary); font-size:16px; min-height:44px;" />',
-      '  <p id="authV2ResetMessage" class="mt-3 hidden rounded-xl border px-3 py-2 text-sm" role="alert" aria-live="assertive"></p>',
-      '  <button type="submit" id="authV2ResetCompleteBtn" class="mt-5 w-full rounded-xl px-4 py-3 font-bold" style="background:var(--accent-primary); color:var(--color-on-accent,#ffffff); min-height:44px; border:none; cursor:pointer;">Simpan password baru</button>',
+      '<div class="wz flex items-center justify-between my-3 text-xs" aria-label="Langkah 3 dari 3">',
+      '  <span class="w-6 h-6 rounded-full font-bold flex items-center justify-center" style="background:var(--ac-brand-soft, rgba(16,185,129,0.2)); color:var(--ac-brand, #10b981);">✓</span>',
+      '  <span class="flex-1 h-[2px] mx-2" style="background:var(--ac-brand, #10b981);"></span>',
+      '  <span class="w-6 h-6 rounded-full font-bold flex items-center justify-center" style="background:var(--ac-brand-soft, rgba(16,185,129,0.2)); color:var(--ac-brand, #10b981);">✓</span>',
+      '  <span class="flex-1 h-[2px] mx-2" style="background:var(--ac-brand, #10b981);"></span>',
+      '  <span class="w-6 h-6 rounded-full font-bold flex items-center justify-center text-white" style="background:var(--ac-brand, #10b981);">3</span>',
+      '</div>',
+      '<form id="authV2ResetCompleteForm" class="space-y-3.5" onsubmit="return false;">',
+      '  <div>',
+      '    <label class="block text-xs font-semibold mb-1" style="color:var(--ac-ink, #e5e7eb);" for="authV2NewPassword">Password baru</label>',
+      '    <input id="authV2NewPassword" name="password" type="password" aria-label="Password baru" autocomplete="new-password" placeholder="Minimal 8 karakter, huruf dan angka" class="w-full rounded-xl px-3.5 py-2.5 outline-none text-sm" style="background:var(--ac-canvas, #0b0e14); border:1px solid var(--ac-ctl, #374151); color:var(--ac-ink, #ffffff); min-height:42px;" />',
+      '  </div>',
+      '  <div>',
+      '    <label class="block text-xs font-semibold mb-1" style="color:var(--ac-ink, #e5e7eb);" for="authV2NewPasswordConfirm">Konfirmasi password baru</label>',
+      '    <input id="authV2NewPasswordConfirm" name="passwordConfirm" type="password" aria-label="Konfirmasi password baru" autocomplete="new-password" placeholder="Ulangi password baru" class="w-full rounded-xl px-3.5 py-2.5 outline-none text-sm" style="background:var(--ac-canvas, #0b0e14); border:1px solid var(--ac-ctl, #374151); color:var(--ac-ink, #ffffff); min-height:42px;" />',
+      '    <p class="text-[11px] mt-1 m-0" style="color:var(--ac-2, #9ca3af);">Semua sesi lain akan keluar setelah password diganti.</p>',
+      '  </div>',
+      '  <p id="authV2ResetMessage" class="hidden rounded-xl border px-3 py-2 text-xs" role="alert" aria-live="assertive"></p>',
+      '  <button type="submit" id="authV2ResetCompleteBtn" class="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all cursor-pointer border-0" style="background:linear-gradient(135deg, #059669, #10b981); min-height:42px;">Simpan password</button>',
       '</form>'
     ].join(''));
     modal.classList.remove('hidden');
@@ -445,17 +473,41 @@
     });
   }
 
+  function showResetSuccess() {
+    var modal = ensureResetModal();
+    modal.innerHTML = modalShell([
+      '<div class="text-center py-4 space-y-3">',
+      '  <span class="w-12 h-12 rounded-full inline-grid place-items-center mb-1" style="background:var(--ac-pos-soft, rgba(16,185,129,0.15)); color:var(--ac-pos, #10b981);">',
+      '    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>',
+      '  </span>',
+      '  <h2 class="text-xl font-bold tracking-tight m-0" style="color:var(--ac-ink, #ffffff);">Password diperbarui</h2>',
+      '  <p class="text-xs m-0" style="color:var(--ac-2, #9ca3af);">Silakan masuk kembali dengan password baru.</p>',
+      '  <div class="pt-3">',
+      '    <button type="button" id="authV2SuccessLoginBtn" class="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all cursor-pointer border-0" style="background:linear-gradient(135deg, #059669, #10b981); min-height:42px;">Masuk</button>',
+      '  </div>',
+      '</div>'
+    ].join(''));
+    modal.classList.remove('hidden');
+    var loginBtn = byId('authV2SuccessLoginBtn');
+    if (loginBtn) {
+      loginBtn.addEventListener('click', function () {
+        closeResetModal();
+        if (typeof window.openLoginModal === 'function') window.openLoginModal();
+      });
+    }
+  }
+
   async function completeReset(resetToken) {
     var password = byId('authV2NewPassword').value;
     var confirmation = byId('authV2NewPasswordConfirm').value;
     var button = byId('authV2ResetCompleteBtn');
 
     if (!validNewPassword(password)) {
-      setResetMessage('Password harus minimal 8 karakter serta memiliki huruf besar, huruf kecil, dan angka.', false);
+      setResetMessage('Password baru minimal 8 karakter dan memuat huruf besar, huruf kecil, serta angka.', false);
       return;
     }
     if (password !== confirmation) {
-      setResetMessage('Konfirmasi password tidak sama.', false);
+      setResetMessage('Konfirmasi tidak sama dengan password baru.', false);
       return;
     }
 
@@ -474,19 +526,15 @@
       }
 
       clearLocalAuthState();
-      setResetMessage('Password berhasil diperbarui. Silakan login dengan password baru.', true);
       var cleanUrl = new URL(window.location.href);
       cleanUrl.searchParams.delete('reset_token');
       history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
-      setTimeout(function () {
-        closeResetModal();
-        if (typeof window.openLoginModal === 'function') window.openLoginModal();
-      }, 1200);
+      showResetSuccess();
     } catch (_) {
       setResetMessage('Koneksi ke server sedang bermasalah.', false);
     } finally {
       button.disabled = false;
-      button.textContent = 'Simpan password baru';
+      button.textContent = 'Simpan password';
     }
   }
 

@@ -318,8 +318,8 @@ test('accessibility primitives present: skip link, focus-visible, reduced motion
   assert.match(indexShellCss, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test('premium typography (Inter) and mobile theming metadata added', () => {
-  assert.match(html, /fonts\.googleapis\.com\/css2\?family=Inter/);
+test('self-hosted typography (redesign v2) and mobile theming metadata added', () => {
+  assert.match(html, /href="\/fonts\/ac-fonts\.css/);
   assert.match(html, /name="theme-color"/);
   assert.match(html, /name="color-scheme"/);
 });

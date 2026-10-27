@@ -58,7 +58,8 @@
     var style = document.createElement('style');
     style.id = 'acPerformanceOverrideV1';
     style.textContent = [
-      '#acAccountCenter{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(2,6,12,.88)!important}',
+      '#acAccountCenter{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:transparent!important}',
+      'html.is-dark #acAccountCenter{background:rgba(2,6,12,.88)!important}',
       '#acAccountCenter .ac-center-shell{contain:layout paint style}',
       '@media (prefers-reduced-motion:reduce){#acAccountCenter *,#acAccountCenter *::before,#acAccountCenter *::after{animation:none!important;transition:none!important}}'
     ].join('');

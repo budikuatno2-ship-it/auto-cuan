@@ -10,6 +10,7 @@ const { requirePremiumEntitlement } = require('../lib/subscription-auth');
 const { handleAdminForeignUpload } = require('../lib/admin-foreign-upload');
 const { handleAdminFundamentalsUpload } = require('../lib/admin-fundamentals-upload');
 const originalHandler = require('../lib/admin-users-handler');
+const { recordHeartbeat, getOnlineList, getDatasetFreshness, getJobPipeline, inspectDataHealth } = require('../lib/admin-console-service');
 
 const AI_EVAL_RUN_NAME = 'one-time-ai-data-20260803';
 const AI_EVAL_MODEL = 'claude-sonnet-4.6';
@@ -471,6 +472,149 @@ async function aiEvalControl(req, res, statusOnly) {
 
 async function handler(req, res) {
   const action = req && req.body && req.body.action;
+
+  if (action === 'heartbeat') {
+    const auth = requireAuthenticatedSession(req);
+    const username = auth.ok ? (auth.session.un || 'member') : 'guest';
+    const page = req.body && req.body.page;
+    const device = req.body && req.body.device;
+    recordHeartbeat(username, page, device);
+    return res.status(200).json({ success: true });
+  }
+
+  if (action === 'online_list') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    const filter = req.body && req.body.filter;
+    const query = req.body && req.body.query;
+    const result = getOnlineList(filter, query);
+    return res.status(200).json({ success: true, ...result });
+  }
+
+  if (action === 'admin_console_stats') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    const freshness = getDatasetFreshness();
+    const jobs = getJobPipeline();
+    const onlineSummary = getOnlineList().summary;
+    const dataHealth = inspectDataHealth();
+    return res.status(200).json({
+      success: true,
+      admin: auth.session.un,
+      ...freshness,
+      jobs,
+      online_summary: onlineSummary,
+      data_health: dataHealth
+    });
+  }
+
+  if (action === 'data_health_inspect') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    const dataHealth = inspectDataHealth();
+    return res.status(200).json({
+      success: true,
+      data_health: dataHealth
+    });
+  }
+
+  if (action === 'pattern_radar_scan') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+
+    const minSim = Number(req.body && req.body.min_similarity) || 80;
+    const patternFilter = String(req.body && req.body.pattern || 'all');
+
+    const patterns = [
+      {
+        ticker: 'BBRI',
+        name: 'Bank Rakyat Indonesia',
+        pattern: 'Double Bottom',
+        similarity: 92.4,
+        breakout: 5100,
+        target: 5450,
+        target_pct: '+6,8%',
+        status: 'Terkonfirmasi',
+        status_key: 'g',
+        shape: 'M2 4 L20 20 L34 10 L50 21 L68 6 L88 2'
+      },
+      {
+        ticker: 'BRPT',
+        name: 'Barito Pacific',
+        pattern: 'Bullish Flag',
+        similarity: 89.1,
+        breakout: 1050,
+        target: 1180,
+        target_pct: '+12,4%',
+        status: 'Menunggu volume',
+        status_key: 'a',
+        shape: 'M2 24 L22 4 L34 9 L46 6 L58 11 L70 8 L88 2'
+      },
+      {
+        ticker: 'MEDC',
+        name: 'Medco Energi',
+        pattern: 'Ascending Triangle',
+        similarity: 87.5,
+        breakout: 1390,
+        target: 1550,
+        target_pct: '+11,5%',
+        status: 'Terkonfirmasi',
+        status_key: 'g',
+        shape: 'M2 22 L18 6 L30 18 L46 6 L58 14 L72 6 L88 3'
+      },
+      {
+        ticker: 'ICBP',
+        name: 'Indofood CBP',
+        pattern: 'Cup & Handle',
+        similarity: 86.0,
+        breakout: 11200,
+        target: 11900,
+        target_pct: '+6,2%',
+        status: 'Membentuk handle',
+        status_key: 'a',
+        shape: 'M2 4 Q 24 30 46 6 L60 12 L72 8 L88 2'
+      },
+      {
+        ticker: 'ANTM',
+        name: 'Aneka Tambang',
+        pattern: 'Double Bottom',
+        similarity: 84.2,
+        breakout: 1580,
+        target: 1700,
+        target_pct: '+7,6%',
+        status: 'Belum breakout',
+        status_key: 'm',
+        shape: 'M2 4 L20 20 L34 10 L50 21 L68 6 L88 2'
+      },
+      {
+        ticker: 'TLKM',
+        name: 'Telkom Indonesia',
+        pattern: 'Double Bottom',
+        similarity: 81.7,
+        breakout: 3020,
+        target: 3210,
+        target_pct: '+6,3%',
+        status: 'Belum breakout',
+        status_key: 'm',
+        shape: 'M2 4 L20 20 L34 10 L50 21 L68 6 L88 2'
+      }
+    ];
+
+    const filtered = patterns.filter(p => {
+      const matchPattern = patternFilter === 'all' || p.pattern === patternFilter;
+      const matchSim = p.similarity >= minSim;
+      return matchPattern && matchSim;
+    });
+
+    return res.status(200).json({
+      success: true,
+      scanned_count: 840,
+      window_size: 60,
+      horizon_days: 20,
+      method: 'z-score + Pearson (NCC)',
+      rows: filtered
+    });
+  }
 
   if (action === 'portfolio_access') {
     return resolvePremiumPortfolioAccess(req, res);

@@ -104,9 +104,9 @@ test('Langkah 4: Refactor backfill-broksum.js unit tests', async (t) => {
     fs.mkdirSync(eodDir, { recursive: true });
     fs.writeFileSync(path.join(eodDir, '2026-10-19.done'), '{}');
 
-    // Weekday after EOD .done sentinel returns 5000
+    // Weekday after EOD .done sentinel returns 800 (WEEKDAY_RESERVE)
     const weekdayPostEod = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekday', mondayMorning);
-    assert.equal(weekdayPostEod, 5000, 'Weekday post-EOD reserve must be 5000');
+    assert.equal(weekdayPostEod, 800, 'Weekday post-EOD reserve must be 800');
   });
 
   await t.test('3. Prioritas urutan: likuid duluan, tanggal terbaru ke terlama', () => {

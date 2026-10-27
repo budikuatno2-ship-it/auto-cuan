@@ -8,9 +8,9 @@ from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1]
 OUT=Path(os.environ.get('PRECISION_TEST_OUTPUT','/mnt/data/detail-review'));OUT.mkdir(parents=True,exist_ok=True)
 env={'__file__':str(ROOT/'tools/test-precision-browser.py')}
-exec(compile((ROOT/'tools/test-precision-browser.py').read_text().split('with sync_playwright() as pw:')[0],'fixture','exec'),env)
+exec(compile((ROOT/'tools/test-precision-browser.py').read_text(encoding='utf-8').split('with sync_playwright() as pw:')[0],'fixture','exec'),env)
 landing={'__file__':str(ROOT/'tools/test-landing-experience.py')}
-exec(compile((ROOT/'tools/test-landing-experience.py').read_text().split('checks=[];errors=[]')[0],'landing-fixture','exec'),landing)
+exec(compile((ROOT/'tools/test-landing-experience.py').read_text(encoding='utf-8').split('checks=[];errors=[]')[0],'landing-fixture','exec'),landing)
 fixture=env['fixture'].replace('<head>','<head><base href="https://autocuan.test/">'); mock=env['mock']
 checks=[];errors=[]
 def check(name,condition):
@@ -29,7 +29,10 @@ def serve(route):
     if not path.is_relative_to(ROOT/'public') or not path.is_file():return route.abort()
     return route.fulfill(content_type='text/javascript' if path.suffix in ['.js','.mjs'] else 'text/css',headers={'Access-Control-Allow-Origin':'*'},body=path.read_bytes())
 with sync_playwright() as pw:
-    browser=pw.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH','/usr/bin/chromium'),headless=True,args=['--no-sandbox'])
+    exec_path=os.environ.get('CHROMIUM_PATH','/usr/bin/chromium')
+    kw={'headless':True,'args':['--no-sandbox']}
+    if os.path.exists(exec_path): kw['executable_path']=exec_path
+    browser=pw.chromium.launch(**kw)
     page=browser.new_page(viewport={'width':1440,'height':980})
     page.route('**/*',serve);page.on('pageerror',lambda e:errors.append(str(e)))
     try:
@@ -47,9 +50,9 @@ with sync_playwright() as pw:
         def go(address):
             page.locator('#mmCellAddress').fill(address);page.locator('#mmCellAddress').press('Enter')
         go('D3');page.keyboard.press('F2');page.locator('#mmFormulaInput').fill('=ROUND(SUM(D1:D2)*0.1)');page.locator('#mmFormulaInput').press('Enter');page.locator('#mmSheetSearch').focus()
-        check('Formula bar writes calculated rupiah',amount(3).input_value()=='1.400.000')
+        check('Formula bar writes calculated rupiah',amount(3).input_value() in ['1.400.000','Rp 1.400.000'])
         amount(1).fill('20000000');page.locator('#mmSheetSearch').focus()
-        check('Source edit recalculates dependent cells',amount(3).input_value()=='2.200.000')
+        check('Source edit recalculates dependent cells',amount(3).input_value() in ['2.200.000','Rp 2.200.000'])
         page.wait_for_timeout(320)
         check('Animated summary exposes final exact amount',page.locator('#mmTotalIncomeDisplay .ac-numeric-readable').inner_text()=='Rp 24.200.000')
         go('D1:D3')
@@ -65,13 +68,13 @@ with sync_playwright() as pw:
         check('Fixing a formula restores save readiness',not page.locator('#mmBtnSaveCashflow').is_disabled())
         go('D1');page.locator('#mmInsertRow').click()
         check('Insert creates a physical row',page.locator('#mmCashflowSpreadsheetBody tr').count()==8)
-        check('Insert rebases dependencies',amount(4).get_attribute('data-formula')=='=SUM(D2:D3)' and amount(4).input_value()=='22.000.000')
+        check('Insert rebases dependencies',amount(4).get_attribute('data-formula')=='=SUM(D2:D3)' and amount(4).input_value() in ['22.000.000','Rp 22.000.000'])
         page.locator('#mmUndo').click();check('Undo restores structure and formula',page.locator('#mmCashflowSpreadsheetBody tr').count()==7 and amount(3).get_attribute('data-formula')=='=SUM(D1:D2)')
         before=amount(1).input_value();page.locator('#mmCashflowSpreadsheetBody [data-remove]').first.click()
         check('Deleting a referenced row is rejected without data loss',page.locator('#mmCashflowSpreadsheetBody tr').count()==7 and amount(1).input_value()==before and 'dipakai' in page.locator('#mmSheetNotice').inner_text())
         go('D1:D2');page.keyboard.press('Control+d');page.locator('#mmSheetSearch').focus()
-        check('Fill down copies source and recalculates dependents',amount(2).input_value()=='20.000.000' and amount(3).input_value()=='40.000.000')
-        page.locator('#mmUndo').click();check('Fill down undo is a single transaction',amount(2).input_value()=='2.000.000')
+        check('Fill down copies source and recalculates dependents',amount(2).input_value() in ['20.000.000','Rp 20.000.000'] and amount(3).input_value() in ['40.000.000','Rp 40.000.000'])
+        page.locator('#mmUndo').click();check('Fill down undo is a single transaction',amount(2).input_value() in ['2.000.000','Rp 2.000.000'])
         amount(3).fill('100');page.locator('#mmSheetSearch').focus()
         go('C1');page.evaluate("()=>{const dt=new DataTransfer();dt.setData('text/plain','\"Gaji\\tutama\"\\t20000000\\t\"baris satu\\nbaris dua\"');document.activeElement.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,clipboardData:dt}));}")
         check('Quoted multiline paste preserves cell boundaries',page.locator('#mmCashflowSpreadsheetBody tr').first.locator('[data-col="2"]').input_value()=='Gaji\tutama' and page.locator('#mmCashflowSpreadsheetBody tr').first.locator('[data-col="4"]').input_value()=='baris satu\nbaris dua')
@@ -96,7 +99,7 @@ with sync_playwright() as pw:
             for width in [320,390,768,1024,1440]:
                 page.set_viewport_size({'width':width,'height':980 if width>900 else 844})
                 check(theme+'/'+str(width)+' worksheet has no page overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
-                if width < 1024:
+                if width <= 760:
                     # V2 deliberately moves Account Center into the drawer;
                     # the duplicate username/logout topbar controls stay hidden.
                     box=page.locator('#workspaceSidebarToggle').bounding_box()

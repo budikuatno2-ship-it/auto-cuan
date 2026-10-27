@@ -9,6 +9,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/admin-notes",
+      "destination": "/api/sector-hot?action=admin-notes"
+    },
+    {
       "source": "/api/track-record",
       "destination": "/api/sector-hot?action=track-record"
     },
@@ -41,8 +45,16 @@
       "destination": "/index.html"
     },
     {
+      "source": "/catatan-admin",
+      "destination": "/index.html"
+    },
+    {
       "source": "/pattern",
       "destination": "/index.html"
+    },
+    {
+      "source": "/pattern-radar",
+      "destination": "/pattern-radar.html"
     },
     {
       "source": "/review",
@@ -59,6 +71,26 @@
     {
       "source": "/register",
       "destination": "/register.html"
+    },
+    {
+      "source": "/ketentuan",
+      "destination": "/ketentuan.html"
+    },
+    {
+      "source": "/admin-console",
+      "destination": "/admin-console.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin-console.html"
+    },
+    {
+      "source": "/maintenance",
+      "destination": "/maintenance.html"
+    },
+    {
+      "source": "/pemeliharaan",
+      "destination": "/maintenance.html"
     }
   ],
   "headers": [

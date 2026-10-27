@@ -23,12 +23,14 @@ test('Dashboard: #page-dashboard carries data-ac-ui="v2"', () => {
 
 test('Dashboard: Auto Monitor is strictly hidden/encapsulated and Top 5 panel occupies full width', () => {
   assert.match(indexHtml, /<aside[^>]*aria-label="Auto Monitor"[^>]*hidden[^>]*style="display:none\s*!important;"/);
-  assert.match(indexHtml, /<section[^>]*class="radar-panel\s+w-full\s+panel"[^>]*aria-label="Top 5 Radar"/);
+  assert.match(indexHtml, /<section class="sheet[^"]*" aria-labelledby="dashRadarTitle">/);
 });
 
 test('Dashboard: Continuous calm market-condition strip CSS with internal hairline dividers', () => {
-  assert.match(uiThemeCss, /#page-dashboard\[data-ac-ui="v2"\]\s+\.market-band-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(uiThemeCss, /#page-dashboard\[data-ac-ui="v2"\]\s+\.market-tile\s*\{[^}]*border-right:\s*1px\s+solid/);
+  // Redesign v2: the canvas .strip (four cells, hairline dividers) in ac-v2.css.
+  const v2Css = fs.readFileSync(path.join(__dirname, '..', 'public', 'ac-v2.css'), 'utf8');
+  assert.match(v2Css, /\[data-ac-ui="v2"\] \.strip \{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(v2Css, /\[data-ac-ui="v2"\] \.strip > div \{[^}]*border-left:\s*1px\s+solid/);
 });
 
 test('Dashboard: renderDashboardTop5 renders compact decision rows with rank, ticker, setup, price, score, grade, risk, R/R, action', () => {
@@ -54,14 +56,13 @@ test('Dashboard: renderTop5History renders compact audit table with tabular nume
   assert.ok(fnMatch, 'renderTop5History must exist');
   const body = fnMatch[0];
 
-  assert.match(body, /<table[^>]*tabular-nums/);
-  assert.match(body, /<thead[^>]*sticky/);
-  assert.match(body, /Tanggal/);
-  assert.match(body, /Ticker/);
-  assert.match(body, /Entry Aktif/);
+  // Redesign v2 (canvas .hrow): date, ticker, levels, return, outcome chip.
+  assert.match(body, /class="hrow"/);
+  assert.match(body, /class="num mut">' \+ escapeHtml\(top5HistoryDate\(p\.date\)/);
   assert.match(body, /TP1/);
-  assert.match(body, /Stop Loss/);
-  assert.match(body, /Gain \/ Distance/);
+  assert.match(body, /SL/);
+  assert.match(body, /top5HistoryPctLine\(p\)/);
+  assert.match(body, /class="oc '/);
   assert.match(body, /openDashboardPickDetail\(/);
 });
 
