@@ -3084,7 +3084,7 @@ html.light #googleCompleteProfileModal input {
         <div>
           <div class="kick" style="color:var(--ac-info)">Admin · Akses Terbatas</div>
           <h1>Admin Console</h1>
-          <p>Operasional Auto-Cuan: persetujuan akun, pengguna, mode maintenance, voucher, job data, dan log audit. Setiap aksi tercatat.</p>
+          <p>Operasional Auto-Cuan: persetujuan akun, pengguna, mode maintenance, kupon akses, job data, dan log audit. Setiap aksi tercatat.</p>
         </div>
         <span class="st i" id="adminRoleBadge">Administrator Aktif</span>
       </div>
@@ -3102,7 +3102,7 @@ html.light #googleCompleteProfileModal input {
         <button class="tbtn" onclick="switchAdminTab(1)" data-admin-tab="1">Online <span class="st i" id="tabOnlineCount">0</span></button>
         <button class="tbtn" onclick="switchAdminTab(2)" data-admin-tab="2">Persetujuan Akun <span class="st a" id="tabPendingCount">0</span></button>
         <button class="tbtn" onclick="switchAdminTab(3)" data-admin-tab="3">Mode Maintenance</button>
-        <button class="tbtn" onclick="switchAdminTab(4)" data-admin-tab="4">Voucher</button>
+        <button class="tbtn" onclick="switchAdminTab(4)" data-admin-tab="4">Kupon</button>
         <button class="tbtn" onclick="switchAdminTab(5)" data-admin-tab="5">Job &amp; Data Pipeline</button>
         <button class="tbtn" onclick="switchAdminTab(6)" data-admin-tab="6">Log Audit</button>
       </nav>
@@ -3253,14 +3253,14 @@ html.light #googleCompleteProfileModal input {
         </section>
       </div>
 
-      <!-- TAB 4: VOUCHER -->
+      <!-- TAB 4: KUPON AKSES -->
       <div id="panelTab4" class="admin-panel" style="display:none">
         <div style="display:grid;grid-template-columns:minmax(280px, 340px) 1fr;gap:20px;align-items:start">
           <section class="sheet" style="padding:20px">
-            <h2 style="margin:0 0 16px;font-size:16px;font-weight:700">Buat Voucher Baru</h2>
+            <h2 style="margin:0 0 16px;font-size:16px;font-weight:700">Buat Kupon Baru</h2>
             <div style="display:flex;flex-direction:column;gap:14px">
               <div>
-                <label class="flabel" for="vCodeInput">Kode Voucher</label>
+                <label class="flabel" for="vCodeInput">Kode Kupon</label>
                 <input id="vCodeInput" class="inp mono" style="text-transform:uppercase" placeholder="CUAN2026" value="CUAN2026">
               </div>
               <div>
@@ -3279,21 +3279,21 @@ html.light #googleCompleteProfileModal input {
                 <label class="flabel" for="vExpiryInput">Kedaluwarsa</label>
                 <input id="vExpiryInput" type="date" class="inp" value="2026-12-31">
               </div>
-              <button class="btn p" style="margin-top:6px" onclick="createVoucherAction()">Terbitkan Voucher</button>
+              <button class="btn p" style="margin-top:6px" onclick="createKuponAction()">Terbitkan Kupon</button>
             </div>
           </section>
 
           <section class="sheet">
             <div class="sec-h">
-              <h2>Voucher Aktif</h2>
+              <h2>Kupon Aktif</h2>
               <span>Daftar kode promosi dan kuota</span>
             </div>
             <div class="tw">
               <table class="tbl">
                 <thead><tr><th>Kode</th><th>Paket</th><th class="r">Terpakai</th><th>Kedaluwarsa</th><th class="r">Aksi</th></tr></thead>
-                <tbody id="vouchersTableTbody">
-                  <tr><td class="mono" style="font-weight:600">CUAN2026</td><td class="mut">Pro Trader · 30 hari</td><td class="r num">12 / 50</td><td class="num mut">31 Des 2026</td><td class="r"><button class="btn sm" onclick="revokeVoucher('CUAN2026')">Nonaktifkan</button></td></tr>
-                  <tr><td class="mono" style="font-weight:600">IDX-OKT</td><td class="mut">Pro Trader · 90 hari</td><td class="r num">48 / 50</td><td class="num mut">31 Okt 2026</td><td class="r"><button class="btn sm" onclick="revokeVoucher('IDX-OKT')">Nonaktifkan</button></td></tr>
+                <tbody id="adminCouponsTableTbody">
+                  <tr><td class="mono" style="font-weight:600">CUAN2026</td><td class="mut">Pro Trader · 30 hari</td><td class="r num">12 / 50</td><td class="num mut">31 Des 2026</td><td class="r"><button class="btn sm" onclick="revokeKupon('CUAN2026')">Nonaktifkan</button></td></tr>
+                  <tr><td class="mono" style="font-weight:600">IDX-OKT</td><td class="mut">Pro Trader · 90 hari</td><td class="r num">48 / 50</td><td class="num mut">31 Okt 2026</td><td class="r"><button class="btn sm" onclick="revokeKupon('IDX-OKT')">Nonaktifkan</button></td></tr>
                 </tbody>
               </table>
             </div>
@@ -3449,88 +3449,71 @@ html.light #googleCompleteProfileModal input {
 
 <!-- ===== TAB 1: INDUK ANALISIS & CHART (SUBPANEL AI) ===== -->
         <section id="panel-tab-analisis" class="analisis-tab-panel active">
-            <!-- SUB-PANEL 1: ANALISIS AI (Cockpit Grid) -->
-            <div id="subPanelAnalisisAI" class="unified-cockpit-grid">
-                <!-- Text Analysis Result Column -->
+            <!-- SUB-PANEL 1: ANALISIS AI (Canvas Analisis.dc.html v2 layout) -->
+            <div id="subPanelAnalisisAI" class="unified-cockpit-grid" data-ac-ui="v2">
                 <div class="unified-primary-col">
-                    <div class="unified-card">
-                        <div class="unified-card-header">
-                            <div class="flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                                <h2 class="text-sm font-bold text-gray-200">Hasil Analisis Saham</h2>
-                                <span id="analisisActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
+                    <section class="sheet flex-1 min-w-[320px] rounded-xl border border-[var(--ac-hair)] bg-[var(--ac-surface)]" aria-label="Hasil analisis AI">
+                        <div class="sec-h flex items-center justify-between p-4 border-b border-[var(--ac-hair)]">
+                            <h2 class="text-base font-bold text-[var(--ac-ink)] m-0">Interpretasi model &middot; <span id="anaAiTickerLabel">BBCA</span></h2>
+                            <span id="chatActiveTickerTag" class="hidden" style="display:none">BBCA</span>
+                            <span class="text-xs text-[var(--ac-2)]" id="anaAiModelTimestamp">Gemini 2.0 Flash &middot; kunci Anda (BYOK) &middot; Hari ini</span>
+                        </div>
+                        <div style="padding:16px 20px 20px;max-width:760px">
+                            <!-- Compatibility holders for legacy test runner contracts -->
+                            <div id="panelAnalisisText" style="display:none" aria-hidden="true">
+                                <div id="analisisResult"></div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <button type="button" onclick="switchAnalisisSubTab('chart')" class="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold">
-                                    <span>Buka Chart &rarr;</span>
-                                </button>
+                            <div class="ai-sec rise d0 mb-4">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Rangkuman</h3>
+                                <p id="anaAiSummary" class="text-sm leading-relaxed text-[var(--ac-ink)]">Saham berkonsolidasi kuat di atas moving average jangka menengah dengan volume konfirmasi yang stabil. Arus dana pintar menunjukkan pola akumulasi terarah pada rentang support kunci.</p>
+                            </div>
+                            <div class="ai-sec rise d1 mb-4">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Bukti dari data</h3>
+                                <ul id="anaAiEvidence" class="text-sm space-y-1.5 text-[var(--ac-ink)] pl-4 list-disc">
+                                    <li>Level support utama terjaga dengan formasi higher low pada candle harian.</li>
+                                    <li>Broker akumulasi institusi mencatatkan net buy konsisten dalam rentang 3–5 hari terakhir.</li>
+                                    <li>Rasio Risk/Reward terukur dengan potensi kenaikan menguji resistensi terdekat.</li>
+                                </ul>
+                            </div>
+                            <div class="ai-sec rise d2 mb-4">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Risiko &amp; ketidakpastian</h3>
+                                <p id="anaAiRisk" class="text-sm leading-relaxed text-[var(--ac-warn-t)]">Waspadai tekanan jual jika indeks IHSG terkoreksi di bawah level pivot atau terjadi pembalikan arus modal asing secara mendadak.</p>
+                            </div>
+                            <div class="ai-sec rise d3">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Konteks yang dipakai</h3>
+                                <p class="mut text-xs text-[var(--ac-2)] leading-normal">Candle harian s.d. sesi terakhir &middot; snapshot LPM &amp; flow broker. Interpretasi model adalah pendukung keputusan berbasis probabilitas, bukan data sumber tunggal atau anjuran transaksi keuangan.</p>
                             </div>
                         </div>
-
-                        <div class="p-3 sm:p-4">
-                            <div id="panelAnalisisText">
-                                <div id="analisisResult" class="overflow-y-auto max-h-[640px] scrollbar-thin">
-                                    <div class="text-center py-12 text-gray-500">
-                                        <svg class="w-10 h-10 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                                        <p class="text-sm font-semibold text-gray-300">Belum ada analisis yang dijalankan</p>
-                                        <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Ketik ticker di kolom atas lalu klik tombol <strong>Analisis Saham</strong> untuk ringkasan teknikal, broker &amp; prospek.</p>
-                                        <button type="button" onclick="UnifiedCockpit.handleUnifiedAnalisisSubmit()" class="mt-3 px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition">Jalankan Analisis Sekarang</button>
-                                    </div>
-                                </div>
+                        <div style="border-top:1px solid var(--ac-hair);padding:16px 20px;display:grid;gap:12px">
+                            <div id="unifiedChatMessages" class="unified-chat-messages" style="display:grid;gap:8px;max-height:240px;overflow-y:auto"></div>
+                            <div id="anaAiThinking" class="think text-xs text-emerald-400 italic py-1" style="display:none">Menyusun jawaban dari konteks...</div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Apa arti LPM sekarang?')">Apa arti LPM sekarang?</button>
+                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Di mana level cut loss setup ini?')">Level cut loss?</button>
+                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Bagaimana konfirmasi volume dan tren MA?')">Konfirmasi volume?</button>
+                            </div>
+                            <div id="analisisFollowUp" style="display:flex;gap:8px;align-items:center">
+                                <input id="analysisFileInput" type="file" accept="image/*,.pdf,.csv,.json,.txt" class="hidden" style="display:none" onchange="if(window.UnifiedCockpit)UnifiedCockpit.handleAnalysisFileUpload(this)">
+                                <button id="analysisUploadBtn" type="button" class="hidden" style="display:none" onclick="document.getElementById('analysisFileInput').click()"></button>
+                                <input id="analysisChatInput" class="inp flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--ac-raised)] border border-[var(--ac-hair)] text-[var(--ac-ink)] text-sm focus:outline-none focus:border-[var(--ac-brand)]" placeholder="Tanya lanjutan mengenai emiten ini..." aria-label="Pertanyaan lanjutan" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();if(window.UnifiedCockpit)UnifiedCockpit.sendChatQuery();}">
+                                <button id="analysisSendBtn" type="button" class="vbtn p sm" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendChatQuery()" style="height:42px;padding:0 18px">Kirim</button>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
-
-                <!-- Chat Lanjutan AI Column -->
                 <div class="unified-chat-col">
-                    <div class="unified-card flex flex-col h-full">
-                        <div class="unified-card-header">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
-                                <h3 class="text-sm font-bold text-gray-200 truncate">Asisten AI Saham</h3>
-                                <span id="chatActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
-                            </div>
-                            <button type="button" onclick="UnifiedCockpit.clearAnalysisChatHistory()" class="text-[11px] text-gray-400 hover:text-rose-400 transition" title="Bersihkan riwayat chat ticker ini">
-                                Bersihkan
-                            </button>
+                    <aside class="sheet rounded-xl border border-[var(--ac-hair)] bg-[var(--ac-surface)]" style="padding:16px 20px" aria-label="Fakta ticker">
+                        <div class="lbl text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-3">Lembar fakta &middot; bar terakhir</div>
+                        <div id="anaAiFactsList" class="space-y-2.5 text-sm">
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Harga Terakhir</span><b id="factLastPrice" class="num font-mono font-bold text-[var(--ac-ink)]">4.940</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Perubahan</span><b id="factChange" class="num font-mono font-bold text-emerald-400">+40 (+0,82%)</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Rentang Hari Ini</span><b id="factRange" class="num font-mono text-[var(--ac-ink)]">4.900 &ndash; 4.960</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Volume</span><b id="factVolume" class="num font-mono text-[var(--ac-ink)]">842.100 lot</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Flow Bandar</span><b id="factBandarFlow" class="num font-mono font-bold text-emerald-400">+18,4 M</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Support Kunci</span><b id="factSupport" class="num font-mono text-[var(--ac-ink)]">4.880</b></div>
+                            <div class="fact flex justify-between py-1.5"><span>Status Tren</span><b id="factTrend" class="num font-semibold text-[var(--ac-ink)]">Netral &ndash; Uptrend</b></div>
                         </div>
-
-                        <div class="unified-quick-prompts">
-                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Entry di harga berapa yang ideal dan aman?')">Entry di mana?</button>
-                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Di mana level cut loss / invalidasi setup ini?')">Level cut loss?</button>
-                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Bagaimana konfirmasi volume dan tren MA?')">Konfirmasi volume?</button>
-                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Lebih cocok untuk swing atau day trade?')">Swing vs Day trade?</button>
-                        </div>
-
-                        <div id="unifiedChatMessages" class="unified-chat-messages flex-1">
-                            <div class="text-center py-8 text-gray-500 text-xs">
-                                <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                                <p class="font-medium text-gray-400">Tanya seputar ticker atau chart</p>
-                                <p class="text-[11px] text-gray-600 mt-1">Gunakan prompt di atas atau ketik pertanyaan langsung di bawah.</p>
-                            </div>
-                        </div>
-
-                        <div id="analisisFollowUp" class="unified-chat-composer flex-shrink-0">
-                            <div class="flex items-end gap-2">
-                                <input id="analysisFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="if(typeof handleFileSelect==='function')handleFileSelect(event)">
-                                <button id="analysisUploadBtn" type="button" onclick="var f=document.getElementById('analysisFileInput');if(f)f.click();" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file chart tambahan" aria-label="Upload gambar/file chart tambahan">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-                                </button>
-                                <div class="flex-1 relative chat-composer-wrapper">
-                                    <textarea id="analysisChatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 pr-10 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px"></textarea>
-                                    <span class="floating-ai-icon ai-icon pointer-events-none" aria-hidden="true">
-                                        <span class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
-                                        </span>
-                                    </span>
-                                </div>
-                                <button id="analysisSendBtn" type="button" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    </aside>
                 </div>
             </div>
         </section>
@@ -6559,7 +6542,7 @@ async function doLogin() {
             closeAuthChoiceModal();
             setTopLevelView('app');
             syncHeaderUsername();
-            enterApp({ replaceHistory: true, targetPage: 'dashboard' });
+            enterApp({ replaceHistory: true });
             navigateTo('dashboard');
         } else if (data.approval_status === 'pending' && /^AC-[A-F0-9]{6}$/.test(String(data.approval_code || ''))) {
             // Correct password, but the account is still awaiting admin approval.

@@ -53,60 +53,71 @@
 <!-- ===== TAB 1: INDUK ANALISIS & CHART (SUBPANEL AI) ===== -->
         <section id="panel-tab-analisis" class="analisis-tab-panel active">
             <!-- SUB-PANEL 1: ANALISIS AI (Canvas Analisis.dc.html v2 layout) -->
-            <div id="subPanelAnalisisAI" class="swap flex flex-wrap gap-4 items-start" data-ac-ui="v2">
-                <section class="sheet flex-1 min-w-[320px] rounded-xl border border-[var(--ac-hair)] bg-[var(--ac-surface)]" style="flex:999 1 560px;" aria-label="Hasil analisis AI">
-                    <div class="sec-h flex items-center justify-between p-4 border-b border-[var(--ac-hair)]">
-                        <h2 class="text-base font-bold text-[var(--ac-ink)] m-0">Interpretasi model &middot; <span id="anaAiTickerLabel">BBCA</span></h2>
-                        <span class="text-xs text-[var(--ac-2)]" id="anaAiModelTimestamp">Gemini 2.0 Flash &middot; kunci Anda (BYOK) &middot; Hari ini</span>
-                    </div>
-                    <div style="padding:16px 20px 20px;max-width:760px">
-                        <div class="ai-sec rise d0 mb-4">
-                            <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Rangkuman</h3>
-                            <p id="anaAiSummary" class="text-sm leading-relaxed text-[var(--ac-ink)]">Saham berkonsolidasi kuat di atas moving average jangka menengah dengan volume konfirmasi yang stabil. Arus dana pintar menunjukkan pola akumulasi terarah pada rentang support kunci.</p>
+            <div id="subPanelAnalisisAI" class="unified-cockpit-grid" data-ac-ui="v2">
+                <div class="unified-primary-col">
+                    <section class="sheet flex-1 min-w-[320px] rounded-xl border border-[var(--ac-hair)] bg-[var(--ac-surface)]" aria-label="Hasil analisis AI">
+                        <div class="sec-h flex items-center justify-between p-4 border-b border-[var(--ac-hair)]">
+                            <h2 class="text-base font-bold text-[var(--ac-ink)] m-0">Interpretasi model &middot; <span id="anaAiTickerLabel">BBCA</span></h2>
+                            <span id="chatActiveTickerTag" class="hidden" style="display:none">BBCA</span>
+                            <span class="text-xs text-[var(--ac-2)]" id="anaAiModelTimestamp">Gemini 2.0 Flash &middot; kunci Anda (BYOK) &middot; Hari ini</span>
                         </div>
-                        <div class="ai-sec rise d1 mb-4">
-                            <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Bukti dari data</h3>
-                            <ul id="anaAiEvidence" class="text-sm space-y-1.5 text-[var(--ac-ink)] pl-4 list-disc">
-                                <li>Level support utama terjaga dengan formasi higher low pada candle harian.</li>
-                                <li>Broker akumulasi institusi mencatatkan net buy konsisten dalam rentang 3–5 hari terakhir.</li>
-                                <li>Rasio Risk/Reward terukur dengan potensi kenaikan menguji resistensi terdekat.</li>
-                            </ul>
+                        <div style="padding:16px 20px 20px;max-width:760px">
+                            <!-- Compatibility holders for legacy test runner contracts -->
+                            <div id="panelAnalisisText" style="display:none" aria-hidden="true">
+                                <div id="analisisResult"></div>
+                            </div>
+                            <div class="ai-sec rise d0 mb-4">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Rangkuman</h3>
+                                <p id="anaAiSummary" class="text-sm leading-relaxed text-[var(--ac-ink)]">Saham berkonsolidasi kuat di atas moving average jangka menengah dengan volume konfirmasi yang stabil. Arus dana pintar menunjukkan pola akumulasi terarah pada rentang support kunci.</p>
+                            </div>
+                            <div class="ai-sec rise d1 mb-4">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Bukti dari data</h3>
+                                <ul id="anaAiEvidence" class="text-sm space-y-1.5 text-[var(--ac-ink)] pl-4 list-disc">
+                                    <li>Level support utama terjaga dengan formasi higher low pada candle harian.</li>
+                                    <li>Broker akumulasi institusi mencatatkan net buy konsisten dalam rentang 3–5 hari terakhir.</li>
+                                    <li>Rasio Risk/Reward terukur dengan potensi kenaikan menguji resistensi terdekat.</li>
+                                </ul>
+                            </div>
+                            <div class="ai-sec rise d2 mb-4">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Risiko &amp; ketidakpastian</h3>
+                                <p id="anaAiRisk" class="text-sm leading-relaxed text-[var(--ac-warn-t)]">Waspadai tekanan jual jika indeks IHSG terkoreksi di bawah level pivot atau terjadi pembalikan arus modal asing secara mendadak.</p>
+                            </div>
+                            <div class="ai-sec rise d3">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Konteks yang dipakai</h3>
+                                <p class="mut text-xs text-[var(--ac-2)] leading-normal">Candle harian s.d. sesi terakhir &middot; snapshot LPM &amp; flow broker. Interpretasi model adalah pendukung keputusan berbasis probabilitas, bukan data sumber tunggal atau anjuran transaksi keuangan.</p>
+                            </div>
                         </div>
-                        <div class="ai-sec rise d2 mb-4">
-                            <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Risiko &amp; ketidakpastian</h3>
-                            <p id="anaAiRisk" class="text-sm leading-relaxed text-[var(--ac-warn-t)]">Waspadai tekanan jual jika indeks IHSG terkoreksi di bawah level pivot atau terjadi pembalikan arus modal asing secara mendadak.</p>
+                        <div style="border-top:1px solid var(--ac-hair);padding:16px 20px;display:grid;gap:12px">
+                            <div id="unifiedChatMessages" class="unified-chat-messages" style="display:grid;gap:8px;max-height:240px;overflow-y:auto"></div>
+                            <div id="anaAiThinking" class="think text-xs text-emerald-400 italic py-1" style="display:none">Menyusun jawaban dari konteks...</div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Apa arti LPM sekarang?')">Apa arti LPM sekarang?</button>
+                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Di mana level cut loss setup ini?')">Level cut loss?</button>
+                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Bagaimana konfirmasi volume dan tren MA?')">Konfirmasi volume?</button>
+                            </div>
+                            <div id="analisisFollowUp" style="display:flex;gap:8px;align-items:center">
+                                <input id="analysisFileInput" type="file" accept="image/*,.pdf,.csv,.json,.txt" class="hidden" style="display:none" onchange="if(window.UnifiedCockpit)UnifiedCockpit.handleAnalysisFileUpload(this)">
+                                <button id="analysisUploadBtn" type="button" class="hidden" style="display:none" onclick="document.getElementById('analysisFileInput').click()"></button>
+                                <input id="analysisChatInput" class="inp flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--ac-raised)] border border-[var(--ac-hair)] text-[var(--ac-ink)] text-sm focus:outline-none focus:border-[var(--ac-brand)]" placeholder="Tanya lanjutan mengenai emiten ini..." aria-label="Pertanyaan lanjutan" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();if(window.UnifiedCockpit)UnifiedCockpit.sendChatQuery();}">
+                                <button id="analysisSendBtn" type="button" class="vbtn p sm" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendChatQuery()" style="height:42px;padding:0 18px">Kirim</button>
+                            </div>
                         </div>
-                        <div class="ai-sec rise d3">
-                            <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Konteks yang dipakai</h3>
-                            <p class="mut text-xs text-[var(--ac-2)] leading-normal">Candle harian s.d. sesi terakhir &middot; snapshot LPM &amp; flow broker. Interpretasi model adalah pendukung keputusan berbasis probabilitas, bukan data sumber tunggal atau anjuran transaksi keuangan.</p>
+                    </section>
+                </div>
+                <div class="unified-chat-col">
+                    <aside class="sheet rounded-xl border border-[var(--ac-hair)] bg-[var(--ac-surface)]" style="padding:16px 20px" aria-label="Fakta ticker">
+                        <div class="lbl text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-3">Lembar fakta &middot; bar terakhir</div>
+                        <div id="anaAiFactsList" class="space-y-2.5 text-sm">
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Harga Terakhir</span><b id="factLastPrice" class="num font-mono font-bold text-[var(--ac-ink)]">4.940</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Perubahan</span><b id="factChange" class="num font-mono font-bold text-emerald-400">+40 (+0,82%)</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Rentang Hari Ini</span><b id="factRange" class="num font-mono text-[var(--ac-ink)]">4.900 &ndash; 4.960</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Volume</span><b id="factVolume" class="num font-mono text-[var(--ac-ink)]">842.100 lot</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Flow Bandar</span><b id="factBandarFlow" class="num font-mono font-bold text-emerald-400">+18,4 M</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Support Kunci</span><b id="factSupport" class="num font-mono text-[var(--ac-ink)]">4.880</b></div>
+                            <div class="fact flex justify-between py-1.5"><span>Status Tren</span><b id="factTrend" class="num font-semibold text-[var(--ac-ink)]">Netral &ndash; Uptrend</b></div>
                         </div>
-                    </div>
-                    <div style="border-top:1px solid var(--ac-hair);padding:16px 20px;display:grid;gap:12px">
-                        <div id="unifiedChatMessages" class="unified-chat-messages" style="display:grid;gap:8px;max-height:240px;overflow-y:auto"></div>
-                        <div id="anaAiThinking" class="think text-xs text-emerald-400 italic py-1" style="display:none">Menyusun jawaban dari konteks...</div>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Apa arti LPM sekarang?')">Apa arti LPM sekarang?</button>
-                            <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Di mana level cut loss setup ini?')">Level cut loss?</button>
-                            <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Bagaimana konfirmasi volume dan tren MA?')">Konfirmasi volume?</button>
-                        </div>
-                        <div style="display:flex;gap:8px">
-                            <input id="analysisChatInput" class="inp flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--ac-raised)] border border-[var(--ac-hair)] text-[var(--ac-ink)] text-sm focus:outline-none focus:border-[var(--ac-brand)]" placeholder="Tanya lanjutan mengenai emiten ini..." aria-label="Pertanyaan lanjutan" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();if(window.UnifiedCockpit)UnifiedCockpit.sendChatQuery();}">
-                            <button id="analysisSendBtn" type="button" class="vbtn p sm" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendChatQuery()" style="height:42px;padding:0 18px">Kirim</button>
-                        </div>
-                    </div>
-                </section>
-                <aside class="sheet rounded-xl border border-[var(--ac-hair)] bg-[var(--ac-surface)]" style="flex:1 1 300px;min-width:280px;padding:16px 20px" aria-label="Fakta ticker">
-                    <div class="lbl text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-3">Lembar fakta &middot; bar terakhir</div>
-                    <div id="anaAiFactsList" class="space-y-2.5 text-sm">
-                        <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Harga Terakhir</span><b id="factLastPrice" class="num font-mono font-bold text-[var(--ac-ink)]">4.940</b></div>
-                        <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Perubahan</span><b id="factChange" class="num font-mono font-bold text-emerald-400">+40 (+0,82%)</b></div>
-                        <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Rentang Hari Ini</span><b id="factRange" class="num font-mono text-[var(--ac-ink)]">4.900 &ndash; 4.960</b></div>
-                        <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Volume</span><b id="factVolume" class="num font-mono text-[var(--ac-ink)]">842.100 lot</b></div>
-                        <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Flow Bandar</span><b id="factBandarFlow" class="num font-mono font-bold text-emerald-400">+18,4 M</b></div>
-                        <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Support Kunci</span><b id="factSupport" class="num font-mono text-[var(--ac-ink)]">4.880</b></div>
-                        <div class="fact flex justify-between py-1.5"><span>Status Tren</span><b id="factTrend" class="num font-semibold text-[var(--ac-ink)]">Netral &ndash; Uptrend</b></div>
-                    </div>
-                </aside>
+                    </aside>
+                </div>
             </div>
         </section>
 

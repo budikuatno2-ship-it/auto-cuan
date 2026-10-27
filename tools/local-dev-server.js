@@ -267,6 +267,20 @@ function getPreviewInjectionHtml(module, options = {}) {
     }
   })();
   </script>
+  ${options.hideBar ? '' : `
+  <div id="autocuan-preview-bar">
+    <span class="preview-badge"><span class="preview-badge-dot"></span> Preview</span>
+    <a href="/preview/landing" class="${module === 'landing' ? 'active' : ''}">1. Landing</a>
+    <a href="/preview/dashboard" class="${module === 'dashboard' ? 'active' : ''}">2. Dashboard</a>
+    <a href="/preview/analisis-saham" class="${module === 'analisis-saham' ? 'active' : ''}">3. Analisis Saham</a>
+    <a href="/preview/sektor-hot" class="${module === 'sektor-hot' ? 'active' : ''}">4. Sektor Hot</a>
+    <a href="/preview/screener" class="${module === 'screener' ? 'active' : ''}">5. Screener</a>
+    <a href="/preview/watchlist" class="${module === 'watchlist' ? 'active' : ''}">6. Watchlist</a>
+    <a href="/preview/track-record" class="${module === 'track-record' ? 'active' : ''}">7. Track Record</a>
+    <a href="/preview/portofolio" class="${module === 'portofolio' ? 'active' : ''}">8. Portofolio</a>
+    <button class="close-btn" onclick="document.getElementById('autocuan-preview-bar').remove()" title="Tutup preview toolbar">&times;</button>
+  </div>
+  `}
   `;
 }
 

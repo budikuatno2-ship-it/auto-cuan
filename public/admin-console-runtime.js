@@ -273,36 +273,38 @@
     alert('Pengaturan pemeliharaan berhasil disimpan.');
   };
 
-  // Voucher Actions
+  // Voucher / Kupon Actions
   root.createVoucherAction = function() {
     var codeInput = document.getElementById('vCodeInput');
     var code = codeInput ? (codeInput.value || '').trim().toUpperCase() : '';
     var plan = document.getElementById('vPlanSelect') ? document.getElementById('vPlanSelect').value : 'pro_30';
     var quota = document.getElementById('vQuotaInput') ? document.getElementById('vQuotaInput').value : '1';
     var exp = document.getElementById('vExpiryInput') ? document.getElementById('vExpiryInput').value : '';
-    if (!code) { alert('Kode voucher tidak boleh kosong'); return; }
+    if (!code) { alert('Kode tidak boleh kosong'); return; }
 
     var planLabel = plan === 'lifetime' ? 'Pro Trader · Lifetime' : (plan === 'pro_90' ? 'Pro Trader · 90 hari' : 'Pro Trader · 30 hari');
-    var tbody = document.getElementById('vouchersTableTbody');
+    var tbody = document.getElementById('adminCouponsTableTbody') || document.getElementById('vouchersTableTbody');
     if (tbody) {
-      var row = '<tr><td class="mono" style="font-weight:600">' + escapeHtml(code) + '</td><td class="mut">' + planLabel + '</td><td class="r num">0 / ' + quota + '</td><td class="num mut">' + escapeHtml(exp) + '</td><td class="r"><button class="btn sm" onclick="revokeVoucher(\'' + escapeHtml(code) + '\')">Nonaktifkan</button></td></tr>';
+      var row = '<tr><td class="mono" style="font-weight:600">' + escapeHtml(code) + '</td><td class="mut">' + planLabel + '</td><td class="r num">0 / ' + quota + '</td><td class="num mut">' + escapeHtml(exp) + '</td><td class="r"><button class="btn sm" onclick="(window.revokeKupon||window.revokeVoucher)(\'' + escapeHtml(code) + '\')">Nonaktifkan</button></td></tr>';
       tbody.innerHTML = row + tbody.innerHTML;
     }
-    recordAuditLog('budi', 'Buat Voucher ' + code, 'Paket: ' + planLabel + ', Kuota: ' + quota);
-    alert('Voucher ' + code + ' berhasil diterbitkan.');
+    recordAuditLog('budi', 'Buat Kupon/Akses ' + code, 'Paket: ' + planLabel + ', Kuota: ' + quota);
+    alert('Kode ' + code + ' berhasil diterbitkan.');
   };
+  root.createKuponAction = root.createVoucherAction;
 
   root.revokeVoucher = function(code) {
     promptAction({
-      title: 'Nonaktifkan Voucher ' + code + '?',
-      body: 'Pengguna baru tidak akan bisa menukarkan kode voucher ini lagi.',
+      title: 'Nonaktifkan Kode ' + code + '?',
+      body: 'Pengguna baru tidak akan bisa menukarkan kode ini lagi.',
       word: 'REVOKE',
       action: function(reason) {
-        recordAuditLog('budi', 'Nonaktifkan Voucher ' + code, reason);
-        alert('Voucher ' + code + ' telah dinonaktifkan.');
+        recordAuditLog('budi', 'Nonaktifkan Kode ' + code, reason);
+        alert('Kode ' + code + ' telah dinonaktifkan.');
       }
     });
   };
+  root.revokeKupon = root.revokeVoucher;
 
   // Confirmation Dialog
   function promptAction(opts) {
