@@ -1250,7 +1250,7 @@ html.light #googleCompleteProfileModal input {
 
         <section class="sidebar-nav-group" aria-label="Temukan">
             <p class="sidebar-group-label" aria-hidden="true">Temukan</p>
-            <button id="nav-screener" type="button" onclick="navigateTo('screener')" class="sidebar-item" data-sidebar-page="screener" data-label="Screener" data-premium-nav="true" title="Screener">
+            <button id="nav-screener" type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-label="Screener" data-premium-nav="true" title="Screener">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
                 <span class="sidebar-label">Screener</span>
             </button>
@@ -1333,7 +1333,7 @@ html.light #googleCompleteProfileModal input {
         <!-- Admin group (HANDOFF §4). Visible for admin. -->
         <section class="sidebar-nav-group sidebar-admin-group" aria-label="Admin">
             <p class="sidebar-group-label" aria-hidden="true">Admin</p>
-            <button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar">
+            <button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item hidden" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
                 <span class="sidebar-label">Pattern Radar</span>
             </button>
@@ -3433,8 +3433,8 @@ html.light #googleCompleteProfileModal input {
                 </form>
             </div>
 
-            <!-- Multi-Lens Horizontal Sub-Navigation Strip (Workstation Lenses) -->
-            <div id="analisisLensesNav" class="analisis-lens-bar utabs ana-lenses" role="tablist" aria-label="Lensa Analisis Saham">
+            <!-- Multi-Lens Horizontal Sub-Navigation Strip (Workstation Lenses) - Hidden per v2 architecture: navigation is handled by left sidebar -->
+            <div id="analisisLensesNav" class="analisis-lens-bar utabs ana-lenses" role="tablist" aria-label="Lensa Analisis Saham" style="display:none !important;">
                 <button type="button" class="analisis-lens-btn active" data-lens="analisis-chart" onclick="switchAnalisisTab('analisis-chart')" role="tab" aria-selected="true">Chart &amp; AI</button>
                 <button type="button" class="analisis-lens-btn" data-lens="bandarmologi" onclick="switchAnalisisTab('bandarmologi')" role="tab" aria-selected="false">Bandarmologi</button>
                 <button type="button" class="analisis-lens-btn" data-lens="hunter" onclick="switchAnalisisTab('hunter')" role="tab" aria-selected="false">Broker Hunter</button>
