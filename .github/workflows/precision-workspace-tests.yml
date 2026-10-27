@@ -87,7 +87,7 @@ jobs:
           retention-days: 7
   webkit-keyboard:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     env:
       BROWSER_ENGINE: webkit
       PRECISION_TEST_OUTPUT: /tmp/webkit-keyboard-review

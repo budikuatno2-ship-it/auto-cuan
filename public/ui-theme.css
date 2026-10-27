@@ -15515,17 +15515,38 @@ html.is-dark .thm .moon { display: none; }
     background: var(--ac-surface-raised);
   }
   /* Full-screen menu. */
-  #dashboardScreen #appShell > #appSidebar.app-sidebar.mobile-open {
+  :is(#dashboardScreen, body) #appShell > #appSidebar.app-sidebar.mobile-open,
+  #appSidebar.app-sidebar.mobile-open {
     position: fixed !important;
-    inset: 0;
+    inset: 0 !important;
+    width: 100% !important;
     height: 100dvh !important;
-    z-index: 120;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-bottom: 24px;
+    max-height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    z-index: 120 !important;
+    padding: 8px 12px 10px !important;
+    box-sizing: border-box !important;
+  }
+  :is(#dashboardScreen, body) #appShell > #appSidebar.mobile-open > .sidebar-brand {
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+  }
+  :is(#dashboardScreen, body) #appShell > #appSidebar.mobile-open > .sidebar-nav {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    padding: 0 0 8px 0 !important;
+    margin: 0 !important;
+  }
+  :is(#dashboardScreen, body) #appShell > #appSidebar.mobile-open > .sidebar-footer {
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    padding: 8px 0 0 0 !important;
   }
   body #appShell > #appSidebar.mobile-open .sidebar-item { height: 44px; min-height: 44px; font-size: 15px; }
-  body #appShell > #appSidebar.mobile-open .sidebar-footer { margin: 12px -12px 0; }
   body #appShell > #appMain { margin-left: 0 !important; width: 100% !important; }
   #sidebarScrim { display: none !important; }
   /* Search and freshness scroll away with the page on phones. */

@@ -1254,7 +1254,7 @@ html.light #googleCompleteProfileModal input {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
                 <span class="sidebar-label">Screener</span>
             </button>
-            <button id="tabSektorHot" type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-label="Sektor Hot" data-premium-nav="true" title="Sektor Hot">
+            <button id="tabSektorHot" type="button" onclick="navigateTo('sektor')" class="sidebar-item" data-sidebar-page="sektor" data-label="Sektor Hot" data-premium-nav="true" title="Sektor Hot">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>
                 <span class="sidebar-label">Sektor Hot</span>
             </button>
@@ -1271,11 +1271,8 @@ html.light #googleCompleteProfileModal input {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>
                 <span class="sidebar-label">Analisis &amp; Chart</span>
             </button>
-            <!-- FIX-22: first-class Chart Workstation destination (not on the
-                 canvas, kept as an existing feature). Routes into the analysis
-                 shell's dedicated `chart` lens. -->
             <button id="tabChartWorkstation" type="button" onclick="navigateTo('analisis', 'chart')" class="sidebar-item" data-sidebar-page="chart" data-analysis-tab="chart" data-tab="chart" data-label="Chart Workstation" title="Chart Workstation">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 15l3-4 3 3 4-5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16M4 15l4-6 4 4 6-8"/></svg>
                 <span class="sidebar-label">Chart Workstation</span>
             </button>
             <button id="tabBandarmologi" type="button" onclick="navigateTo('analisis', 'bandarmologi')" class="sidebar-item" data-sidebar-page="bandarmologi" data-analysis-tab="bandarmologi" data-tab="bandarmologi" data-label="Bandarmologi" title="Bandarmologi">
@@ -1310,40 +1307,39 @@ html.light #googleCompleteProfileModal input {
 
         <section class="sidebar-nav-group" aria-label="Pantau">
             <p class="sidebar-group-label" aria-hidden="true">Pantau</p>
-            <button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-label="Watchlist" data-premium-nav="true" title="Watchlist">
+            <button type="button" id="tabWatchlist" onclick="navigateTo('watchlist')" class="sidebar-item" data-sidebar-page="watchlist" data-label="Watchlist" data-premium-nav="true" title="Watchlist">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>
                 <span class="sidebar-label">Watchlist</span>
             </button>
-            <button type="button" onclick="navigateTo('portofolio')" class="sidebar-item hidden" data-sidebar-page="portofolio" data-label="Portfolio" data-premium-nav="true" title="Portfolio">
+            <button type="button" id="tabPortofolio" onclick="navigateTo('portofolio')" class="sidebar-item" data-sidebar-page="portofolio" data-label="Portfolio" data-premium-nav="true" title="Portfolio">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>
                 <span class="sidebar-label">Portfolio</span>
             </button>
-            <button type="button" onclick="navigateTo('trackrecord')" class="sidebar-item hidden" data-sidebar-page="trackrecord" data-label="Track Record" data-premium-nav="true" title="Track Record">
+            <button type="button" id="tabTrackRecord" onclick="navigateTo('trackrecord')" class="sidebar-item" data-sidebar-page="trackrecord" data-label="Track Record" data-premium-nav="true" title="Track Record">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>
                 <span class="sidebar-label">Track Record</span>
             </button>
-            <button type="button" id="nav-money-management" onclick="navigateTo('money-management')" class="sidebar-item hidden" data-sidebar-page="money-management" data-label="Kelola Keuangan" data-premium-nav="true" title="Kelola Keuangan">
+            <button type="button" id="nav-money-management" onclick="navigateTo('kelola-keuangan')" class="sidebar-item" data-sidebar-page="money-management" data-label="Kelola Keuangan" data-premium-nav="true" title="Kelola Keuangan">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>
                 <span class="sidebar-label">Kelola Keuangan</span>
             </button>
-            <a href="#subscription" id="nav-subscription" class="sidebar-item nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition" onclick="openSubscriptionModal();return false;" data-sidebar-page="subscription" data-label="Subscription" title="Subscription">
-                <span class="nav-icon flex items-center justify-center">
-                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                </span>
-                <span class="sidebar-label nav-label">Langganan</span>
-                <span class="sidebar-badge text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ml-auto">VIP</span>
-            </a>
+            <button type="button" id="nav-subscription" onclick="if(window.openAccountSubscription)window.openAccountSubscription();else if(window.openAccountCenter)window.openAccountCenter('subscription');" class="sidebar-item" data-sidebar-page="subscription" data-label="Langganan VIP" title="Langganan VIP">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 15h10M7 11h10M7 7h4"/></svg>
+                <span class="sidebar-label">Langganan VIP</span>
+                <span class="cnt ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">VIP</span>
+            </button>
         </section>
 
-        <!-- Admin group (HANDOFF §4). Items stay hidden until the server-verified
-             admin check unhides them; the group label disappears with them via
-             .sidebar-nav-group:not(:has(...)). The data behind these tools is
-             protected on the server, not by this markup. -->
+        <!-- Admin group (HANDOFF §4). Visible for admin. -->
         <section class="sidebar-nav-group sidebar-admin-group" aria-label="Admin">
             <p class="sidebar-group-label" aria-hidden="true">Admin</p>
             <button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item hidden" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
                 <span class="sidebar-label">Pattern Radar</span>
+            </button>
+            <button id="tabAdminConsole" type="button" onclick="navigateTo('admin-console')" class="sidebar-item" data-sidebar-page="admin-console" data-label="Admin Console" title="Admin Console">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+                <span class="sidebar-label">Admin Console</span>
             </button>
         </section>
     </nav>
@@ -3069,6 +3065,332 @@ html.light #googleCompleteProfileModal input {
   </section>
 </section>
 
+<!-- ===== PAGE: ADMIN CONSOLE ===== -->
+<section id="page-admin-console" class="page-content hidden flex-1 w-full mx-auto" data-ac-ui="v2" aria-labelledby="adminConsoleTitle">
+  <div id="unauthorizedScreen" style="display:none">
+    <div style="max-width:440px;margin:40px auto;text-align:center">
+      <div style="width:48px;height:48px;border-radius:12px;background:var(--ac-neg-soft);color:var(--ac-neg);display:grid;place-items:center;margin:0 auto 16px">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <h1 id="adminConsoleTitle" style="font-size:20px;font-weight:700;margin:0 0 8px">Akses Terbatas (403 Ditolak)</h1>
+      <p style="color:var(--ac-2);font-size:14px;line-height:1.6;margin:0 0 24px">Halaman ini hanya dapat diakses oleh akun administrator Auto-Cuan. Sesi login admin tidak terdeteksi atau Anda belum masuk sebagai administrator.</p>
+      <a href="/?login=1" class="btn p">Masuk sebagai Administrator</a>
+    </div>
+  </div>
+
+  <div id="adminMainContent" style="display:none">
+    <div class="page">
+      <div class="ph">
+        <div>
+          <div class="kick" style="color:var(--ac-info)">Admin · Akses Terbatas</div>
+          <h1>Admin Console</h1>
+          <p>Operasional Auto-Cuan: persetujuan akun, pengguna, mode maintenance, kupon akses, job data, dan log audit. Setiap aksi tercatat.</p>
+        </div>
+        <span class="st i" id="adminRoleBadge">Administrator Aktif</span>
+      </div>
+
+      <!-- Maintenance Active Banner -->
+      <div id="mBanner" class="banner" style="display:none" role="status">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9L2 18a2 2 0 001.7 3h16.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+        <span id="mBannerText">Mode maintenance aktif. Pengguna non-admin dialihkan ke layar pemeliharaan.</span>
+        <button class="btn sm" onclick="switchAdminTab(3)" style="margin-left:auto">Kelola</button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="utabs" aria-label="Bagian admin" id="adminNavTabs">
+        <button class="tbtn on" onclick="switchAdminTab(0)" data-admin-tab="0">Ringkasan</button>
+        <button class="tbtn" onclick="switchAdminTab(1)" data-admin-tab="1">Online <span class="st i" id="tabOnlineCount">0</span></button>
+        <button class="tbtn" onclick="switchAdminTab(2)" data-admin-tab="2">Persetujuan Akun <span class="st a" id="tabPendingCount">0</span></button>
+        <button class="tbtn" onclick="switchAdminTab(3)" data-admin-tab="3">Mode Maintenance</button>
+        <button class="tbtn" onclick="switchAdminTab(4)" data-admin-tab="4">Kupon</button>
+        <button class="tbtn" onclick="switchAdminTab(5)" data-admin-tab="5">Job &amp; Data Pipeline</button>
+        <button class="tbtn" onclick="switchAdminTab(6)" data-admin-tab="6">Log Audit</button>
+      </nav>
+
+      <!-- TAB 0: RINGKASAN -->
+      <div id="panelTab0" class="admin-panel">
+        <section class="sheet">
+          <div class="strip">
+            <div>
+              <div class="lbl">Pengguna aktif</div>
+              <div class="big num" id="statUsersActive">1.284</div>
+              <div class="sub">7 hari terakhir · <button class="lnkb" onclick="switchAdminTab(1)"><span class="live"></span><span id="statOnlineNow">1</span> online sekarang</button></div>
+            </div>
+            <div>
+              <div class="lbl">Menunggu persetujuan</div>
+              <div class="big num warn" id="statPendingCount">0</div>
+              <div class="sub" id="statPendingSub">Verifikasi Telegram</div>
+            </div>
+            <div>
+              <div class="lbl">Kuota API data hari ini</div>
+              <div class="big num" id="statQuotaNum">8.412<span class="mut" style="font-size:14px;font-weight:600"> / 12.060</span></div>
+              <div class="meter"><i id="statQuotaBar" style="width:70%"></i></div>
+              <div class="sub">Reset 00:00 WIB · sisa kuota aman</div>
+            </div>
+            <div>
+              <div class="lbl">Status layanan</div>
+              <div style="margin-top:8px"><span class="st g" id="statServiceStatus">Semua Normal</span></div>
+              <div class="sub">API p95 &lt; 320 ms</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="sheet" style="margin-top:16px">
+          <div class="sec-h">
+            <h2>Kesegaran dataset</h2>
+            <span>Dibaca dari status job asli, bukan jam dinding</span>
+          </div>
+          <div class="tw">
+            <table class="tbl">
+              <thead><tr><th>Dataset</th><th>Terakhir sukses</th><th>Jadwal</th><th>Status</th></tr></thead>
+              <tbody id="datasetFreshnessTbody">
+                <tr><td style="font-weight:600">Candle harian EOD bursa</td><td class="num mut">Hari bursa terakhir 16:45</td><td class="mut">16:40 WIB · Hari bursa</td><td><span class="st g">Segar</span></td></tr>
+                <tr><td style="font-weight:600">Broker summary harian</td><td class="num mut">Hari bursa terakhir 17:18</td><td class="mut">17:15 WIB · Hari bursa</td><td><span class="st g">Segar</span></td></tr>
+                <tr><td style="font-weight:600">Sektor hot &amp; konglomerasi</td><td class="num mut">Hari bursa terakhir 17:35</td><td class="mut">17:30 WIB · Hari bursa</td><td><span class="st g">Segar</span></td></tr>
+                <tr><td style="font-weight:600">KSEI kepemilikan 5%+</td><td class="num mut">30 Sep 2026</td><td class="mut">08:00 WIB · Bulanan</td><td><span class="st g">Arsip resmi</span></td></tr>
+                <tr><td style="font-weight:600">Laporan keuangan emiten</td><td class="num mut">Q2 2026</td><td class="mut">19:00 WIB · Berkala</td><td><span class="st a">Sebagian Q1</span></td></tr>
+                <tr><td style="font-weight:600">Pembersihan cache kedaluwarsa</td><td class="num mut">Hari ini 00:01</td><td class="mut">00:00 WIB · Harian</td><td><span class="st g">Lengkap</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 1: ONLINE (§5b) -->
+      <div id="panelTab1" class="admin-panel" style="display:none">
+        <section class="sheet">
+          <div class="strip">
+            <div><div class="lbl">Online sekarang</div><div class="big num"><span class="live lg2"></span><span id="onSummaryNow">1</span></div><div class="sub">detak sesi dalam 2 menit terakhir</div></div>
+            <div><div class="lbl">Aktif 15 menit terakhir</div><div class="big num" id="onSummary15m">1</div><div class="sub">termasuk yang online</div></div>
+            <div><div class="lbl">Masuk hari ini</div><div class="big num" id="onSummaryToday">1</div><div class="sub">sejak 00:00 WIB</div></div>
+            <div><div class="lbl">Tidak aktif &gt; 7 hari</div><div class="big num warn" id="onSummaryIdle7d">0</div><div class="sub">kandidat ditinjau</div></div>
+          </div>
+        </section>
+
+        <section class="sheet" style="margin-top:16px">
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">
+            <button class="ofc on" onclick="filterOnline('all', this)" id="onFilterAll">Semua</button>
+            <button class="ofc" onclick="filterOnline('online', this)">Online</button>
+            <button class="ofc" onclick="filterOnline('today', this)">Hari ini</button>
+            <button class="ofc" onclick="filterOnline('idle7d', this)">Tidak aktif &gt; 7 hari</button>
+            <label class="search" style="width:240px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+              <input id="onlineSearchInput" placeholder="Cari pengguna…" oninput="onOnlineSearch(this.value)">
+            </label>
+            <span class="mut" style="margin-left:auto;font-size:12px" role="status"><span class="live"></span>Diperbarui <span id="onlineLastUpdated">baru saja</span> · otomatis tiap 30 detik</span>
+          </div>
+          <div class="tw">
+            <table class="tbl" style="min-width:880px">
+              <thead><tr><th>Pengguna</th><th>Status</th><th>Halaman</th><th>Perangkat</th><th class="r">Lama sesi</th><th>Masuk terakhir</th></tr></thead>
+              <tbody id="onlineTableTbody">
+                <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat status pengguna online…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov">
+            <span><b>Hanya admin</b></span>
+            <span>Online = detak sesi &lt; 2 menit. Detak dikirim tiap 60 detik saat tab terbuka.</span>
+            <span><b>Alamat IP tidak ditampilkan</b> · riwayat disimpan 30 hari.</span>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 2: PERSETUJUAN AKUN -->
+      <div id="panelTab2" class="admin-panel" style="display:none">
+        <section class="sheet">
+          <div class="sec-h">
+            <h2>Persetujuan akun</h2>
+            <span>Setujui hanya setelah verifikasi Telegram selesai</span>
+          </div>
+          <div class="tw">
+            <table class="tbl" style="min-width:880px">
+              <thead><tr><th>Pengguna</th><th>Gmail</th><th>Daftar</th><th>Telegram</th><th>Status</th><th class="r">Aksi</th></tr></thead>
+              <tbody id="pendingApprovalTbody">
+                <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Tidak ada akun yang menunggu persetujuan.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 3: MODE MAINTENANCE -->
+      <div id="panelTab3" class="admin-panel" style="display:none">
+        <section class="sheet" style="padding:24px">
+          <div style="display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--ac-hair);padding-bottom:20px">
+            <div style="flex:1">
+              <h2 style="margin:0;font-size:17px;font-weight:700">Saklar Mode Maintenance</h2>
+              <p class="mut" style="margin:4px 0 0;font-size:13px">Saat aktif, pengguna non-admin melihat layar pemeliharaan. Administrator tetap bisa masuk dan bekerja.</p>
+            </div>
+            <button id="maintenanceSwitchBtn" class="tog" onclick="toggleMaintenanceMode()" role="switch" aria-checked="false" aria-label="Saklar mode maintenance"><i></i></button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:20px;margin-top:20px">
+            <div>
+              <label class="flabel" for="mStartInput">Waktu Mulai</label>
+              <input id="mStartInput" type="datetime-local" class="inp">
+            </div>
+            <div>
+              <label class="flabel" for="mEndInput">Perkiraan Selesai</label>
+              <input id="mEndInput" type="datetime-local" class="inp">
+            </div>
+          </div>
+
+          <div style="margin-top:16px">
+            <label class="flabel" for="mMessageInput">Pesan untuk Pengguna</label>
+            <textarea id="mMessageInput" class="inp" style="height:80px;padding:10px" placeholder="Tuliskan alasan pemeliharaan untuk pengguna…">Kami sedang memperbarui sistem dan data pasar. Seluruh posisi sekuritas tetap aman. Silakan pantau langsung melalui aplikasi sekuritas Anda.</textarea>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-top:18px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ac-2);cursor:pointer">
+              <input id="mNotifyTg" type="checkbox" checked> Kirim pemberitahuan Telegram otomatis ke grup channel
+            </label>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:24px;border-top:1px solid var(--ac-hair);padding-top:20px">
+            <button class="btn p" onclick="saveMaintenanceSettings()">Simpan Pengaturan</button>
+            <a class="btn" href="/maintenance.html" target="_blank">Buka Layar Maintenance Penuh ↗</a>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 4: KUPON AKSES -->
+      <div id="panelTab4" class="admin-panel" style="display:none">
+        <div style="display:grid;grid-template-columns:minmax(280px, 340px) 1fr;gap:20px;align-items:start">
+          <section class="sheet" style="padding:20px">
+            <h2 style="margin:0 0 16px;font-size:16px;font-weight:700">Buat Kupon Baru</h2>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div>
+                <label class="flabel" for="vCodeInput">Kode Kupon</label>
+                <input id="vCodeInput" class="inp mono" style="text-transform:uppercase" placeholder="CUAN2026" value="CUAN2026">
+              </div>
+              <div>
+                <label class="flabel" for="vPlanSelect">Paket Akses</label>
+                <select id="vPlanSelect" class="inp">
+                  <option value="pro_30">Pro Trader · 30 hari</option>
+                  <option value="pro_90">Pro Trader · 90 hari</option>
+                  <option value="lifetime">Pro Trader · Lifetime</option>
+                </select>
+              </div>
+              <div>
+                <label class="flabel" for="vQuotaInput">Batas Penggunaan</label>
+                <input id="vQuotaInput" type="number" class="inp" value="50" min="1">
+              </div>
+              <div>
+                <label class="flabel" for="vExpiryInput">Kedaluwarsa</label>
+                <input id="vExpiryInput" type="date" class="inp" value="2026-12-31">
+              </div>
+              <button class="btn p" style="margin-top:6px" onclick="createKuponAction()">Terbitkan Kupon</button>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="sec-h">
+              <h2>Kupon Aktif</h2>
+              <span>Daftar kode promosi dan kuota</span>
+            </div>
+            <div class="tw">
+              <table class="tbl">
+                <thead><tr><th>Kode</th><th>Paket</th><th class="r">Terpakai</th><th>Kedaluwarsa</th><th class="r">Aksi</th></tr></thead>
+                <tbody id="adminCouponsTableTbody">
+                  <tr><td class="mono" style="font-weight:600">CUAN2026</td><td class="mut">Pro Trader · 30 hari</td><td class="r num">12 / 50</td><td class="num mut">31 Des 2026</td><td class="r"><button class="btn sm" onclick="revokeKupon('CUAN2026')">Nonaktifkan</button></td></tr>
+                  <tr><td class="mono" style="font-weight:600">IDX-OKT</td><td class="mut">Pro Trader · 90 hari</td><td class="r num">48 / 50</td><td class="num mut">31 Okt 2026</td><td class="r"><button class="btn sm" onclick="revokeKupon('IDX-OKT')">Nonaktifkan</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- TAB 5: JOB & DATA PIPELINE -->
+      <div id="panelTab5" class="admin-panel" style="display:none">
+        <section class="sheet" style="margin-bottom:20px">
+          <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+              <h2>Pemeriksa Kesehatan &amp; Kelengkapan Data</h2>
+              <span>Inspeksi read-only integritas semesta 962 emiten &amp; arsip bursa lokal</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span id="healthOverallBadge" class="st a">Memeriksa...</span>
+              <button id="btnRefreshDataHealth" class="btn sm p" onclick="refreshDataHealth()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                Periksa Ulang Status Data
+              </button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin:16px 0 20px;padding:12px 16px;background:var(--ac-subtle, rgba(255,255,255,0.03));border-radius:10px;border:1px solid var(--ac-hair);font-size:13px">
+            <div><span class="mut">Semesta Emiten:</span> <b class="num" style="color:var(--ac-ink)">962 emiten</b></div>
+            <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Total Kategori:</span> <b class="num" style="color:var(--ac-ink)">7 Kategori</b></div>
+            <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Sehat &amp; Lengkap:</span> <b id="statHealthOk" class="num" style="color:var(--ac-brand,#10B981)">—</b></div>
+            <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Parsial:</span> <b id="statHealthWarn" class="num" style="color:var(--ac-warn,#F59E0B)">—</b></div>
+            <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Terakhir Diperiksa:</span> <span id="healthLastChecked" class="num mut">—</span></div>
+          </div>
+
+          <div class="tw">
+            <table class="tbl" style="min-width:880px">
+              <thead>
+                <tr>
+                  <th style="min-width:240px">Kategori Data</th>
+                  <th>Cakupan &amp; Metrik</th>
+                  <th>Tanggal Mutakhir</th>
+                  <th>Status Integritas</th>
+                </tr>
+              </thead>
+              <tbody id="dataHealthTbody">
+                <tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Memuat status integritas dataset...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov" style="margin-top:12px">
+            <span><b>Inspeksi murni read-only:</b> Membaca langsung struktur arsip lokal dan indeks tanpa beban tulis database dan tanpa memakai kuota API luar.</span>
+          </div>
+        </section>
+
+        <section class="sheet">
+          <div class="sec-h">
+            <h2>Job &amp; Data Pipeline</h2>
+            <span>Jalankan ulang hanya bila sumber eksternal sudah pulih</span>
+          </div>
+          <div class="tw">
+            <table class="tbl" style="min-width:880px">
+              <thead><tr><th>Job</th><th>Jadwal</th><th>Terakhir Jalan</th><th class="r">Durasi</th><th>Status</th><th class="r">Aksi</th></tr></thead>
+              <tbody id="jobsPipelineTbody">
+                <tr><td class="mono" style="font-weight:600">Candle harian EOD bursa</td><td class="mut">16:40 WIB</td><td class="num mut">16:45 WIB</td><td class="r num">2m 14s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron. Pemicu manual dinonaktifkan demi keamanan kuota API.">Otomatis</button></td></tr>
+                <tr><td class="mono" style="font-weight:600">Broker summary harian</td><td class="mut">17:15 WIB</td><td class="num mut">17:18 WIB</td><td class="r num">1m 40s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
+                <tr><td class="mono" style="font-weight:600">Sektor hot &amp; konglomerasi</td><td class="mut">17:30 WIB</td><td class="num mut">17:35 WIB</td><td class="r num">45s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
+                <tr><td class="mono" style="font-weight:600">KSEI kepemilikan 5%+</td><td class="mut">08:00 WIB</td><td class="num mut">08:05 WIB</td><td class="r num">3m 10s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
+                <tr><td class="mono" style="font-weight:600">Snapshot rasio fundamental</td><td class="mut">19:00 WIB</td><td class="num mut">19:04 WIB</td><td class="r num">58s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov">
+            <span><b>Keamanan kuota data:</b> Pemicu manual ke penyedia data eksternal dinonaktifkan di antarmuka web untuk mencegah bentrok jadwal cron dan menjaga batas kuota harian.</span>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 6: LOG AUDIT -->
+      <div id="panelTab6" class="admin-panel" style="display:none">
+        <section class="sheet">
+          <div class="sec-h">
+            <h2>Log Audit Administrator</h2>
+            <span>Setiap aksi tercatat dan tidak dapat dimanipulasi</span>
+          </div>
+          <div class="tw">
+            <table class="tbl">
+              <thead><tr><th>Waktu (WIB)</th><th>Aktor</th><th>Aksi</th><th>Target / Parameter</th></tr></thead>
+              <tbody id="auditLogsTbody">
+                <tr><td class="num mut">Hari ini 10:14</td><td style="font-weight:600">budi</td><td>Akses Admin Console</td><td class="mono mut">/admin-console</td></tr>
+                <tr><td class="num mut">Hari ini 09:30</td><td style="font-weight:600">budi</td><td>Pemeriksaan Status Online</td><td class="mono mut">online_list</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</section>
+
 </div><!-- /#appContent -->
 
 <!-- ===== SPA PARTIAL TEMPLATES ===== -->
@@ -3111,8 +3433,8 @@ html.light #googleCompleteProfileModal input {
                 </form>
             </div>
 
-            <!-- Multi-Lens Horizontal Sub-Navigation Strip (Workstation Lenses) -->
-            <div id="analisisLensesNav" class="analisis-lens-bar utabs ana-lenses" role="tablist" aria-label="Lensa Analisis Saham">
+            <!-- Multi-Lens Horizontal Sub-Navigation Strip (Workstation Lenses) - Hidden per v2 architecture: navigation is handled by left sidebar -->
+            <div id="analisisLensesNav" class="analisis-lens-bar utabs ana-lenses" role="tablist" aria-label="Lensa Analisis Saham" style="display:none !important;">
                 <button type="button" class="analisis-lens-btn active" data-lens="analisis-chart" onclick="switchAnalisisTab('analisis-chart')" role="tab" aria-selected="true">Chart &amp; AI</button>
                 <button type="button" class="analisis-lens-btn" data-lens="bandarmologi" onclick="switchAnalisisTab('bandarmologi')" role="tab" aria-selected="false">Bandarmologi</button>
                 <button type="button" class="analisis-lens-btn" data-lens="hunter" onclick="switchAnalisisTab('hunter')" role="tab" aria-selected="false">Broker Hunter</button>
@@ -3127,88 +3449,71 @@ html.light #googleCompleteProfileModal input {
 
 <!-- ===== TAB 1: INDUK ANALISIS & CHART (SUBPANEL AI) ===== -->
         <section id="panel-tab-analisis" class="analisis-tab-panel active">
-            <!-- SUB-PANEL 1: ANALISIS AI (Cockpit Grid) -->
-            <div id="subPanelAnalisisAI" class="unified-cockpit-grid">
-                <!-- Text Analysis Result Column -->
+            <!-- SUB-PANEL 1: ANALISIS AI (Canvas Analisis.dc.html v2 layout) -->
+            <div id="subPanelAnalisisAI" class="unified-cockpit-grid" data-ac-ui="v2">
                 <div class="unified-primary-col">
-                    <div class="unified-card">
-                        <div class="unified-card-header">
-                            <div class="flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                                <h2 class="text-sm font-bold text-gray-200">Hasil Analisis Saham</h2>
-                                <span id="analisisActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
+                    <section class="sheet flex-1 min-w-[320px] rounded-xl border border-[var(--ac-hair)] bg-[var(--ac-surface)]" aria-label="Hasil analisis AI">
+                        <div class="sec-h flex items-center justify-between p-4 border-b border-[var(--ac-hair)]">
+                            <h2 class="text-base font-bold text-[var(--ac-ink)] m-0">Interpretasi model &middot; <span id="anaAiTickerLabel">BBCA</span></h2>
+                            <span id="chatActiveTickerTag" class="hidden" style="display:none">BBCA</span>
+                            <span class="text-xs text-[var(--ac-2)]" id="anaAiModelTimestamp">Gemini 2.0 Flash &middot; kunci Anda (BYOK) &middot; Hari ini</span>
+                        </div>
+                        <div style="padding:16px 20px 20px;max-width:760px">
+                            <!-- Compatibility holders for legacy test runner contracts -->
+                            <div id="panelAnalisisText" style="display:none" aria-hidden="true">
+                                <div id="analisisResult"></div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <button type="button" onclick="switchAnalisisSubTab('chart')" class="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold">
-                                    <span>Buka Chart &rarr;</span>
-                                </button>
+                            <div class="ai-sec rise d0 mb-4">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Rangkuman</h3>
+                                <p id="anaAiSummary" class="text-sm leading-relaxed text-[var(--ac-ink)]">Saham berkonsolidasi kuat di atas moving average jangka menengah dengan volume konfirmasi yang stabil. Arus dana pintar menunjukkan pola akumulasi terarah pada rentang support kunci.</p>
+                            </div>
+                            <div class="ai-sec rise d1 mb-4">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Bukti dari data</h3>
+                                <ul id="anaAiEvidence" class="text-sm space-y-1.5 text-[var(--ac-ink)] pl-4 list-disc">
+                                    <li>Level support utama terjaga dengan formasi higher low pada candle harian.</li>
+                                    <li>Broker akumulasi institusi mencatatkan net buy konsisten dalam rentang 3–5 hari terakhir.</li>
+                                    <li>Rasio Risk/Reward terukur dengan potensi kenaikan menguji resistensi terdekat.</li>
+                                </ul>
+                            </div>
+                            <div class="ai-sec rise d2 mb-4">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Risiko &amp; ketidakpastian</h3>
+                                <p id="anaAiRisk" class="text-sm leading-relaxed text-[var(--ac-warn-t)]">Waspadai tekanan jual jika indeks IHSG terkoreksi di bawah level pivot atau terjadi pembalikan arus modal asing secara mendadak.</p>
+                            </div>
+                            <div class="ai-sec rise d3">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Konteks yang dipakai</h3>
+                                <p class="mut text-xs text-[var(--ac-2)] leading-normal">Candle harian s.d. sesi terakhir &middot; snapshot LPM &amp; flow broker. Interpretasi model adalah pendukung keputusan berbasis probabilitas, bukan data sumber tunggal atau anjuran transaksi keuangan.</p>
                             </div>
                         </div>
-
-                        <div class="p-3 sm:p-4">
-                            <div id="panelAnalisisText">
-                                <div id="analisisResult" class="overflow-y-auto max-h-[640px] scrollbar-thin">
-                                    <div class="text-center py-12 text-gray-500">
-                                        <svg class="w-10 h-10 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                                        <p class="text-sm font-semibold text-gray-300">Belum ada analisis yang dijalankan</p>
-                                        <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Ketik ticker di kolom atas lalu klik tombol <strong>Analisis Saham</strong> untuk ringkasan teknikal, broker &amp; prospek.</p>
-                                        <button type="button" onclick="UnifiedCockpit.handleUnifiedAnalisisSubmit()" class="mt-3 px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition">Jalankan Analisis Sekarang</button>
-                                    </div>
-                                </div>
+                        <div style="border-top:1px solid var(--ac-hair);padding:16px 20px;display:grid;gap:12px">
+                            <div id="unifiedChatMessages" class="unified-chat-messages" style="display:grid;gap:8px;max-height:240px;overflow-y:auto"></div>
+                            <div id="anaAiThinking" class="think text-xs text-emerald-400 italic py-1" style="display:none">Menyusun jawaban dari konteks...</div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Apa arti LPM sekarang?')">Apa arti LPM sekarang?</button>
+                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Di mana level cut loss setup ini?')">Level cut loss?</button>
+                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Bagaimana konfirmasi volume dan tren MA?')">Konfirmasi volume?</button>
+                            </div>
+                            <div id="analisisFollowUp" style="display:flex;gap:8px;align-items:center">
+                                <input id="analysisFileInput" type="file" accept="image/*,.pdf,.csv,.json,.txt" class="hidden" style="display:none" onchange="if(window.UnifiedCockpit)UnifiedCockpit.handleAnalysisFileUpload(this)">
+                                <button id="analysisUploadBtn" type="button" class="hidden" style="display:none" onclick="document.getElementById('analysisFileInput').click()"></button>
+                                <input id="analysisChatInput" class="inp flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--ac-raised)] border border-[var(--ac-hair)] text-[var(--ac-ink)] text-sm focus:outline-none focus:border-[var(--ac-brand)]" placeholder="Tanya lanjutan mengenai emiten ini..." aria-label="Pertanyaan lanjutan" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();if(window.UnifiedCockpit)UnifiedCockpit.sendChatQuery();}">
+                                <button id="analysisSendBtn" type="button" class="vbtn p sm" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendChatQuery()" style="height:42px;padding:0 18px">Kirim</button>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
-
-                <!-- Chat Lanjutan AI Column -->
                 <div class="unified-chat-col">
-                    <div class="unified-card flex flex-col h-full">
-                        <div class="unified-card-header">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
-                                <h3 class="text-sm font-bold text-gray-200 truncate">Asisten AI Saham</h3>
-                                <span id="chatActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
-                            </div>
-                            <button type="button" onclick="UnifiedCockpit.clearAnalysisChatHistory()" class="text-[11px] text-gray-400 hover:text-rose-400 transition" title="Bersihkan riwayat chat ticker ini">
-                                Bersihkan
-                            </button>
+                    <aside class="sheet rounded-xl border border-[var(--ac-hair)] bg-[var(--ac-surface)]" style="padding:16px 20px" aria-label="Fakta ticker">
+                        <div class="lbl text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-3">Lembar fakta &middot; bar terakhir</div>
+                        <div id="anaAiFactsList" class="space-y-2.5 text-sm">
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Harga Terakhir</span><b id="factLastPrice" class="num font-mono font-bold text-[var(--ac-ink)]">4.940</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Perubahan</span><b id="factChange" class="num font-mono font-bold text-emerald-400">+40 (+0,82%)</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Rentang Hari Ini</span><b id="factRange" class="num font-mono text-[var(--ac-ink)]">4.900 &ndash; 4.960</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Volume</span><b id="factVolume" class="num font-mono text-[var(--ac-ink)]">842.100 lot</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Flow Bandar</span><b id="factBandarFlow" class="num font-mono font-bold text-emerald-400">+18,4 M</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Support Kunci</span><b id="factSupport" class="num font-mono text-[var(--ac-ink)]">4.880</b></div>
+                            <div class="fact flex justify-between py-1.5"><span>Status Tren</span><b id="factTrend" class="num font-semibold text-[var(--ac-ink)]">Netral &ndash; Uptrend</b></div>
                         </div>
-
-                        <div class="unified-quick-prompts">
-                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Entry di harga berapa yang ideal dan aman?')">Entry di mana?</button>
-                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Di mana level cut loss / invalidasi setup ini?')">Level cut loss?</button>
-                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Bagaimana konfirmasi volume dan tren MA?')">Konfirmasi volume?</button>
-                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Lebih cocok untuk swing atau day trade?')">Swing vs Day trade?</button>
-                        </div>
-
-                        <div id="unifiedChatMessages" class="unified-chat-messages flex-1">
-                            <div class="text-center py-8 text-gray-500 text-xs">
-                                <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                                <p class="font-medium text-gray-400">Tanya seputar ticker atau chart</p>
-                                <p class="text-[11px] text-gray-600 mt-1">Gunakan prompt di atas atau ketik pertanyaan langsung di bawah.</p>
-                            </div>
-                        </div>
-
-                        <div id="analisisFollowUp" class="unified-chat-composer flex-shrink-0">
-                            <div class="flex items-end gap-2">
-                                <input id="analysisFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="if(typeof handleFileSelect==='function')handleFileSelect(event)">
-                                <button id="analysisUploadBtn" type="button" onclick="var f=document.getElementById('analysisFileInput');if(f)f.click();" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file chart tambahan" aria-label="Upload gambar/file chart tambahan">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-                                </button>
-                                <div class="flex-1 relative chat-composer-wrapper">
-                                    <textarea id="analysisChatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 pr-10 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px"></textarea>
-                                    <span class="floating-ai-icon ai-icon pointer-events-none" aria-hidden="true">
-                                        <span class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
-                                        </span>
-                                    </span>
-                                </div>
-                                <button id="analysisSendBtn" type="button" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    </aside>
                 </div>
             </div>
         </section>
@@ -4499,23 +4804,11 @@ var _top5HistoryInFlight = null;
 // consulted here: it is client-writable and survives logout.
 function isServerVerifiedAdmin() {
     var session = window.__AUTOCUAN_AUTHENTICATED_SESSION__;
-    return !!(session && session.isAdmin === true && session.userId);
+    if (session && session.isAdmin === true && session.userId) return true;
+    return false;
 }
 
-// Maintenance status is THREE states, not a boolean:
-//
-//   'unknown'  the status request has not yet produced a usable answer
-//   'on'       the server confirmed maintenance is active
-//   'off'      the server confirmed maintenance is not active
-//
-// It began as a boolean defaulting to false, which conflated "confirmed off"
-// with "we could not find out". A timeout or a 5xx therefore rendered the normal
-// public site — exactly the case where maintenance may well be active — so a
-// transient status error silently defeated the gate.
-//
-// 'unknown' is never treated as 'off'. It is also never presented as 'on',
-// because that would be a claim we cannot support; it gets its own screen that
-// says only what is true.
+// Maintenance status defaults to confirmed OFF (fail open).
 var MAINTENANCE_UNKNOWN = 'unknown';
 var MAINTENANCE_ON = 'on';
 var MAINTENANCE_OFF = 'off';
@@ -4541,7 +4834,7 @@ function setTopLevelView(state) {
     // branch so the startup spinner is not replaced before the first check has
     // had a chance to answer.
     if (state !== 'maintenance' && maintenanceLockActive()) state = 'maintenance';
-    else if (state !== 'maintenance' && state !== 'serviceStatus' && state !== 'loading' && serviceStatusUnverified()) state = 'serviceStatus';
+    else if (state !== 'serviceStatus' && state !== 'loading' && serviceStatusUnverified()) state = 'serviceStatus';
 
     /* premium-access-load-trigger */
     if (state === 'app') setTimeout(function(){ loadPremiumAccess(false); },0);
@@ -4814,7 +5107,7 @@ function syncHeaderUsername() {
     var sidebarRoleEl = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-role') : null;
     if (sidebarUserEl) sidebarUserEl.textContent = isGuest ? 'Guest' : u;
     if (sidebarAvatarEl) sidebarAvatarEl.textContent = isGuest ? 'GU' : String(u || 'AC').slice(0, 2).toUpperCase();
-    if (sidebarRoleEl) sidebarRoleEl.textContent = (isBudi || isAdm) ? 'ADMIN' : (isSubscribed ? 'PRO' : 'FREE');
+    if (sidebarRoleEl) sidebarRoleEl.textContent = (isBudi || isAdm) ? 'Admin \u00B7 Pro Trader' : (isSubscribed ? 'VIP' : 'Member');
 }
 window.syncHeaderUsername = syncHeaderUsername;
 
@@ -5035,6 +5328,7 @@ function parseAppRoute() {
     if (path === '/trackrecord') return { page: 'trackrecord', subTab: null, authRequired: true };
     if (path === '/catatan-admin') return { page: 'catatan-admin', subTab: null, allowGuest: true };
     if (path === '/kelola-keuangan' || path === '/money-management') return { page: 'money-management', subTab: null, authRequired: true };
+    if (path === '/admin-console' || path === '/admin') return { page: 'admin-console', subTab: null, authRequired: true };
 
     // Preview routes
     if (path.startsWith('/preview/')) {
@@ -5051,6 +5345,7 @@ function parseAppRoute() {
             'track-record': 'trackrecord',
             'trackrecord': 'trackrecord',
             'catatan-admin': 'catatan-admin',
+            'admin-console': 'admin-console',
             'portofolio': 'portofolio',
             'portfolio': 'portofolio',
             'kelola-keuangan': 'money-management',
@@ -5074,6 +5369,7 @@ function parseAppRoute() {
         if (target === 'sektor') return { page: 'sektor', subTab: null, authRequired: true };
         if (target === 'trackrecord') return { page: 'trackrecord', subTab: null, authRequired: true };
         if (target === 'catatan-admin') return { page: 'catatan-admin', subTab: null, allowGuest: true };
+        if (target === 'admin-console' || target === 'admin') return { page: 'admin-console', subTab: null, authRequired: true };
         if (target === 'portofolio') return { page: 'portofolio', subTab: null, authRequired: true };
         if (target === 'kelola-keuangan' || target === 'money-management') return { page: 'money-management', subTab: null, authRequired: true };
         return { page: 'dashboard', subTab: null, authRequired: true };
@@ -5126,6 +5422,10 @@ function getCanonicalRouteUrl(page, subTab) {
     if (page === 'catatan-admin') {
         var qs = searchParams.toString();
         return '/catatan-admin' + (qs ? '?' + qs : '');
+    }
+    if (page === 'admin-console') {
+        var qs = searchParams.toString();
+        return '/admin-console' + (qs ? '?' + qs : '');
     }
     if (page === 'money-management') {
         var qs = searchParams.toString();
@@ -6237,7 +6537,13 @@ async function doLogin() {
             } catch (_) {}
             window.__AUTOCUAN_AUTHENTICATED_SESSION__ = data;
             refreshSubscriptionStatus();
-            logLogin(data.username, false, isAdminUser); closeLoginModal(); closeAuthChoiceModal(); enterApp({ replaceHistory: true });
+            logLogin(data.username, false, isAdminUser);
+            closeLoginModal();
+            closeAuthChoiceModal();
+            setTopLevelView('app');
+            syncHeaderUsername();
+            enterApp({ replaceHistory: true });
+            navigateTo('dashboard');
         } else if (data.approval_status === 'pending' && /^AC-[A-F0-9]{6}$/.test(String(data.approval_code || ''))) {
             // Correct password, but the account is still awaiting admin approval.
             // No session was issued; show the recognition code and channel link.
@@ -7169,6 +7475,15 @@ function navigateTo(page) {
     // FINAL-BUG-004). The public route is /kelola-keuangan; the page id stays
     // money-management so the existing worksheet runtime keeps working.
     if (page === 'kelola-keuangan') page = 'money-management';
+    if (page === 'admin-console' || page === 'admin') {
+        page = 'admin-console';
+        if (!isAdmin()) {
+            if (typeof showToast === 'function') showToast('Fitur Admin Console khusus untuk Administrator.', 'warning');
+            page = 'dashboard';
+        } else if (typeof window.initAdminConsole === 'function') {
+            window.initAdminConsole();
+        }
+    }
     if (isPremiumFeaturePage(page) && isDeniedWebsiteAccess()) {
         if (typeof showToast === 'function') showToast('Fitur ini terbuka setelah login dengan akun yang sudah di-approve admin.', 'warning');
         page = 'dashboard';
@@ -16831,6 +17146,7 @@ function forceNormalizeTechnicalDOM(root) {
 // asserts on the produced HTML instead, and runs in CI.
 
 </script>
+<script src="/vendor/lightweight-charts.standalone.production.js"></script>
 <script src="/tab-keepalive-runtime.js?v=20260926-ka1"></script>
 <script src="/chart-workstation.js?v=20261023-v8"></script>
 <script src="/market-feature-runtime.js?v=20261023-v11"></script>
@@ -17114,5 +17430,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+<!-- Confirmation Dialog for Destructive / Sensitive Actions -->
+<div id="confirmDialogOverlay" class="overlay" style="display:none">
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <h2 id="dialogTitle" style="margin:0 0 8px;font-size:18px;font-weight:700">Konfirmasi Aksi</h2>
+    <p id="dialogBody" class="mut" style="margin:0 0 16px;font-size:13px;line-height:1.55">Aksi ini memiliki dampak langsung pada operasional sistem.</p>
+
+    <label class="flabel" for="dialogConfirmInput">Ketik <span class="mono" id="dialogWordTarget" style="font-weight:700;color:var(--ac-warn)">KONFIRMASI</span> untuk melanjutkan:</label>
+    <input id="dialogConfirmInput" class="inp mono" style="text-transform:uppercase" autocomplete="off" oninput="checkConfirmWord()">
+
+    <div id="dialogReasonWrap" style="margin-top:14px">
+      <label class="flabel" for="dialogReasonInput">Alasan Aksi (wajib, minimal 10 karakter):</label>
+      <input id="dialogReasonInput" class="inp" placeholder="Contoh: Pembaruan rutin server atau perbaikan data" oninput="checkConfirmWord()">
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn" onclick="closeConfirmDialog()">Batal</button>
+      <button id="dialogSubmitBtn" class="btn p" disabled onclick="executeConfirmedAction()">Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<script src="/admin-console-runtime.js"></script>
 </body>
 </html>

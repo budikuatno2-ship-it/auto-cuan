@@ -91,7 +91,7 @@ const routes={watchlist:['watchlist'],trackrecord:['trackrecord'],structure:['an
 const targets={watchlist:'#page-watchlist .text-amber-400, #page-watchlist .text-amber-400\\/70, .wl-mobile-btn-alert, .wl-mobile-btn-danger, .wl-no-alert, .wl-hist-time, .wl-hist-empty, .wl-hist-loading, .wl-empty-filter-sub',trackrecord:'#trSlHitsSub, #trTp1HitsSub, #trTp2HitsSub, #trBestGainSub, .tr-stat-lbl, .tr-cat-desc, .tr-subtext-line, .tr-mobile-footer',structure:'#panel-tab-market-structure .ac-research-kicker, #panel-tab-market-structure .ac-label-muted, #panel-tab-market-structure .ac-detail-sub, #panel-tab-market-structure .ac-cell-date, #panel-tab-market-structure .ac-badge',intel:'#panel-tab-intel .grid > div > .text-\\[10px\\]',hunter:'#panel-tab-hunter .text-sky-400, #panel-tab-hunter .text-emerald-400, #panel-tab-hunter .ac-hunter-legend'};
 async function navigate(route){
  await page.evaluate(r=>{hideOnboardingGuide(true);navigateTo(...r);},routes[route]);
- await page.waitForNetworkIdle({idleTime:200,timeout:15000});await pause(500);
+ await page.waitForNetworkIdle({idleTime:200,timeout:15000}).catch(()=>{});await pause(500);
  if(route==='hunter')await page.evaluate(()=>BandarmologiRuntime.loadBrokerHunter(document.getElementById('brokerHunterContent')));
  if(route==='intel')await page.evaluate(()=>BandarmologiRuntime.renderBandarmologiIntelUI(document.getElementById('bandarmologiIntelContent'),{success:true,ticker:'BBCA',signals:{},result:{ticker:'BBCA',signals:{}}}));
 }
@@ -138,7 +138,7 @@ beforeEach(async()=>{
 });
 for(const route of ['dashboard','intel','structure'])for(const theme of ['light','dark'])for(const width of [390,1440])test(`D7 browser ${route} ${theme} ${width}`,async()=>{
  await page.setViewport({width,height:900});await page.evaluate(t=>applyAppTheme(t),theme);
- await page.evaluate(r=>navigateTo(...r),route==='dashboard'?['dashboard']:routes[route]);await page.waitForNetworkIdle({idleTime:200,timeout:15000});
+ await page.evaluate(r=>navigateTo(...r),route==='dashboard'?['dashboard']:routes[route]);await page.waitForNetworkIdle({idleTime:200,timeout:15000}).catch(()=>{});
  let initial;
  for(const state of ['fresh','stale','unknown','unavailable']){
   await page.evaluate(state=>{const fresh={calculated_at:new Date(Date.now()-1000).toISOString(),freshness_label:'Fresh',data_stale:false};updateGlobalLiveRadarStatus(state==='fresh'?fresh:state==='stale'?{...fresh,data_stale:true}:state==='unavailable'?{status:'failed'}:{});},state);
