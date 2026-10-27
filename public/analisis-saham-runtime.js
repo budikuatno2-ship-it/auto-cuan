@@ -544,7 +544,13 @@
     var workspace = byId('page-analisis');
     var isAnalisisChartTab = (parentTab === 'analisis-chart');
     if (workspace && workspace.classList) {
-      workspace.classList.toggle('active-tab-analisis-chart', isAnalisisChartTab);
+      if (typeof workspace.classList.toggle === 'function') {
+        workspace.classList.toggle('active-tab-analisis-chart', isAnalisisChartTab);
+      } else if (isAnalisisChartTab) {
+        workspace.classList.add('active-tab-analisis-chart');
+      } else {
+        workspace.classList.remove('active-tab-analisis-chart');
+      }
     }
     if (workspace && !workspace.classList.contains('hidden') && typeof root.syncWorkspaceSidebarActive === 'function') root.syncWorkspaceSidebarActive('analisis');
     var workspaceTitle = byId('analysisWorkspaceTitle');
