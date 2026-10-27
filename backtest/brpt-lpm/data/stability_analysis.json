@@ -1,0 +1,220 @@
+{
+  "rolling_windows_5": [
+    {
+      "window": 1,
+      "start_bar": 0,
+      "end_bar": 238,
+      "start_date": "2021-10-18",
+      "end_date": "2022-10-07",
+      "metrics": {
+        "n": 7,
+        "win_rate_pct": 42.9,
+        "profit_factor": 1.3,
+        "avg_r": 0.15,
+        "expectancy_pct": 0.94,
+        "max_dd_pct": 12.89,
+        "warning": "N = 7 (tidak cukup untuk kesimpulan)"
+      }
+    },
+    {
+      "window": 2,
+      "start_bar": 239,
+      "end_bar": 477,
+      "start_date": "2022-10-10",
+      "end_date": "2023-10-04",
+      "metrics": {
+        "n": 11,
+        "win_rate_pct": 36.4,
+        "profit_factor": 1.19,
+        "avg_r": 0.07,
+        "expectancy_pct": 0.56,
+        "max_dd_pct": 16.73,
+        "warning": "N = 11 (tidak cukup untuk kesimpulan)"
+      }
+    },
+    {
+      "window": 3,
+      "start_bar": 478,
+      "end_bar": 716,
+      "start_date": "2023-10-05",
+      "end_date": "2024-10-04",
+      "metrics": {
+        "n": 6,
+        "win_rate_pct": 33.3,
+        "profit_factor": 0.69,
+        "avg_r": -0.25,
+        "expectancy_pct": -1.73,
+        "max_dd_pct": 33.31,
+        "warning": "N = 6 (tidak cukup untuk kesimpulan)"
+      }
+    },
+    {
+      "window": 4,
+      "start_bar": 717,
+      "end_bar": 955,
+      "start_date": "2024-10-07",
+      "end_date": "2025-10-10",
+      "metrics": {
+        "n": 15,
+        "win_rate_pct": 60,
+        "profit_factor": 3.36,
+        "avg_r": 0.6,
+        "expectancy_pct": 5.18,
+        "max_dd_pct": 15.01,
+        "warning": "N = 15 (tidak cukup untuk kesimpulan)"
+      }
+    },
+    {
+      "window": 5,
+      "start_bar": 956,
+      "end_bar": 1198,
+      "start_date": "2025-10-13",
+      "end_date": "2026-10-16",
+      "metrics": {
+        "n": 3,
+        "win_rate_pct": 66.7,
+        "profit_factor": 2.11,
+        "avg_r": 0.56,
+        "expectancy_pct": 3.38,
+        "max_dd_pct": 9.11,
+        "warning": "N = 3 (tidak cukup untuk kesimpulan)"
+      }
+    }
+  ],
+  "annual_breakdown": {
+    "2022": {
+      "n": 9,
+      "win_rate_pct": 33.3,
+      "profit_factor": 0.87,
+      "avg_r": -0.08,
+      "expectancy_pct": -0.47,
+      "max_dd_pct": 14.48,
+      "warning": "N = 9 (tidak cukup untuk kesimpulan)"
+    },
+    "2023": {
+      "n": 14,
+      "win_rate_pct": 35.7,
+      "profit_factor": 0.92,
+      "avg_r": -0.03,
+      "expectancy_pct": -0.34,
+      "max_dd_pct": 33.31,
+      "warning": "N = 14 (tidak cukup untuk kesimpulan)"
+    },
+    "2024": {
+      "n": 1,
+      "win_rate_pct": 100,
+      "profit_factor": 999,
+      "avg_r": 1.42,
+      "expectancy_pct": 11.37,
+      "max_dd_pct": 0,
+      "warning": "N = 1 (tidak cukup untuk kesimpulan)"
+    },
+    "2025": {
+      "n": 16,
+      "win_rate_pct": 62.5,
+      "profit_factor": 3.7,
+      "avg_r": 0.65,
+      "expectancy_pct": 5.55,
+      "max_dd_pct": 15.01,
+      "warning": "N = 16 (tidak cukup untuk kesimpulan)"
+    },
+    "2026": {
+      "n": 3,
+      "win_rate_pct": 66.7,
+      "profit_factor": 2.11,
+      "avg_r": 0.56,
+      "expectancy_pct": 3.38,
+      "max_dd_pct": 9.11,
+      "warning": "N = 3 (tidak cukup untuk kesimpulan)"
+    }
+  },
+  "sensitivity_tests": {
+    "lpm_window": {
+      "window_19": {
+        "n": 44,
+        "win_rate_pct": 47.7,
+        "profit_factor": 1.67,
+        "avg_r": 0.26,
+        "expectancy_pct": 2.11,
+        "max_dd_pct": 42.01,
+        "warning": null
+      },
+      "window_20": {
+        "n": 43,
+        "win_rate_pct": 48.8,
+        "profit_factor": 1.78,
+        "avg_r": 0.29,
+        "expectancy_pct": 2.36,
+        "max_dd_pct": 36.95,
+        "warning": null
+      },
+      "window_21": {
+        "n": 45,
+        "win_rate_pct": 46.7,
+        "profit_factor": 1.58,
+        "avg_r": 0.23,
+        "expectancy_pct": 1.88,
+        "max_dd_pct": 36.95,
+        "warning": null
+      }
+    },
+    "norm_pressure": {
+      "pressure_0.15": {
+        "n": 43,
+        "win_rate_pct": 48.8,
+        "profit_factor": 1.78,
+        "avg_r": 0.29,
+        "expectancy_pct": 2.36,
+        "max_dd_pct": 36.95,
+        "warning": null
+      },
+      "pressure_0.2": {
+        "n": 43,
+        "win_rate_pct": 48.8,
+        "profit_factor": 1.78,
+        "avg_r": 0.29,
+        "expectancy_pct": 2.36,
+        "max_dd_pct": 36.95,
+        "warning": null
+      },
+      "pressure_0.25": {
+        "n": 43,
+        "win_rate_pct": 48.8,
+        "profit_factor": 1.78,
+        "avg_r": 0.29,
+        "expectancy_pct": 2.36,
+        "max_dd_pct": 36.95,
+        "warning": null
+      }
+    },
+    "cmf_threshold": {
+      "cmf_0": {
+        "n": 45,
+        "win_rate_pct": 48.9,
+        "profit_factor": 1.81,
+        "avg_r": 0.3,
+        "expectancy_pct": 2.34,
+        "max_dd_pct": 36.95,
+        "warning": null
+      },
+      "cmf_0.02": {
+        "n": 43,
+        "win_rate_pct": 48.8,
+        "profit_factor": 1.78,
+        "avg_r": 0.29,
+        "expectancy_pct": 2.36,
+        "max_dd_pct": 36.95,
+        "warning": null
+      },
+      "cmf_0.05": {
+        "n": 41,
+        "win_rate_pct": 51.2,
+        "profit_factor": 2.04,
+        "avg_r": 0.36,
+        "expectancy_pct": 2.89,
+        "max_dd_pct": 33.31,
+        "warning": null
+      }
+    }
+  }
+}

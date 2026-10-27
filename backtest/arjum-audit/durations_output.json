@@ -1,0 +1,11 @@
+Total runs found: 1
+[
+  {
+    "runIndex": 1,
+    "targetDate": "unknown",
+    "brokerReqLine": "- broker-summary: 962 | accumulation: 0 | insiders: 0",
+    "brokerSummaryLine": "Broker Summary Selesai:        827/962",
+    "status": "Status: BELUM LENGKAP — 135 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.",
+    "previewEnd": "  \"failed\": 0, |   \"stale_after_fetch\": 0, |   \"quota_stop\": false | }"
+  }
+]

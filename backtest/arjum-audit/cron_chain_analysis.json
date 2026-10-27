@@ -1,0 +1,94 @@
+[
+  {
+    "name": "backfill-historical-candles",
+    "entryScript": "/home/ubuntu/auto-cuan/tools/backfill-historical-candles.js",
+    "usesArjum": true,
+    "chain": [
+      "/home/ubuntu/auto-cuan/lib/chart-engine/candle-fetcher.js"
+    ]
+  },
+  {
+    "name": "run-lifecycle-evaluator",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-daily-market-update",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-broker-accumulation",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-broker-accumulation.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-daily-afternoon-recap",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "direct-refresh-landing",
+    "entryScript": "/home/ubuntu/auto-cuan/tools/direct-refresh-landing.js",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-idx-suspension-guard",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-idx-suspension-guard.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-daytrade-producer",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-daytrade-producer.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-fastwatcher",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-fastwatcher.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-screeners-preflight",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-screeners-preflight.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-screener-dispatch",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-retry-telegram-delivery",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-retry-telegram-delivery.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-sector-hot",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "run-keepalive",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/run-keepalive.sh",
+    "usesArjum": false,
+    "chain": []
+  },
+  {
+    "name": "check-verify-poller",
+    "entryScript": "/home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh",
+    "usesArjum": false,
+    "chain": []
+  }
+]

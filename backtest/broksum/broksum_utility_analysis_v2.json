@@ -1,0 +1,49 @@
+{
+  "fullPeriod": {
+    "description": "Full 2026 Period (active trading days without T=0)",
+    "datesCount": 145,
+    "dateRange": [
+      "2026-02-02",
+      "2026-09-15"
+    ],
+    "sourceT": "Arjum daily-candles (volume * close)",
+    "zeroTurnoverDaysFiltered": true,
+    "icTb": {
+      "mean": -0.0144,
+      "ci95": [
+        -0.0227,
+        -0.0058
+      ]
+    },
+    "icSlope5": {
+      "mean": -0.0326,
+      "ci95": [
+        -0.0422,
+        -0.0231
+      ]
+    },
+    "icHab20": {
+      "mean": -0.023,
+      "ci95": [
+        -0.0549,
+        0.0069
+      ]
+    },
+    "hitRateQ5vsQ1Pct": 49.7,
+    "meanSpreadQ5vsQ1Pct": -0.07
+  },
+  "crashPeriod": {
+    "datesCount": 13,
+    "dateRange": [
+      "2026-09-16",
+      "2026-10-02"
+    ],
+    "icTb": {
+      "mean": 0.0079,
+      "ci95": [
+        -0.0198,
+        0.0383
+      ]
+    }
+  }
+}

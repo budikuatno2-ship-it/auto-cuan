@@ -1,0 +1,21 @@
+{
+  "totalScanned": 186912,
+  "elapsedSec": "29.12",
+  "flowCounts": {
+    "all": 186625
+  },
+  "missingFlow": 287,
+  "missingFlowSamples": [
+    "AADI/2026-08-03.json",
+    "AALI/2026-08-03.json",
+    "ABBA/2026-08-03.json",
+    "ABDA/2026-08-03.json",
+    "ABMM/2026-08-03.json",
+    "ACES/2026-08-03.json",
+    "ACRO/2026-08-03.json",
+    "ACST/2026-08-03.json",
+    "ADCP/2026-08-03.json",
+    "ADES/2026-08-03.json"
+  ],
+  "errors": 0
+}

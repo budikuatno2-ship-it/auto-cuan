@@ -161,6 +161,15 @@ async function fetchAction(baseUrl, secret, action, fetchFn) {
  */
 function buildScreenerSnapshot(payloads, options) {
   const opts = options || {};
+  const rootDir = opts.rootDir || ROOT;
+
+  // FIX-3: load previous snapshot so we can preserve rows when a source fails/times out
+  var previous = null;
+  try {
+    var prevPath = path.join(rootDir, 'data', 'screener-latest.json');
+    if (fs.existsSync(prevPath)) previous = JSON.parse(fs.readFileSync(prevPath, 'utf8'));
+  } catch (_) {}
+
   const snapshot = {
     updated_at: opts.updatedAt || new Date().toISOString(),
     generated_by: 'tools/build-screener-snapshot.js',
@@ -172,11 +181,24 @@ function buildScreenerSnapshot(payloads, options) {
 
   for (const src of SOURCES) {
     const payload = payloads[src.action];
-    snapshot.source_dates[src.mode] = extractSourceDate(payload);
+    var sourceDate = extractSourceDate(payload);
     const rows = usableRows(extractRows(payload));
     counts[src.action] = rows.length;
-    if (!rows.length) continue;
-    for (const key of src.keys) snapshot[key] = rows;
+
+    if (rows.length > 0) {
+      // Fresh data available — write it
+      snapshot.source_dates[src.mode] = sourceDate;
+      for (const key of src.keys) snapshot[key] = rows;
+    } else if (previous && previous.source_dates && previous.source_dates[src.mode]) {
+      // FIX-3: preserve previous snapshot data when fetch fails/times out (0 rows)
+      // This prevents screener=0 from overwriting valid swing-konglo data
+      snapshot.source_dates[src.mode] = previous.source_dates[src.mode];
+      for (const key of src.keys) {
+        if (previous[key] && previous[key].length > 0) snapshot[key] = previous[key];
+      }
+    } else {
+      snapshot.source_dates[src.mode] = sourceDate;
+    }
   }
 
   // `swing` doubles as the Konglo bucket for the AI reader, which scans

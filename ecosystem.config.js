@@ -54,7 +54,7 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,
-      max_restarts: 10,
+      max_restarts: 50,
       restart_delay: 5000,
       kill_timeout: 10000,
       time: true,
@@ -78,7 +78,8 @@ module.exports = {
         DAYTRADE_FETCH_DELAY_MS: '200',
         PORT: String(WEB_PORT),
         HOST: WEB_HOST,
-        HOSTNAME: WEB_HOST
+        HOSTNAME: WEB_HOST,
+        NODE_OPTIONS: '--dns-result-order=ipv4first --no-network-family-autoselection'
       }
     },
     {
@@ -98,7 +99,8 @@ module.exports = {
         TZ: 'Asia/Jakarta',
         AUTO_CUAN_ROOT: ROOT,
         AUTO_CUAN_MARKET_DATA_VPS: '1',
-        VPS_DATA_API_BASE: 'http://127.0.0.1:3001'
+        VPS_DATA_API_BASE: 'http://127.0.0.1:3001',
+        NODE_OPTIONS: '--dns-result-order=ipv4first --no-network-family-autoselection'
       }
     },
     {
@@ -119,7 +121,8 @@ module.exports = {
         AUTO_CUAN_ROOT: ROOT,
         AUTO_CUAN_MARKET_DATA_VPS: '1',
         BOT_GROUP_ZERO_BYOK: 'true',
-        VPS_DATA_API_BASE: 'http://127.0.0.1:3001'
+        VPS_DATA_API_BASE: 'http://127.0.0.1:3001',
+        NODE_OPTIONS: '--dns-result-order=ipv4first --no-network-family-autoselection'
       }
     },
     {
@@ -172,7 +175,8 @@ module.exports = {
         NODE_ENV: 'production',
         TZ: 'Asia/Jakarta',
         AUTO_CUAN_ROOT: ROOT,
-        AUTO_CUAN_MARKET_DATA_VPS: '1'
+        AUTO_CUAN_MARKET_DATA_VPS: '1',
+        NODE_OPTIONS: '--dns-result-order=ipv4first --no-network-family-autoselection'
       }
     }
   ]

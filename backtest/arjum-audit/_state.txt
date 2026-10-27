@@ -1,0 +1,40 @@
+now=2026-10-23 20:16:58 WIB
+HEAD=64e32cff
+quota={"date":"2026-10-23","used":14700,"updated_at":"2026-10-23T12:40:01.180Z"}
+
+=== files per type 2026-10-23 ===
+ALL=0
+F=0
+AKUMULASI=0
+INSIDER=0
+
+=== marker 2026-10-23 (key fields) ===
+complete=false done=0 pending=0 errors=20 total=962 updated=2026-10-23T11:56:06.150Z
+
+=== J1 skip/zero alarm state ===
+{
+  "consecutive_skips": 0,
+  "last_success_at": "2026-10-23T11:52:52.772Z",
+  "updated_at": "2026-10-23T11:52:52.772Z"
+}
+=== last J1 run summary (noise filtered) ===
+Target Date (WIB): 2026-10-14
+Total Permintaan Terkirim (run ini): 2628
+  - broker-summary: 962 | accumulation: 833 | insiders: 833
+Kuota Habis:                   TIDAK
+Status: SELESAI — 833 ticker punya broker summary, 0 NO_TRADE, 129 broker-data-unavailable untuk 2026-10-14.
+Target Date (WIB): 2026-10-15
+Total Permintaan Terkirim (run ini): 2630
+  - broker-summary: 962 | accumulation: 834 | insiders: 834
+Kuota Habis:                   TIDAK
+Status: SELESAI — 834 ticker punya broker summary, 0 NO_TRADE, 128 broker-data-unavailable untuk 2026-10-15.
+Target Date (WIB): 2026-10-16
+Total Permintaan Terkirim (run ini): 2628
+  - broker-summary: 962 | accumulation: 833 | insiders: 833
+Kuota Habis:                   TIDAK
+Status: SELESAI — 833 ticker punya broker summary, 0 NO_TRADE, 129 broker-data-unavailable untuk 2026-10-16.
+Target Date (WIB): 2026-10-19
+Total Permintaan Terkirim (run ini): 921
+  - broker-summary: 921 | accumulation: 0 | insiders: 0
+Kuota Habis:                   TIDAK
+Status: GAGAL — jendela EOD (18:00-23:30 WIB) berakhir dengan 921 ticker belum punya broker summary 2026-10-19.

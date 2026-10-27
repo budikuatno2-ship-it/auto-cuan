@@ -1,0 +1,14 @@
+{
+  "target_date": "2026-10-21",
+  "pending": 920,
+  "total_tickers": 970,
+  "first_seen_at": "2026-10-23T12:00:00.000Z",
+  "age_hours": 30,
+  "reason": "already_alerted_today",
+  "should_alert": false,
+  "last_alert_at": "2026-10-24T18:00:00.000Z",
+  "last_alert_day": "2026-10-25",
+  "alert_sent": false,
+  "alert_reason": "not_due",
+  "updated_at": "2026-10-24T18:00:00.000Z"
+}
