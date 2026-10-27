@@ -173,26 +173,65 @@
         var lastC = data.candles[data.candles.length - 1];
         var prevC = data.candles.length > 1 ? data.candles[data.candles.length - 2] : null;
         var quoteEl = byId('unifiedActiveTickerQuote');
-        if (quoteEl) {
-          var closePrice = (lastC && lastC.close != null && lastC.close !== '') ? Number(lastC.close) : null;
-          if (closePrice != null && Number.isFinite(closePrice) && closePrice > 0) {
-            var prevClose = (prevC && prevC.close != null && Number.isFinite(Number(prevC.close)) && Number(prevC.close) > 0) ? Number(prevC.close) : closePrice;
-            var diff = closePrice - prevClose;
-            var pct = prevClose > 0 ? (diff / prevClose) * 100 : 0;
-            // Canvas header: last price without "Rp", then change and percent
-            // (Indonesian decimals, U+2212 minus) coloured by direction.
-            var sign = diff > 0 ? '+' : (diff < 0 ? '\u2212' : '');
+        var closePrice = (lastC && lastC.close != null && lastC.close !== '') ? Number(lastC.close) : null;
+        var diff = 0;
+        var pct = 0;
+        if (closePrice != null && Number.isFinite(closePrice) && closePrice > 0) {
+          var prevClose = (prevC && prevC.close != null && Number.isFinite(Number(prevC.close)) && Number(prevC.close) > 0) ? Number(prevC.close) : closePrice;
+          diff = closePrice - prevClose;
+          pct = prevClose > 0 ? (diff / prevClose) * 100 : 0;
+          // Canvas header: last price without "Rp", then change and percent
+          // (Indonesian decimals, U+2212 minus) coloured by direction.
+          var sign = diff > 0 ? '+' : (diff < 0 ? '\u2212' : '');
+          if (quoteEl) {
             quoteEl.className = 'ana-quote num mono ' + (diff > 0 ? 'is-up' : (diff < 0 ? 'is-down' : 'is-flat'));
             quoteEl.innerHTML = '<span class="ana-px">' + closePrice.toLocaleString('id-ID') + '</span><span class="ana-chg">' + sign + Math.abs(diff).toLocaleString('id-ID') + ' (' + sign + Math.abs(pct).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%)</span>';
-          } else {
-            quoteEl.className = 'ana-quote num mono is-flat';
-            quoteEl.textContent = 'Harga belum tersedia';
           }
+        } else if (quoteEl) {
+          quoteEl.className = 'ana-quote num mono is-flat';
+          quoteEl.textContent = 'Harga belum tersedia';
         }
         var activeBadge = byId('unifiedActiveTickerBadge');
         if (activeBadge) activeBadge.textContent = safeTicker;
         var activeSym = byId('unifiedActiveTickerSymbol');
         if (activeSym) activeSym.textContent = safeTicker;
+
+        // Update Fakta Ticker in DOM
+        var fPrice = byId('factLastPrice');
+        if (fPrice && closePrice != null) fPrice.textContent = closePrice.toLocaleString('id-ID');
+        var fChange = byId('factChange');
+        if (fChange && closePrice != null) {
+          var fSign = diff > 0 ? '+' : (diff < 0 ? '\u2212' : '');
+          fChange.className = 'num font-mono font-bold ' + (diff > 0 ? 'text-emerald-400' : (diff < 0 ? 'text-rose-400' : 'text-gray-400'));
+          fChange.textContent = fSign + Math.abs(diff).toLocaleString('id-ID') + ' (' + fSign + Math.abs(pct).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%)';
+        }
+        var fRange = byId('factRange');
+        if (fRange && lastC && lastC.low != null && lastC.high != null) {
+          fRange.textContent = Number(lastC.low).toLocaleString('id-ID') + ' \u2013 ' + Number(lastC.high).toLocaleString('id-ID');
+        }
+        var fVol = byId('factVolume');
+        if (fVol && lastC && lastC.volume != null) {
+          fVol.textContent = Number(lastC.volume).toLocaleString('id-ID') + ' lot';
+        }
+        var fTickerLbl = byId('anaAiTickerLabel');
+        if (fTickerLbl) fTickerLbl.textContent = safeTicker;
+        if (data.metrics) {
+          var fBandar = byId('factBandarFlow');
+          if (fBandar && data.metrics.bandarAccumulation != null) {
+            var bFlow = Number(data.metrics.bandarAccumulation);
+            var bSign = bFlow > 0 ? '+' : (bFlow < 0 ? '\u2212' : '');
+            fBandar.textContent = bSign + Math.abs(bFlow).toLocaleString('id-ID');
+            fBandar.className = 'num font-mono font-bold ' + (bFlow > 0 ? 'text-emerald-400' : (bFlow < 0 ? 'text-rose-400' : 'text-gray-400'));
+          }
+          var fSup = byId('factSupport');
+          if (fSup && data.metrics.support != null) {
+            fSup.textContent = Number(data.metrics.support).toLocaleString('id-ID');
+          }
+          var fTr = byId('factTrend');
+          if (fTr && data.metrics.trend) {
+            fTr.textContent = data.metrics.trend;
+          }
+        }
       }
 
       var loadLwc = (typeof root.loadLightweightCharts === 'function') ? root.loadLightweightCharts :
@@ -203,6 +242,9 @@
       if (loadLwc) await loadLwc();
       if (renderLwc) {
         await renderLwc(chartId, data.candles, data.metrics || null, safeTicker, { variant: 'page' });
+        if (root.AutoCuanChartWorkstation && typeof root.AutoCuanChartWorkstation.attach === 'function') {
+          root.AutoCuanChartWorkstation.attach(chartId, data.candles, data.metrics || null, safeTicker, options);
+        }
         if (options && options.preset && root.AutoCuanChartWorkstation && typeof root.AutoCuanChartWorkstation.applyPreset === 'function') {
           root.AutoCuanChartWorkstation.applyPreset(chartId, options.preset);
         }

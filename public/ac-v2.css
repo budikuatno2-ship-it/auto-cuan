@@ -10,7 +10,63 @@
 /* #appContent raises specificity over the legacy per-page padding rules
    (#page-dashboard { padding-top: 18px !important } and friends). */
 html { scrollbar-width: thin; }
-html body { letter-spacing: normal !important; font-feature-settings: normal !important; text-rendering: auto !important; }
+html body {
+  letter-spacing: normal !important;
+  font-feature-settings: normal !important;
+  text-rendering: auto !important;
+  margin: 0;
+  padding-top: 0 !important;
+}
+
+#sidebar, #appSidebar, .app-sidebar {
+  top: 0 !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+}
+
+/* Sembunyikan permanen bar sub-tab horizontal lama di Analisis karena navigasi sudah ada di sidebar kiri */
+#analisisLensesNav, .analisis-lens-bar.utabs {
+  display: none !important;
+}
+
+/* Bilah review kanvas tidak pernah tampil di aplikasi produksi */
+.mm, .stp-bar, #autocuan-mock-banner, #autocuan-preview-bar {
+  display: none !important;
+}
+
+/* Kartu dialog Auth terpusat 420px */
+#loginModal > div:not(.modal-backdrop),
+#registerModal > div:not(.modal-backdrop),
+#selfResetModal > div:not(.modal-backdrop),
+#googleCompleteProfileModal > div:not(.modal-backdrop),
+#authChoiceModal > div:not(.modal-backdrop),
+.auth-dialog-card {
+  max-width: 420px !important;
+  width: 100% !important;
+  margin: auto !important;
+  border-radius: 16px !important;
+}
+
+/* Pusat Akun layout */
+#acAccountCenter {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ac-z-modal, 100050);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 86px !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html.light #acAccountCenter,
+[data-theme="light"] #acAccountCenter {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 #appContent > .page-content.ac-page[data-ac-ui="v2"] {
   width: 100%;
   max-width: 1560px !important;
