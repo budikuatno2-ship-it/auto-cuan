@@ -1,5 +1,6 @@
 {
-  "last_alert_at": "2026-10-25T06:23:39.534Z",
+  "last_alert_at": "2026-10-26T15:34:34.236Z",
   "last_reason": "snapshot_missing",
-  "age_minutes": null
+  "age_minutes": null,
+  "send_success": false
 }
