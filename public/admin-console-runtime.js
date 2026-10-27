@@ -278,15 +278,56 @@
     var codeInput = document.getElementById('vCodeInput');
     var code = codeInput ? (codeInput.value || '').trim().toUpperCase() : '';
     var plan = document.getElementById('vPlanSelect') ? document.getElementById('vPlanSelect').value : 'pro_30';
-    var quota = document.getElementById('vQuotaInput') ? document.getElementById('vQuotaInput').value : '1';
-    var exp = document.getElementById('vExpiryInput') ? document.getElementById('vExpiryInput').value : '';
+    var quotaInput = document.getElementById('vQuotaInput');
+    var quotaParsed = quotaInput ? parseInt(quotaInput.value, 10) : 1;
+    var quota = (Number.isFinite(quotaParsed) && quotaParsed > 0) ? quotaParsed : 1;
+    var expInput = document.getElementById('vExpiryInput');
+    var exp = expInput ? (expInput.value || '').trim() : '';
     if (!code) { alert('Kode tidak boleh kosong'); return; }
 
     var planLabel = plan === 'lifetime' ? 'Pro Trader · Lifetime' : (plan === 'pro_90' ? 'Pro Trader · 90 hari' : 'Pro Trader · 30 hari');
     var tbody = document.getElementById('adminCouponsTableTbody') || document.getElementById('vouchersTableTbody');
     if (tbody) {
-      var row = '<tr><td class="mono" style="font-weight:600">' + escapeHtml(code) + '</td><td class="mut">' + planLabel + '</td><td class="r num">0 / ' + quota + '</td><td class="num mut">' + escapeHtml(exp) + '</td><td class="r"><button class="btn sm" onclick="(window.revokeKupon||window.revokeVoucher)(\'' + escapeHtml(code) + '\')">Nonaktifkan</button></td></tr>';
-      tbody.innerHTML = row + tbody.innerHTML;
+      var tr = document.createElement('tr');
+
+      var tdCode = document.createElement('td');
+      tdCode.className = 'mono';
+      tdCode.style.fontWeight = '600';
+      tdCode.textContent = code;
+
+      var tdPlan = document.createElement('td');
+      tdPlan.className = 'mut';
+      tdPlan.textContent = planLabel;
+
+      var tdQuota = document.createElement('td');
+      tdQuota.className = 'r num';
+      tdQuota.textContent = '0 / ' + quota;
+
+      var tdExp = document.createElement('td');
+      tdExp.className = 'num mut';
+      tdExp.textContent = exp || '—';
+
+      var tdAction = document.createElement('td');
+      tdAction.className = 'r';
+      var btn = document.createElement('button');
+      btn.className = 'btn sm';
+      btn.textContent = 'Nonaktifkan';
+      btn.onclick = function() {
+        (window.revokeKupon || window.revokeVoucher || root.revokeVoucher)(code);
+      };
+      tdAction.appendChild(btn);
+
+      tr.appendChild(tdCode);
+      tr.appendChild(tdPlan);
+      tr.appendChild(tdQuota);
+      tr.appendChild(tdExp);
+      tr.appendChild(tdAction);
+
+      if (tbody.firstChild) {
+        tbody.insertBefore(tr, tbody.firstChild);
+      } else {
+        tbody.appendChild(tr);
+      }
     }
     recordAuditLog('budi', 'Buat Kupon/Akses ' + code, 'Paket: ' + planLabel + ', Kuota: ' + quota);
     alert('Kode ' + code + ' berhasil diterbitkan.');
@@ -362,8 +403,33 @@
     if (!tbody) return;
     var now = new Date();
     var timeStr = 'Hari ini ' + now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-    var tr = '<tr><td class="num mut">' + timeStr + '</td><td style="font-weight:600">' + escapeHtml(actor) + '</td><td>' + escapeHtml(action) + '</td><td class="mono mut">' + escapeHtml(target) + '</td></tr>';
-    tbody.innerHTML = tr + tbody.innerHTML;
+    var tr = document.createElement('tr');
+
+    var tdTime = document.createElement('td');
+    tdTime.className = 'num mut';
+    tdTime.textContent = timeStr;
+
+    var tdActor = document.createElement('td');
+    tdActor.style.fontWeight = '600';
+    tdActor.textContent = String(actor || '');
+
+    var tdAction = document.createElement('td');
+    tdAction.textContent = String(action || '');
+
+    var tdTarget = document.createElement('td');
+    tdTarget.className = 'mono mut';
+    tdTarget.textContent = String(target || '');
+
+    tr.appendChild(tdTime);
+    tr.appendChild(tdActor);
+    tr.appendChild(tdAction);
+    tr.appendChild(tdTarget);
+
+    if (tbody.firstChild) {
+      tbody.insertBefore(tr, tbody.firstChild);
+    } else {
+      tbody.appendChild(tr);
+    }
   }
 
   function escapeHtml(str) {
