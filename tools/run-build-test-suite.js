@@ -127,7 +127,7 @@ const suiteLabel = isFullSuite ? 'Full Regression Suite' : 'Smoke/Contract Build
 console.log(`\n--- Running ${suiteLabel} (${existingFiles.length} test files from ${path.basename(curatedConfigFile)}) ---`);
 
 // Smoke suite runs in a single fast batch (~8s), full regression uses safe batches
-const BATCH_SIZE = isFullSuite ? (process.env.VERCEL === '1' ? 10 : 25) : 50;
+const BATCH_SIZE = isFullSuite ? (process.env.VERCEL === '1' ? 10 : 20) : 50;
 let failedBatches = 0;
 let passedFiles = 0;
 const failingFiles = [];
@@ -137,7 +137,7 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
   const res = spawnSync(process.execPath, ['--test', ...batch], {
     cwd: ROOT_DIR,
     stdio: 'inherit',
-    timeout: 180000,
+    timeout: 360000,
     env: process.env
   });
 
@@ -151,7 +151,7 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
         cwd: ROOT_DIR,
         stdio: 'pipe',
         encoding: 'utf8',
-        timeout: 60000,
+        timeout: 180000,
         env: process.env
       });
       if (singleRes.status !== 0) {

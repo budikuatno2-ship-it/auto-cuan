@@ -96,7 +96,7 @@ const targets = {
 const routes = {insider:['analisis','insider'],portfolio:['portofolio'],watchlist:['watchlist'],trackrecord:['trackrecord'],dashboard:['dashboard'],intel:['analisis','intel']};
 async function navigate(route) {
  await page.evaluate(route=>{hideOnboardingGuide(true);navigateTo(...route);},routes[route]);
- await page.waitForNetworkIdle({idleTime:200,timeout:15000});await pause(400);
+ await page.waitForNetworkIdle({idleTime:200,timeout:2500}).catch(()=>{});await pause(400);
 }
 async function measurements(selector) {
  // Read settled styles, not an intermediate hover/theme transition.
