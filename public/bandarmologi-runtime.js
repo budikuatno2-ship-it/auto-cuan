@@ -5147,7 +5147,7 @@
 
       // Prepare Canvas Sinyal Intelijen Representation
       var effectiveDate = intelObj.effective_date || intelObj.evaluated_at || (bandarIntelData && bandarIntelData.as_of_date) || '';
-      var shortDate = '13 Okt';
+      var shortDate = '';
       if (effectiveDate) {
         try {
           var dObj = new Date(effectiveDate);
@@ -5574,16 +5574,9 @@
       var summary = scanData.summary || {};
       var indexes = scanData.indexes || {};
 
-      var staticScanList = [
-        { t: 'BBCA', s: 'Konfluensi akumulasi tinggi', n: 4, f: '+Rp 412 M', fp: 1, v: '1,4×', r: '58,4', fr: '13 Okt' },
-        { t: 'BRPT', s: 'Akumulasi + breakout', n: 4, f: '+Rp 112 M', fp: 1, v: '2,8×', r: '62,8', fr: '13 Okt' },
-        { t: 'MEDC', s: 'Momentum + asing', n: 3, f: '+Rp 89 M', fp: 1, v: '3,2×', r: '66,2', fr: '13 Okt' },
-        { t: 'BMRI', s: 'Rebound teknikal', n: 3, f: '+Rp 54 M', fp: 1, v: '1,9×', r: '54,1', fr: '13 Okt' },
-        { t: 'AMMN', s: 'Akumulasi broker', n: 2, f: '+Rp 90 M', fp: 1, v: '0,7×', r: '53,8', fr: '13 Okt' },
-        { t: 'TLKM', s: 'Rebound oversold', n: 2, f: '−Rp 146 M', fp: -1, v: '0,9×', r: '34,6', fr: '13 Okt' },
-        { t: 'ADRO', s: 'Support rebound', n: 2, f: '+Rp 12 M', fp: 1, v: '1,1×', r: '48,9', fr: '10 Okt' },
-        { t: 'BREN', s: 'Akumulasi asing', n: 2, f: '+Rp 29 M', fp: 1, v: '0,8×', r: '35,3', fr: '10 Okt' }
-      ];
+      // No canvas sample rows: the scanner sheet lists live server confluence
+      // results only, so no invented tickers, flow, or freshness dates.
+      var staticScanList = [];
 
       // Primary Canvas Scanner Sheet
       html += '<section class="sheet swap" style="margin-top:16px">';

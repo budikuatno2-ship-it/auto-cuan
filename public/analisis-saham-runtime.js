@@ -84,22 +84,9 @@
   root.RANKING_COLUMNS = RANKING_COLUMNS;
 
   // ===== RANKING TABLE STATE & LOGIC (CANVAS REDESIGN V2) =====
-  var RANKING_SAMPLE_FALLBACK = [
-    {t:'BBCA',p:10250,c:0.98,rsi:58.4,h:-1.92,v:1.4,f1:185.0,f3:412.5,s:94,as_of:'13 Okt 2026'},
-    {t:'MEDC',p:1380,c:4.15,rsi:66.2,h:-0.72,v:3.2,f1:42.1,f3:89.4,s:91,as_of:'13 Okt 2026'},
-    {t:'BRPT',p:1045,c:3.45,rsi:62.8,h:-4.55,v:2.8,f1:64.8,f3:112.0,s:88,as_of:'13 Okt 2026'},
-    {t:'BBNI',p:5450,c:2.35,rsi:54.1,h:-8.12,v:1.9,f1:28.5,f3:54.2,s:85,as_of:'13 Okt 2026'},
-    {t:'ADRO',p:3720,c:1.64,rsi:48.9,h:-12.4,v:1.1,f1:12.2,f3:20.8,s:82,as_of:'13 Okt 2026'},
-    {t:'TLKM',p:2940,c:-1.01,rsi:34.6,h:-38.1,v:0.9,f1:-15.7,f3:-145.9,s:61,as_of:'13 Okt 2026'},
-    {t:'ASII',p:5150,c:0.49,rsi:null,h:-14.3,v:0.9,f1:8.4,f3:15.1,s:74,as_of:'13 Okt 2026'},
-    {t:'BMRI',p:6850,c:0.74,rsi:41.4,h:-22.6,v:0.87,f1:-168.5,f3:-529.6,s:58,as_of:'13 Okt 2026'},
-    {t:'AMMN',p:8900,c:1.20,rsi:53.8,h:-44.6,v:0.67,f1:67.2,f3:90.4,s:70,as_of:'13 Okt 2026'},
-    {t:'PGAS',p:1610,c:0.62,rsi:50.2,h:-6.9,v:1.2,f1:5.1,f3:null,s:72,as_of:'13 Okt 2026'},
-    {t:'BREN',p:6850,c:2.24,rsi:35.3,h:-71.8,v:0.8,f1:-15.1,f3:29.5,s:55,as_of:'13 Okt 2026'},
-    {t:'GOTO',p:65,c:-1.52,rsi:38.4,h:-31.5,v:0.87,f1:-0.22,f3:-0.03,s:42,as_of:'13 Okt 2026'},
-    {t:'BRMS',p:410,c:1.23,rsi:29.1,h:-65.4,v:1.09,f1:35.3,f3:108.7,s:63,as_of:'13 Okt 2026'},
-    {t:'TPIA',p:7200,c:0.70,rsi:37.1,h:-78.7,v:1.19,f1:-171.9,f3:-248.9,s:40,as_of:'13 Okt 2026'}
-  ];
+  // No canvas sample rows here. The Ranking tab renders the live server rows
+  // only; when the API has not answered yet the table stays empty instead of
+  // inventing prices, RSI, or foreign flow from the design canvas.
 
   var rankingState = {
     rows: [],
@@ -228,7 +215,7 @@
       return;
     }
 
-    var sourceData = (rankingState.rows && rankingState.rows.length) ? rankingState.rows : RANKING_SAMPLE_FALLBACK;
+    var sourceData = (rankingState.rows && rankingState.rows.length) ? rankingState.rows : [];
     var normRows = sourceData.map(normalizeRankingRow);
 
     // Filter by preset
@@ -280,7 +267,7 @@
     // Update Provenance Date
     var provDate = byId('rankingDateVal');
     if (provDate) {
-      var latestDate = (filtered[0] && filtered[0].as_of) || (sourceData[0] && (sourceData[0].as_of_trade_date || sourceData[0].as_of)) || '13 Okt 2026';
+      var latestDate = (filtered[0] && filtered[0].as_of) || (sourceData[0] && (sourceData[0].as_of_trade_date || sourceData[0].as_of)) || '';
       provDate.textContent = latestDate;
     }
 
@@ -1902,34 +1889,34 @@
         { k: 'Periode terbaru', v: 'Q1 2026' },
         { k: 'Sumber', v: 'Laporan keuangan emiten' },
         { k: 'Free float', v: '22,33% · kepemilikan IDX 30 Sep 2026' },
-        { k: 'Diimpor', v: '13 Okt 2026, 10.36 WIB' }
+        { k: 'Diimpor', v: '—' }
       ],
       warn: 'Laporan Q2 2026 belum ada di server, periode terbaru masih Q1 2026. Beban Usaha, Laba Usaha, Liabilitas, Ekuitas, dan ROE kosong di sumber untuk semua periode, sehingga PBV, BVPS, dan PER tidak dihitung.'
     },
     BBCA: {
-      name: 'Bank Central Asia Tbk', sector: 'Perbankan', bvps: 'Rp 2.372', cap: 'Rp 1.263,5 T', capNote: '#1 di IDX', sh: '123,2 M', px: 'Rp 10.250 · 13 Okt',
+      name: 'Bank Central Asia Tbk', sector: 'Perbankan', bvps: 'Rp 2.372', cap: 'Rp 1.263,5 T', capNote: '#1 di IDX', sh: '123,2 M', px: 'Rp 10.250',
       prov: [
         { k: 'Periode', v: 'Q2 2026 (diaudit)' },
         { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
-        { k: 'Sumber market cap', v: 'Harga penutupan Rp 10.250 · 13 Okt' },
+        { k: 'Sumber market cap', v: 'Harga penutupan Rp 10.250' },
         { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
       ]
     },
     BBRI: {
-      name: 'Bank Rakyat Indonesia Tbk', sector: 'Perbankan', bvps: 'Rp 2.242', cap: 'Rp 730,5 T', capNote: '', sh: '151,6 M', px: 'Rp 4.820 · 13 Okt',
+      name: 'Bank Rakyat Indonesia Tbk', sector: 'Perbankan', bvps: 'Rp 2.242', cap: 'Rp 730,5 T', capNote: '', sh: '151,6 M', px: 'Rp 4.820',
       prov: [
         { k: 'Periode', v: 'Q2 2026 (diaudit)' },
         { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
-        { k: 'Sumber market cap', v: 'Harga penutupan Rp 4.820 · 13 Okt' },
+        { k: 'Sumber market cap', v: 'Harga penutupan Rp 4.820' },
         { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
       ]
     },
     BMRI: {
-      name: 'Bank Mandiri Tbk', sector: 'Perbankan', bvps: 'Rp 4.824', cap: 'Rp 639,3 T', capNote: '', sh: '93,3 M', px: 'Rp 6.850 · 13 Okt',
+      name: 'Bank Mandiri Tbk', sector: 'Perbankan', bvps: 'Rp 4.824', cap: 'Rp 639,3 T', capNote: '', sh: '93,3 M', px: 'Rp 6.850',
       prov: [
         { k: 'Periode', v: 'Q2 2026 (diaudit)' },
         { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
-        { k: 'Sumber market cap', v: 'Harga penutupan Rp 6.850 · 13 Okt' },
+        { k: 'Sumber market cap', v: 'Harga penutupan Rp 6.850' },
         { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
       ]
     },
@@ -2529,7 +2516,7 @@
     if (footFreq) footFreq.textContent = fr === 0 ? 'Kuartalan' : 'Tahunan';
     var srcChip = byId('finSrcChip');
     if (srcChip) {
-      srcChip.textContent = meta.real ? 'Data server · impor 13 Okt 2026' : 'Data contoh';
+      srcChip.textContent = meta.real ? 'Data server' : 'Data contoh';
       srcChip.className = 'chip ' + (meta.real ? 'b' : 'i');
     }
 

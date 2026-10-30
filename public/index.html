@@ -594,7 +594,7 @@
                 <input type="range" id="lpCalcRisk" min="0.25" max="3" step="0.25" value="1.0" oninput="window.acUpdateLandingCalc()" aria-label="Risiko per trade dalam persen">
               </div>
               <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;font-size:12px;margin-top:16px;border-top:1px solid var(--lp-line);padding-top:12px">
-                <div><div style="font-size:11px;color:var(--lp-muted)">Entry</div><b style="font-family:monospace">1.210</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">Entry</div><b style="font-family:monospace">0</b></div>
                 <div><div style="font-size:11px;color:var(--lp-muted)">SL</div><b style="font-family:monospace;color:#dc2626">1.135</b></div>
                 <div><div style="font-size:11px;color:var(--lp-muted)">TP1</div><b style="font-family:monospace;color:#16a34a">1.325</b></div>
                 <div><div style="font-size:11px;color:var(--lp-muted)">TP2</div><b style="font-family:monospace;color:#16a34a">1.420</b></div>
@@ -612,7 +612,7 @@
               <div class="rng-bar" aria-label="Rentang wajar 10 hari dengan posisi entry, SL, dan target">
                 <div class="band"></div>
                 <div class="mk" style="left:8.8%"><i></i>SL 1.135</div>
-                <div class="mk up" style="left:21.9%"><i></i>Entry 1.210</div>
+                <div class="mk up" style="left:21.9%"><i></i>Entry</div>
                 <div class="mk up" style="left:42.1%"><i></i>TP1 1.325</div>
                 <div class="mk up" style="left:58.8%"><i></i>TP2 1.420</div>
                 <div class="mk" style="left:0%"><i></i>p10 1.030</div>
@@ -1609,7 +1609,7 @@ html.light #googleCompleteProfileModal input {
                     </label>
                     <span class="mut" id="sektorCounts" style="font-size:12px">10 grup · 54 emiten dipantau</span>
                     <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
-                        <span class="chip" id="sektorSubtitle">Diperbarui 13 Okt, 16.10 WIB</span>
+                        <span class="chip" id="sektorSubtitle">Diperbarui —</span>
                     </span>
                 </div>
                 <!-- Sektor Groups Table (Table-First default) -->
@@ -1836,7 +1836,7 @@ html.light #googleCompleteProfileModal input {
                     <div id="anPrevSl" class="tk-sl" style="left:15%"></div>
                     <div id="anPrevTp" class="tk-tp" style="left:75%"></div>
                     <div id="anPrevNow" class="now" style="left:40%"></div>
-                    <div id="anPrevNowL" class="nowl" style="left:40%">Kini 1.045</div>
+                    <div id="anPrevNowL" class="nowl" style="left:40%">Kini —</div>
                 </div>
                 <div class="num" style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-top:4px">
                     <span>Ke target <b id="anPrevToTp" class="pos">+11,1%</b></span>
@@ -3680,7 +3680,7 @@ html.light #googleCompleteProfileModal input {
                         <span><b>Periode terbaru</b> <span id="financialLatestPeriodVal">Q1 2026</span></span>
                         <span><b>Sumber</b> Laporan keuangan emiten</span>
                         <span><b>Free float</b> <span id="financialFreeFloatVal">22,33% · kepemilikan IDX 30 Sep 2026</span></span>
-                        <span><b>Diimpor</b> <span id="financialImportedVal">13 Okt 2026, 10.36 WIB</span></span>
+                        <span><b>Diimpor</b> <span id="financialImportedVal">—</span></span>
                     </div>
                     <div id="financialSnapshotWarning" class="dq" style="display:none">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>
@@ -3739,7 +3739,7 @@ html.light #googleCompleteProfileModal input {
                     <span><b>Satuan nilai</b> Miliar IDR (kecuali EPS &amp; rasio)</span>
                     <span><b>Angka negatif</b> dalam (kurung)</span>
                     <span><b>Sumber</b> Laporan keuangan emiten</span>
-                    <span class="chip b" id="finSrcChip">Data server · impor 13 Okt 2026</span>
+                    <span class="chip b" id="finSrcChip">Data server</span>
                 </div>
 
                 <!-- Trend Bar Chart with HTML Overlay Labels (§5c) -->
@@ -13762,7 +13762,7 @@ async function showGroupDetail(groupCode) {
                 var dt = new Date(g.calculated_at);
                 dateEl.textContent = dt.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric' });
             } else {
-                dateEl.textContent = '13 Okt 2026';
+                dateEl.textContent = '—';
             }
         }
 
