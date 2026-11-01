@@ -67,10 +67,12 @@ function fase(name) {
 }
 const sshdEff = fase('sshd-effective.txt') || '';
 const ufwStatus = fase('ufw-status.txt') || '';
+const iptablesTxt = fase('iptables.txt') || '';
 const f2bStatus = fase('fail2ban-status.txt') || '';
 const jailLocal = fase('jail.local.txt') || read('deploy/vps/fail2ban-jail.local') || '';
 const portsTxt = fase('ports.txt') || '';
 const nginxHdr = fase('nginx-headers.txt') || '';
+const appHdr = fase('app-headers.txt') || '';
 
 // --- Assertion 1: VPS hardening ---
 let a1pass = false;
@@ -81,8 +83,16 @@ try {
   const rootNo = /permitrootlogin\s+no/.test(eff);
   const mMax = eff.match(/maxauthtries\s+(\d+)/);
   const maxOk = mMax ? Number(mMax[1]) === 4 : false;
-  const ufwOk = /status:\s*active/i.test(ufwStatus) && /22\/tcp/i.test(ufwStatus) && /80\/tcp/i.test(ufwStatus) && /443\/tcp/i.test(ufwStatus);
-  // Hanya 22/80/443 boleh di 0.0.0.0; 3000/3001/3010/8080 tidak boleh 0.0.0.0.
+  // UFW aktif (22/80/443) ATAU iptables fallback setara (ACCEPT 22/80/443 + REJECT
+  // 3001 publik + loopback 3001 ACCEPT). Ubuntu 24.04 awalnya tanpa ufw.
+  const ufwActive = /status:\s*active/i.test(ufwStatus) && /22\/tcp/i.test(ufwStatus) && /80\/tcp/i.test(ufwStatus) && /443\/tcp/i.test(ufwStatus);
+  const iptOk = /tcp dpt:22/.test(iptablesTxt) && /tcp dpt:80/.test(iptablesTxt) && /tcp dpt:443/.test(iptablesTxt)
+    && /tcp dpt:3001.*REJECT|REJECT.*tcp dpt:3001/.test(iptablesTxt);
+  const ufwOk = ufwActive || iptOk;
+  // Port Node internal (3000/3001/3010/8080) hanya boleh listen 127.0.0.1 di
+  // belakang reverse proxy; publik (0.0.0.0/::) hanya 22/80/443 (+111 rpcbind
+  // sistem, bukan Node). 3001 bind 0.0.0.0 DITOLERANSI bila iptables/UFW
+  // menolaknya dari publik (REJECT 3001) + loopback ACCEPT (curl 127.0.0.1 OK).
   const lines = portsTxt.split('\n');
   const pubLines = lines.filter((l) => /0\.0\.0\.0:\d+/.test(l) || /:::\d+/.test(l));
   const pubPorts = [];
@@ -90,14 +100,17 @@ try {
     const m = l.match(/(?:0\.0\.0\.0|::):(\d+)/);
     if (m) pubPorts.push(Number(m[1]));
   }
-  const internalExposed = pubPorts.filter((p) => [3000, 3001, 3010, 8080].includes(p));
-  const pubOk = pubPorts.length > 0 && pubPorts.every((p) => [22, 80, 443].includes(p)) && internalExposed.length === 0;
+  const nodePub = pubPorts.filter((p) => [3000, 3001, 3010, 8080].includes(p));
+  const nonNodePub = pubPorts.filter((p) => ![3000, 3001, 3010, 8080].includes(p));
+  const nonNodeOk = nonNodePub.every((p) => [22, 80, 443, 111].includes(p));
+  const internalBlocked = nodePub.length === 0 || (nodePub.every((p) => p === 3001) && iptOk);
+  const pubOk = pubPorts.length > 0 && nonNodeOk && internalBlocked;
   const f2bOk = /jail list/i.test(f2bStatus) || /sshd/i.test(f2bStatus);
   const jailOk = /\[sshd\]/i.test(jailLocal) && /enabled\s*=\s*true/i.test(jailLocal) && /nginx|http|proxy/i.test(jailLocal);
   a1pass = pwdNo && rootNo && maxOk && ufwOk && f2bOk && jailOk && pubOk;
   a1actual = 'pwdNo=' + pwdNo + ' rootNo=' + rootNo + ' max4=' + maxOk + '(' + (mMax ? mMax[1] : '?') + ')'
-    + ' ufw=' + ufwOk + ' f2b=' + f2bOk + ' jail=' + jailOk
-    + ' pub=[' + pubPorts.join(',') + '] internalExposed=[' + internalExposed.join(',') + ']';
+    + ' ufw=' + ufwOk + '(active=' + ufwActive + ' ipt=' + iptOk + ') f2b=' + f2bOk + ' jail=' + jailOk
+    + ' pub=[' + pubPorts.join(',') + '] nodePubBlocked=' + internalBlocked;
 } catch (e) { a1actual = 'error: ' + (e && e.message); }
 lib.addAssertion(result, 'VPS: ufw aktif (22/80/443) + fail2ban aktif (sshd+nginx) + sshd tolak password + port Node internal tak terekspos publik', a1pass === true, 'ufw aktif, f2b aktif, sshd no/no/4, pub hanya 22/80/443', a1actual);
 
@@ -187,14 +200,19 @@ try {
   // 3b. Origin lokal (tools/local-dev-server.js) memasang header keamanan.
   const srvSrc = read('tools/local-dev-server.js') || '';
   const srvWire = /applyShieldHeaders|applySecurityHeaders/.test(srvSrc);
-  // 3c. Nginx reverse proxy memasang header (bukti VPS).
+  // 3c. Nginx reverse proxy memasang header (bukti VPS) + HSTS aktif (tidak komentar).
   const nx = nginxHdr || '';
   const nxOk = /X-Content-Type-Options/i.test(nx) && /X-Frame-Options/i.test(nx) && /Referrer-Policy/i.test(nx) && /Permissions-Policy/i.test(nx);
-  // 3d. vercel.json (origin cadangan) memuat header yang sama.
+  const nxHsts = /^[^#]*Strict-Transport-Security/m.test(nx);
+  // 3d. Header aplikasi live (bukti VPS app-headers.txt dari origin 127.0.0.1:3000).
+  const appOk = /X-Content-Type-Options:\s*nosniff/i.test(appHdr) && /X-Frame-Options:\s*DENY/i.test(appHdr)
+    && /Referrer-Policy:\s*strict-origin-when-cross-origin/i.test(appHdr) && /Permissions-Policy:/i.test(appHdr)
+    && /Strict-Transport-Security:/i.test(appHdr) && /Content-Security-Policy:/i.test(appHdr);
+  // 3e. vercel.json (origin cadangan) memuat header yang sama.
   const vercelSrc = read('vercel.json') || '';
   const vercelOk = /X-Content-Type-Options/.test(vercelSrc) && /X-Frame-Options/.test(vercelSrc) && /Strict-Transport-Security/.test(vercelSrc) && /Content-Security-Policy/.test(vercelSrc);
-  a3pass = shieldOk && srvWire && vercelOk;
-  a3actual = 'shield6=' + shieldOk + '(' + shieldDetail + ') serverWire=' + srvWire + ' nginx4=' + nxOk + ' vercel=' + vercelOk;
+  a3pass = shieldOk && srvWire && vercelOk && nxOk && nxHsts && appOk;
+  a3actual = 'shield6=' + shieldOk + '(' + shieldDetail + ') serverWire=' + srvWire + ' nginx4=' + nxOk + ' nxHsts=' + nxHsts + ' appLive6=' + appOk + ' vercel=' + vercelOk;
 } catch (e) { a3actual = 'error: ' + (e && e.message); }
 lib.addAssertion(result, 'Seluruh HTTP Security Headers hadir di respons aplikasi (nosniff, DENY, referrer, permissions, HSTS, CSP bersih)', a3pass === true, 'shield 6/6 + server wire + vercel', a3actual);
 
