@@ -1,0 +1,53 @@
+# S1 — Fail2Ban jail.local (VPS Auto-Cuan, Ubuntu 24.04).
+# Disalin ke /etc/fail2ban/jail.local via SSH non-interaktif (tanpa tulis IP/key/secret).
+# Menutup brute-force SSH + flood 401/403/404 reverse-proxy/Nginx di level kernel (iptables).
+[DEFAULT]
+bantime = 3600
+findtime = 600
+maxretry = 5
+banaction = iptables-multiport
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 4
+bantime = 3600
+findtime = 600
+
+[nginx-http-auth]
+enabled = true
+port = http,https
+filter = nginx-http-auth
+logpath = /var/log/nginx/*error.log
+maxretry = 5
+bantime = 1800
+findtime = 600
+
+[nginx-limit-req]
+enabled = true
+port = http,https
+filter = nginx-limit-req
+logpath = /var/log/nginx/*error.log
+maxretry = 10
+bantime = 1800
+findtime = 600
+
+[nginx-botsearch]
+enabled = true
+port = http,https
+filter = nginx-botsearch
+logpath = /var/log/nginx/*access.log
+maxretry = 20
+bantime = 1800
+findtime = 600
+
+[nginx-bad-request]
+enabled = true
+port = http,https
+filter = nginx-bad-request
+logpath = /var/log/nginx/*access.log
+maxretry = 20
+bantime = 1800
+findtime = 600

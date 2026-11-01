@@ -17,6 +17,9 @@ const accountTerms = require('../lib/account-terms');
 const { verifyRecaptcha } = require('../lib/recaptcha-verify');
 const { clientAddress } = require('../lib/request-rate-limit');
 const loginThrottle = require('../lib/login-throttle');
+// S1: perisai terpusat (auth 8/15m blokir 30m + BRUTE_FORCE_AUTH + header).
+let shield = null;
+try { shield = require('../lib/security-shield'); } catch (_) { shield = null; }
 const telegramMagicToken = require('../lib/telegram-magic-token');
 
 const MAX_DEVICES = 3;
@@ -643,6 +646,20 @@ module.exports = async function handler(req, res) {
       res.setHeader('Retry-After', String(throttleCheck.retryAfterSeconds || 60));
       return res.status(429).json({ success: false, error: loginThrottle.PUBLIC_ERROR });
     }
+    // S1: lapis auth terpusat — 8 gagal/15 mnt per IP/akun -> blokir 30 mnt + BRUTE_FORCE_AUTH.
+    // Berjalan berdampingan dengan throttle B2 (5/15m pair, 30/15m IP); yang paling
+    // ketat yang menolak duluan. Kunci hanya dari IP + akun ternormalisasi.
+    try {
+      if (shield) {
+        try { shield.applyShieldHeaders(res, { api: true }); } catch (_) {}
+        var sKeys = shield.authKeys(clientAddress(req), usernameLower);
+        var sChk = shield.authCheck(sKeys);
+        if (sChk.limited) {
+          res.setHeader('Retry-After', String(sChk.retryAfterSeconds || 60));
+          return res.status(429).json({ success: false, error: loginThrottle.PUBLIC_ERROR });
+        }
+      }
+    } catch (_) {}
 
     // Google reCAPTCHA v3 Invisible (threshold 0.5, fail-open, review bypass)
     const recaptchaToken = req.body && (req.body.recaptchaToken || req.body.recaptcha_token);
@@ -707,6 +724,7 @@ module.exports = async function handler(req, res) {
     if (!user) {
       await loginGuard.failure('unknown_account');
       await loginThrottle.registerFailure(throttleKeys);
+      try { if (shield) shield.authRecordFailure(shield.authKeys(clientAddress(req), usernameLower)); } catch (_) {}
       console.error('login-user: authentication failed (unknown account)');
       return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
@@ -720,6 +738,7 @@ module.exports = async function handler(req, res) {
     if (!isEmailInput && !legacyUsernameAllowed) {
       await loginGuard.failure('gmail_identity_required');
       await loginThrottle.registerFailure(throttleKeys);
+      try { if (shield) shield.authRecordFailure(shield.authKeys(clientAddress(req), usernameLower)); } catch (_) {}
       return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
 
@@ -731,6 +750,7 @@ module.exports = async function handler(req, res) {
     if (!credentialCheck.ok) {
       await loginGuard.failure('bad_password');
       await loginThrottle.registerFailure(throttleKeys);
+      try { if (shield) shield.authRecordFailure(shield.authKeys(clientAddress(req), usernameLower)); } catch (_) {}
       console.error('login-user: authentication failed (bad password)');
       return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
@@ -761,6 +781,8 @@ module.exports = async function handler(req, res) {
     // (account, IP) and this IP, so a genuine user is not penalized by typos once
     // they authenticate successfully.
     loginThrottle.clearFailure(throttleKeys);
+    // S1: password benar juga membersihkan lapis auth terpusat.
+    try { if (shield) shield.authClear(shield.authKeys(clientAddress(req), usernameLower)); } catch (_) {}
 
     // Check if blocked
     if (user.is_blocked) {

@@ -1,6 +1,11 @@
 'use strict';
 
 const { createClient } = require('@supabase/supabase-js');
+// S1: perisai terpusat (anti-bot + header).
+let shield = null;
+try { shield = require('../lib/security-shield'); } catch (_) { shield = null; }
+const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+const analyzeLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60 });
 const handleContextAI = require('../lib/context-ai-router-v7');
 const legacyAnalyze = require('../lib/analyze-legacy');
 const { hydrateContext } = require('../lib/ai-context-snapshot-store');
@@ -164,6 +169,23 @@ async function prepareContextRequest(req) {
 
 module.exports = async function handler(req, res) {
   try {
+    try { if (shield) shield.applyShieldHeaders(res, { api: true }); } catch (_) {}
+    // S1: anti-bot berlapis (sliding-window + deteksi scraper) sebelum akses premium.
+    try {
+      if (shield) {
+        const sIp = shield.clientIpFromReq(req);
+        const sUa = (req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '';
+        const sChk = shield.dataCheck(sIp, { hasSession: false, userAgent: String(sUa) });
+        if (sChk.limited) {
+          try { res.setHeader('Retry-After', String(sChk.retryAfterSeconds || 60)); } catch (_) {}
+          return res.status(429).json({ success: false, error: 'Too many requests. Please slow down.' });
+        }
+        shield.dataRecordHit(sIp, 'analyze', { userAgent: String(sUa) });
+      }
+    } catch (_) {}
+    if (!analyzeLimiter.check(clientAddress(req))) {
+      return res.status(429).json({ success: false, error: 'Too many requests. Please slow down.' });
+    }
     const surface = (req && req.query && req.query.surface) || (req && req.body && req.body.surface);
     if (surface === 'chart-analysis') {
       return await handleChartAnalysisEndpoint(req, res);
