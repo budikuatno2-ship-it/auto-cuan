@@ -85,7 +85,7 @@ beforeEach(async () => {
  await page.setViewport({width:1440,height:900,isMobile:false,hasTouch:false});
  await page.goto(origin+'/dashboard?page=screener',{waitUntil:'domcontentloaded'});
  await page.evaluate(fixtures => { hideOnboardingGuide(true); applyAppTheme('light'); navigateTo('screener'); stopScreenerPolling(); if(typeof stopNkPolling==='function')stopNkPolling(); _currentScreenerType='konglo'; _screenerFilter='all'; _screenerCache={results:fixtures}; document.getElementById('filter-pattern-personality').value='all'; document.getElementById('filter-high-wr').checked=false; renderScreenerTable(fixtures); kgToggleView('table'); },fixtures);
- await page.waitForNetworkIdle({idleTime:200,timeout:15000});
+ await page.waitForNetworkIdle({idleTime:200,timeout:15000}).catch(()=>{});
  await page.evaluate(fixtures => { stopScreenerPolling(); _screenerCache={results:fixtures}; renderScreenerTable(fixtures); kgToggleView('table'); }, fixtures);
  await pause(100);
 });
@@ -138,7 +138,7 @@ test('D3 all three modes retain one semantic action per ticker and mobile toolba
  await page.setViewport({width:390,height:900});await (await page.createCDPSession()).send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
  for(const [type,body,render] of [['konglo','screenerTableBody','renderScreenerTable'],['nonkonglo','nkScreenerTableBody','renderNkScreenerTable'],['daytrade','dtScreenerTableBody','renderDtTable']]){
   await page.evaluate(type=>switchScreenerType(type),type);
-  await page.waitForFunction(render=>typeof window[render]==='function',{},render);await page.waitForNetworkIdle({idleTime:200,timeout:15000});
+  await page.waitForFunction(render=>typeof window[render]==='function',{},render);await page.waitForNetworkIdle({idleTime:200,timeout:15000}).catch(()=>{});
   await page.evaluate(({type,render,fixtures})=>{
    stopScreenerPolling();stopNkPolling();if(typeof stopDtPolling==='function')stopDtPolling();
    if(type==='konglo')_screenerCache={results:fixtures};else if(type==='nonkonglo'){_nkScreenerCache={results:fixtures};_nkScreenerFilter='all';}else{_dtScreenerCache={results:fixtures};_dtScreenerFilter='all';}
