@@ -2,6 +2,13 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const guard = require('../lib/market-hours-guard');
+// Deterministik: kunci proyeksi volume ke luar jam bursa agar raw_volume_ratio_20d
+// tidak bergantung pada wall-clock runner CI (LIVE_MARKET memproyeksikan volume
+// hari ini sehingga rasio >1 dan uji flaky). Seluruh skenario file ini memakai
+// sampleDate historis 2026-08-03 sehingga OUTSIDE_MARKET adalah konteks yang benar.
+const _origSessionStatus = guard.getMarketSessionStatus;
+guard.getMarketSessionStatus = () => ({ status: 'OUTSIDE_MARKET', total_minutes: 0 });
 const adapter = require('../lib/daytrade-screener-engine-v7');
 
 function candles(options) {
