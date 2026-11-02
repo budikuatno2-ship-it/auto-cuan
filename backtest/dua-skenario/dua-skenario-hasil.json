@@ -1,0 +1,610 @@
+{
+ "target": "MEDC",
+ "bars": 2899,
+ "from": "2015-01-02",
+ "to": "2026-10-16",
+ "poolTickers": 79,
+ "params": {
+  "L": 20,
+  "H": 10,
+  "K": 30,
+  "minGap": 10,
+  "warmup": 60,
+  "minCandidates": 250,
+  "ctxWeight": 0.5,
+  "minQuality": 0.35,
+  "minAnalogs": 15
+ },
+ "stride": 5,
+ "runs": [
+  {
+   "label": "Hanya MEDC",
+   "cutOOS": "2023-02-14",
+   "all": {
+    "n": 352,
+    "effectiveN": 190,
+    "hitRate": 0.46875,
+    "brier": 0.2603346247647435,
+    "brierBase": 0.2568141043046386,
+    "brierSkill": -0.013708438910071674,
+    "band25_75": 0.5113636363636364,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 33,
+      "predicted": 0.309,
+      "actual": 0.455
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 124,
+      "predicted": 0.402,
+      "actual": 0.468
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 122,
+      "predicted": 0.497,
+      "actual": 0.525
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 66,
+      "predicted": 0.591,
+      "actual": 0.455
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 7,
+      "predicted": 0.664,
+      "actual": 0.286
+     }
+    ]
+   },
+   "oos": {
+    "n": 157,
+    "effectiveN": 81,
+    "hitRate": 0.4840764331210191,
+    "brier": 0.2564918756693706,
+    "brierBase": 0.26632491281462783,
+    "brierSkill": 0.03692120666195964,
+    "band25_75": 0.5477707006369427,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 17,
+      "predicted": 0.317,
+      "actual": 0.471
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 60,
+      "predicted": 0.41,
+      "actual": 0.417
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 53,
+      "predicted": 0.493,
+      "actual": 0.566
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 23,
+      "predicted": 0.581,
+      "actual": 0.478
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 4,
+      "predicted": 0.665,
+      "actual": 0.5
+     }
+    ]
+   },
+   "byYear": {
+    "2016": {
+     "n": 0
+    },
+    "2017": {
+     "n": 3,
+     "hitRate": 0.667,
+     "brierSkill": -1.886
+    },
+    "2018": {
+     "n": 28,
+     "hitRate": 0.464,
+     "brierSkill": 0.067
+    },
+    "2019": {
+     "n": 33,
+     "hitRate": 0.394,
+     "brierSkill": -0.014
+    },
+    "2020": {
+     "n": 38,
+     "hitRate": 0.368,
+     "brierSkill": 0.032
+    },
+    "2021": {
+     "n": 44,
+     "hitRate": 0.568,
+     "brierSkill": 0.145
+    },
+    "2022": {
+     "n": 43,
+     "hitRate": 0.465,
+     "brierSkill": 0.09
+    },
+    "2023": {
+     "n": 42,
+     "hitRate": 0.524,
+     "brierSkill": 0.162
+    },
+    "2024": {
+     "n": 44,
+     "hitRate": 0.409,
+     "brierSkill": 0.091
+    },
+    "2025": {
+     "n": 44,
+     "hitRate": 0.568,
+     "brierSkill": 0.155
+    },
+    "2026": {
+     "n": 33,
+     "hitRate": 0.394,
+     "brierSkill": 0.111
+    }
+   },
+   "gate": {
+    "brierSkillPositive": true,
+    "enoughIndependent": true,
+    "calibrationMonotone": true,
+    "pass": true
+   }
+  },
+  {
+   "label": "Kolam 79 saham",
+   "cutOOS": "2023-02-14",
+   "all": {
+    "n": 385,
+    "effectiveN": 223,
+    "hitRate": 0.4623376623376623,
+    "brier": 0.26621653144907614,
+    "brierBase": 0.25752748450050456,
+    "brierSkill": -0.033740270345997025,
+    "band25_75": 0.5038961038961038,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 27,
+      "predicted": 0.307,
+      "actual": 0.444
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 96,
+      "predicted": 0.406,
+      "actual": 0.542
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 147,
+      "predicted": 0.497,
+      "actual": 0.463
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 99,
+      "predicted": 0.589,
+      "actual": 0.455
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 16,
+      "predicted": 0.705,
+      "actual": 0.375
+     }
+    ]
+   },
+   "oos": {
+    "n": 134,
+    "effectiveN": 72,
+    "hitRate": 0.4626865671641791,
+    "brier": 0.26396016098851527,
+    "brierBase": 0.27015330803400994,
+    "brierSkill": 0.022924564909325595,
+    "band25_75": 0.5597014925373134,
+    "calibration": [
+     {
+      "range": "0-0.35",
+      "n": 9,
+      "predicted": 0.309,
+      "actual": 0.556
+     },
+     {
+      "range": "0.35-0.45",
+      "n": 39,
+      "predicted": 0.41,
+      "actual": 0.462
+     },
+     {
+      "range": "0.45-0.55",
+      "n": 44,
+      "predicted": 0.504,
+      "actual": 0.5
+     },
+     {
+      "range": "0.55-0.65",
+      "n": 40,
+      "predicted": 0.587,
+      "actual": 0.425
+     },
+     {
+      "range": "0.65-1.01",
+      "n": 2,
+      "predicted": 0.706,
+      "actual": 0.5
+     }
+    ]
+   },
+   "byYear": {
+    "2015": {
+     "n": 12,
+     "hitRate": 0.5,
+     "brierSkill": 0.323
+    },
+    "2016": {
+     "n": 28,
+     "hitRate": 0.429,
+     "brierSkill": 0.184
+    },
+    "2017": {
+     "n": 29,
+     "hitRate": 0.483,
+     "brierSkill": 0.085
+    },
+    "2018": {
+     "n": 30,
+     "hitRate": 0.4,
+     "brierSkill": -0.077
+    },
+    "2019": {
+     "n": 36,
+     "hitRate": 0.528,
+     "brierSkill": 0.146
+    },
+    "2020": {
+     "n": 34,
+     "hitRate": 0.529,
+     "brierSkill": 0.105
+    },
+    "2021": {
+     "n": 41,
+     "hitRate": 0.488,
+     "brierSkill": 0.03
+    },
+    "2022": {
+     "n": 37,
+     "hitRate": 0.351,
+     "brierSkill": 0.057
+    },
+    "2023": {
+     "n": 35,
+     "hitRate": 0.457,
+     "brierSkill": 0.197
+    },
+    "2024": {
+     "n": 36,
+     "hitRate": 0.417,
+     "brierSkill": 0.139
+    },
+    "2025": {
+     "n": 38,
+     "hitRate": 0.526,
+     "brierSkill": 0.061
+    },
+    "2026": {
+     "n": 29,
+     "hitRate": 0.448,
+     "brierSkill": 0.132
+    }
+   },
+   "gate": {
+    "brierSkillPositive": true,
+    "enoughIndependent": true,
+    "calibrationMonotone": false,
+    "pass": false
+   }
+  }
+ ],
+ "latestSelf": {
+  "status": "ANALOG_LEMAH",
+  "reason": "Kualitas analog 0.32 (< 0.35) atau analog < 15",
+  "date": "2026-10-16",
+  "close": 1290,
+  "H": 10,
+  "nAnalogs": 30,
+  "nCandidates": 2809,
+  "quality": 0.317618722028813,
+  "pUp": 0.5027649006253093,
+  "pDown": 0.4972350993746907,
+  "scenarioA": {
+   "n": 15,
+   "median": [
+    1315,
+    1330,
+    1340,
+    1355,
+    1350,
+    1320,
+    1355,
+    1400,
+    1405,
+    1395
+   ],
+   "p25": [
+    1290,
+    1270,
+    1275,
+    1320,
+    1300,
+    1305,
+    1290,
+    1335,
+    1355,
+    1345
+   ],
+   "p75": [
+    1335,
+    1370,
+    1405,
+    1405,
+    1420,
+    1450,
+    1470,
+    1525,
+    1540,
+    1605
+   ],
+   "endPct": 8.054870066389563
+  },
+  "scenarioB": {
+   "n": 15,
+   "median": [
+    1290,
+    1275,
+    1280,
+    1260,
+    1290,
+    1250,
+    1240,
+    1230,
+    1215,
+    1210
+   ],
+   "p25": [
+    1280,
+    1265,
+    1240,
+    1245,
+    1225,
+    1215,
+    1190,
+    1155,
+    1160,
+    1150
+   ],
+   "p75": [
+    1335,
+    1330,
+    1325,
+    1325,
+    1310,
+    1300,
+    1295,
+    1255,
+    1265,
+    1260
+   ],
+   "endPct": -6.175234507103323
+  },
+  "confirmA": 1340,
+  "confirmB": 1280,
+  "analogs": [
+   {
+    "ticker": "MEDC",
+    "date": "2018-12-12",
+    "distance": 1.119,
+    "fwdPct": -8.44
+   },
+   {
+    "ticker": "MEDC",
+    "date": "2017-11-06",
+    "distance": 1.119,
+    "fwdPct": 27.87
+   },
+   {
+    "ticker": "MEDC",
+    "date": "2026-04-01",
+    "distance": 1.149,
+    "fwdPct": 1.25
+   },
+   {
+    "ticker": "MEDC",
+    "date": "2024-05-22",
+    "distance": 1.158,
+    "fwdPct": -2.39
+   },
+   {
+    "ticker": "MEDC",
+    "date": "2023-12-04",
+    "distance": 1.168,
+    "fwdPct": 4.18
+   },
+   {
+    "ticker": "MEDC",
+    "date": "2023-01-05",
+    "distance": 1.183,
+    "fwdPct": 29.8
+   },
+   {
+    "ticker": "MEDC",
+    "date": "2023-12-21",
+    "distance": 1.183,
+    "fwdPct": 4.4
+   },
+   {
+    "ticker": "MEDC",
+    "date": "2023-03-06",
+    "distance": 1.204,
+    "fwdPct": -22.05
+   }
+  ]
+ },
+ "latestPool": {
+  "status": "ANALOG_LEMAH",
+  "reason": "Kualitas analog 0.21 (< 0.35) atau analog < 15",
+  "date": "2026-10-16",
+  "close": 1290,
+  "H": 10,
+  "nAnalogs": 30,
+  "nCandidates": 173939,
+  "quality": 0.21383539152626918,
+  "pUp": 0.6665560902531916,
+  "pDown": 0.3334439097468084,
+  "scenarioA": {
+   "n": 20,
+   "median": [
+    1310,
+    1345,
+    1350,
+    1350,
+    1365,
+    1395,
+    1425,
+    1475,
+    1440,
+    1440
+   ],
+   "p25": [
+    1290,
+    1310,
+    1280,
+    1295,
+    1310,
+    1305,
+    1365,
+    1365,
+    1385,
+    1400
+   ],
+   "p75": [
+    1355,
+    1395,
+    1435,
+    1430,
+    1435,
+    1510,
+    1510,
+    1580,
+    1570,
+    1580
+   ],
+   "endPct": 11.437865514472879
+  },
+  "scenarioB": {
+   "n": 10,
+   "median": [
+    1265,
+    1265,
+    1275,
+    1265,
+    1265,
+    1265,
+    1255,
+    1255,
+    1245,
+    1240
+   ],
+   "p25": [
+    1245,
+    1195,
+    1185,
+    1235,
+    1140,
+    1240,
+    1225,
+    1175,
+    1235,
+    1130
+   ],
+   "p75": [
+    1290,
+    1275,
+    1300,
+    1290,
+    1280,
+    1345,
+    1305,
+    1295,
+    1255,
+    1255
+   ],
+   "endPct": -3.7990003891791857
+  },
+  "confirmA": 1350,
+  "confirmB": 1275,
+  "analogs": [
+   {
+    "ticker": "AMMN",
+    "date": "2025-08-04",
+    "distance": 0.72,
+    "fwdPct": 19.15
+   },
+   {
+    "ticker": "BIPI",
+    "date": "2023-08-01",
+    "distance": 0.937,
+    "fwdPct": -2.85
+   },
+   {
+    "ticker": "BBCA",
+    "date": "2020-05-14",
+    "distance": 0.951,
+    "fwdPct": 22.33
+   },
+   {
+    "ticker": "BRIS",
+    "date": "2023-05-16",
+    "distance": 0.956,
+    "fwdPct": 11.44
+   },
+   {
+    "ticker": "MEDC",
+    "date": "2017-11-06",
+    "distance": 0.972,
+    "fwdPct": 27.87
+   },
+   {
+    "ticker": "CPIN",
+    "date": "2025-02-25",
+    "distance": 0.983,
+    "fwdPct": -9.16
+   },
+   {
+    "ticker": "ADRO",
+    "date": "2026-05-19",
+    "distance": 0.995,
+    "fwdPct": -5.49
+   },
+   {
+    "ticker": "BMRI",
+    "date": "2024-05-02",
+    "distance": 0.997,
+    "fwdPct": 0
+   }
+  ]
+ }
+}

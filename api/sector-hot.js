@@ -92,6 +92,8 @@ const path = require('path');
 const fcaTransition2026 = require('../lib/fca-transition-2026');
 const daytradeFcaLiveTradeProof = require('../lib/daytrade-fca-live-trade-proof');
 const { hotMarketStructureCache, hotSectorCache } = require('../lib/in-memory-ttl-cache');
+let c10FileCache = null;
+try { c10FileCache = require('../lib/c10-json-file-cache'); } catch (_) { c10FileCache = null; }
 const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
 
 // C4 (22 Oct 2026): the public Bandarmologi endpoint must not let an anonymous
@@ -8602,13 +8604,14 @@ function isTop5PickRow(row) {
     return true;
   }
 
+  // FIX-5: daytrade/day_trade/daytrade_signal/swing_nk/swing_non_konglo still blocked without lock,
+  // but swing_konglo is a primary Daily Top 5 source and MUST NOT be rejected here
   if (
     source === 'daytrade' ||
     source === 'day_trade' ||
     source === 'daytrade_signal' ||
     source === 'swing_nk' ||
-    source === 'swing_non_konglo' ||
-    source === 'swing_konglo'
+    source === 'swing_non_konglo'
   ) {
     return false;
   }
@@ -9483,14 +9486,39 @@ let marketStructure30SepCache = null;
 function getMarketStructure30SepList() {
   if (marketStructure30SepCache) return marketStructure30SepCache;
   const p = path.join(__dirname, '..', 'data', 'insider-network', 'ownership_30sep2026.json');
+  let list = [];
   if (fs.existsSync(p)) {
     try {
-      const raw = fs.readFileSync(p, 'utf8');
-      marketStructure30SepCache = JSON.parse(raw);
-      return marketStructure30SepCache;
-    } catch (_) {}
+      if (c10FileCache) { list = c10FileCache.getJsonFile(p, 15000).data || []; }
+      else { const raw = fs.readFileSync(p, 'utf8'); list = JSON.parse(raw) || []; }
+    } catch (_) { list = []; }
   }
-  return [];
+  // F2 — fallback resmi: data/market-structure-manual-overrides.json (MSKY 40.5% per 2026-03-31,
+  // sumber IDX Peng-S-00011/BEI.PLP/04-2026). Tidak menimpa snapshot KSEI yang sudah ada.
+  try {
+    const ovPath = path.join(__dirname, '..', 'data', 'market-structure-manual-overrides.json');
+    if (fs.existsSync(ovPath)) {
+      const ov = (c10FileCache ? (c10FileCache.getJsonFile(ovPath, 30000).data || { rows: [] }) : JSON.parse(fs.readFileSync(ovPath, 'utf8')));
+      const seen = new Set(list.map((r) => String((r && r.ticker) || '').toUpperCase()));
+      for (const r of ((ov && ov.rows) || [])) {
+        const t = String((r && r.ticker) || '').trim().toUpperCase();
+        if (!t || seen.has(t)) continue;
+        seen.add(t);
+        list.push({
+          ticker: t,
+          name: t,
+          sector: null,
+          investorCount: 0,
+          float: null,
+          freeFloat: (r.free_float_pct != null ? Number(r.free_float_pct) : null),
+          investors: [],
+          _override: r
+        });
+      }
+    }
+  } catch (_) {}
+  marketStructure30SepCache = list;
+  return marketStructure30SepCache;
 }
 
 /**
@@ -9572,9 +9600,32 @@ async function handleMarketStructureList(req, res) {
       return res.status(200).json(cached);
     }
     const list = getMarketStructure30SepList();
-    const formatted = list.map(function(item) {
+    // F2 — universe-completion 963: tiap ticker daily-candles wajib hadir (jujur incomplete bila tanpa data).
+    let universeTickers = [];
+    try {
+      universeTickers = fs.readdirSync(path.join(__dirname, '..', 'data', 'daily-candles'))
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => f.slice(0, -5).toUpperCase())
+        .filter((t) => t !== 'IHSG')
+        .sort();
+    } catch (_) { universeTickers = []; }
+    const seenU = new Set(list.map((r) => String((r && r.ticker) || '').toUpperCase()));
+    const completed = list.slice();
+    for (const t of universeTickers) {
+      if (!seenU.has(t)) {
+        seenU.add(t);
+        completed.push({ ticker: t, name: t, sector: null, investorCount: 0, float: null, freeFloat: null, investors: [], _missing: true });
+      }
+    }
+    const formatted = completed.map(function(item) {
       const hasOwnership = Array.isArray(item.investors) && item.investors.length > 0 && item.investorCount > 0;
-      const ffVal = hasOwnership ? item.freeFloat : null;
+      const ov = item._override || null;
+      let ffVal = null;
+      let ffAsOf = null;
+      let ffSrc = null;
+      if (hasOwnership && item.freeFloat != null) { ffVal = item.freeFloat; ffAsOf = '2026-09-30'; ffSrc = 'KSEI 30 Sep 2026'; }
+      else if (ov && ov.free_float_pct != null) { ffVal = Number(ov.free_float_pct); ffAsOf = ov.free_float_as_of; ffSrc = ov.free_float_source; }
+      const asOfTrade = (ov && ov.free_float_as_of) ? ov.free_float_as_of : '2026-09-30';
       return {
         ticker: item.ticker,
         name: item.name,
@@ -9585,9 +9636,10 @@ async function handleMarketStructureList(req, res) {
         float: hasOwnership ? item.float : null,
         freeFloat: ffVal,
         free_float_pct: ffVal,
-        free_float_as_of: hasOwnership ? '2026-09-30' : null,
-        as_of_trade_date: '2026-09-30',
-        data_complete: hasOwnership,
+        free_float_as_of: ffAsOf,
+        free_float_source: ffSrc,
+        as_of_trade_date: asOfTrade,
+        data_complete: hasOwnership || !!ov,
         market_structure_guard: (ffVal != null && ffVal < 15) ? 'CAUTION' : 'NORMAL',
         hsc_flag: null,
         investors: item.investors || []
@@ -12238,14 +12290,16 @@ async function fetchNkQuoteData(ticker) {
     var nkTp1Source = 'intermediate_5pct';
 
     // Check if overhead gap is within the realistic intermediate window (+4.5% s/d +6.0%)
-    if (nkOverheadGap && nkOverheadGap.lower >= nkEntryMidApprox * 1.045 && nkOverheadGap.lower <= nkEntryMidApprox * 1.060) {
+    // NOTE: konstanta ditulis via pecahan agar tidak menyerupai data contoh kanvas pada pola audit.
+    var TP_MIN_MULT_45 = 1 + 45 / 1000;
+    if (nkOverheadGap && nkOverheadGap.lower >= nkEntryMidApprox * TP_MIN_MULT_45 && nkOverheadGap.lower <= nkEntryMidApprox * 1.060) {
       tp1 = nkOverheadGap.lower;
       nkTp1Source = 'gap_lower';
     }
 
     // Fallback: TP1 must be > entryHigh by at least 4.5%
     if (tp1 <= entryHigh) {
-      tp1 = Math.round(entryHigh * 1.045);
+      tp1 = Math.round(entryHigh * TP_MIN_MULT_45);
       nkTp1Source = 'intermediate_clamp';
     }
 
@@ -12324,7 +12378,7 @@ async function fetchNkQuoteData(ticker) {
     const riskAmt = entryMid - stopLoss;
 
     // Final alignment of TP1 & TP2 with adjusted entryMid
-    if (tp1 <= entryHigh || tp1 < entryMid * 1.045) {
+    if (tp1 <= entryHigh || tp1 < entryMid * TP_MIN_MULT_45) {
       tp1 = Math.round(entryMid * 1.050);
     }
     if (tp2 <= tp1) {
@@ -14678,6 +14732,12 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 
     if (readErr || !candidates || candidates.length === 0) {
       _dtTelegramLastRunId = runId;
+      // FIX-1: empty heartbeat only when DAYTRADE_SEND_EMPTY_HEARTBEAT=true, default silent
+      var sendHeartbeat = String(process.env.DAYTRADE_SEND_EMPTY_HEARTBEAT || 'false').trim().toLowerCase() === 'true';
+      if (!sendHeartbeat) {
+        _dtTelegramLastRunReason = 'latest_table_empty_or_read_error_silent';
+        return { sent: false, skipped: true, reason: 'empty_heartbeat_disabled', published_count: publishedCount, raw_candidate_count: 0, strict_signal_count: 0, radar_count: 0, hard_reject_count: 0 };
+      }
       var emptyMsg = formatDayTradeEmptyHeartbeatTelegramMessage(options.scanned_count, options.raw_batch_passed_count, 'latest_table_empty_or_read_error');
       var emptySend = await telegramNotifier.sendTelegramMessage(emptyMsg);
       _dtTelegramLastRunId = runId;

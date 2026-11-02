@@ -1,0 +1,1703 @@
+{
+  "totalTradingDays": 29,
+  "tickers": [
+    "BRPT",
+    "MEDC",
+    "ACES",
+    "ADRO",
+    "AKRA",
+    "ASII",
+    "CLEO",
+    "ICBP",
+    "INDF",
+    "KLBF",
+    "PTBA",
+    "SMGR",
+    "UNVR"
+  ],
+  "totalAllDaysReq": 9786,
+  "dayBreakdown": [
+    {
+      "date": "2026-09-08",
+      "totalEstRequests": 434,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 38
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 54
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 37
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 30
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 80
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 30
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 23
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 34
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 81
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 13
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 9
+        }
+      ]
+    },
+    {
+      "date": "2026-09-09",
+      "totalEstRequests": 486,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 50
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 33
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 75
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 19
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 70
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 5
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 21
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 24
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 36
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 130
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 15
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 6
+        }
+      ]
+    },
+    {
+      "date": "2026-09-10",
+      "totalEstRequests": 402,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 66
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 39
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 3
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 24
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 20
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 71
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 11
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 9
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 24
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 101
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 19
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 12
+        }
+      ]
+    },
+    {
+      "date": "2026-09-11",
+      "totalEstRequests": 344,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 32
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 35
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 3
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 31
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 13
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 83
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 7
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 15
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 32
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 64
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 15
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 11
+        }
+      ]
+    },
+    {
+      "date": "2026-09-14",
+      "totalEstRequests": 415,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 46
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 79
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 43
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 9
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 102
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 9
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 14
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 16
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 58
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 16
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 18
+        }
+      ]
+    },
+    {
+      "date": "2026-09-15",
+      "totalEstRequests": 277,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 25
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 18
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 4
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 28
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 9
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 59
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 28
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 7
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 38
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 27
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 17
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 14
+        }
+      ]
+    },
+    {
+      "date": "2026-09-16",
+      "totalEstRequests": 305,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 25
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 32
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 8
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 56
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 4
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 69
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 12
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 17
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 21
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 31
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 9
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 18
+        }
+      ]
+    },
+    {
+      "date": "2026-09-17",
+      "totalEstRequests": 289,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 40
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 26
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 47
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 4
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 41
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 8
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 17
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 22
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 63
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 10
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 6
+        }
+      ]
+    },
+    {
+      "date": "2026-09-18",
+      "totalEstRequests": 452,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 37
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 60
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 79
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 8
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 123
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 20
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 32
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 18
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 44
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 17
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 10
+        }
+      ]
+    },
+    {
+      "date": "2026-09-21",
+      "totalEstRequests": 225,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 29
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 37
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 30
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 11
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 45
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 10
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 19
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 8
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 19
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 6
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 7
+        }
+      ]
+    },
+    {
+      "date": "2026-09-22",
+      "totalEstRequests": 331,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 36
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 82
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 3
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 34
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 15
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 61
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 16
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 14
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 19
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 28
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 11
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 9
+        }
+      ]
+    },
+    {
+      "date": "2026-09-23",
+      "totalEstRequests": 307,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 29
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 33
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 58
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 7
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 87
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 16
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 14
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 17
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 29
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 8
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 5
+        }
+      ]
+    },
+    {
+      "date": "2026-09-24",
+      "totalEstRequests": 211,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 26
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 43
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 21
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 10
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 42
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 12
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 12
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 15
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 14
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 6
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 6
+        }
+      ]
+    },
+    {
+      "date": "2026-09-25",
+      "totalEstRequests": 223,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 24
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 28
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 1
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 22
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 10
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 58
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 12
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 8
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 8
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 40
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 6
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 4
+        }
+      ]
+    },
+    {
+      "date": "2026-09-28",
+      "totalEstRequests": 281,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 28
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 28
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 27
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 7
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 49
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 10
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 15
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 21
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 78
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 9
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 5
+        }
+      ]
+    },
+    {
+      "date": "2026-09-29",
+      "totalEstRequests": 369,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 39
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 20
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 92
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 13
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 84
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 8
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 15
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 11
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 69
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 9
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 5
+        }
+      ]
+    },
+    {
+      "date": "2026-09-30",
+      "totalEstRequests": 370,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 36
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 34
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 4
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 32
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 9
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 138
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 19
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 17
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 19
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 35
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 16
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 9
+        }
+      ]
+    },
+    {
+      "date": "2026-10-01",
+      "totalEstRequests": 348,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 29
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 18
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 4
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 39
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 8
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 156
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 9
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 12
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 14
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 27
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 10
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 20
+        }
+      ]
+    },
+    {
+      "date": "2026-10-02",
+      "totalEstRequests": 230,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 19
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 12
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 4
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 30
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 10
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 64
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 6
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 10
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 7
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 46
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 8
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 12
+        }
+      ]
+    },
+    {
+      "date": "2026-10-05",
+      "totalEstRequests": 303,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 27
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 10
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 3
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 36
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 6
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 114
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 6
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 5
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 10
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 71
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 4
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 8
+        }
+      ]
+    },
+    {
+      "date": "2026-10-06",
+      "totalEstRequests": 311,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 23
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 15
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 4
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 34
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 10
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 69
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 7
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 6
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 14
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 109
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 7
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 10
+        }
+      ]
+    },
+    {
+      "date": "2026-10-07",
+      "totalEstRequests": 196,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 26
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 17
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 3
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 28
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 4
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 36
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 2
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 3
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 8
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 12
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 47
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 5
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 5
+        }
+      ]
+    },
+    {
+      "date": "2026-10-08",
+      "totalEstRequests": 252,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 31
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 28
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 15
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 6
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 81
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 7
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 15
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 22
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 32
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 7
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 3
+        }
+      ]
+    },
+    {
+      "date": "2026-10-09",
+      "totalEstRequests": 198,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 17
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 12
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 2
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 20
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 4
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 49
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 5
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 9
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 6
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 18
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 43
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 7
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 6
+        }
+      ]
+    },
+    {
+      "date": "2026-10-12",
+      "totalEstRequests": 382,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 40
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 23
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 8
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 52
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 13
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 135
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 4
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 13
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 19
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 14
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 32
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 21
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 8
+        }
+      ]
+    },
+    {
+      "date": "2026-10-13",
+      "totalEstRequests": 237,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 43
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 16
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 7
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 17
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 5
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 67
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 3
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 6
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 11
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 12
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 30
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 10
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 10
+        }
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "totalEstRequests": 370,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 105
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 47
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 4
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 22
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 8
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 66
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 5
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 10
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 13
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 14
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 56
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 11
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 9
+        }
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "totalEstRequests": 330,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 50
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 30
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 39
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 29
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 15
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 62
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 4
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 8
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 23
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 14
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 43
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 8
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 5
+        }
+      ]
+    },
+    {
+      "date": "2026-10-16",
+      "totalEstRequests": 908,
+      "tickerEst": [
+        {
+          "ticker": "BRPT",
+          "estPages": 98
+        },
+        {
+          "ticker": "MEDC",
+          "estPages": 54
+        },
+        {
+          "ticker": "ACES",
+          "estPages": 10
+        },
+        {
+          "ticker": "ADRO",
+          "estPages": 103
+        },
+        {
+          "ticker": "AKRA",
+          "estPages": 22
+        },
+        {
+          "ticker": "ASII",
+          "estPages": 253
+        },
+        {
+          "ticker": "CLEO",
+          "estPages": 6
+        },
+        {
+          "ticker": "ICBP",
+          "estPages": 47
+        },
+        {
+          "ticker": "INDF",
+          "estPages": 80
+        },
+        {
+          "ticker": "KLBF",
+          "estPages": 39
+        },
+        {
+          "ticker": "PTBA",
+          "estPages": 155
+        },
+        {
+          "ticker": "SMGR",
+          "estPages": 17
+        },
+        {
+          "ticker": "UNVR",
+          "estPages": 24
+        }
+      ]
+    }
+  ]
+}

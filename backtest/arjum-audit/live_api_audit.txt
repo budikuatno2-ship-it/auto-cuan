@@ -1,0 +1,326 @@
+=== 1. api/sector-hot.js ARJUM usage ===
+10: *   GET /api/sector-hot?action=screener           → read cached screener data (login-only)
+52: const candleEngine = require('../lib/candle-pattern-engine');
+75: const screenerCandleSource = require('../lib/chart-engine/candle-fetcher');
+93: const { hotMarketStructureCache, hotSectorCache } = require('../lib/in-memory-ttl-cache');
+107: // Actions that walk the full screener universe (candles + indicators + AI) are
+179: // Checked before auth, before Supabase and before any candle fetch, so a
+182: // 'web-daily-picks') fall through untouched and keep serving cached data.
+220: cache_hit: false
+440: res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=900'); // 15 min CDN cache
+441: const cacheKey = 'landing-snapshot';
+442: const cached = hotSectorCache.get(cacheKey);
+443: if (cached) {
+445: return res.status(200).json(cached);
+455: hotSectorCache.set(cacheKey, payload, 30 * 1000);
+486: // Resilient fetch: capture data + errors but never hard-fail the whole page.
+632: // A transient mapping-query failure must not erase a valid cached list, and
+679: // Derive Fibonacci confluence from persisted support/resistance (lightweight, no candle re-fetch)
+680: // Derive Fibonacci confluence from persisted support/resistance (lightweight, no candle re-fetch)
+715: r.fib_confluence_note = 'Data candle belum cukup untuk membaca Fib confluence.';
+740: // Access verified upstream — return cached screener data
+898: // 2. Fetch candle data and calculate indicators for each ticker
+909: var candles = await fetchScreenerCandles(item.ticker);
+910: if (!candles || !Array.isArray(candles) || candles.length < 55) {
+912: screenerFailedTickers.push({ ticker: item.ticker, reason: !candles ? 'no_data' : 'HISTORY_INSUFFICIENT' });
+915: var analysis = calculateIndicators(candles);
+919: // Compute transaction value metrics from candle data
+920: var _txCandles = candles || [];
+931: var _rzResult = dtEngine.detectRespectZones(candles);
+939: _refinedLevels = dtEngine.refineLevelsWithRespectZones(_baseLvl, candles, analysis.last_price, 'konglo');
+967: var _mtfCtx = idxTick.deriveMultiTimeframeContext(candles);
+970: var _lastC = candles[candles.length - 1];
+999: candle_failed_breakout: false,
+1034: var _respectQuality = dtEngine.scoreRespectCandleQuality(candles, {
+1043: half_candle_level: _refinedLevels ? _refinedLevels.half_candle_level : null
+1059: }, candles);
+1063: var _weeklyTf = weeklyTimeframe.evaluateWeeklyTimeframe(candles);
+1072: var _fibResult = fibConfluence.evaluateFibConfluence(candles, {
+1134: half_candle_level: _refinedLevels ? _refinedLevels.half_candle_level : null,
+1135: half_candle_label: _refinedLevels ? _refinedLevels.half_candle_label : null,
+1136: half_candle_note: _refinedLevels ? _refinedLevels.half_candle_note : null,
+1137: half_candle_chase_risk: _refinedLevels ? _refinedLevels.half_candle_chase_risk : false,
+1187: // Passes the REAL calculateIndicators analysis + candle context so the
+1193: source: { analysis: analysis, row: results[results.length - 1], candles: candles }
+1205: // If ALL failed, do not wipe cache
+1207: await updateScreenerMeta(supabase, { universe_count: universeCount, scanned_count: scannedCount, failed_count: failedCount, ai_called_count: 0, status: 'failed', message: 'All ticker fetches failed.' });
+1208: return res.status(200).json({ success: false, error: 'All fetches failed.' });
+1319: cached_tokens: lastUsage.cached_tokens || lastUsage.prompt_cache_hit_tokens || 0,
+1648: var quote = await fetchYahooQuote(ticker);
+1658: await updateMeta(supabase, scannedCount, failedCount, 'failed', 'All ticker fetches failed.');
+1659: return res.status(200).json({ success: false, error: 'All fetches failed.', scannedCount: scannedCount, failedCount: failedCount });
+1789: function calculateIndicators(candles) {
+1790: var closes = candles.map(function(c) { return c.close; });
+1791: var highs = candles.map(function(c) { return c.high; });
+1792: var lows = candles.map(function(c) { return c.low; });
+1793: var opens = candles.map(function(c) { return c.open; });
+1794: var volumes = candles.map(function(c) { return c.volume; });
+1810: // Support: lowest low of the last 20 candles BEFORE the running bar.
+1819: // Resistance: highest high of the last 20 candles BEFORE the running bar.
+1852: if (candles.length >= 15) {
+1913: // Overhead gap: previous candle low > next candle high (gap-down left unfilled)
+1924: // Downside gap: current candle low > previous candle high (gap-up left unfilled below)
+2037: var lastCandle = candles[lastIdx];
+2038: var candleOpen = lastCandle.open;
+2039: var candleHigh = lastCandle.high;
+2040: var candleLow = lastCandle.low;
+2041: var candleClose = lastCandle.close;
+2042: var candleRange = candleHigh - candleLow;
+2043: var body = Math.abs(candleClose - candleOpen);
+2044: var upperShadow = candleHigh - Math.max(candleOpen, candleClose);
+2045: var lowerShadow = Math.min(candleOpen, candleClose) - candleLow;
+2046: var closePosition = candleRange > 0 ? (candleClose - candleLow) / candleRange : 0.5;
+2048: var isBullish = candleClose > candleOpen;
+2061: var totalRange = candleRange;
+2065: var bodyRatio = candleRange > 0 ? body / candleRange : 0.5;
+2078: if (candles.length >= 28) {
+2115: price_asof: candles[lastIdx] && candles[lastIdx].time ? new Date(candles[lastIdx].time * 1000).toISOString() : null,
+2116: price_date: candles[lastIdx] && candles[lastIdx].time ? getJakartaDateFromTimestamp(new Date(candles[lastIdx].time * 1000)) : null,
+2160: _candlePattern: (function() {
+2162: return candleEngine.detectPattern(candles.slice(-3), cpCtx);
+2206: // Full volume bonus — bullish candle with good close position
+2212: // V2: Distribution candle — reduce or negate volume bonus, apply penalty
+2216: v2Notes.push('Volume tinggi tetapi candle distribusi/rejection. Hati-hati false breakout.');
+2223: // Normal candle (no strong signal either way) — standard volume bonus
+2255: var _cp = data._candlePattern;
+2278: if (_cp.pattern === 'Distribution candle') _cpScore -= 6;
+2279: if (_cp.pattern === 'Rejection candle') _cpScore -= 5;
+2280: if (_cp.pattern === 'Failed breakout candle') _cpScore -= 5;
+2283: // Cap candle contribution
+2428: // Node's fetch has no built-in response timeout: an upstream that accepts the
+2433: async function fetchWithTimeout(url, options, timeoutMs) {
+2437: return await fetch(url, Object.assign({}, options || {}, { signal: controller.signal }));
+2472: var response = await fetchWithTimeout(baseUrl + '/chat/completions', {
+2690: // Konglo candle source: Yahoo through fetchWithTimeout (the bounded wrapper this
+2691: // file already uses), then the backfilled data/daily-candles cache. A Yahoo
+2693: // degrades to cached daily closes instead of stalling swing_screener_meta.
+2694: async function fetchScreenerCandles(ticker) {
+2695: var cached = screenerCandleSource.readScreenerCandles(ticker, 55);
+2696: if (cached && screenerCandleSource.screenerRemoteCircuitOpen()) return cached;
+2700: var response = await fetchWithTimeout(url, {
+2714: var candles = [];
+2717: candles.push({ time: timestamps[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes[i] });
+2719: if (candles.length >= 20) {
+2721: return candles;
+2729: return cached;
+2736: async function fetchYahooQuote(ticker) {
+2740: var response = await fetchWithTimeout(url, {
+3054: if (highVol && green && closePos >= 0.55) { label = 'Accumulation Volume'; notes = 'Volume di atas rata-rata dengan candle positif/close sehat.'; }
+3069: if (close == null || resistance == null || support == null || resistance <= support) return { pattern_label: 'Insufficient Data', pattern_notes: 'Not enough candle history for pattern confirmation.' };
+3073: if (aboveRes && (change == null || change < 0.5)) return { pattern_label: 'Failed Breakout', pattern_notes: 'Harga mencoba breakout tetapi konfirmasi candle belum kuat.' };
+3081: async function fetchForeignConfluenceMap(supabase, tickers) {
+3108: // a NULL foreign_net (upload gap / fetch error) into 0, so a ticker whose data
+3161: async function fetchForeignConfluence(supabase, ticker, lastPrice) {
+3188: var q = r && r.ticker ? await fetchNkQuoteData(r.ticker) : null;
+3189: if (q && q.candles && q.candles.length >= 10 && r.entry_low && r.stop_loss && r.tp1) {
+3191: var refined = dtEngine.refineLevelsWithRespectZones(base, q.candles, q.lastPrice || r.last_price, 'nonkonglo');
+3214: r.half_candle_level = refined.half_candle_level || null;
+3215: r.half_candle_label = refined.half_candle_label || null;
+3216: r.half_candle_note = refined.half_candle_note || null;
+3217: r.half_candle_chase_risk = refined.half_candle_chase_risk || false;
+3218: if (r.half_candle_chase_risk) {
+3219: r.entry_timing = 'Wait for half-candle debt area';
+3220: r.direction = 'Rawan chase setelah long candle';
+3222: } else if (r.half_candle_label === 'Failed respect candle') {
+3223: r.entry_timing = 'Tunggu reclaim 1/2 candle';
+3224: r.direction = 'Confidence turun — respect candle gagal';
+3231: // Non-Konglo half-candle enrichment is best-effort; keep cached row if Yahoo/refinement fails.
+3267: var foreignMap = includeForeign ? await fetchForeignConfluenceMap(supabase, rows.map(function(r) { return r && r.ticker; })) : {};
+3900: return { stale_price_count: samples.length ? (rows || []).filter(function(r) { return r.is_price_stale; }).length : 0, stale_price_reasons: reasons, sample_stale_price_rejected: samples, price_source_distribution: sources, price_date_distribution: dates, price_date_fallback_count: (rows || []).filter(function(r) { return r && r.price_date_fallback_used; }).length, cache_hit_count: 0, cache_stale_count: 0 };
+4449: 'High candle ' + observedHigh +
+4562: if (/day/i.test(r.category || '') && (r.tp1_beyond_ara || (r.candle_potential_high && (r.tp1 || r.tp1n) > r.candle_potential_high))) {
+4592: var notes = joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan, r.telegram_verdict, r.candle_note, r.respect_zone_notes, r.entry_status_note, r.plan_quality_note, r.liquidity_notes, r.stale_notes]).toLowerCase();
+4593: if (status === 'AVOID' || status === 'INVALID') add('Failed respect candle');
+4596: if (entryStatus === 'CHASE_RISK' || entryStatus === 'EXTENDED' || includesAny(notes, ['chase', 'telat', 'late', 'extended'])) add('Chase risk after long candle / half-candle debt not paid');
+4599: if (includesAny(notes, ['failed respect', 'gagal respect', 'failed breakout', 'breakout gagal'])) add('Failed respect candle');
+4600: if (includesAny(notes, ['below half', 'close below 1/2', 'close below half', 'reclaim 1/2', 'half candle'])) add('Close below 1/2 candle');
+4605: if (includesAny(notes, ['volatile', 'long candle', 'candle risk', 'doji', 'marubozu']) || Math.abs(toNum(r.change_pct) || 0) >= 5) add('Candle risk / volatile candle');
+4730: if (isWeakOrFailedRespectLabel(respect)) return block('Respect candle Weak/Ignore');
+4731: if (r.respect_invalid_reason) return block('Respect candle invalid: ' + safeTelegramText(r.respect_invalid_reason, 80, 'invalid'));
+4748: if (String(r.half_candle_label || '').toLowerCase().indexOf('valid') >= 0 || includesAny(noteText, ['pullback-to-midpoint valid', 'half-candle level respected'])) addChip('Half-candle respected', 6);
+4836: if (includesAny(allText, ['very high risk', 'extreme risk', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'weak volume', 'volume lemah', 'invalid plan', 'plan invalid', 'trading plan invalid', 'below sl', 'sl kena', 'invalidation hit', 'candle tidak valid', 'invalid candle', 'data rusak berat'])) return false;
+4941: 'candle tidak valid',
+5073: 'candle tidak valid',
+5240: detailed_reason: 'Observed candle high already reached or exceeded TP1.'
+5263: var matchedKeyword = ['hindari','avoid','rejected','reject','failed','fail','tidak lolos final quality gate','below sl','sl kena','invalidation hit','invalidation terlalu dekat','terlalu mepet','rawan noise','riwayat data pendek','reference price','data perdagangan tidak utuh','candle tidak valid','corporate action','perlu validasi ulang','data tidak valid'].find(function(kw) { return statusVerdictText.toLowerCase().indexOf(kw) >= 0; }) || 'reject_keyword';
+5319: if (includesAny(dataQualityText, ['riwayat data pendek','reference price','data perdagangan tidak utuh','candle tidak valid','corporate action','perlu validasi ulang','data tidak valid'])) {
+5505: 'trading plan invalid', 'entry invalid', 'likuiditas', 'respect candle weak', 'distribution volume',
+5585: // Invalid candle / data rusak berat
+5724: async function fetchCombinedScreenerCandidates(supabase, includeExcluded) {
+5741: async function fetchForeignSummary(supabase, ticker) {
+5797: var f = includeForeign ? await fetchForeignConfluence(supabase, r.ticker, r.lastn || r.last_price) : null;
+5811: async function fetchSignalScreenerCandidatesByTicker(supabase, ticker) {
+5833: async function fetchSignalForeignRows(supabase, ticker) {
+5869: delete r.half_candle_level;
+5870: delete r.half_candle_label;
+5871: delete r.half_candle_note;
+5872: delete r.half_candle_chase_risk;
+5873: delete r.half_candle_distance_pct;
+5881: var advancedTiming = /half-candle|1\/2 candle|reclaim 1\/2|failed respect|long candle/i;
+5883: if (r.direction && /long candle|respect candle|half-candle|1\/2 candle/i.test(String(r.direction))) r.direction = 'Pantau setup';
+5884: if (r.notes && /half-candle|1\/2 candle|respect zone|failed respect/i.test(String(r.notes))) r.notes = String(r.notes).replace(/\s*\|?\s*(Entry pullback 1\/2 candle|Pullback-to-midpoint candle|Chase candle \/ extended candle|Failed respect candle)[^|;.]*/gi, '').trim();
+5895: var candidates = await fetchSignalScreenerCandidatesByTicker(supabase, safeTicker);
+5898: var foreignRows = await fetchSignalForeignRows(supabase, safeTicker);
+5915: var foreignRows2 = await fetchSignalForeignRows(supabase, safeTicker);
+5974: var rows = (await fetchCombinedScreenerCandidates(supabase, true)).filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'top10'); }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
+6020: async function fetchChartOhlcRows(supabase, pick, options) {
+6025: // Match the web Chart page data source (/api/candles): Yahoo Finance 1y daily OHLCV.
+6031: var response = await fetch(url, {
+6057: if (rows.length >= 20) return { rows: rows, source: 'Yahoo Finance 1y daily OHLCV (/api/candles parity)' };
+6058: return { rows: rows, source: 'Yahoo Finance 1y daily OHLCV (/api/candles parity)', skipped: true, reason: 'insufficient_historical_ohlc_' + rows.length };
+6210: function makeTop5ChartToken(ticker, ttlSeconds) {
+6213: var exp = Math.floor(Date.now() / 1000) + (ttlSeconds || 900);
+6237: var ohlc = await fetchChartOhlcRows(supabase, { ticker: ticker }, { timeout_ms: 2500 });
+6286: var rows = await fetchCombinedScreenerCandidates(supabase, true);
+6288: var f = await fetchForeignSummary(supabase, rows[i].ticker);
+6401: // Fusion consumes the backfilled daily-candle cache (200 bars, data/daily-candles)
+6402: // via the shared bounded fetcher. Yahoo is allowed to win when reachable so the
+6403: // live intraday bar is included, but the cache absorbs any outage.
+6406: var candles = await screenerCandleSource.fetchScreenerCandles(ticker, { minCandles: 60, range: '180d' });
+6407: return Array.isArray(candles) && candles.length >= 60 ? candles : null;
+6436: var candlesByTicker = {};
+6452: candlesByTicker[ticker] = await buildFusionCandles(ticker);
+6454: candlesByTicker[ticker] = null;
+6455: diagnostics.fusion_errors.push({ ticker: ticker, stage: 'candles', error: String(error && error.message || error).slice(0, 160) });
+6468: var foreignMap = await fetchForeignConfluenceMap(supabase, tickers);
+6494: candlesFor: function (ticker) { return candlesByTicker[ticker] || null; },
+7018: top5RadarCandidates = await fetchCombinedScreenerCandidates(supabase, true);
+7546: async function fetchLatestPriceForMonitor(supabase, ticker, pck) {
+8036: // here — display-only, computed fresh per ticker (in-memory cached), never
+8239: async function fetchRecentSlHitRowsForCooldown(supabase, date, cooldownDays) {
+8266: function(d, cooldownDays) { return fetchRecentSlHitRowsForCooldown(supabase, d, cooldownDays); }
+8780: // Parallelize price fetches for all Top 5 rows (bounded to max 5)
+8781: var priceFetches = rows.map(function(p) { return fetchLatestPriceForMonitor(supabase, p.ticker, p); });
+8782: var priceResults = await Promise.allSettled(priceFetches);
+8807: // No selectDailyTop5, no screener, no preview generation, no cache read.
+9056: // persisted SL never need a live price, and price fetches are deduped per
+9063: if (typeof priceFetcher !== 'function') throw new Error('history_price_fetcher_required');
+9102: var prices = await Promise.allSettled(jobs);
+9130: price_fetch_count: Object.keys(pricePromiseByTicker).length,
+9160: return fetchLatestPriceForMonitor(supabase, r.ticker, r);
+9287: * fetchFreshScreenerLatestPrice() falls through to fetchLivePriceFromVpsSync(),
+9294: var settled = false;
+9296: if (settled) return;
+9297: settled = true;
+9301: if (settled) return;
+9302: settled = true;
+9306: if (settled) return;
+9307: settled = true;
+9325: if (latestPriceResolver && typeof latestPriceResolver.fetchFreshScreenerLatestPrice === 'function') {
+9328: var lp = await withTimeout(latestPriceResolver.fetchFreshScreenerLatestPrice(ticker), 1200);
+9459: const cacheKey = 'market-structure-list:30sep';
+9460: const cached = hotMarketStructureCache.get(cacheKey);
+9461: if (cached) {
+9464: return res.status(200).json(cached);
+9500: hotMarketStructureCache.set(cacheKey, payload, 30 * 1000);
+9967: var px = await fetchLatestPriceForMonitor(supabase, pck.ticker, pck);
+10951: * JSON string left behind by a cache round-trip, a bare array, or a function was
+11176: const quoteData = await fetchNkQuoteData(ticker);
+11196: if (scored.entry_low && scored.stop_loss && scored.tp1 && quoteData.candles && quoteData.candles.length >= 10) {
+11198: var nkRefined = dtEngine.refineLevelsWithRespectZones(nkBaseLvl, quoteData.candles, quoteData.lastPrice || scored.last_price, 'nonkonglo');
+11230: if (quoteData.candles && quoteData.candles.length >= 5) {
+11231: var _nkMtf = idxTick.deriveMultiTimeframeContext(quoteData.candles);
+11241: var _nkLc = quoteData.candles[quoteData.candles.length - 1];
+11260: if (quoteData && quoteData.candles && quoteData.candles.length >= 7) {
+11261: var _nkFibResult = fibConfluence.evaluateFibConfluence(quoteData.candles, {
+11279: // thinner row after runtime ATR/candle structure has been stripped.
+11286: source: { scored: scored, candles: quoteData && quoteData.candles }
+11685: // (support/resistance/ATR/candles) is still available in the batch scorer.
+11764: // --- READ: cached results (login-gated) ---
+11776: // Access verified upstream — return cached NK screener data
+11913: // Builds the Non-Konglo candle series from Yahoo's independent OHLCV arrays.
+11924: // The other Yahoo parsers in this file (fetchScreenerCandles, fetchChartOhlcRows)
+11941: async function fetchNkQuoteData(ticker) {
+11943: // Shared bounded source (Yahoo abort deadline + backfilled local cache).
+11944: // This used to be its own fetch that returned null on timeout with no
+11952: const nkCandles = await screenerCandleSource.fetchScreenerCandles(ticker, { minCandles: 20, range: nkLookbackDays + 'd' });
+12238: const candleBody = Math.abs(lastCandle.close - lastCandle.open);
+12239: const candleRange = lastCandle.high - lastCandle.low;
+12240: const isLargeRed = lastCandle.close < lastCandle.open && candleBody > candleRange * 0.6 && volumeRatioAvg20 >= 1.2;
+12251: const nkClosePosition = candleRange > 0 ? (nkClose - nkLow) / candleRange : 0.5;
+12261: else if (nkUpperShadow > candleBody * 1.5 && nkVolRatio >= 1.5) { nkIsDistribution = true; nkDistributionStrength = nkUpperShadow > candleBody * 2.0 ? 2 : 1; }
+12262: else if (nkUpperShadow > candleBody * 2.0 && nkClosePosition < 0.6) { nkIsDistribution = true; nkDistributionStrength = 1; }
+12265: const nkBodyRatio = candleRange > 0 ? candleBody / candleRange : 0.5;
+12267: const nkIsStrongRejection = nkUpperShadow > candleBody * 2.0 && nkClosePosition < 0.6 && nkVolRatio >= 1.2;
+12274: candles: validDays,
+12330: return candleEngine.detectPattern(validDays.slice(-3), cpCtx);
+12422: // Normal candle — standard volume bonus (slightly reduced)
+12438: if (q.isLargeRed && !q.nkIsDistribution) { score -= 15; components.push('candle distribusi'); }
+12444: if (q.nkIsStrongRejection) { score -= 12; components.push('rejection candle kuat'); }
+12445: else if (q.nkIsDoji) { score -= 5; components.push('candle indecision'); }
+12474: if (_nkCp.pattern === 'Distribution candle') _nkCpScore -= 6;
+12475: if (_nkCp.pattern === 'Rejection candle') _nkCpScore -= 5;
+12476: if (_nkCp.pattern === 'Failed breakout candle') _nkCpScore -= 5;
+12482: if (_nkCpScore > 0) components.push('candle boost reduced (vol rendah)');
+12552: }, q.candles);
+12560: var weeklyTf = weeklyTimeframe.evaluateWeeklyTimeframe(q.candles);
+12727: // V5: Append candle pattern note to statusReason if detected
+13030: // Since multi-candle data is not persisted, we derive 1D context from
+13041: // 1D context from persisted single-candle fields
+13057: else if (volR >= 1.5 && Math.abs(chg) < 1) tf1d = 'Absorption / battle zone (vol tinggi)';
+13155: // Derive 1D candle context from persisted fields
+13421: cache_source: fcaLiveProofSnapshot && fcaLiveProofSnapshot.cache_source || null,
+13538: tf_1d_context: r.daily_candle_context || r.tf_1d_context || null,
+13541: tf_5d_context: r.weekly_candle_context || r.tf_5d_context || null,
+13543: tf_20d_context: r.monthly_candle_context || r.tf_20d_context || null,
+14333: if (includesAny(allText, ['invalid candle', 'candle tidak valid', 'ohlc', 'data broken', 'data rusak', 'invalid trading plan', 'invalid plan', 'plan invalid', 'missing entry', 'missing sl', 'missing tp', 'invalid rr', 'risk reward invalid', 'below sl', 'price below sl', 'sl hit', 'sl kena', 'invalidation hit', 'unknown limits', 'impossible execution', 'tidak realistis', 'butuh harga realistis', 'impossible ara', 'impossible arb', 'stale fatal', 'expired fatal'])) return true;
+14792: // BUG-TEL-PENDING-STRAND: tracks whether finalize already settled the claim
+15102: var tf1 = safeTelegramText(r.tf_1d_context || r.daily_candle_context, 80, '').toLowerCase();
+15103: var tf5 = safeTelegramText(r.tf_5d_context || r.weekly_candle_context, 80, '').toLowerCase();
+15776: // BUG-TEL-PENDING-STRAND: tracks whether finalize already settled the claim
+16146: fetchWithTimeout: fetchWithTimeout,
+16169: fetchLatestPriceForMonitor: fetchLatestPriceForMonitor,
+16238: fetchRecentSlHitRowsForCooldown: fetchRecentSlHitRowsForCooldown,
+
+=== 2. Search PM2 autocuan-web (local-dev-server) for /api routes ===
+472: '/bandarmologi': '/analisis-saham.html',
+478: // opens the intel tab instead of the bandarmologi default.
+480: '/broksum': { tab: 'bandarmologi' },
+481: '/broker-summary': { tab: 'bandarmologi' },
+482: '/bandarmologi': { tab: 'bandarmologi' },
+910: if (pathname.startsWith('/api/')) {
+911: let endpointName = pathname.slice('/api/'.length).replace(/\.js$/, '');
+913: // Alias: /api/track-record -> sector-hot?action=track-record.
+916: endpointName = 'sector-hot';
+917: pathname = '/api/sector-hot';
+1396: if (endpointName === 'sector-hot') {
+1432: if (action === 'bandarmologi') {
+1436: const bandarmologiService = require('../lib/bandarmologi-service');
+1437: const data = await bandarmologiService.getBandarmologiData(ticker, {
+1452: const bandarmologiService = require('../lib/bandarmologi-service');
+1453: const dates = await bandarmologiService.getAvailableDates(ticker);
+1603: if (endpointName === 'sector-hot' && req.query.action === 'bandarmologi' && req.query.ticker) {
+
+=== 3. Check website access log (if any) ===
+/home/ubuntu/.pm2/logs/autocuan-web-out.log exists: true
+  size: 0.17 MB, mtime: 2026-10-16T16:44:58.942Z
+/home/ubuntu/.pm2/logs/autocuan-web-error.log exists: true
+  size: 8.21 MB, mtime: 2026-10-16T16:45:28.329Z
+/home/ubuntu/auto-cuan-runner/logs/web-access.log exists: false
+
+=== 4. Check candle-fetcher caching strategy ===
+8: * Timeout: 20s. Idempotent disk cache + simple daily quota limiter.
+17: // handler, and tests override CANDLE_CACHE_DIR per case.
+19: return process.env.CANDLE_CACHE_DIR || path.join(process.cwd(), 'data', 'daily-candles');
+21: const QUOTA_FILE = process.env.CANDLE_QUOTA_FILE || path.join(process.cwd(), 'data', 'candle-quota.json');
+76: const raw = fs.readFileSync(QUOTA_FILE, 'utf8');
+84: fs.mkdirSync(path.dirname(QUOTA_FILE), { recursive: true });
+85: fs.writeFileSync(QUOTA_FILE, JSON.stringify({ date: todayWibKey(), used: used }));
+90: function getConfiguredDailyQuota() { return Number(process.env.ARJUM_DAILY_QUOTA || 5000); }
+124: const res = await fetch(url, {
+206: const cached = readCache(ticker);
+207: if (cached && cached.candles.length >= MIN_CANDLES) {
+208: return { ok: true, data: cached, from_cache: true, rateLimited: false, status: 200 };
+214: const quota = getConfiguredDailyQuota();
+215: if (used >= quota) return { ok: false, data: null, from_cache: false, rateLimited: true, status: 429, error: 'quota_exhausted' };
+227: * Normalize one cached daily-candle file into the shape the screeners expect:
+233: const cached = readCache(ticker);
+234: if (cached && Array.isArray(cached.candles)) {
+235: const candles = cached.candles.map(function (row) {
+318: * fetch() here, so one unresponsive Yahoo socket hung the whole batch and left
+329: const res = await fetch('https://query2.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
+368: const cached = readScreenerCandles(ticker, minCandles);
+373: return cached;
+378: if (!tryAcquireScreenerHalfOpenProbe()) return cached;
+383: return cached;
+392: return cached;

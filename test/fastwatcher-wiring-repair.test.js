@@ -138,11 +138,11 @@ test('FW-01: production wrapper resolves to the canonical FastWatcher engine, no
   assert.doesNotMatch(executableLines(dispatch), /--mode=fastwatcher/,
     'EOD dispatch must not invoke the obsolete fastwatcher snapshot mode');
 
-  // The cron cadence must remain the 5-minute live-bursa window.
+  // The cron cadence must remain the 5-minute live-bursa window (P2 job-wrapper).
   const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
-  assert.match(cron, /\*\/5 9-15 \* \* 1-5 \/home\/ubuntu\/auto-cuan\/deploy\/vps\/run-fastwatcher\.sh --send/,
+  assert.match(cron, /\*\/5 09-15 \* \* 1-5[\s\S]*?run-fastwatcher\.sh --send/,
     'cron cadence and --send must be preserved');
-});
+ });
 
 test('FW-02: a valid FastWatcher setup in the materialized fixture produces >= 1 confirmed candidate', async () => {
   const root = tempDir();

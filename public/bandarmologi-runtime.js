@@ -2281,23 +2281,34 @@
     return parseInt(p[2], 10) + ' ' + (months[m] || p[1]) + ' ' + p[0];
   }
 
-  function onDateInput(val) {
+  // C5: debounce pemilih Tanggal — ketikan cepat tidak memicu validasi/hitung
+  // berulang; Sabtu/Minggu tetap ditolak (bursa tutup).
+  var bandarDateDebounceTimer = null;
+  function validateBandarDate(val) {
     var statusEl = byId('bandarDateStatus');
-    if (!statusEl) return;
+    if (!statusEl) return false;
     if (!val) {
       statusEl.textContent = 'Pilih tanggal dulu.';
       statusEl.className = 'neg';
-      return;
+      return false;
     }
     var d = new Date(val + 'T12:00:00Z');
     var w = d.getUTCDay();
     if (w === 0 || w === 6) {
       statusEl.textContent = formatIndoDate(val) + ' akhir pekan, bursa tutup.';
       statusEl.className = 'neg';
-      return;
+      return false;
     }
     statusEl.textContent = 'Siap hitung ulang';
     statusEl.className = 'mut';
+    return true;
+  }
+  function onDateInput(val) {
+    if (bandarDateDebounceTimer) { try { clearTimeout(bandarDateDebounceTimer); } catch (_) {} }
+    bandarDateDebounceTimer = setTimeout(function() {
+      bandarDateDebounceTimer = null;
+      validateBandarDate(val);
+    }, 250);
   }
 
   function recalculateFlow() {
@@ -4407,7 +4418,7 @@
       var fill = (n.t === 'e') ? (isSel ? '#315F9A' : '#E9EFF6') : ((n.t === 'h') ? (isSel ? '#94602B' : '#F4EDE4') : (isSel ? '#7357A6' : '#EFEBF6'));
       var stroke = isSel ? '#0F7458' : C[n.t];
 
-      svgNodes += '<g class="node' + (isLinked ? '' : ' dim') + '" onclick="BandarmologiRuntime.selectInsiderNode(\'' + escapeHtml(key) + '\')">';
+      svgNodes += '<g class="node' + (isLinked ? '' : ' dim') + '" tabindex="0" role="button" aria-label="Sorot relasi ' + escapeHtml(key) + '" onclick="BandarmologiRuntime.selectInsiderNode(\'' + escapeHtml(key) + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();BandarmologiRuntime.selectInsiderNode(\'' + escapeHtml(key) + '\')}">';
       if (isP) {
         svgNodes += '<circle class="nb" cx="' + n.x + '" cy="' + n.y + '" r="' + (isSel ? 15 : 12) + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="2"/>';
       } else {
@@ -5147,7 +5158,7 @@
 
       // Prepare Canvas Sinyal Intelijen Representation
       var effectiveDate = intelObj.effective_date || intelObj.evaluated_at || (bandarIntelData && bandarIntelData.as_of_date) || '';
-      var shortDate = '13 Okt';
+      var shortDate = '';
       if (effectiveDate) {
         try {
           var dObj = new Date(effectiveDate);
@@ -5574,16 +5585,9 @@
       var summary = scanData.summary || {};
       var indexes = scanData.indexes || {};
 
-      var staticScanList = [
-        { t: 'BBCA', s: 'Konfluensi akumulasi tinggi', n: 4, f: '+Rp 412 M', fp: 1, v: '1,4×', r: '58,4', fr: '13 Okt' },
-        { t: 'BRPT', s: 'Akumulasi + breakout', n: 4, f: '+Rp 112 M', fp: 1, v: '2,8×', r: '62,8', fr: '13 Okt' },
-        { t: 'MEDC', s: 'Momentum + asing', n: 3, f: '+Rp 89 M', fp: 1, v: '3,2×', r: '66,2', fr: '13 Okt' },
-        { t: 'BMRI', s: 'Rebound teknikal', n: 3, f: '+Rp 54 M', fp: 1, v: '1,9×', r: '54,1', fr: '13 Okt' },
-        { t: 'AMMN', s: 'Akumulasi broker', n: 2, f: '+Rp 90 M', fp: 1, v: '0,7×', r: '53,8', fr: '13 Okt' },
-        { t: 'TLKM', s: 'Rebound oversold', n: 2, f: '−Rp 146 M', fp: -1, v: '0,9×', r: '34,6', fr: '13 Okt' },
-        { t: 'ADRO', s: 'Support rebound', n: 2, f: '+Rp 12 M', fp: 1, v: '1,1×', r: '48,9', fr: '10 Okt' },
-        { t: 'BREN', s: 'Akumulasi asing', n: 2, f: '+Rp 29 M', fp: 1, v: '0,8×', r: '35,3', fr: '10 Okt' }
-      ];
+      // No canvas sample rows: the scanner sheet lists live server confluence
+      // results only, so no invented tickers, flow, or freshness dates.
+      var staticScanList = [];
 
       // Primary Canvas Scanner Sheet
       html += '<section class="sheet swap" style="margin-top:16px">';

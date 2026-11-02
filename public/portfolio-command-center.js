@@ -327,6 +327,8 @@
     if (mount && !mount.contains(event.target)) return;
     var tickerButton = event.target.closest('[data-open-ticker]');
     if (tickerButton) return openTickerDrawer(tickerButton.getAttribute('data-open-ticker'));
+    var editBtn = event.target.closest('[data-edit-plan]');
+    if (editBtn) return editPlan(editBtn.getAttribute('data-edit-plan'));
     var remove = event.target.closest('[data-delete-plan]');
     if (remove) return deletePlan(remove.getAttribute('data-delete-plan'));
     var budgetUse = event.target.closest('[data-budget-use]');
@@ -607,6 +609,21 @@
     ['ownedTicker','ownedEntry','ownedLots','ownedStop','ownedTp1','ownedTp2'].forEach(function (id) { $(id).value = ''; }); captureSnapshot();
   }
 
+  // C7: muat rencana tersimpan ke tab Rencana posisi untuk diubah (kanvas: Ubah rencana).
+  function editPlan(id) {
+    var plan = state.plans.find(function (row) { return String(row.id) === String(id); });
+    if (!plan) return;
+    openTab('planner');
+    if ($('ticker')) $('ticker').value = plan.ticker || '';
+    if ($('entry')) $('entry').value = plan.entryPriceIdr != null ? plan.entryPriceIdr : '';
+    if ($('stop')) $('stop').value = plan.stopLossIdr != null ? plan.stopLossIdr : '';
+    if ($('tp1')) $('tp1').value = plan.tp1Idr != null ? plan.tp1Idr : '';
+    if ($('tp2')) $('tp2').value = plan.tp2Idr != null ? plan.tp2Idr : '';
+    if ($('capital')) $('capital').value = plan.capitalIdr || $('capital').value;
+    toast('Rencana ' + plan.ticker + ' dimuat ke Rencana posisi. Ubah rencana lalu simpan.');
+    if ($('stop')) $('stop').focus();
+  }
+
   function renderWatch() {
     var summary = Model.summarize(state.plans, state.prices);
     if (!summary.plans.length) { show('watchEmpty'); hide('watchTable'); $('watchCards').innerHTML = ''; return; }
@@ -615,10 +632,13 @@
       var current = num(state.prices[plan.ticker]); var status = Model.planStatus(plan, current);
       var pnl = current && plan.entryPriceIdr ? (current - plan.entryPriceIdr) * plan.lots * 100 : null;
       var pnlPct = current && plan.entryPriceIdr ? ((current - plan.entryPriceIdr) / plan.entryPriceIdr) * 100 : null;
-      return { plan:plan, current:current, status:status, pnl:pnl, pnlPct:pnlPct };
+      var exposure = plan.entryPriceIdr && plan.lots ? plan.entryPriceIdr * plan.lots * 100 : null;
+      var curVal = current && plan.lots ? current * plan.lots * 100 : null;
+      var slPos = plan.stopLossIdr && plan.tp1Idr && current ? Math.max(0, Math.min(100, (current - plan.stopLossIdr) / (plan.tp1Idr - plan.stopLossIdr) * 100)) : 0;
+      return { plan:plan, current:current, status:status, pnl:pnl, pnlPct:pnlPct, exposure:exposure, curVal:curVal, slPos:slPos };
     });
-    $('watchBody').innerHTML = rows.map(function (row) { var p=row.plan; var pnlText = row.pnl !== null ? money(row.pnl) + (row.pnlPct !== null ? ' (' + (row.pnlPct > 0 ? '+' : '') + row.pnlPct.toFixed(2) + '%)' : '') : '—'; return '<tr><td><button class="ticker-link" data-open-ticker="'+p.ticker+'">'+p.ticker+'</button></td><td><span class="pill '+row.status.tone+'">'+escapeHtml(row.status.label)+'</span></td><td class="tabular-nums lining-nums">'+p.lots+' lot</td><td class="tabular-nums lining-nums">'+money(p.entryPriceIdr)+'</td><td class="tabular-nums lining-nums">'+money(row.current)+'</td><td class="'+pnlClass(row.pnl)+' font-semibold tabular-nums lining-nums">'+pnlText+'</td><td class="tabular-nums lining-nums">'+money(p.stopLossIdr)+'</td><td class="tabular-nums lining-nums">'+money(p.tp1Idr)+' / '+money(p.tp2Idr)+'</td><td><div class="row-actions"><button class="btn small" data-journal-ticker="'+p.ticker+'">Jurnal</button><button class="btn small danger" data-delete-plan="'+escapeHtml(p.id)+'">Hapus</button></div></td></tr>'; }).join('');
-    $('watchCards').innerHTML = rows.map(function (row) { var p=row.plan; var pnlText = row.pnl !== null ? money(row.pnl) + (row.pnlPct !== null ? ' (' + (row.pnlPct > 0 ? '+' : '') + row.pnlPct.toFixed(2) + '%)' : '') : '—'; return '<div class="position-card"><div class="position-card-head"><button class="ticker-link" data-open-ticker="'+p.ticker+'">'+p.ticker+'</button><span class="pill '+row.status.tone+'">'+escapeHtml(row.status.label)+'</span></div><div class="position-card-grid"><div><span>Harga</span><b>'+money(row.current)+'</b></div><div><span>P/L</span><b class="'+pnlClass(row.pnl)+'">'+pnlText+'</b></div><div><span>Entry</span><b>'+money(p.entryPriceIdr)+'</b></div><div><span>Stop</span><b>'+money(p.stopLossIdr)+'</b></div></div><div class="actions"><button class="btn small" data-journal-ticker="'+p.ticker+'">Jurnal</button><button class="btn small danger" data-delete-plan="'+escapeHtml(p.id)+'">Hapus</button></div></div>'; }).join('');
+    $('watchBody').innerHTML = rows.map(function (row) { var p=row.plan; var pnlText = row.pnl !== null ? money(row.pnl) + (row.pnlPct !== null ? ' (' + (row.pnlPct > 0 ? '+' : '') + row.pnlPct.toFixed(2) + '%)' : '') : '—'; var pctText = row.pnlPct !== null ? ((row.pnlPct > 0 ? '+' : '') + row.pnlPct.toFixed(2) + '%') : '—'; return '<tr><td><button class="ticker-link" data-open-ticker="'+p.ticker+'">'+p.ticker+'</button></td><td class="tabular-nums lining-nums">'+p.lots+' lot</td><td class="tabular-nums lining-nums">Harga beli ' + money(p.entryPriceIdr) + '</td><td class="tabular-nums lining-nums">Harga kini ' + money(row.current) + '</td><td class="tabular-nums lining-nums">Nilai posisi ' + money(row.curVal != null ? row.curVal : row.exposure) + '</td><td class="'+pnlClass(row.pnl)+' font-semibold tabular-nums lining-nums">'+pnlText+'</td><td class="'+pnlClass(row.pnl)+' tabular-nums lining-nums">P/L % ' + pctText + '</td><td><div style="display:flex;gap:8px;align-items:center;font-size:11px"><span>SL ' + money(p.stopLossIdr) + '</span><div class="rng" style="flex:1;min-width:80px;height:6px;border-radius:3px;background:var(--ac-hover,#e5e7eb)"><b style="display:block;width:3px;height:14px;margin-top:-4px;margin-left:' + row.slPos.toFixed(1) + '%"></b></div><span>TP1 ' + money(p.tp1Idr) + '</span></div></td><td><div class="row-actions"><button class="btn small" data-edit-plan="'+escapeHtml(p.id)+'" aria-label="Ubah rencana '+escapeHtml(p.ticker)+' di Rencana posisi">Ubah rencana</button><button class="btn small" data-journal-ticker="'+p.ticker+'">Jurnal</button><button class="btn small danger" data-delete-plan="'+escapeHtml(p.id)+'">Hapus</button></div></td></tr>'; }).join('');
+    $('watchCards').innerHTML = rows.map(function (row) { var p=row.plan; var pnlText = row.pnl !== null ? money(row.pnl) + (row.pnlPct !== null ? ' (' + (row.pnlPct > 0 ? '+' : '') + row.pnlPct.toFixed(2) + '%)' : '') : '—'; return '<div class="position-card"><div class="position-card-head"><button class="ticker-link" data-open-ticker="'+p.ticker+'">'+p.ticker+'</button><span class="pill '+row.status.tone+'">'+escapeHtml(row.status.label)+'</span></div><div class="position-card-grid"><div><span>Harga kini</span><b>'+money(row.current)+'</b></div><div><span>Nilai posisi</span><b>'+money(row.curVal != null ? row.curVal : row.exposure)+'</b></div><div><span>P/L</span><b class="'+pnlClass(row.pnl)+'">'+pnlText+'</b></div><div><span>Entry</span><b>'+money(p.entryPriceIdr)+'</b></div><div><span>Stop</span><b>'+money(p.stopLossIdr)+'</b></div></div><div class="actions"><button class="btn small" data-edit-plan="'+escapeHtml(p.id)+'" aria-label="Ubah rencana '+escapeHtml(p.ticker)+' di Rencana posisi">Ubah rencana</button><button class="btn small" data-journal-ticker="'+p.ticker+'">Jurnal</button><button class="btn small danger" data-delete-plan="'+escapeHtml(p.id)+'">Hapus</button></div></div>'; }).join('');
   }
 
   function deletePlan(id) { state.plans = state.plans.filter(function (plan) { return String(plan.id) !== String(id); }); persistPlans(); captureSnapshot(); }

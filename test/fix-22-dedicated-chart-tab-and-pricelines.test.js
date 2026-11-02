@@ -20,21 +20,24 @@ const crypto = require('crypto');
 const ROOT = path.resolve(__dirname, '..');
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
-test('FIX-22: public/index.html exposes a first-class #tabChartWorkstation sidebar entry', () => {
+test('FIX-22: public/index.html exposes Chart Workstation as first-class lens (C1 19-menu contract)', () => {
   const html = read('public/index.html');
 
-  assert.match(html, /id="tabChartWorkstation"/, 'sidebar must expose #tabChartWorkstation');
-  assert.match(html, /Chart Workstation/, 'the entry must be labelled "Chart Workstation"');
+  // C1 (Handoff §4.3): sidebar tepat 19 menu — Chart Workstation BUKAN menu sidebar
+  // duplikat, melainkan lens first-class via Analisis & Chart > subtab Chart Workstation.
+  assert.match(html, /id="tabChartWorkstationLens"/, 'lens must expose #tabChartWorkstationLens');
+  assert.match(html, /Chart Workstation/, 'the lens must be labelled "Chart Workstation"');
   assert.match(
     html,
-    /id="tabChartWorkstation"[^>]*data-sidebar-page="chart"|id="tabChartWorkstation"[\s\S]{0,400}data-sidebar-page="chart"/,
-    'the chart entry must carry data-sidebar-page="chart"'
+    /id="tabChartWorkstationLens"[^>]*data-sidebar-page="chart"|id="tabChartWorkstationLens"[\s\S]{0,400}data-sidebar-page="chart"/,
+    'the lens entry must carry data-sidebar-page="chart"'
   );
   assert.match(
     html,
-    /id="tabChartWorkstation"[\s\S]{0,400}data-tab="chart"/,
-    'the chart entry must carry data-tab="chart"'
+    /id="tabChartWorkstationLens"[\s\S]{0,400}data-tab="chart"/,
+    'the lens entry must carry data-tab="chart"'
   );
+  assert.match(html, /switchAnalisisSubTab\('chart'\)/, 'the lens must route through switchAnalisisSubTab(chart)');
 
   // The pre-existing analysis entry must remain intact (backward compatible).
   assert.match(html, /id="tabAnalisisChart"/, '#tabAnalisisChart must NOT be removed');

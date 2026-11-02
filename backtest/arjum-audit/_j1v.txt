@@ -1,0 +1,23 @@
+start=2026-10-23 20:21:54 WIB
+quota_before={"date":"2026-10-23","used":14700,"updated_at":"2026-10-23T12:40:01.180Z"}
+[ARJUM-LOCK] J1 merebut lock basi/yatim dan mencoba lagi.
+[ARJUM-LOCK] J1 memegang lock bersama (/home/ubuntu/auto-cuan-runner/state/arjum-api.lock).
+=== AUTO-CUAN DAILY BROKER UPDATE (Bagian 3) ===
+Target Date (WIB): 2026-10-23
+Total Tickers: 962
+Mode: LIVE
+Daily Quota: 18080 | Already used today (cross-process, all scripts): 14700
+----------------------------------------------------
+(node:691425) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+Trading day check: OK (calendar source: db)
+[VPS-FETCHER][WARN] bridge live-price ABBA degraded: bridge_no_data(http_status_200); duration=98ms
+[VPS-FETCHER][WARN] bridge live-price ADCP degraded: bridge_no_data(http_status_200); duration=97ms
+[VPS-FETCHER][WARN] bridge live-price ALMI degraded: bridge_no_data(http_status_200); duration=96ms
+[VPS-FETCHER][WARN] bridge live-price ALTO degraded: bridge_no_data(http_status_200); duration=96ms
+[VPS-FETCHER][WARN] bridge live-price ARKA degraded: bridge_no_data(http_status_200); duration=95ms
+[VPS-FETCHER][WARN] bridge live-price ARTI degraded: bridge_no_data(http_status_200); duration=97ms
+[VPS-FETCHER][WARN] bridge live-price BATA degraded: bridge_no_data(http_status_200); duration=98ms
+[VPS-FETCHER][WARN] bridge live-price BEBS degraded: bridge_no_data(http_status_200); duration=96ms
+[VPS-FETCHER][WARN] bridge live-price BHAT degraded: bridge_no_data(http_status_200); duration=99ms
+[VPS-FETCHER][WARN] bridge live-price BIMA degraded: bridge_no_data(http_status_200); duration=96ms

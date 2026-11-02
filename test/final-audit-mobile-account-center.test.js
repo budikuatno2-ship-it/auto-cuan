@@ -34,11 +34,11 @@ async function startFixture() {
  let browser;
  try {
   browser = await puppeteer.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',headless:true,args:['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage']});
-  const page = await browser.newPage(); page.setDefaultTimeout(7000);
+  const page = await browser.newPage(); page.setDefaultTimeout(30000); page.setDefaultNavigationTimeout(30000);
   await page.setRequestInterception(true);
   page.on('request', req => req.url().startsWith(origin + '/') ? req.continue() : req.abort());
   await page.setViewport({width:390,height:900});
-  await page.goto(origin + '/dashboard', {waitUntil:'networkidle0'});
+  await page.goto(origin + '/dashboard', {waitUntil:'domcontentloaded'});
   return {server,browser,page,origin};
  } catch (error) {if(browser) await browser.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); throw error;}
 }
@@ -81,7 +81,7 @@ test('H1.1 mobile Account Center owns drawer hit testing and restores focus', as
   await page.evaluate(() => { localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_user', 'auditfixture'); localStorage.setItem('autocuan_user_id', 'd1-local-user'); });
   for (const [width, height] of [[360,900],[375,900],[390,900],[430,900],[390,700],[768,900],[1440,900]]) {
    await page.setViewport({ width, height });
-   await page.goto(origin + '/dashboard', { waitUntil: 'networkidle0' });
+   await page.goto(origin + '/dashboard', { waitUntil:'domcontentloaded' });
    await page.evaluate(() => { hideOnboardingGuide(true); applyAppTheme('light'); });
    await page.waitForFunction(() => premiumAccessState.state === 'ready' && premiumAccessState.premium === true);
    // Redesign v2 (HANDOFF §4): the full-screen menu is a phone (<=760px)

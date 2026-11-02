@@ -57,8 +57,12 @@ test('B2: a vendor header can only LOWER the limit, never replace the configured
 });
 
 test('B2: the old "header wins outright" behaviour is gone from the source', () => {
+  // P1/Q1: min-cap header-vs-plan kini di lib/quota-state.js resolveEffectiveLimit
+  // (Math.min(plan, upstream)); arjum-client mendelegasikan ke sana.
+  const qs = read('lib/quota-state.js');
+  assert.match(qs, /Math\.min\(plan, Math\.floor\(Number\(upstream\)\)\)/);
   const src = read('lib/arjum-client.js');
-  assert.match(src, /Math\.min\(plan, lastObservedVendorLimit\)/);
+  assert.match(src, /resolveEffectiveLimit/);
   assert.match(src, /function getConfiguredPlanLimit\(\)/);
 });
 
@@ -113,13 +117,12 @@ test('B3: the alarm message names the job and carries no secrets', () => {
   assert.doesNotMatch(msg, /token|secret|168\.\d|password/i);
 });
 
-test('B1: backfill cron lines are configured with appropriate modes', () => {
+test('B1: P2 quota-burn estafet lines exist (day/weekend/late)', () => {
   const cron = read('deploy/vps/final-schedule.cron');
-  // Candle backfill is paused with DIJEDA marker
-  assert.match(cron, /# 5 0 \* \* \* .*backfill-historical-candles\.js/);
-  // Broksum backfill lines are restored with weekday and weekend modes
-  const activeBroksum = cron.split('\n').filter((l) => /^\s*\d/.test(l) && /backfill-broksum\.js/.test(l));
-  assert.ok(activeBroksum.length >= 4, 'active broksum backfill lines must exist');
-  assert.match(cron, /backfill-broksum\.js --mode=weekday/);
-  assert.match(cron, /backfill-broksum\.js --mode=weekend/);
+  // P2 (2026-10-30): penyerapan sisa kuota via quota-burn.js estafet
+  // siang/malam/weekend — bukan backfill-broksum --mode lama.
+  // (backfill-historical-candles tidak lagi dijadwalkan di P2; tidak diassert.)
+  assert.match(cron, /quota-burn-day.*--floor 3000/);
+  assert.match(cron, /quota-burn-weekend.*--floor 50/);
+  assert.match(cron, /quota-burn-night-2245.*--floor 200/);
 });

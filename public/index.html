@@ -132,7 +132,9 @@
 <script src="/viewport-runtime.js?v=20260929-v1" defer></script>
 <script src="/ac-icons.js?v=20261020-v1" defer></script>
 <script src="/ac-states.js?v=20261020-v1" defer></script>
+<script src="/c10-fetch-guard.js?v=20261101-v1" defer></script>
 <script src="/lifecycle-polling-guard.js?v=20261014-v1"></script>
+<link rel="stylesheet" href="/c10-hardening.css?v=20261101-v1">
 <link rel="stylesheet" href="/account-hardening.css?v=20261001-v1">
 </head>
 <body class="min-h-screen text-gray-100">
@@ -262,8 +264,8 @@
   <nav class="landing-nav" aria-label="Navigasi utama">
     <div class="landing-container">
       <button type="button" onclick="showLandingPage()" class="landing-brand text-left" aria-label="Auto-Cuan, halaman utama">
-        <span class="landing-logo" aria-hidden="true"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 17l6-6 4 4 6-9M14 6h6v6"/></svg></span>
-        <span><span class="block font-semibold">Auto-Cuan</span><span class="block text-xs">IDX Workspace</span></span>
+        <span class="landing-logo" aria-hidden="true"><svg width="20" height="20" fill="none" stroke="#34D399" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M4 17l6-6 4 4 6-9M14 6h6v6"/></svg></span>
+        <span class="font-bold text-base tracking-tight text-white">Auto-Cuan</span>
       </button>
       <div id="landingMenu" class="landing-menu items-center" aria-label="Jelajahi Auto-Cuan">
         <a href="#landingMarket">Pasar</a>
@@ -274,11 +276,11 @@
         <a href="#landingMonitor">Monitoring</a>
         <a href="#landingTrust">Integritas Data</a>
         <button type="button" onclick="openLoginModal()" class="landing-link">Masuk</button>
-        <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary landing-menu-cta"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&#8599;</span></button>
+        <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary landing-menu-cta"><span class="landing-cta-label">Daftar dengan Gmail</span><span aria-hidden="true">&#8599;</span></button>
       </div>
       <div class="landing-nav-actions">
         <button type="button" id="landingThemeToggle" onclick="toggleAppTheme()" class="landing-icon-button" aria-label="Ganti tema" title="Ganti tema"><span id="landingThemeIcon" aria-hidden="true">&#9680;</span></button>
-        <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&#8599;</span></button>
+        <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Daftar dengan Gmail</span><span aria-hidden="true">&#8599;</span></button>
         <button type="button" id="landingMenuToggle" class="landing-icon-button" aria-controls="landingMenu" aria-expanded="false" aria-label="Buka menu navigasi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       </div>
     </div>
@@ -322,8 +324,8 @@
           <h1 id="landingTitle">Baca pasar.<br>Susun rencana.<br><span>Jaga konteks.</span></h1>
           <p class="landing-hero-lead">Auto-Cuan menyatukan riset saham, struktur kepemilikan pasar, portofolio mandiri, dan konfluensi bukti dalam satu meja kerja yang tenang. Tidak ada angka sintetis saat data bursa belum tersedia.</p>
           <div class="landing-mobile-wrap landing-hero-actions">
-            <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&#8599;</span></button>
-            <a href="#landingMarket" class="landing-btn">Jelajahi Alur Riset <span aria-hidden="true">&#8595;</span></a>
+            <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Daftar dengan Gmail</span><span aria-hidden="true">&#8599;</span></button>
+            <a href="#landingCalculatorWrap" class="landing-btn">Coba kalkulator <span aria-hidden="true">&#8595;</span></a>
           </div>
           <div class="landing-proof-row" aria-label="Prinsip produk">
             <span><b>01</b> Sumber data transparan</span>
@@ -342,11 +344,15 @@
               <span class="preview-dot"></span>
             </div>
             <span class="preview-sample-pill" aria-label="Indikator data contoh"><span class="preview-sample-dot" aria-hidden="true"></span> DATA CONTOH &middot; PRATINJAU STATIS</span>
-            <div class="landing-preview-tabs" role="tablist" aria-label="Pilihan saham pratinjau">
-              <span class="preview-tab active" role="tab" aria-selected="true">BBRI &middot; Bank Rakyat Indonesia</span>
-              <span class="preview-tab" role="tab" aria-selected="false">BMRI</span>
-              <span class="preview-tab" role="tab" aria-selected="false">TLKM</span>
-              <span class="preview-tab" role="tab" aria-selected="false">ASII</span>
+            <div class="landing-preview-tabs" role="tablist" aria-label="Pratinjau produk: Dashboard, Screener, Bandarmologi">
+              <button type="button" class="preview-tab active" role="tab" aria-selected="true" data-c3prev="dashboard" onclick="acSwitchPreview('dashboard')">Dashboard</button>
+              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3prev="screener" onclick="acSwitchPreview('screener')">Screener</button>
+              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3prev="bandarmologi" onclick="acSwitchPreview('bandarmologi')">Bandarmologi</button>
+            </div>
+            <div class="landing-preview-subtabs" role="tablist" aria-label="Sub-tab Screener: Konglo, Non-Konglo, Day Trade" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+              <button type="button" class="preview-tab active" role="tab" aria-selected="true" data-c3sub="konglo" onclick="acSwitchPreviewSub('konglo')">Konglo</button>
+              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="nonkonglo" onclick="acSwitchPreviewSub('nonkonglo')">Non-Konglo</button>
+              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="daytrade" onclick="acSwitchPreviewSub('daytrade')">Day Trade</button>
             </div>
             <div class="landing-preview-meta">
               <span class="preview-status-badge">Ilustrasi Komponen Meja Kerja</span>
@@ -464,7 +470,7 @@
         <div><b>2.907</b><span>sampel uji walk-forward lintas bursa untuk rentang harga</span></div>
         <div><b>77%</b><span>harga 10 hari kemudian jatuh di rentang p10-p90 (target 80%)</span></div>
       </div>
-      <p class="landing-hero-note" style="margin-top:14px">Sumber: cakupan candle harian bursa per 16 Okt 2026; uji walk-forward Dua Skenario v2 (seed 42, out-of-sample). Uji arah tidak lolos, karena itu yang ditampilkan hanya rentang.</p>
+      <p class="landing-hero-note" style="margin-top:14px">Sumber: cakupan candle harian bursa per data bursa terkini; uji walk-forward Dua Skenario v2 (seed 42, out-of-sample). Uji arah tidak lolos, karena itu yang ditampilkan hanya rentang.</p>
     </div>
 
     <!-- SECTION 1: MARKET CONTEXT -->
@@ -594,7 +600,7 @@
                 <input type="range" id="lpCalcRisk" min="0.25" max="3" step="0.25" value="1.0" oninput="window.acUpdateLandingCalc()" aria-label="Risiko per trade dalam persen">
               </div>
               <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;font-size:12px;margin-top:16px;border-top:1px solid var(--lp-line);padding-top:12px">
-                <div><div style="font-size:11px;color:var(--lp-muted)">Entry</div><b style="font-family:monospace">1.210</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">Entry</div><b style="font-family:monospace">0</b></div>
                 <div><div style="font-size:11px;color:var(--lp-muted)">SL</div><b style="font-family:monospace;color:#dc2626">1.135</b></div>
                 <div><div style="font-size:11px;color:var(--lp-muted)">TP1</div><b style="font-family:monospace;color:#16a34a">1.325</b></div>
                 <div><div style="font-size:11px;color:var(--lp-muted)">TP2</div><b style="font-family:monospace;color:#16a34a">1.420</b></div>
@@ -612,7 +618,7 @@
               <div class="rng-bar" aria-label="Rentang wajar 10 hari dengan posisi entry, SL, dan target">
                 <div class="band"></div>
                 <div class="mk" style="left:8.8%"><i></i>SL 1.135</div>
-                <div class="mk up" style="left:21.9%"><i></i>Entry 1.210</div>
+                <div class="mk up" style="left:21.9%"><i></i>Entry</div>
                 <div class="mk up" style="left:42.1%"><i></i>TP1 1.325</div>
                 <div class="mk up" style="left:58.8%"><i></i>TP2 1.420</div>
                 <div class="mk" style="left:0%"><i></i>p10 1.030</div>
@@ -840,7 +846,7 @@
         <h2 id="landingClosingTitle">Meja kerja tenang untuk<br>keputusan investasi yang sadar.</h2>
         <p class="landing-closing-lead">Masuk ke workstation Auto-Cuan untuk meneliti saham Bursa Efek Indonesia secara terstruktur dan terukur.</p>
         <div class="landing-closing-actions">
-          <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&#8599;</span></button>
+          <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Daftar dengan Gmail</span><span aria-hidden="true">&#8599;</span></button>
         </div>
       </div>
     </section>
@@ -931,7 +937,7 @@
 
 <!-- LOGIN MODAL -->
 <div id="loginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
-    <div class="w-full max-w-[440px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
+    <div class="w-full max-w-[420px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
         <div class="flex items-start justify-between gap-3">
             <div>
                 <span class="w-[30px] h-[30px] rounded-lg bg-[#1D2724] border border-emerald-500/30 flex items-center justify-center mb-3 text-emerald-400">
@@ -967,7 +973,7 @@
 
 <!-- REGISTER MODAL -->
 <div id="registerModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle">
-    <div class="w-full max-w-[480px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
+    <div class="w-full max-w-[420px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
         <div class="flex items-start justify-between gap-3">
             <div>
                 <h3 id="registerModalTitle" class="text-xl font-bold tracking-tight text-white m-0">Daftar akun baru</h3>
@@ -1061,7 +1067,7 @@
 
 <!-- SELF-SERVICE RESET PASSWORD MODAL -->
 <div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="selfResetModalTitle">
-    <div class="w-full max-w-[460px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
+    <div class="w-full max-w-[420px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
         <div class="flex items-start justify-between gap-3">
             <div>
                 <h3 id="selfResetModalTitle" class="text-xl font-bold tracking-tight text-white m-0">Pulihkan password</h3>
@@ -1081,6 +1087,18 @@
                 <label for="selfResetUsername" class="block text-xs font-semibold text-gray-300 mb-1">Gmail atau username</label>
                 <input type="text" id="selfResetUsername" name="username" autocomplete="username" placeholder="nama@gmail.com atau username" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
                 <p class="text-[11px] text-gray-500 mt-1">Kode verifikasi dikirim ke Telegram yang sudah tertaut, bukan ke email.</p>
+            </div>
+            <div id="selfResetOtpFields" class="space-y-2">
+                <label class="block text-xs font-semibold text-gray-300">Masukkan 6 digit kode</label>
+                <div class="grid grid-cols-6 gap-2" id="selfResetOtpGrid" role="group" aria-label="Kode OTP 6 digit">
+                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="0" aria-label="Digit 1" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
+                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="1" aria-label="Digit 2" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
+                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="2" aria-label="Digit 3" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
+                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="3" aria-label="Digit 4" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
+                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="4" aria-label="Digit 5" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
+                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="5" aria-label="Digit 6" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
+                </div>
+                <p class="text-[11px] text-gray-500">Tempel 6 digit sekaligus atau ketik per digit — fokus pindah otomatis.</p>
             </div>
             <div id="selfResetPwFields" class="space-y-3 hidden">
                 <div>
@@ -1115,7 +1133,7 @@ html.light #googleCompleteProfileModal input {
 }
 </style>
 <div id="googleCompleteProfileModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="googleProfileModalTitle">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+    <div class="w-full max-w-[420px] rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
         <div class="flex items-center justify-between">
             <h3 id="googleProfileModalTitle" class="text-base font-bold text-white">Lengkapi Profil Auto-Cuan</h3>
             <button onclick="closeGoogleProfileModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal">&times;</button>
@@ -1271,10 +1289,7 @@ html.light #googleCompleteProfileModal input {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>
                 <span class="sidebar-label">Analisis &amp; Chart</span>
             </button>
-            <button id="tabChartWorkstation" type="button" onclick="navigateTo('analisis', 'chart')" class="sidebar-item" data-sidebar-page="chart" data-analysis-tab="chart" data-tab="chart" data-label="Chart Workstation" title="Chart Workstation">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16M4 15l4-6 4 4 6-8"/></svg>
-                <span class="sidebar-label">Chart Workstation</span>
-            </button>
+            <!-- C1: Chart Workstation bukan menu sidebar (19 menu Handoff §4.3). Akses via Analisis & Chart > subtab Chart Workstation. Tombol duplikat dihapus permanen. -->
             <button id="tabBandarmologi" type="button" onclick="navigateTo('analisis', 'bandarmologi')" class="sidebar-item" data-sidebar-page="bandarmologi" data-analysis-tab="bandarmologi" data-tab="bandarmologi" data-label="Bandarmologi" title="Bandarmologi">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
                 <span class="sidebar-label">Bandarmologi</span>
@@ -1536,9 +1551,10 @@ html.light #googleCompleteProfileModal input {
         <div id="dashAdminNotesList" class="an-grid" style="padding:16px 20px 20px"></div>
     </section>
 
-    <!-- Compact Top 5 + Monitor -->
+    <!-- Compact Top 5 + Monitor (C4: tab Konglo/Non-Konglo/Day Trade data riil screener) -->
     <section class="sheet rise d3" aria-labelledby="dashRadarTitle">
         <div class="sec-h"><h2 id="dashRadarTitle">Top 5 Radar Hari Ini</h2><p id="dashboardTop5LockNote" class="sec-h-note">Belum ada Top 5 final yang terkunci.</p></div>
+        <div class="dash-top5-tabs segx n3" role="tablist" aria-label="Top 5 per mode screener"><span class="ind" id="dashTop5Ind"></span><button type="button" id="dashTop5TabKonglo" class="on" role="tab" aria-selected="true" aria-pressed="true" onclick="switchDashTop5('konglo')">Konglo</button><button type="button" id="dashTop5TabNonKonglo" role="tab" aria-selected="false" aria-pressed="false" onclick="switchDashTop5('nonkonglo')">Non-Konglo</button><button type="button" id="dashTop5TabDayTrade" role="tab" aria-selected="false" aria-pressed="false" onclick="switchDashTop5('daytrade')">Day Trade</button></div>
         <div id="dashboardTop5List" class="dash-top5">
             <div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p></div>
         </div>
@@ -1609,7 +1625,7 @@ html.light #googleCompleteProfileModal input {
                     </label>
                     <span class="mut" id="sektorCounts" style="font-size:12px">10 grup · 54 emiten dipantau</span>
                     <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
-                        <span class="chip" id="sektorSubtitle">Diperbarui 13 Okt, 16.10 WIB</span>
+                        <span class="chip" id="sektorSubtitle">Diperbarui —</span>
                     </span>
                 </div>
                 <!-- Sektor Groups Table (Table-First default) -->
@@ -1836,7 +1852,7 @@ html.light #googleCompleteProfileModal input {
                     <div id="anPrevSl" class="tk-sl" style="left:15%"></div>
                     <div id="anPrevTp" class="tk-tp" style="left:75%"></div>
                     <div id="anPrevNow" class="now" style="left:40%"></div>
-                    <div id="anPrevNowL" class="nowl" style="left:40%">Kini 1.045</div>
+                    <div id="anPrevNowL" class="nowl" style="left:40%">Kini —</div>
                 </div>
                 <div class="num" style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-top:4px">
                     <span>Ke target <b id="anPrevToTp" class="pos">+11,1%</b></span>
@@ -1907,6 +1923,7 @@ html.light #googleCompleteProfileModal input {
             <div class="flex items-center gap-2 scr-head-act">
                 <button type="button" class="vbtn sm scr-view-btn" data-scr-sort onclick="AutoCuanScreenerV2.cycleSort()">Urutkan: Bawaan</button><button type="button" class="vbtn sm scr-view-btn" data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2.toggleCompact()">Kolom: Lengkap</button>
                 <button type="button" onclick="exportKongloScreenerPDF()" class="vbtn sm scr-view-btn">Cetak / PDF</button>
+                <button type="button" onclick="resetScreenerFilters('konglo')" class="vbtn sm scr-view-btn" aria-label="Hapus filter screener Konglo">Hapus filter</button>
             </div>
         </div>
         <!-- Stats row + Alat lanjutan -->
@@ -1932,7 +1949,7 @@ html.light #googleCompleteProfileModal input {
                 <p class="text-sm font-bold text-gray-200" id="screenerStatFailed">—</p>
             </div>
             <span class="scr-scope">Swing 3&ndash;7 hari &middot; grup konglomerat</span>
-            <details class="scr-adv" id="kgAdvTools">
+            <details class="scr-adv adv-tools" id="kgAdvTools">
                 <summary class="chip i scr-adv-sum">Alat lanjutan</summary>
                 <div class="scr-adv-body">
                     <div id="kgSharedAdvSlot">
@@ -2078,6 +2095,7 @@ html.light #googleCompleteProfileModal input {
                 <div class="flex items-center gap-2 scr-head-act">
                     <button type="button" class="vbtn sm scr-view-btn" data-scr-sort onclick="AutoCuanScreenerV2.cycleSort()">Urutkan: Bawaan</button><button type="button" class="vbtn sm scr-view-btn" data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2.toggleCompact()">Kolom: Lengkap</button>
                     <button type="button" onclick="exportNonKongloScreenerPDF()" class="vbtn sm scr-view-btn">Cetak / PDF</button>
+                    <button type="button" onclick="resetScreenerFilters('nonkonglo')" class="vbtn sm scr-view-btn" aria-label="Hapus filter screener Non-Konglo">Hapus filter</button>
                 </div>
             </div>
             <!-- Non-Konglo run summary + Alat lanjutan -->
@@ -2104,7 +2122,7 @@ html.light #googleCompleteProfileModal input {
                     <p id="nkStagingCount" class="text-[10px] text-gray-500">Staging: —</p>
                 </div>
                 <span class="scr-scope">Swing &middot; non-grup</span>
-                <details class="scr-adv" id="nkAdvTools">
+                <details class="scr-adv adv-tools" id="nkAdvTools">
                     <summary class="chip i scr-adv-sum">Alat lanjutan</summary>
                     <div class="scr-adv-body">
                         <div id="nkSharedAdvSlot"></div>
@@ -2221,6 +2239,7 @@ html.light #googleCompleteProfileModal input {
                 <div class="flex items-center gap-2 scr-head-act">
                     <button type="button" class="vbtn sm scr-view-btn" data-scr-sort onclick="AutoCuanScreenerV2.cycleSort()">Urutkan: Bawaan</button><button type="button" class="vbtn sm scr-view-btn" data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2.toggleCompact()">Kolom: Lengkap</button>
                     <button type="button" onclick="exportDayTradePDF()" class="vbtn sm scr-view-btn">Cetak / PDF</button>
+                    <button type="button" onclick="resetScreenerFilters('daytrade')" class="vbtn sm scr-view-btn" aria-label="Hapus filter screener Day Trade">Hapus filter</button>
                 </div>
             </div>
             <!-- Stats row + Alat lanjutan -->
@@ -2246,7 +2265,7 @@ html.light #googleCompleteProfileModal input {
                     <p class="text-sm font-bold text-gray-200" id="dtStatRunMode">&mdash;</p>
                 </div>
                 <span class="scr-scope">Day trade &middot; intraday</span>
-                <details class="scr-adv" id="dtAdvTools">
+                <details class="scr-adv adv-tools" id="dtAdvTools">
                     <summary class="chip i scr-adv-sum">Alat lanjutan</summary>
                     <div class="scr-adv-body">
                         <div id="dtSharedAdvSlot"></div>
@@ -3030,8 +3049,8 @@ html.light #googleCompleteProfileModal input {
       <button type="button" class="ms-button" id="mmAddRow" disabled><span aria-hidden="true">+</span> Tambah baris</button>
       <button type="button" id="mmDeleteRows" class="ms-button ms-button-quiet" disabled>Hapus baris</button>
       <label class="ms-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="mmSheetSearch" type="search" placeholder="Cari pos anggaran" aria-label="Cari pos anggaran"></label>
-      <label class="ms-sort"><span class="sr-only">Urutkan baris</span><select id="mmSheetSort"><option value="original">Urutan asli</option><option value="amount">Nominal terbesar</option><option value="label">Nama pos A&ndash;Z</option></select></label>
-      <details class="ms-adv" id="mmAdvTools">
+      <label class="ms-sort"><span class="sr-only">Urutkan baris</span><select id="mmSheetSort" aria-label="Urutkan baris"><option value="original">Urutan asli</option><option value="amount">Nominal terbesar</option><option value="label">Nama pos A&ndash;Z</option><option value="type">Kelompok jenis</option></select></label>
+      <details class="ms-adv adv-tools" id="mmAdvTools">
         <summary class="ms-button ms-button-quiet ms-adv-sum">Alat lanjutan</summary>
         <div class="ms-adv-body">
           <div class="ms-adv-row">
@@ -3060,7 +3079,9 @@ html.light #googleCompleteProfileModal input {
         <tbody id="mmCashflowSpreadsheetBody"></tbody>
       </table>
     </div>
-    <div class="ms-grid-status"><span id="mmSheetRowCount">Belum ada data dimuat</span><span id="mmSelectionStats" aria-live="polite">Pilih sel untuk mengedit</span></div>
+    <div id="mmEmptyState" hidden style="padding:32px 20px;text-align:center"><b style="display:block;font-size:15px">Belum ada anggaran untuk bulan ini</b><p class="mut" style="margin:6px 0 14px;font-size:13px">Mulai dari pos bulan sebelumnya supaya tidak mengetik ulang, lalu ubah nominalnya.</p><button type="button" class="ms-button" id="mmCopyPrev">Salin pos dari bulan sebelumnya</button></div>
+    <div class="ms-grid-status"><span id="mmSheetRowCount">Belum ada data dimuat</span><span class="num" style="margin-left:12px">total nominal <b id="mmSheetTotalAmount" style="color:var(--ac-ink)">Rp 0</b></span><span id="mmSelectionStats" aria-live="polite">Pilih sel untuk mengedit</span></div>
+    <div id="mmUndoToast" hidden style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:120"><div class="toast" role="status"><span id="mmUndoToastText">Baris dihapus</span><button type="button" id="mmUndoToastBtn" style="border:0;background:transparent;color:#6EE7B7;font-weight:600;cursor:pointer;margin-left:8px">Urungkan</button></div></div>
     <label class="ms-month-notes" for="mmCashflowNotes">Catatan bulan ini <textarea id="mmCashflowNotes" rows="2" maxlength="500" placeholder="Tujuan, pengingat, atau konteks anggaran (opsional)" disabled></textarea></label>
   </section>
 </section>
@@ -3123,8 +3144,8 @@ html.light #googleCompleteProfileModal input {
             </div>
             <div>
               <div class="lbl">Kuota API data hari ini</div>
-              <div class="big num" id="statQuotaNum">8.412<span class="mut" style="font-size:14px;font-weight:600"> / 12.060</span></div>
-              <div class="meter"><i id="statQuotaBar" style="width:70%"></i></div>
+              <div class="big num" id="statQuotaNum">—<span class="mut" style="font-size:14px;font-weight:600"> / —</span></div>
+              <div class="meter"><i id="statQuotaBar" style="width:0%"></i></div>
               <div class="sub">Reset 00:00 WIB · sisa kuota aman</div>
             </div>
             <div>
@@ -3576,6 +3597,7 @@ html.light #googleCompleteProfileModal input {
 
         <!-- SUB-TAB 3: RANKING HARIAN (Tabel Ranking + Paywall Lock untuk Free Users) -->
         <section id="panel-tab-ranking" class="analisis-tab-panel" style="display:none">
+            <div class="ph rise d0" style="margin-bottom:16px"><div><h1 class="page-title">Ranking Harian</h1><p>Klasemen kuantitatif berdasarkan volume, momentum harga, dan arus modal. Peringkat adalah angka, bukan piala.</p></div></div>
             <div id="rankingCardOuterWrap" class="ranking-card-wrapper">
                 <div class="unified-card">
                     <!-- Paywall Gate for Free Users -->
@@ -3680,7 +3702,7 @@ html.light #googleCompleteProfileModal input {
                         <span><b>Periode terbaru</b> <span id="financialLatestPeriodVal">Q1 2026</span></span>
                         <span><b>Sumber</b> Laporan keuangan emiten</span>
                         <span><b>Free float</b> <span id="financialFreeFloatVal">22,33% · kepemilikan IDX 30 Sep 2026</span></span>
-                        <span><b>Diimpor</b> <span id="financialImportedVal">13 Okt 2026, 10.36 WIB</span></span>
+                        <span><b>Diimpor</b> <span id="financialImportedVal">—</span></span>
                     </div>
                     <div id="financialSnapshotWarning" class="dq" style="display:none">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>
@@ -3739,7 +3761,7 @@ html.light #googleCompleteProfileModal input {
                     <span><b>Satuan nilai</b> Miliar IDR (kecuali EPS &amp; rasio)</span>
                     <span><b>Angka negatif</b> dalam (kurung)</span>
                     <span><b>Sumber</b> Laporan keuangan emiten</span>
-                    <span class="chip b" id="finSrcChip">Data server · impor 13 Okt 2026</span>
+                    <span class="chip b" id="finSrcChip">Data server</span>
                 </div>
 
                 <!-- Trend Bar Chart with HTML Overlay Labels (§5c) -->
@@ -4021,6 +4043,7 @@ html.light #googleCompleteProfileModal input {
 
         <!-- TAB MANDIRI: SINYAL INTELIJEN BANDAR & MARKET SCREENER -->
         <section id="panel-tab-intel" class="analisis-tab-panel" style="display:none">
+            <div class="ph rise d0" style="margin-bottom:16px"><div><h1 class="page-title">Sinyal Intelijen</h1><p>Papan bukti: setiap sinyal menunjukkan status, angka pendukung, bukti dasar, dan kesegarannya.</p></div></div>
             <div class="unified-card p-3.5 sm:p-4">
                 <div id="bandarmologiIntelContent"></div>
                 <!-- Sinyal Intelijen Search & Sync Bar (Preserved in Alat Lanjutan) -->
@@ -4071,6 +4094,13 @@ html.light #googleCompleteProfileModal input {
 
         <!-- SUB-TAB 4: PATTERN RADAR (Admin budi only) -->
         <section id="panel-tab-pattern" class="analisis-tab-panel" style="display:none">
+            <div class="ph rise d0" data-ac-ui="v2" style="margin-bottom:16px">
+                <div>
+                    <div class="kick" style="color:var(--ac-info, #2F72B5);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Admin &middot; akses khusus</div>
+                    <h1 style="font-size:24px;font-weight:800;color:var(--ac-ink, #fff);margin:0 0 6px">Pattern Radar</h1>
+                    <p style="font-size:13px;color:var(--ac-2, #8E9994);margin:0">Deteksi pola harga klasik dengan normalisasi z-score dan korelasi Pearson. Riwayat yang tidak cukup panjang tidak diberi skor.</p>
+                </div>
+            </div>
             <div id="patternSubTabContainer" class="space-y-4">
                 <div id="patternRadarGlobalLoader" class="p-8 text-center text-gray-500 text-xs">
                     <span class="spinner-sm"></span> Menyiapkan Pattern Radar...
@@ -4837,7 +4867,10 @@ function setTopLevelView(state) {
     else if (state !== 'serviceStatus' && state !== 'loading' && serviceStatusUnverified()) state = 'serviceStatus';
 
     /* premium-access-load-trigger */
-    if (state === 'app') setTimeout(function(){ loadPremiumAccess(false); },0);
+    if (state === 'app') {
+        setTimeout(function(){ loadPremiumAccess(false); },0);
+        if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
+    }
     else if (state === 'landing' || state === 'blocked' || state === 'maintenance' || state === 'serviceStatus') resetPremiumAccess();
 
     var ids = { loading:'initialLoader', blocked:'blockedScreen', maintenance:'maintenanceScreen', serviceStatus:'serviceStatusScreen', landing:'landingPage', app:'dashboardScreen' };
@@ -5286,7 +5319,7 @@ function loadLandingShowcase() {
 
 function updateLandingCtas() {
     var isLoggedIn = isAutocuanLoggedIn();
-    document.querySelectorAll('.landing-cta-label').forEach(function(el) { el.textContent = isLoggedIn ? 'Masuk Dashboard' : 'Mulai Sekarang'; });
+    document.querySelectorAll('.landing-cta-label').forEach(function(el) { el.textContent = isLoggedIn ? 'Masuk Dashboard' : 'Daftar dengan Gmail'; });
 }
 var PROMOTED_ANALISIS_MAP = {
     'chart': 'analisis-chart',
@@ -5493,14 +5526,41 @@ function openAuthChoiceModal(message) {
             setTimeout(function () { try { primaryAction.focus(); } catch (_) {} }, 50);
         }
     }
+    updateSiMataForAuth();
 }
 function closeAuthChoiceModal() {
     var modal = document.getElementById('authChoiceModal');
     if (modal) modal.classList.add('hidden');
     document.documentElement.classList.remove('auth-dialog-open');
+    updateSiMataForAuth();
 }
 
-// ===== LANDING MATA & CALCULATOR HELPERS =====
+ // ===== LANDING MATA & CALCULATOR HELPERS =====
+// C3: preview produk interaktif Dashboard/Screener/Bandarmologi + sub-tab Konglo/Non-Konglo/Day Trade.
+window.acSwitchPreview = function (name) {
+    try {
+        var tabs = document.querySelectorAll('[data-c3prev]');
+        tabs.forEach(function (t) {
+            var on = t.getAttribute('data-c3prev') === name;
+            t.classList.toggle('active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        var body = document.getElementById('landingPreview');
+        if (body) body.setAttribute('data-preview', name);
+    } catch (_) {}
+};
+window.acSwitchPreviewSub = function (name) {
+    try {
+        var tabs = document.querySelectorAll('[data-c3sub]');
+        tabs.forEach(function (t) {
+            var on = t.getAttribute('data-c3sub') === name;
+            t.classList.toggle('active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        var body = document.getElementById('landingPreview');
+        if (body) body.setAttribute('data-sub', name);
+    } catch (_) {}
+};
 var _mataTips = [
     'Riset tenang, jangan kejar harga yang sudah lari.',
     'Stop loss adalah biaya proteksi modal, bukan kegagalan.',
@@ -6352,8 +6412,31 @@ setTimeout(function() { var loader=document.getElementById('initialLoader'); if 
 })();
 
 // ===== MODAL FUNCTIONS =====
-function openLoginModal() { updateLandingCtas(); document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); }
-function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
+// C3: Si Mata disembunyikan (display:none) setiap layar Auth terbuka; dikembalikan saat semua Auth tertutup.
+function c3AuthMataHidden() {
+    try {
+        var ids = ['loginModal', 'registerModal', 'selfResetModal', 'authChoiceModal', 'googleCompleteProfileModal'];
+        for (var i = 0; i < ids.length; i++) {
+            var m = document.getElementById(ids[i]);
+            if (m && !m.classList.contains('hidden')) return true;
+        }
+        var v2 = document.getElementById('authV2ResetModal');
+        if (v2 && !v2.classList.contains('hidden')) return true;
+    } catch (_) {}
+    return false;
+}
+function updateSiMataForAuth() {
+    try {
+        var wrap = document.getElementById('lpMataWrap');
+        var mini = document.getElementById('lpMataMini');
+        var hide = c3AuthMataHidden();
+        if (wrap) wrap.style.display = hide ? 'none' : '';
+        if (mini && hide) mini.style.display = 'none';
+        document.documentElement.classList.toggle('auth-dialog-open', hide);
+    } catch (_) {}
+}
+function openLoginModal() { updateLandingCtas(); document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); updateSiMataForAuth(); }
+function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); updateSiMataForAuth(); }
 // ===== ADMIN TELEGRAM ACCESS (maintenance / serviceStatus admin entry) =====
 // Administrator entry from the maintenance and service-status screens.
 // Deliberately NOT the login modal: no username/password field here at all.
@@ -6489,10 +6572,10 @@ function openRegisterModal() {
     // account creation is unchanged; this only removes the entry point so the
     // maintenance screen cannot be used to start a signup.
     if (maintenanceLockActive()) { applyMaintenanceGate(); return; }
-    resetRegisterApprovalView(); document.getElementById('regTermsAccepted').checked = false; syncRegistrationConsent(); document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); }
-function closeRegisterModal() { document.getElementById('registerModal').classList.add('hidden'); }
-function openSelfResetModal() { document.getElementById('selfResetModal').classList.remove('hidden'); document.getElementById('selfResetError').classList.add('hidden'); document.getElementById('selfResetSuccess').classList.add('hidden'); }
-function closeSelfResetModal() { document.getElementById('selfResetModal').classList.add('hidden'); var v2 = document.getElementById('authV2ResetModal'); if (v2) v2.classList.add('hidden'); if (typeof window.closeAuthV2ResetModal === 'function') window.closeAuthV2ResetModal(); }
+    resetRegisterApprovalView(); document.getElementById('regTermsAccepted').checked = false; syncRegistrationConsent(); document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); updateSiMataForAuth(); }
+function closeRegisterModal() { document.getElementById('registerModal').classList.add('hidden'); updateSiMataForAuth(); }
+function openSelfResetModal() { document.getElementById('selfResetModal').classList.remove('hidden'); document.getElementById('selfResetError').classList.add('hidden'); document.getElementById('selfResetSuccess').classList.add('hidden'); updateSiMataForAuth(); }
+function closeSelfResetModal() { document.getElementById('selfResetModal').classList.add('hidden'); var v2 = document.getElementById('authV2ResetModal'); if (v2) v2.classList.add('hidden'); if (typeof window.closeAuthV2ResetModal === 'function') window.closeAuthV2ResetModal(); updateSiMataForAuth(); }
 
 // ===== LOGIN =====
 async function doLogin() {
@@ -7042,11 +7125,13 @@ function openGoogleProfileModal(email, googleId) {
         var input = document.getElementById('googleUsername');
         if (input) { input.value = ''; input.focus(); }
     }
+    updateSiMataForAuth();
 }
 
 function closeGoogleProfileModal() {
     var modal = document.getElementById('googleCompleteProfileModal');
     if (modal) modal.classList.add('hidden');
+    updateSiMataForAuth();
     _pendingGoogleEmail = null;
     _pendingGoogleId = null;
     var errEl = document.getElementById('googleProfileError');
@@ -7630,7 +7715,7 @@ function navigateTo(page) {
                 window.UnifiedCockpit.syncActiveTicker(requestedTicker, {
                     loadChart: true,
                     forceChartReload: true,
-                    runAnalysis: Boolean(subTab === 'analisis' || subTab === 'analisis-chart')
+                    runAnalysis: false
                 });
             } else if (subTab === 'analisis-chart' && window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function') {
                 window.UnifiedCockpit.loadUnifiedChart(window.UnifiedCockpit.getActiveTicker() || 'BBCA');
@@ -7722,6 +7807,17 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
         meta.freshness_is_stale === true || freshness === 'stale';
     var unavailable = meta.success === false || Boolean(meta.error) ||
         ['failed', 'error', 'unavailable', 'not_configured'].indexOf(sourceStatus) >= 0;
+    // Empty background payloads (e.g. {success:true,data:[],rows:[],results:[]}
+    // from dashboard loaders) carry no freshness signal. They must not clobber
+    // an explicit stale/live label set moments earlier (D7 cold-markup race:
+    // dashboard loaders resolve after the explicit stale call and would reset
+    // it to "Belum pasti"). Explicit {} still resets to unknown.
+    var hasLoaderArrays = Array.isArray(meta.data) || Array.isArray(meta.rows) ||
+        Array.isArray(meta.results) || Array.isArray(meta.top5) ||
+        Array.isArray(meta.picks) || Array.isArray(meta.monitor);
+    if (meta.success === true && !stale && !unavailable && !calcAt && !freshness && !sourceStatus && hasLoaderArrays) {
+        return;
+    }
     var status = 'unknown';
     var label = 'Belum pasti';
     var tooltip = 'Kesegaran data belum dapat dipastikan.';
@@ -7855,6 +7951,11 @@ function updateDashGreeting() {
     if (sidebarName) sidebarName.textContent = displayName;
     var sidebarAvatar = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-avatar') : null;
     if (sidebarAvatar) sidebarAvatar.textContent = displayName.charAt(0).toUpperCase() || 'T';
+    var sidebarRoleEl = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-role') : null;
+    if (sidebarRoleEl) {
+        var isAdm = (localStorage.getItem('autocuan_is_admin') === 'true') || displayName.toLowerCase() === 'budi';
+        sidebarRoleEl.textContent = isAdm ? 'Admin \u00B7 Pro Trader' : 'VIP';
+    }
     // Show approved badge for non-guest logged-in users
     var approvedBadge = document.getElementById('approvedBadge');
     if (approvedBadge) {
@@ -11789,7 +11890,62 @@ async function doResetPassword() {
     }
 }
 
-// ===== SELF-SERVICE RESET PASSWORD =====
+ // ===== SELF-SERVICE RESET PASSWORD =====
+// C3: OTP Pemulihan 6 digit — auto-advance antar digit + paste 6 digit sekaligus.
+function c3OtpInputs() {
+    try { return Array.prototype.slice.call(document.querySelectorAll('#selfResetOtpGrid [data-otp]')); }
+    catch (_) { return []; }
+}
+function c3FocusOtp(i) {
+    var inputs = c3OtpInputs();
+    var el = inputs[Math.max(0, Math.min(5, i))];
+    if (el && typeof el.focus === 'function') { try { el.focus(); el.select(); } catch (_) {} }
+}
+function c3ReadOtp() {
+    return c3OtpInputs().map(function (el) { return (el.value || '').replace(/\D/g, '').slice(-1); }).join('');
+}
+function c3InitOtpGrid() {
+    var inputs = c3OtpInputs();
+    if (!inputs.length || inputs[0].__c3bound) return;
+    inputs.forEach(function (el, i) {
+        el.__c3bound = true;
+        el.addEventListener('input', function () {
+            var d = (el.value || '').replace(/\D/g, '').slice(-1);
+            el.value = d;
+            if (d && i < inputs.length - 1) c3FocusOtp(i + 1);
+        });
+        el.addEventListener('keydown', function (e) {
+            if (e.key === 'Backspace' && !el.value && i > 0) { e.preventDefault(); c3FocusOtp(i - 1); }
+            if (e.key === 'Enter') { e.preventDefault(); doSelfResetPassword(); }
+        });
+        el.addEventListener('paste', function (e) {
+            try {
+                var t = ((e.clipboardData && e.clipboardData.getData('text')) || '').replace(/\D/g, '').slice(0, 6);
+                if (t) {
+                    e.preventDefault();
+                    inputs.forEach(function (x, k) { x.value = t[k] || ''; });
+                    c3FocusOtp(Math.min(5, t.length));
+                }
+            } catch (_) {}
+        });
+    });
+    var grid = document.getElementById('selfResetOtpGrid');
+    if (grid && !grid.__c3paste) {
+        grid.__c3paste = true;
+        grid.addEventListener('paste', function (e) {
+            try {
+                var t = ((e.clipboardData && e.clipboardData.getData('text')) || '').replace(/\D/g, '').slice(0, 6);
+                if (t) {
+                    e.preventDefault();
+                    inputs.forEach(function (x, k) { x.value = t[k] || ''; });
+                    c3FocusOtp(Math.min(5, t.length));
+                }
+            } catch (_) {}
+        });
+    }
+}
+try { document.addEventListener('DOMContentLoaded', c3InitOtpGrid); } catch (_) {}
+try { if (document.readyState !== 'loading') c3InitOtpGrid(); } catch (_) {}
 async function doSelfResetPassword() {
     var username = document.getElementById('selfResetUsername').value.trim();
     var pw = document.getElementById('selfResetPw').value; var pwConfirm = document.getElementById('selfResetPwConfirm').value;
@@ -13535,11 +13691,13 @@ function renderSektorGroups(groups) {
     // Heatmap grid tiles
     if (grid) {
         var gHtml = '';
+        /* C4: tint heatmap mengikuti token kanvas #197D2C → rgb(25,125,44) untuk
+           rerata positif; negatif tetap merah kanvas. */
         var tint = function(a) {
             if (a == null || isNaN(a)) return 'rgba(255,255,255,0.02)';
             var k = Math.min(Math.abs(a) / 3.5, 1);
             return a >= 0
-                ? 'rgba(36,122,67,' + (0.05 + k * 0.22).toFixed(3) + ')'
+                ? 'rgba(25,125,44,' + (0.05 + k * 0.22).toFixed(3) + ')'
                 : 'rgba(193,63,77,' + (0.05 + k * 0.22).toFixed(3) + ')';
         };
         groups.forEach(function(g) {
@@ -13747,7 +13905,7 @@ async function showGroupDetail(groupCode) {
                 var dt = new Date(g.calculated_at);
                 dateEl.textContent = dt.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric' });
             } else {
-                dateEl.textContent = '13 Okt 2026';
+                dateEl.textContent = '—';
             }
         }
 
@@ -14673,6 +14831,19 @@ var SCREENER_MODE_DESC = {
 };
 function onScreenerRrMinChange() {
     applyScreenerUiFilters(_currentScreenerType || 'konglo');
+}
+/* C4: Hapus filter — kembalikan search/status/RR ke bawaan per mode (kanvas Screener.dc.html). */
+function resetScreenerFilters(type) {
+    var t = type || _currentScreenerType || 'konglo';
+    var prefix = t === 'daytrade' ? 'dt' : (t === 'nonkonglo' ? 'nk' : 'kg');
+    var q = document.getElementById(prefix + 'TickerSearch');
+    var st = document.getElementById(prefix + 'StatusFilter');
+    if (q) { q.value = ''; }
+    if (st) { st.value = 'all'; }
+    var rr = document.getElementById('scrRrMin');
+    if (rr && rr.checked) { rr.checked = false; }
+    try { if (window.AutoCuanScreenerV2 && typeof window.AutoCuanScreenerV2.setSort === 'function') window.AutoCuanScreenerV2.setSort('default'); } catch (_) {}
+    applyScreenerUiFilters(t);
 }
 function switchScreenerType(type) {
     _currentScreenerType = type;
@@ -16327,6 +16498,34 @@ async function loadDashboardTop5Monitor(silent, opts) {
     return _dashboardTop5InFlight;
 }
 
+/* C4: tab Top 5 per mode screener (Konglo/Non-Konglo/Day Trade) — data riil dari
+   web-daily-picks yang sama; filter presentasi di klien, tanpa ubah API/lock. */
+var _dashTop5Mode = 'konglo';
+var _dashTop5CacheByMode = { konglo: null, nonkonglo: null, daytrade: null };
+function dashTop5ModeOf(r) {
+    var t = String((r && (r.screener_type || r.source || r.category)) || '').toLowerCase();
+    if (t.indexOf('day') >= 0 || t.indexOf('intraday') >= 0) return 'daytrade';
+    if (t.indexOf('non') >= 0 || t.indexOf('nonkonglo') >= 0) return 'nonkonglo';
+    return 'konglo';
+}
+function switchDashTop5(mode) {
+    _dashTop5Mode = (mode === 'nonkonglo' || mode === 'daytrade') ? mode : 'konglo';
+    var tabs = { konglo: 'dashTop5TabKonglo', nonkonglo: 'dashTop5TabNonKonglo', daytrade: 'dashTop5TabDayTrade' };
+    Object.keys(tabs).forEach(function (k) {
+        var b = document.getElementById(tabs[k]);
+        if (!b) return;
+        var on = k === _dashTop5Mode;
+        b.className = on ? 'on' : '';
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    var ind = document.getElementById('dashTop5Ind');
+    if (ind) ind.className = 'ind k' + (_dashTop5Mode === 'konglo' ? 0 : (_dashTop5Mode === 'nonkonglo' ? 1 : 2));
+    var cached = _dashTop5CacheByMode[_dashTop5Mode];
+    if (cached) { renderDashboardTop5MonitorData(cached); return; }
+    if (_dashboardTop5Cache && _dashboardTop5Cache.data) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
+    loadDashboardTop5Monitor(true);
+}
 function renderDashboardTop5MonitorData(data) {
     if (typeof updateGlobalLiveRadarStatus === 'function' && data) updateGlobalLiveRadarStatus(data);
     var note = document.getElementById('dashboardTop5LockNote');
@@ -17149,6 +17348,8 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/vendor/lightweight-charts.standalone.production.js"></script>
 <script src="/tab-keepalive-runtime.js?v=20260926-ka1"></script>
 <script src="/chart-workstation.js?v=20261023-v8"></script>
+<script src="/b3-liquidity-badge.js?v=20261031-b3"></script>
+<script src="/b3-liquidity-inject.js?v=20261031-b3"></script>
 <script src="/market-feature-runtime.js?v=20261023-v11"></script>
 <script src="/analisis-v2.js?v=20261023-v6"></script>
 <script src="/daytrade-runtime.js?v=20260818-v1"></script>

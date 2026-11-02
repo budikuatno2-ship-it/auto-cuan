@@ -38,6 +38,11 @@ var patternDetector = require('../lib/pattern-abcd').detectAbcdPattern;
 var classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns;
 var adminSession = require('../lib/admin-session');
 var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+// S1: perisai terpusat (anti-bot + validasi ticker ketat + header).
+var shield = null;
+try { shield = require('../lib/security-shield'); } catch (_) { shield = null; }
+var c10FileCache = null;
+try { c10FileCache = require('../lib/c10-json-file-cache'); } catch (_) { c10FileCache = null; }
 var clock = { now: function() { return new Date(); } };
 
 // Unauthenticated, and each unique ticker triggers a live Yahoo Finance fetch
@@ -63,6 +68,26 @@ function responseForRequest(data, req) {
   return publicData;
 }
 
+function c10EtagFor(data) {
+  try {
+    var str = JSON.stringify(data);
+    var h = 0;
+    for (var i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; }
+    return 'W/"c' + (str.length) + '-' + (h >>> 0).toString(16) + '"';
+  } catch (_) { return null; }
+}
+function c10Maybe304(req, res, data) {
+  try {
+    var etag = c10EtagFor(data);
+    if (etag && res && typeof res.setHeader === 'function') res.setHeader('ETag', etag);
+    var inm = req && req.headers && (req.headers['if-none-match'] || req.headers['If-None-Match']);
+    if (inm && etag && String(inm).split(',').map(function (x) { return x.trim(); }).indexOf(etag) >= 0) {
+      if (res && typeof res.status === 'function') { res.status(304); res.end(); }
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
 function setPrivateResponseHeaders(res) {
   if (!res || typeof res.setHeader !== 'function') return;
   res.setHeader('Cache-Control', 'private, no-store');
@@ -71,6 +96,19 @@ function setPrivateResponseHeaders(res) {
 
 module.exports = async function handler(req, res) {
   setPrivateResponseHeaders(res);
+  try { if (shield) shield.applyShieldHeaders(res, { api: true }); } catch (_) {}
+  // S1: anti-bot berlapis (sliding-window + deteksi scraper) sebelum limiter lama.
+  try {
+    if (shield) {
+      var sIp = shield.clientIpFromReq(req);
+      var sUa = (req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '';
+      var sChk = shield.dataCheck(sIp, { hasSession: false, userAgent: String(sUa) });
+      if (sChk.limited) {
+        try { res.setHeader('Retry-After', String(sChk.retryAfterSeconds || 60)); } catch (_) {}
+        return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+      }
+    }
+  } catch (_) {}
   if (!candlesLimiter.check(clientAddress(req))) {
     return res.status(429).json({ error: 'Too many requests. Please slow down.' });
   }
@@ -93,14 +131,46 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Parameter ticker wajib diisi.' });
     }
 
-    ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
-    // Normalize IHSG aliases
-    if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
-    // BUG-CAN-03: simbol benchmark resmi BEI memuat angka (LQ45, IDX30, ^JKSE),
-    // sehingga pola huruf-saja menolak instrumen perbandingan utama bursa.
-    if (!/^[A-Z0-9]{3,6}$/.test(ticker)) {
+    // S1: validasi ketat terpusat — tolak traversal/command-injection/XSS dulu
+    // (pesan generik, tanpa gema payload), lalu izinkan pola lama + pola S1.
+    try {
+      if (shield) {
+        var sVal = shield.validateTicker(ticker);
+        if (!sVal.ok) {
+          return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
+        }
+        // Pola S1 ketat (4 huruf/IHSG) diterima langsung; pola lama (LQ45/IDX30)
+        // tetap didukung untuk kompatibilitas benchmark BEI.
+        if (sVal.clean === 'IHSG' || /^[A-Z]{4}$/.test(sVal.clean)) {
+          ticker = sVal.clean;
+        } else {
+          ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
+          if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
+          if (!/^[A-Z0-9]{3,6}$/.test(ticker)) {
+            return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
+          }
+        }
+      } else {
+        ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
+        // Normalize IHSG aliases
+        if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
+        // BUG-CAN-03: simbol benchmark resmi BEI memuat angka (LQ45, IDX30, ^JKSE),
+        // sehingga pola huruf-saja menolak instrumen perbandingan utama bursa.
+        if (!/^[A-Z0-9]{3,6}$/.test(ticker)) {
+          return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
+        }
+      }
+    } catch (_) {
       return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
     }
+    // S1: catat hit data untuk deteksi sapu ticker bot.
+    try {
+      if (shield) {
+        var sIp2 = shield.clientIpFromReq(req);
+        var sUa2 = (req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '';
+        shield.dataRecordHit(sIp2, ticker, { userAgent: String(sUa2) });
+      }
+    } catch (_) {}
 
     var validRanges = ['1y', '2y', '3y', '5y', 'max'];
     var cleanRange = (typeof reqRange === 'string' && validRanges.indexOf(reqRange.toLowerCase().trim()) >= 0)
@@ -111,7 +181,9 @@ module.exports = async function handler(req, res) {
     var cached = cache[cacheKey];
     var requestJakartaToday = t1Policy.formatJakartaDate(clock.now());
     if (cached && cached.data && cached.data.jakarta_today === requestJakartaToday && (Date.now() - cached.timestamp < CACHE_TTL)) {
-      return res.status(200).json(responseForRequest(cached.data, req));
+      var c10out = responseForRequest(cached.data, req);
+      if (c10Maybe304(req, res, c10out)) return;
+      return res.status(200).json(c10out);
     }
 
     var candles = [];
@@ -125,7 +197,7 @@ module.exports = async function handler(req, res) {
       var ihsgDiskPath = path.join(process.cwd(), 'data', 'daily-candles', 'IHSG.json');
       if (fs.existsSync(ihsgDiskPath)) {
         try {
-          var rawDisk = JSON.parse(fs.readFileSync(ihsgDiskPath, 'utf8'));
+          var rawDisk = (c10FileCache ? c10FileCache.getJsonFile(ihsgDiskPath, 15000).data : JSON.parse(fs.readFileSync(ihsgDiskPath, 'utf8')));
           if (rawDisk && Array.isArray(rawDisk.candles) && rawDisk.candles.length >= 20) {
             var diskCandles = [];
             for (var k = 0; k < rawDisk.candles.length; k++) {

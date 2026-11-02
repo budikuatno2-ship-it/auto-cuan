@@ -1,0 +1,83 @@
+{
+  "mode": "Mode B (Repo Engine Reference - TradingView CSV Pending)",
+  "total_bars": 1199,
+  "tests": {
+    "Volume Rotation": {
+      "bars_compared": 1199,
+      "exact_matches": 1199,
+      "max_diff": 0,
+      "passed": true,
+      "first_failure": null
+    },
+    "Intensity (Signed Engine Mode)": {
+      "bars_compared": 1199,
+      "exact_matches": 1199,
+      "max_diff": 0,
+      "passed": true,
+      "first_failure": null
+    },
+    "CMF (Formula Bit-Exact Check)": {
+      "bars_compared": 1199,
+      "exact_matches": 1199,
+      "max_diff": 0,
+      "passed": true,
+      "first_failure": null
+    },
+    "LPM Rolling VWAP20 Level": {
+      "bars_compared": 1180,
+      "exact_matches": 1180,
+      "max_diff": 0,
+      "passed": true
+    },
+    "Foreign Flow (AntiSlop Mode)": {
+      "total_bars": 1199,
+      "bars_with_real_foreign_data": 7,
+      "bars_with_null_unfabricated": 1192,
+      "passed": true
+    }
+  },
+  "intentional_fixes": [
+    {
+      "indicator": "CMF Warmup",
+      "affected_bars": 19,
+      "description": "Warmup bars return null instead of 0.0 fake flow.",
+      "sample": [
+        {
+          "bar": 0,
+          "date": "2021-10-18",
+          "repo_original": 0,
+          "port_cleaned": null,
+          "explanation": "Bar 0-18 are within 20-period warmup. Setting 0.0 falsely implies neutral money flow when volume data is incomplete."
+        },
+        {
+          "bar": 1,
+          "date": "2021-10-19",
+          "repo_original": 0,
+          "port_cleaned": null,
+          "explanation": "Bar 0-18 are within 20-period warmup. Setting 0.0 falsely implies neutral money flow when volume data is incomplete."
+        },
+        {
+          "bar": 2,
+          "date": "2021-10-21",
+          "repo_original": 0,
+          "port_cleaned": null,
+          "explanation": "Bar 0-18 are within 20-period warmup. Setting 0.0 falsely implies neutral money flow when volume data is incomplete."
+        }
+      ]
+    },
+    {
+      "indicator": "Foreign Flow Synthetic Removal",
+      "affected_bars": 1192,
+      "description": "Removed synthetic (volume * close * 0.12 * dir) injection on bars lacking real foreign flow. Values remain transparently null."
+    },
+    {
+      "indicator": "Corr F Synthetic Removal",
+      "description": "Removed volume * 0.15 * dir injection in 14-period correlation. Null returned when foreign flow unavailable."
+    },
+    {
+      "indicator": "Par F Double-Counting & Fallback Removal",
+      "description": "Removed 28.5% hardcoded fallback and fixed denominator to single-sided turnover."
+    }
+  ],
+  "overall_status": "PASS"
+}

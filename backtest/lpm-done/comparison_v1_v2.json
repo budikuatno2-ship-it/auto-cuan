@@ -1,0 +1,235 @@
+[
+  {
+    "date": "2026-09-08",
+    "code": "ACES",
+    "prevClose": 358,
+    "araPx": 446,
+    "arbPx": 304,
+    "v1": {
+      "val": 3046951000,
+      "buyAggVal": 1339457800,
+      "sellAggVal": 1707493200,
+      "buyAggPct": 44,
+      "p95": 9880800,
+      "fAggBuyVal": 208025000
+    },
+    "v2": {
+      "val": 3046951000,
+      "contVal": 2958806400,
+      "auctionVal": 42897000,
+      "postVal": 45247600,
+      "lockedVal": 0,
+      "lockedSide": null,
+      "lockedSharePct": 0,
+      "cleanContinuousN": 1284,
+      "buyAggVal": 1284650200,
+      "sellAggVal": 1674156200,
+      "buyAggPct": 43.4,
+      "p95": 10074800,
+      "fAggBuyVal": 207989400
+    }
+  },
+  {
+    "date": "2026-09-08",
+    "code": "ADRO",
+    "prevClose": 2700,
+    "araPx": 3370,
+    "arbPx": 2300,
+    "v1": {
+      "val": 91240411000,
+      "buyAggVal": 37595460000,
+      "sellAggVal": 53644951000,
+      "buyAggPct": 41.2,
+      "p95": 21093000,
+      "fAggBuyVal": 12251454000
+    },
+    "v2": {
+      "val": 91240411000,
+      "contVal": 85703186000,
+      "auctionVal": 4425986000,
+      "postVal": 1111239000,
+      "lockedVal": 0,
+      "lockedSide": null,
+      "lockedSharePct": 0,
+      "cleanContinuousN": 15482,
+      "buyAggVal": 34033090000,
+      "sellAggVal": 51670096000,
+      "buyAggPct": 39.7,
+      "p95": 20482000,
+      "fAggBuyVal": 11364217000
+    }
+  },
+  {
+    "date": "2026-09-08",
+    "code": "AKRA",
+    "prevClose": 1450,
+    "araPx": 1810,
+    "arbPx": 1235,
+    "v1": {
+      "val": 73535615500,
+      "buyAggVal": 47522949000,
+      "sellAggVal": 26012666500,
+      "buyAggPct": 64.6,
+      "p95": 31057500,
+      "fAggBuyVal": 14487755000
+    },
+    "v2": {
+      "val": 73535615500,
+      "contVal": 70641105500,
+      "auctionVal": 2723710000,
+      "postVal": 170800000,
+      "lockedVal": 0,
+      "lockedSide": null,
+      "lockedSharePct": 0,
+      "cleanContinuousN": 8525,
+      "buyAggVal": 45962933000,
+      "sellAggVal": 24678172500,
+      "buyAggPct": 65.1,
+      "p95": 30700000,
+      "fAggBuyVal": 14090074500
+    }
+  },
+  {
+    "date": "2026-09-08",
+    "code": "ASII",
+    "prevClose": 4910,
+    "araPx": 6125,
+    "arbPx": 4180,
+    "v1": null,
+    "v2": {
+      "val": 162039741000,
+      "contVal": 125786000000,
+      "auctionVal": 36115701000,
+      "postVal": 138040000,
+      "lockedVal": 0,
+      "lockedSide": null,
+      "lockedSharePct": 0,
+      "cleanContinuousN": 7551,
+      "buyAggVal": 58066296000,
+      "sellAggVal": 67719704000,
+      "buyAggPct": 46.2,
+      "p95": 53192000,
+      "fAggBuyVal": 35125336000
+    }
+  },
+  {
+    "date": "2026-09-08",
+    "code": "BRPT",
+    "prevClose": 1770,
+    "araPx": 2210,
+    "arbPx": 1505,
+    "v1": {
+      "val": 94230021500,
+      "buyAggVal": 34033826000,
+      "sellAggVal": 60196195500,
+      "buyAggPct": 36.1,
+      "p95": 20886000,
+      "fAggBuyVal": 1632294500
+    },
+    "v2": {
+      "val": 94230021500,
+      "contVal": 82413500500,
+      "auctionVal": 5478761000,
+      "postVal": 6337760000,
+      "lockedVal": 0,
+      "lockedSide": null,
+      "lockedSharePct": 0,
+      "cleanContinuousN": 14034,
+      "buyAggVal": 29956086000,
+      "sellAggVal": 52457414500,
+      "buyAggPct": 36.3,
+      "p95": 19690000,
+      "fAggBuyVal": 1161670500
+    }
+  },
+  {
+    "date": "2026-09-08",
+    "code": "MEDC",
+    "prevClose": 1485,
+    "araPx": 1855,
+    "arbPx": 1265,
+    "v1": {
+      "val": 134536602000,
+      "buyAggVal": 79526096500,
+      "sellAggVal": 55010505500,
+      "buyAggPct": 59.1,
+      "p95": 51422500,
+      "fAggBuyVal": 25431651000
+    },
+    "v2": {
+      "val": 134536602000,
+      "contVal": 121488049500,
+      "auctionVal": 9744618500,
+      "postVal": 3303934000,
+      "lockedVal": 0,
+      "lockedSide": null,
+      "lockedSharePct": 0,
+      "cleanContinuousN": 10271,
+      "buyAggVal": 67006558000,
+      "sellAggVal": 54481491500,
+      "buyAggPct": 55.2,
+      "p95": 48516000,
+      "fAggBuyVal": 24684288500
+    }
+  },
+  {
+    "date": "2026-10-16",
+    "code": "BRPT",
+    "prevClose": 1420,
+    "araPx": 1775,
+    "arbPx": 1210,
+    "v1": {
+      "val": 244446555500,
+      "buyAggVal": 231666799000,
+      "sellAggVal": 12779756500,
+      "buyAggPct": 94.8,
+      "p95": 90750000,
+      "fAggBuyVal": 94947428000
+    },
+    "v2": {
+      "val": 244446555500,
+      "contVal": 237615500500,
+      "auctionVal": 6817987000,
+      "postVal": 13068000,
+      "lockedVal": 233698311000,
+      "lockedSide": "ARB",
+      "lockedSharePct": 95.6,
+      "cleanContinuousN": 88,
+      "buyAggVal": 1981816000,
+      "sellAggVal": 1935373500,
+      "buyAggPct": 0.8,
+      "p95": 194400000,
+      "fAggBuyVal": 7198000
+    }
+  },
+  {
+    "date": "2026-10-16",
+    "code": "MEDC",
+    "prevClose": 1515,
+    "araPx": 1890,
+    "arbPx": 1290,
+    "v1": {
+      "val": 134835373000,
+      "buyAggVal": 74753658000,
+      "sellAggVal": 60081715000,
+      "buyAggPct": 55.4,
+      "p95": 32736000,
+      "fAggBuyVal": 41064328000
+    },
+    "v2": {
+      "val": 134835373000,
+      "contVal": 126431410000,
+      "auctionVal": 8324370000,
+      "postVal": 79593000,
+      "lockedVal": 45251007000,
+      "lockedSide": "ARB",
+      "lockedSharePct": 33.6,
+      "cleanContinuousN": 8307,
+      "buyAggVal": 45122487000,
+      "sellAggVal": 36057916000,
+      "buyAggPct": 35.7,
+      "p95": 30888000,
+      "fAggBuyVal": 35063764000
+    }
+  }
+]

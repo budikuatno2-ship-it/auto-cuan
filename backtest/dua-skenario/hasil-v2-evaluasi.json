@@ -1,0 +1,269 @@
+{
+ "generatedFrom": "data/all",
+ "stocks": 854,
+ "skipped": [
+  "ABDA (245 bar bersih)",
+  "AKKU (297 bar bersih)",
+  "ALMI (33 bar bersih)",
+  "ALTO (184 bar bersih)",
+  "ARMY (0 bar bersih)",
+  "ARTI (0 bar bersih)",
+  "BEBS (105 bar bersih)",
+  "BIKA (0 bar bersih)",
+  "BIMA (284 bar bersih)",
+  "BLTZ (150 bar bersih)",
+  "BOSS (0 bar bersih)",
+  "BSWD (127 bar bersih)",
+  "BTEL (0 bar bersih)",
+  "CBMF (0 bar bersih)",
+  "CNTX (1 bar bersih)",
+  "COWL (0 bar bersih)",
+  "CPRI (0 bar bersih)",
+  "DEAL (0 bar bersih)",
+  "DEFI (235 bar bersih)",
+  "DPNS (271 bar bersih)",
+  "DUCK (0 bar bersih)",
+  "EMAS (257 bar bersih)",
+  "ENVY (0 bar bersih)",
+  "ETWA (0 bar bersih)",
+  "FASW (44 bar bersih)",
+  "FIMP (120 bar bersih)",
+  "GAMA (0 bar bersih)",
+  "GLOB (152 bar bersih)",
+  "GOLL (0 bar bersih)",
+  "HITS (132 bar bersih)",
+  "HKMU (0 bar bersih)",
+  "HOME (0 bar bersih)",
+  "HOTL (0 bar bersih)",
+  "IBST (209 bar bersih)",
+  "IIKP (0 bar bersih)",
+  "INAF (0 bar bersih)",
+  "INRU (294 bar bersih)",
+  "IPPE (0 bar bersih)",
+  "JSKY (0 bar bersih)",
+  "KAYU (0 bar bersih)",
+  "KBRI (0 bar bersih)",
+  "KIAS (205 bar bersih)",
+  "LCGP (0 bar bersih)",
+  "LMAS (0 bar bersih)",
+  "LMSH (49 bar bersih)",
+  "MABA (0 bar bersih)",
+  "MAGP (0 bar bersih)",
+  "MENN (269 bar bersih)",
+  "META (0 bar bersih)",
+  "MFMI (67 bar bersih)",
+  "MKNT (0 bar bersih)",
+  "MTPS (274 bar bersih)",
+  "MTRA (0 bar bersih)",
+  "MTSM (82 bar bersih)",
+  "MYTX (127 bar bersih)",
+  "NUSA (0 bar bersih)",
+  "OCAP (0 bar bersih)",
+  "OMRE (286 bar bersih)",
+  "PJHB (225 bar bersih)",
+  "PLAS (0 bar bersih)",
+  "PLIN (56 bar bersih)",
+  "PMMP (184 bar bersih)",
+  "POLL (0 bar bersih)",
+  "POOL (0 bar bersih)",
+  "POSA (0 bar bersih)",
+  "PPRO (178 bar bersih)",
+  "PTDU (235 bar bersih)",
+  "PTMR (163 bar bersih)",
+  "PURE (0 bar bersih)",
+  "RAFI (268 bar bersih)",
+  "RIMO (0 bar bersih)",
+  "RLCO (193 bar bersih)",
+  "RSGK (230 bar bersih)",
+  "SBAT (0 bar bersih)",
+  "SCPI (0 bar bersih)",
+  "SIMA (0 bar bersih)",
+  "SKYB (0 bar bersih)",
+  "SMCB (94 bar bersih)",
+  "SMRU (0 bar bersih)",
+  "SRIL (0 bar bersih)",
+  "SUGI (0 bar bersih)",
+  "SUPA (196 bar bersih)",
+  "SUPR (5 bar bersih)",
+  "SWAT (184 bar bersih)",
+  "TDPM (0 bar bersih)",
+  "TECH (0 bar bersih)",
+  "TELE (74 bar bersih)",
+  "TFCO (172 bar bersih)",
+  "TGRA (179 bar bersih)",
+  "TGUK (213 bar bersih)",
+  "TIRT (196 bar bersih)",
+  "TOPS (0 bar bersih)",
+  "TOYS (0 bar bersih)",
+  "TRAM (0 bar bersih)",
+  "TRIL (0 bar bersih)",
+  "TRIO (0 bar bersih)",
+  "UNIT (0 bar bersih)",
+  "WBSA (120 bar bersih)",
+  "WICO (8 bar bersih)",
+  "WIKA (106 bar bersih)",
+  "WMPP (148 bar bersih)",
+  "WSKT (0 bar bersih)",
+  "ZBRA (180 bar bersih)",
+  "_ADJUSTMENTS (0 bar bersih)",
+  "_SOURCES (gagal dibaca: bars.slice is not a function)"
+ ],
+ "windows": 349860,
+ "params": {
+  "L": 20,
+  "H": 10,
+  "K": 30,
+  "minGap": 10,
+  "warmup": 60,
+  "ctxWeight": 0.5,
+  "minQuality": 0.35,
+  "minAnalogs": 15,
+  "minTurnover": 1000000000,
+  "topM": 600,
+  "minCandidates": 250
+ },
+ "samples": 2922,
+ "cutOOS": "2026-04-02",
+ "all": {
+  "n": 2895,
+  "okShare": 0.991,
+  "hitRate": 0.5168,
+  "brier": 0.26461,
+  "brierBase": 0.25024,
+  "brierSkill": -0.0574,
+  "skillCI95": [
+   -0.0736,
+   -0.0406
+  ],
+  "band25_75": 0.484,
+  "range10_90": 0.747,
+  "calibration": [
+   {
+    "range": "0-0.35",
+    "n": 682,
+    "predicted": 0.269,
+    "actual": 0.466
+   },
+   {
+    "range": "0.35-0.45",
+    "n": 903,
+    "predicted": 0.403,
+    "actual": 0.425
+   },
+   {
+    "range": "0.45-0.55",
+    "n": 827,
+    "predicted": 0.497,
+    "actual": 0.42
+   },
+   {
+    "range": "0.55-0.65",
+    "n": 381,
+    "predicted": 0.591,
+    "actual": 0.454
+   },
+   {
+    "range": "0.65-1.01",
+    "n": 102,
+    "predicted": 0.701,
+    "actual": 0.48
+   }
+  ]
+ },
+ "oos": {
+  "n": 887,
+  "okShare": 1,
+  "hitRate": 0.4994,
+  "brier": 0.26647,
+  "brierBase": 0.24699,
+  "brierSkill": -0.0789,
+  "skillCI95": [
+   -0.1106,
+   -0.0491
+  ],
+  "band25_75": 0.474,
+  "range10_90": 0.729,
+  "calibration": [
+   {
+    "range": "0-0.35",
+    "n": 172,
+    "predicted": 0.281,
+    "actual": 0.506
+   },
+   {
+    "range": "0.35-0.45",
+    "n": 301,
+    "predicted": 0.403,
+    "actual": 0.429
+   },
+   {
+    "range": "0.45-0.55",
+    "n": 257,
+    "predicted": 0.498,
+    "actual": 0.362
+   },
+   {
+    "range": "0.55-0.65",
+    "n": 123,
+    "predicted": 0.593,
+    "actual": 0.407
+   },
+   {
+    "range": "0.65-1.01",
+    "n": 34,
+    "predicted": 0.708,
+    "actual": 0.471
+   }
+  ]
+ },
+ "gate": {
+  "skillPositiveCI": false,
+  "enoughSamples": true,
+  "calibrationMonotone": false,
+  "directionAllowed": false,
+  "rangeAllowed": true
+ },
+ "byYear": {
+  "2024": {
+   "n": 16,
+   "hitRate": 0.5625,
+   "brierSkill": 0.1431
+  },
+  "2025": {
+   "n": 1457,
+   "hitRate": 0.523,
+   "brierSkill": -0.0455
+  },
+  "2026": {
+   "n": 1422,
+   "hitRate": 0.5098,
+   "brierSkill": -0.073
+  }
+ },
+ "byLiquidity": {
+  "1–10 M": {
+   "n": 1774,
+   "brierSkill": -0.0591,
+   "skillCI95": [
+    -0.081,
+    -0.0384
+   ]
+  },
+  "10–100 M": {
+   "n": 896,
+   "brierSkill": -0.0434,
+   "skillCI95": [
+    -0.0728,
+    -0.0135
+   ]
+  },
+  ">100 M": {
+   "n": 225,
+   "brierSkill": -0.0998,
+   "skillCI95": [
+    -0.1607,
+    -0.0415
+   ]
+  }
+ }
+}

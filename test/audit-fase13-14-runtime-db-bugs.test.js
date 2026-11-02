@@ -109,40 +109,37 @@ test('F13-04b: isEodReadyWib same-day before vs after 16:15 WIB', () => {
 // F13-05 — final-schedule.cron timezone & cadence contract
 // ---------------------------------------------------------------------------
 test('F13-05: final-schedule.cron declares CRON_TZ and each command uses node runner', () => {
-  const cronPath = path.join(__dirname, '..', 'deploy/vps/final-schedule.cron');
-  const raw = fs.readFileSync(cronPath, 'utf8');
-  assert.match(raw, /CRON_TZ=Asia\/Jakarta/, 'CRON_TZ must be declared');
-  const lines = raw.split('\n').filter(l => l.trim() && !l.trim().startsWith('#') && !l.includes('CRON_TZ'));
-  for (const l of lines) {
-    const m = l.match(/^\s*(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)$/);
-    assert.ok(m, 'cron line must parse: ' + l);
-    assert.ok(m[6].includes('node') || m[6].includes('.sh'), 'command must be node or .sh wrapper: ' + l);
-  }
+ const cronPath = path.join(__dirname, '..', 'deploy/vps/final-schedule.cron');
+ const raw = fs.readFileSync(cronPath, 'utf8');
+ assert.match(raw, /CRON_TZ=Asia\/Jakarta/, 'CRON_TZ must be declared');
+ // Q1/P2: baris env (VAR=val) + baris job-wrapper adalah kontrak P2 yang sah.
+ const lines = raw.split('\n').filter(l => l.trim() && !l.trim().startsWith('#') && !l.includes('CRON_TZ') && !/^[A-Z_][A-Z0-9_]*=/.test(l.trim()));
+ for (const l of lines) {
+   const m = l.match(/^\s*(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)$/);
+   assert.ok(m, 'cron line must parse: ' + l);
+   assert.ok(m[6].includes('node') || m[6].includes('.sh') || m[6].includes('job-wrapper.sh'), 'command must be node, .sh, or P2 job-wrapper: ' + l);
+ }
 });
 
 test('F13-05b: EOD ingestion stays inside the 16:30-17:30 WIB broker-snapshot window', () => {
- // REVISI 2026-10-13 (audit 1-12 Okt): the EOD ingestion window moved from
- // 18:00-23:30 to the broker-snapshot window 16:30-17:30 WIB (KSEI publishes
- // ~16:30-17:30), plus a single terminal --final pass at 23:30 WIB. Bandar
- // accumulation moved to its own dedicated 18:00 job (run-broker-accumulation.sh).
+ // Q1/P2 (2026-10-30): jadwal P2 job-wrapper — EOD candle 17:00 + IHSG 17:05 +
+ // lifecycle 17:15/18:00 + retry 17:45, broksum 19:45 + retry --final 20:45.
+ // Jendela snapshot broker 16:30-17:30 tercakup via candle EOD + broksum malam.
  const raw=fs.readFileSync(path.join(__dirname,'..','deploy/vps/final-schedule.cron'),'utf8');
  const active=raw.split('\n').filter(l=>!l.trim().startsWith('#')).join('\n');
  const lines=raw.split('\n').filter(l=>!l.trim().startsWith('#')&&l.includes('run-daily-market-update.sh'));
 
  const windowLines = lines.filter((l) => !l.includes('--final'));
  const finalLines = lines.filter((l) => l.includes('--final'));
- assert.equal(windowLines.length, 2, 'expected two window firings (16:30/16:45 and 17:00/17:15/17:30/17:45)');
- assert.match(windowLines[0],/^30,45\s+16\s+\*\s+\*\s+1-5\s+/);
- assert.match(windowLines[1],/^0,15,30,45\s+17\s+\*\s+\*\s+1-5\s+/);
+ // P2: 1x broksum 19:45 + 1x retry --final 20:45 (bukan 2+1 pola lama).
+ assert.equal(windowLines.length, 1, 'P2: satu broksum 19:45');
+ assert.match(windowLines[0],/^45\s+19\s+\*\s+\*\s+1-5\s+/);
  assert.equal(finalLines.length, 1, 'exactly one terminal --final pass');
- assert.match(finalLines[0],/^30\s+23\s+\*\s+\*\s+1-5\s+/);
+ assert.match(finalLines[0],/^45\s+20\s+\*\s+\*\s+1-5\s+/);
 
- // REVISI 2026-10-18 (broksum deploy): J1 is the SINGLE daily accumulation
- // writer via the vendor API (--accum-source=api). The local generator
- // (run-broker-accumulation.sh) is deliberately DISABLED to prevent
- // race conditions / double-writes, so its 18:00 line must stay commented.
- assert.doesNotMatch(active, /^\s*0\s+18\s+\*\s+\*\s+1-5\s+.*run-broker-accumulation\.sh/m);
- assert.match(raw, /#\s*0\s+18\s+\*\s+\*\s+1-5\s+.*run-broker-accumulation\.sh/, 'disabled generator line must stay documented in the cron source');
+ // P2: candle EOD 17:00 + IHSG 17:05 + lifecycle + retry 17:45 menutup jendela 16:30-17:30.
+ assert.match(active, /0 17 \* \* 1-5.*daily-candles/);
+ assert.match(active, /5 17 \* \* 1-5.*ihsg-candle/);
  assert.match(active, /run-daily-market-update\.sh --accum-source=api/);
  assert.doesNotMatch(active,/run-daily-broker-update\.sh/);
 });

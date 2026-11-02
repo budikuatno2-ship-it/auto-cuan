@@ -382,7 +382,7 @@ async function withRegistrationPage(check) {
     page.on('request', req => req.url().startsWith(origin + '/') ? req.continue() : req.abort());
     fixture.open = async width => {
       await page.setViewport({ width, height: 900 });
-      await page.goto(origin + '/', { waitUntil: 'networkidle0' });
+      await page.goto(origin + '/', { waitUntil:'domcontentloaded' });
       await page.evaluate(() => hideOnboardingGuide(true));
       await page.waitForFunction(() => window.__AUTOCUAN_ACCOUNT_CENTER_LAZY_V1__);
       await page.addScriptTag({ url: origin + '/account-center-v1.js' });

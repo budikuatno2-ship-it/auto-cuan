@@ -496,3 +496,72 @@ html.is-dark .n.on{color:#06140E}
 .tape-m .tape-l .lt-x{display:none}
 @media (prefers-reduced-motion:reduce){.tape-in{animation:none}.tape-v{overflow-x:auto;scrollbar-width:none}}
 html.is-dark .tape-l,html.is-dark .tape-x,html.is-dark .tape{background:var(--ac-raised)}
+
+/* ===== B3: badge profil likuiditas (token ac.css, tanpa MASK_CSS) ===== */
+.b3-liq{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:4px;font-size:11px;font-weight:600;border:1px solid var(--ac-hair);background:var(--ac-raised);color:var(--ac-2);white-space:nowrap}
+.b3-liq--likuid{color:var(--ac-brand);background:var(--ac-brand-soft);border-color:rgba(15,116,88,.22)}
+.b3-liq--nonlikuid{color:var(--ac-info);background:var(--ac-info-soft);border-color:rgba(49,95,154,.22)}
+.b3-liq--reject{color:var(--ac-warn-t);background:var(--ac-warn-soft);border-color:rgba(169,109,19,.25)}
+.b3-liq--unknown{color:var(--ac-muted);background:var(--ac-raised);border-color:var(--ac-hair)}
+
+/* ===== C9 motion upgrade (Fase C9: Landing/Auth/App/Si Mata, INP<200ms, transform/opacity only) =====
+   Prinsip: hanya transform/opacity/variabel CSS; satu pointermove + satu rAF; mati total saat
+   prefers-reduced-motion:reduce atau tab tersembunyi (document.hidden). Bahasa Indonesia. */
+.c9-parallax{will-change:transform;transform:translate3d(0,var(--c9-px,0px),0)}
+.c9-spot{will-change:transform,opacity;transform:translate3d(var(--c9-sx,0px),var(--c9-sy,0px),0)}
+.c9-reveal{opacity:0;transform:translateY(16px);transition:opacity 560ms cubic-bezier(0.22,1,0.36,1),transform 560ms cubic-bezier(0.22,1,0.36,1)}
+.c9-reveal.in{opacity:1;transform:translateY(0)}
+.c9-marquee{display:flex;width:max-content;animation:c9Marquee var(--c9-dur,60s) linear infinite;will-change:transform}
+@keyframes c9Marquee{to{transform:translate3d(-50%,0,0)}}
+.c9-marquee-wrap:hover .c9-marquee,.c9-marquee-wrap:focus-within .c9-marquee,.c9-marquee.paused{animation-play-state:paused}
+/* Auth spring 220ms: scale(0.96) translateY(8px) -> scale(1) translateY(0) + backdrop blur lembut */
+.c9-dlg{animation:c9DlgIn 220ms cubic-bezier(0.22,1,0.36,1) both}
+@keyframes c9DlgIn{from{opacity:0;transform:scale(0.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.c9-scrim{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.c9-field{transition:border-color 140ms ease,box-shadow 140ms ease,transform 140ms ease}
+.c9-field:focus{outline:0;border-color:var(--ac-brand);box-shadow:0 0 0 3px rgba(15,116,88,.16)}
+.c9-step{animation:c9StepIn 240ms cubic-bezier(0.22,1,0.36,1) both}
+@keyframes c9StepIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+.c9-shake{animation:c9Shake 300ms cubic-bezier(.36,.07,.19,.97) both}
+@keyframes c9Shake{20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
+.c9-btn-loading{position:relative;pointer-events:none}
+.c9-btn-loading::after{content:"";width:14px;height:14px;margin-left:8px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:c9Rot 700ms linear infinite;display:inline-block;vertical-align:-2px}
+@keyframes c9Rot{to{transform:rotate(360deg)}}
+/* Maintenance: subtle pulse badge + transisi mulus tombol Cek status */
+.c9-pulse{animation:c9Pulse 2.4s ease-in-out infinite}
+@keyframes c9Pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.82;transform:scale(.97)}}
+.c9-check-btn{transition:background 160ms ease,border-color 160ms ease,transform 160ms cubic-bezier(.34,1.45,.64,1),box-shadow 160ms ease}
+/* App: panel aktif fade+micro-slide 150-200ms + pill/tab geser mulus */
+.c9-panel{animation:c9PanelIn 180ms cubic-bezier(0.22,1,0.36,1) both}
+@keyframes c9PanelIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.c9-pill{transition:transform 180ms cubic-bezier(0.22,1,0.36,1)}
+/* Tabel & kartu metrik: staggered entrance maks 15ms/baris (15 baris pertama) + hover instan */
+.c9-row{opacity:0;transform:translateY(8px);transition:opacity 260ms cubic-bezier(0.22,1,0.36,1),transform 260ms cubic-bezier(0.22,1,0.36,1),background 120ms ease}
+.c9-row.in{opacity:1;transform:none}
+/* Angka live: tick flash halus 600ms (hijau lembut naik, merah lembut turun) */
+.c9-tick-up{animation:c9TickUp 600ms ease both}
+.c9-tick-dn{animation:c9TickDn 600ms ease both}
+@keyframes c9TickUp{0%{background-color:rgba(38,115,74,.18);border-radius:4px}100%{background-color:transparent}}
+@keyframes c9TickDn{0%{background-color:rgba(185,71,90,.16);border-radius:4px}100%{background-color:transparent}}
+/* Drawer slide-over mulus; details adv-tools tinggi/opasitas rapi; toast spring sudut layar */
+.c9-drawer{animation:c9DrawerIn 260ms cubic-bezier(0.22,1,0.36,1) both}
+@keyframes c9DrawerIn{from{opacity:.4;transform:translateX(40px)}to{opacity:1;transform:none}}
+.c9-adv{overflow:hidden;transition:transform 220ms cubic-bezier(0.22,1,0.36,1),opacity 200ms ease}
+.c9-toast{animation:c9ToastIn 320ms cubic-bezier(.34,1.45,.64,1) both;transform-origin:bottom right}
+@keyframes c9ToastIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+/* Si Mata: display:none di 4 Auth + mode Satu layar Chart (kanvas + SPA) */
+body:has(.dialog.dlg):not(:has(.app .side)) .mm,body:has(.dialog.dlg):not(:has(.app .side)) .mata-wrap,
+body:has(.cw.full) .mm,body:has(.cw.full) .mata-wrap,
+body:has(.chart-single) .mm,body:has(.chart-single) .mata-wrap,
+body:has([data-chart-single="1"]) .mm,body:has([data-chart-single="1"]) .mata-wrap,
+#authChoiceModal:not(.hidden) ~ .mm,#loginModal:not(.hidden) ~ .mm,#registerModal:not(.hidden) ~ .mm,#selfResetModal:not(.hidden) ~ .mm,
+.auth-open .mm,.chart-focus .mm,.single-chart .mm{display:none!important}
+.mm[hidden]{display:none!important}
+/* Reduced-motion: marquee paused, loop pupil berhenti (JS), transisi instan */
+@media (prefers-reduced-motion:reduce){
+.c9-marquee,.tape-in{animation:none!important;animation-play-state:paused!important}
+.c9-reveal,.c9-row{opacity:1!important;transform:none!important;transition:none!important}
+.c9-dlg,.c9-panel,.c9-step,.c9-drawer,.c9-toast{animation:none!important}
+.c9-pulse{animation:none!important}
+*,*::before,*::after{transition-duration:0.01ms!important;animation-duration:0.01ms!important}
+}

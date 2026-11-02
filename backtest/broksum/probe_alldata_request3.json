@@ -1,0 +1,26 @@
+{
+  "url": "/api/broker-summary/BRPT?start_date=2026-09-08&end_date=2026-09-08&flow=all&all_data=true",
+  "status": 200,
+  "byteSize": 24469,
+  "durationMs": 452,
+  "dates": {
+    "broker_start_date": "2026-09-08",
+    "broker_end_date": "2026-09-08",
+    "storedDate": "2026-09-08"
+  },
+  "allData": {
+    "brokersCount": 60,
+    "brokerLevelsCount": 54,
+    "totalBuyVal": 94230021500,
+    "totalSellVal": 94230021500
+  },
+  "storedTop25": {
+    "brokersCount": 20,
+    "brokerLevelsCount": 25,
+    "totalBuyVal": 90674349000,
+    "totalSellVal": 90803610500
+  },
+  "clippedBrokerLevels": 29,
+  "unobservedTurnoverRp": 3555672500,
+  "unobservedTurnoverPct": "3.77%"
+}

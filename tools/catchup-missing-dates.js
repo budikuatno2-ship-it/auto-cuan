@@ -40,11 +40,19 @@ const quotaTracker = require(path.join(ROOT_DIR, 'lib', 'arjum-quota-tracker'));
 
 const DEFAULT_BATCH = 50;
 const MAX_FAILURE_RATIO = 0.20;
-// Hard quota floors: 5000 (weekday), 1000 (weekend).
-const WEEKDAY_FLOOR = 5000;
-const WEEKEND_FLOOR = 1000;
-const DAILY_JOB_NEED = 5000;
-const WEEKEND_RESERVE_CAP = 1000;
+// P1: floor kuota dinamis dari config/quota.json via lib/quota-state.js (tanpa hardcode).
+function dynamicFloors() {
+  try {
+    const qs = require(path.join(ROOT_DIR, 'lib', 'quota-state'));
+    const cfg = qs.loadConfig();
+    return {
+      weekday: Math.floor(Number(cfg.reserveFloorWeekdayDaytime) || 0),
+      weekend: Math.floor(Number(cfg.reserveFloorWeekend) || 0)
+    };
+  } catch (_) {
+    return { weekday: 0, weekend: 0 };
+  }
+}
 
 // Catchup historical types: ONLY ALL and F.
 // BUG-03: /api/broker-accumulation and /api/insiders have NO date parameter.
@@ -84,14 +92,22 @@ function dataDir(env) {
 }
 
 function parseArgs(argv) {
-  const opts = { dryRun: false, dates: [], batch: DEFAULT_BATCH, limit: Infinity, skipF: false };
+  // P2: dukung --floor N dan --max-requests N (batch kecil uji env cron nyata).
+  const opts = { dryRun: false, dates: [], batch: DEFAULT_BATCH, limit: Infinity, skipF: false, floor: null, maxRequests: null };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--dry-run') opts.dryRun = true;
     else if (a === '--skip-f') opts.skipF = true;
     else if (a === '--dates') { opts.dates = String(argv[i + 1] || '').split(',').map((s) => s.trim()).filter(Boolean); i += 1; }
+    else if (a.startsWith('--dates=')) { opts.dates = String(a.slice(8)).split(',').map((s) => s.trim()).filter(Boolean); }
     else if (a === '--batch') { const n = parseInt(argv[i + 1], 10); if (Number.isFinite(n) && n > 0) opts.batch = n; i += 1; }
+    else if (a.startsWith('--batch=')) { const n = parseInt(a.slice(8), 10); if (Number.isFinite(n) && n > 0) opts.batch = n; }
     else if (a === '--limit') { const n = parseInt(argv[i + 1], 10); if (Number.isFinite(n) && n > 0) opts.limit = n; i += 1; }
+    else if (a.startsWith('--limit=')) { const n = parseInt(a.slice(8), 10); if (Number.isFinite(n) && n > 0) opts.limit = n; }
+    else if (a === '--floor') { const n = parseInt(argv[i + 1], 10); if (Number.isFinite(n) && n >= 0) opts.floor = n; i += 1; }
+    else if (a.startsWith('--floor=')) { const n = parseInt(a.slice(8), 10); if (Number.isFinite(n) && n >= 0) opts.floor = n; }
+    else if (a === '--max-requests') { const n = parseInt(argv[i + 1], 10); if (Number.isFinite(n) && n > 0) opts.maxRequests = n; i += 1; }
+    else if (a.startsWith('--max-requests=')) { const n = parseInt(a.slice(15), 10); if (Number.isFinite(n) && n > 0) opts.maxRequests = n; }
   }
   return opts;
 }
@@ -109,7 +125,13 @@ function parseArgs(argv) {
 function computeCatchupBudget(limit, used, options) {
   const opts = options || {};
   const isWeekend = opts.isWeekend === true;
-  const floor = isWeekend ? WEEKEND_FLOOR : WEEKDAY_FLOOR;
+  // P1: floor dinamis dari config; override eksplisit via options.floor tetap dihormati (untuk tes).
+  let floor = null;
+  if (opts.floor != null && Number.isFinite(Number(opts.floor))) floor = Math.floor(Number(opts.floor));
+  else {
+    const fl = dynamicFloors();
+    floor = isWeekend ? fl.weekend : fl.weekday;
+  }
   const remaining = Math.max(0, Number(limit) - Number(used));
   return { limit, used, remaining, floor, spendable: Math.max(0, remaining - floor), isWeekend };
 }
@@ -170,6 +192,15 @@ async function run(argv, deps) {
   const client = d.client || arjumClient;
   const tracker = d.tracker || quotaTracker;
 
+  // P2 — hard stop WIB lapis kedua: jangan mulai bila sudah di jendela terlarang.
+  try {
+    const wib = require(path.join(ROOT_DIR, 'lib', 'wib-hard-stop'));
+    if (wib && typeof wib.shouldStop === 'function' && wib.shouldStop()) {
+      console.log('[catchup] BERHENTI: jendela terlarang WIB (hard stop 23:50-00:10).');
+      return { stopped: 'FORBIDDEN_WINDOW', spent: 0 };
+    }
+  } catch (_) {}
+
   const limit = client.getConfiguredDailyQuota();
   const used = tracker.getUsedToday();
   // Weekend (Sat/Sun) has no J1/J2, so the daily-job floor does not apply.
@@ -177,7 +208,11 @@ async function run(argv, deps) {
     timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit'
   }).format(new Date());
   const weekend = isWeekendWib(todayWib);
-  const budget = computeCatchupBudget(limit, used, { isWeekend: weekend });
+  const budget = computeCatchupBudget(limit, used, { isWeekend: weekend, floor: opts.floor });
+  // P2: batasi batch kecil untuk uji env cron nyata (--max-requests N).
+  if (opts.maxRequests != null && Number.isFinite(opts.maxRequests)) {
+    budget.spendable = Math.min(budget.spendable, opts.maxRequests);
+  }
 
   const dates = opts.dates.length ? opts.dates : ['2026-10-23', '2026-10-22', '2026-10-21', '2026-10-20', '2026-10-19'];
   const plan = dates.map((date) => {
@@ -286,5 +321,5 @@ if (require.main === module) {
 
 module.exports = {
   run, parseArgs, computeCatchupBudget, missingForDate, isWeekendWib,
-  MAX_FAILURE_RATIO, DAILY_JOB_NEED, WEEKEND_RESERVE_CAP, TYPES
+  MAX_FAILURE_RATIO, TYPES
 };

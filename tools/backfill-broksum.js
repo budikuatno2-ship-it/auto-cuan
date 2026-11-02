@@ -55,11 +55,28 @@ const broksumValidator = require('../lib/broksum-validator');
 // Default pacing: 8 req/sec (125ms delay) as verified in benchmark
 const DEFAULT_DELAY_MS = 125;
 const SLOWDOWN_DELAY_MS = 200; // 5 req/sec on rate burst
-// Hard quota floors: Weekday floor 5,000 for J1; Weekend floor 1,000 for web/retries.
-const WEEKDAY_RESERVE = process.env.BACKFILL_RESERVE_AFTER_EOD !== undefined ? Number(process.env.BACKFILL_RESERVE_AFTER_EOD) : 800;
-const WEEKEND_RESERVE = Math.max(1000, Number(process.env.BACKFILL_RESERVE_WEEKEND) || 1000);
-const DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD = 5000;
-const WEEKDAY_RESERVE_BEFORE_EOD = Math.max(5000, Number(process.env.BACKFILL_RESERVE_BEFORE_EOD) || DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD);
+ // P1: floor kuota dinamis dari config/quota.json via lib/quota-state.js (tanpa hardcode).
+ // Q1: fallback warisan bila config belum ada: weekday 5000/800, weekend 1000.
+function dynamicReserve(kind, fallback) {
+ try {
+   const qs = require('../lib/quota-state');
+   const cfg = qs.loadConfig();
+   if (kind === 'weekend') {
+     const v = Math.floor(Number(cfg.reserveFloorWeekend) || 0);
+     if (v > 0) return v;
+   } else if (kind === 'weekday-night') {
+     const v = Math.floor(Number(cfg.reserveFloorWeekdayNight) || 0);
+     if (v > 0) return v;
+   } else {
+     const v = Math.floor(Number(cfg.reserveFloorWeekdayDaytime) || 0);
+     if (v > 0) return v;
+   }
+ } catch (_) {}
+ return Math.floor(Number(fallback) || 0);
+}
+const WEEKDAY_RESERVE = process.env.BACKFILL_RESERVE_AFTER_EOD !== undefined ? Number(process.env.BACKFILL_RESERVE_AFTER_EOD) : dynamicReserve('weekday-night', 800);
+const WEEKEND_RESERVE = process.env.BACKFILL_RESERVE_WEEKEND !== undefined ? Number(process.env.BACKFILL_RESERVE_WEEKEND) : dynamicReserve('weekend', 1000);
+const WEEKDAY_RESERVE_BEFORE_EOD = process.env.BACKFILL_RESERVE_BEFORE_EOD !== undefined ? Number(process.env.BACKFILL_RESERVE_BEFORE_EOD) : dynamicReserve('weekday', 5000);
 
 // 2c: read the EOD completion sentinel written by run-daily-market-update.js.
 function eodDoneExists(baseDir, wibDateKey) {

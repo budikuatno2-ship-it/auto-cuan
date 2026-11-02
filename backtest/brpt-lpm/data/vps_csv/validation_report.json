@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-10-17T07:29:12.968Z",
+  "tradingview_csv_status": "NOT_FOUND_ON_VPS_OR_LOCAL",
+  "foreign_flow": {
+    "file": "brpt_foreign_flow_vps.csv",
+    "total_records": 7,
+    "min_date": "2026-08-03",
+    "max_date": "2026-08-11",
+    "duplicates": 0,
+    "unit_foreign_net": "IDR Nominal (Rupiah)",
+    "unit_nbsa": "Shares (Lembar)",
+    "exact_matches_vs_json": 7,
+    "discrepancies": []
+  },
+  "ohlcv_comparison": {
+    "vps_history_records": 135,
+    "yahoo_total_records": 1199,
+    "overlapping_dates": 130,
+    "exact_price_matches": 130,
+    "price_match_rate_pct": 100,
+    "mismatches": []
+  }
+}

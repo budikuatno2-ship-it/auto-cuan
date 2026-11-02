@@ -180,25 +180,27 @@ function extractFunction(source, signature) {
 }
 
 function makeRuntime() {
-  const dom = buildDom(parseStructure(html));
-  // Native input values exist in the browser even before the visitor types.
-  ['regUsername', 'regEmail', 'regPassword', 'regPasswordConfirm'].forEach((id) => {
-    dom.byId.get(id).value = '';
-  });
-  const sandbox = {
-    document: dom.document,
-    // The landing page is the signed-out view: maintenance resolved OFF and no
-    // admin session, exactly the state a visitor clicking "Login" is in.
-    maintenanceLockActive: () => false,
-    serviceStatusUnverified: () => false,
-    isServerVerifiedAdmin: () => false,
-    applyMaintenanceGate: () => {},
-    updateLandingCtas: () => {},
-    resetRegisterApprovalView: () => {},
-    loadPremiumAccess: () => {},
-    resetPremiumAccess: () => {},
-    setTimeout: (fn) => { fn(); return 0; }
-  };
+ const dom = buildDom(parseStructure(html));
+ // Native input values exist in the browser even before the visitor types.
+ ['regUsername', 'regEmail', 'regPassword', 'regPasswordConfirm'].forEach((id) => {
+   const el = dom.byId.get(id);
+   if (el) el.value = '';
+ });
+ const sandbox = {
+   document: dom.document,
+   // The landing page is the signed-out view: maintenance resolved OFF and no
+   // admin session, exactly the state a visitor clicking "Login" is in.
+   maintenanceLockActive: () => false,
+   serviceStatusUnverified: () => false,
+   isServerVerifiedAdmin: () => false,
+   applyMaintenanceGate: () => {},
+   updateLandingCtas: () => {},
+   updateSiMataForAuth: () => {},
+   resetRegisterApprovalView: () => {},
+   loadPremiumAccess: () => {},
+   resetPremiumAccess: () => {},
+   setTimeout: (fn) => { fn(); return 0; }
+ };
   vm.createContext(sandbox);
   // Load the current consent helper's real validation data and functions.
   // doRegister is defined for its _busy state; this modal harness never submits.

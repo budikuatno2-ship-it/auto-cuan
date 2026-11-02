@@ -87,6 +87,7 @@ test('Financial: renders BRPT real data with honest "—" for missing equity', (
   assert.equal(elements['financialCompanyName'].textContent, 'Barito Pacific Tbk');
   assert.equal(elements['financialPbvVal'].textContent, '—');
   assert.ok(elements['financialPbvNote'].textContent.includes('Total Ekuitas'));
+  // F1: periode terbaru dari model real BRPT (Q1 2026 kolom paling jelas di disk).
   assert.equal(elements['financialLatestPeriodVal'].textContent, 'Q1 2026');
   assert.ok(elements['financialCoverageBadge'].textContent.includes('Data Sebagian'));
 });

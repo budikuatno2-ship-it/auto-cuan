@@ -1,0 +1,80 @@
+{
+  "total_yahoo_bars": 1199,
+  "total_vps_bars": 135,
+  "overlapping_bars": 130,
+  "mismatches": [
+    {
+      "date": "2026-09-22",
+      "yahoo": {
+        "open": 1610,
+        "high": 1630,
+        "low": 1545,
+        "close": 1565,
+        "volume": 57041500
+      },
+      "vps": {
+        "open": 1610,
+        "high": 1630,
+        "low": 1545,
+        "close": 1565,
+        "volume": 56342200
+      },
+      "diff": {
+        "open": 0,
+        "high": 0,
+        "low": 0,
+        "close": 0,
+        "volume": 699300
+      }
+    },
+    {
+      "date": "2026-10-05",
+      "yahoo": {
+        "open": 1425,
+        "high": 1485,
+        "low": 1425,
+        "close": 1485,
+        "volume": 44789600
+      },
+      "vps": {
+        "open": 1425,
+        "high": 1485,
+        "low": 1425,
+        "close": 1485,
+        "volume": 44799800
+      },
+      "diff": {
+        "open": 0,
+        "high": 0,
+        "low": 0,
+        "close": 0,
+        "volume": -10200
+      }
+    },
+    {
+      "date": "2026-10-16",
+      "yahoo": {
+        "open": 1210,
+        "high": 1220,
+        "low": 1210,
+        "close": 1210,
+        "volume": 206590200
+      },
+      "vps": {
+        "open": 1210,
+        "high": 1220,
+        "low": 1210,
+        "close": 1210,
+        "volume": 202008600
+      },
+      "diff": {
+        "open": 0,
+        "high": 0,
+        "low": 0,
+        "close": 0,
+        "volume": 4581600
+      }
+    }
+  ],
+  "exact_matches": 127
+}

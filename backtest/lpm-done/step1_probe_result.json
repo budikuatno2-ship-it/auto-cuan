@@ -1,0 +1,238 @@
+{
+  "baseline": {
+    "status": 200,
+    "headers": {
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "cf-cache-status": "DYNAMIC",
+      "cf-ray": "a4bf7212995ac7b1-HKG",
+      "connection": "keep-alive",
+      "content-encoding": "br",
+      "content-type": "application/json",
+      "date": "Sat, 17 Oct 2026 12:53:20 GMT",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=urkoaC2vNvzG1mSaCh%2Fezl64CvcgL%2BInnVEMBdupEj%2FpjRI2fqrhyXQcvr%2BbhxNzGZuJsGqnFgGgBlaBtIGPFqvKGI4btxpyWzhvR7XWtj%2B2Dwcu3XRJqyoKBio7WrLUA68%3D\"}]}",
+      "server": "cloudflare",
+      "transfer-encoding": "chunked",
+      "x-quota-cost": "1",
+      "x-ratelimit-limit": "6328",
+      "x-ratelimit-remaining": "4407"
+    },
+    "total": 7412,
+    "sampleRows": [
+      {
+        "time": "16:10:35",
+        "price_num": 1210,
+        "qty_num": 15,
+        "value_raw": 1815000,
+        "action": "BUY"
+      },
+      {
+        "time": "16:09:10",
+        "price_num": 1210,
+        "qty_num": 25,
+        "value_raw": 3025000,
+        "action": "BUY"
+      },
+      {
+        "time": "16:09:04",
+        "price_num": 1210,
+        "qty_num": 5,
+        "value_raw": 605000,
+        "action": "BUY"
+      },
+      {
+        "time": "16:08:35",
+        "price_num": 1210,
+        "qty_num": 9,
+        "value_raw": 1089000,
+        "action": "BUY"
+      },
+      {
+        "time": "16:05:51",
+        "price_num": 1210,
+        "qty_num": 2,
+        "value_raw": 242000,
+        "action": "BUY"
+      }
+    ]
+  },
+  "paramTests": {
+    "sort=value": {
+      "status": 200,
+      "total": 7412,
+      "rowsLen": 5,
+      "sampleRows": [
+        {
+          "time": "16:10:35",
+          "price_num": 1210,
+          "qty_num": 15,
+          "value_raw": 1815000,
+          "action": "BUY"
+        },
+        {
+          "time": "16:09:10",
+          "price_num": 1210,
+          "qty_num": 25,
+          "value_raw": 3025000,
+          "action": "BUY"
+        }
+      ],
+      "changesTotal": false,
+      "changesRows": false,
+      "effective": false
+    },
+    "order=desc": {
+      "status": 200,
+      "total": 7412,
+      "rowsLen": 5,
+      "sampleRows": [
+        {
+          "time": "16:10:35",
+          "price_num": 1210,
+          "qty_num": 15,
+          "value_raw": 1815000,
+          "action": "BUY"
+        },
+        {
+          "time": "16:09:10",
+          "price_num": 1210,
+          "qty_num": 25,
+          "value_raw": 3025000,
+          "action": "BUY"
+        }
+      ],
+      "changesTotal": false,
+      "changesRows": false,
+      "effective": false
+    },
+    "sort_by=value_raw": {
+      "status": 200,
+      "total": 7412,
+      "rowsLen": 5,
+      "sampleRows": [
+        {
+          "time": "16:10:35",
+          "price_num": 1210,
+          "qty_num": 15,
+          "value_raw": 1815000,
+          "action": "BUY"
+        },
+        {
+          "time": "16:09:10",
+          "price_num": 1210,
+          "qty_num": 25,
+          "value_raw": 3025000,
+          "action": "BUY"
+        }
+      ],
+      "changesTotal": false,
+      "changesRows": false,
+      "effective": false
+    },
+    "min_value=500000000": {
+      "status": 200,
+      "total": 7412,
+      "rowsLen": 5,
+      "sampleRows": [
+        {
+          "time": "16:10:35",
+          "price_num": 1210,
+          "qty_num": 15,
+          "value_raw": 1815000,
+          "action": "BUY"
+        },
+        {
+          "time": "16:09:10",
+          "price_num": 1210,
+          "qty_num": 25,
+          "value_raw": 3025000,
+          "action": "BUY"
+        }
+      ],
+      "changesTotal": false,
+      "changesRows": false,
+      "effective": false
+    },
+    "min_qty=1000": {
+      "status": 200,
+      "total": 7412,
+      "rowsLen": 5,
+      "sampleRows": [
+        {
+          "time": "16:10:35",
+          "price_num": 1210,
+          "qty_num": 15,
+          "value_raw": 1815000,
+          "action": "BUY"
+        },
+        {
+          "time": "16:09:10",
+          "price_num": 1210,
+          "qty_num": 25,
+          "value_raw": 3025000,
+          "action": "BUY"
+        }
+      ],
+      "changesTotal": false,
+      "changesRows": false,
+      "effective": false
+    },
+    "side=BUY": {
+      "status": 200,
+      "total": 7412,
+      "rowsLen": 5,
+      "sampleRows": [
+        {
+          "time": "16:10:35",
+          "price_num": 1210,
+          "qty_num": 15,
+          "value_raw": 1815000,
+          "action": "BUY"
+        },
+        {
+          "time": "16:09:10",
+          "price_num": 1210,
+          "qty_num": 25,
+          "value_raw": 3025000,
+          "action": "BUY"
+        }
+      ],
+      "changesTotal": false,
+      "changesRows": false,
+      "effective": false
+    }
+  },
+  "movers": {
+    "status": 200,
+    "isJson": true,
+    "keys": [
+      "by",
+      "gainers",
+      "losers",
+      "count",
+      "market"
+    ],
+    "sample": {
+      "by": "chg",
+      "gainers": [],
+      "losers": [],
+      "count": 0,
+      "market": {
+        "status": "weekend",
+        "label": "Market tutup (weekend)",
+        "next_open": "Senin 09:00 WIB"
+      }
+    }
+  },
+  "priceList": {
+    "status": 400,
+    "isJson": true,
+    "keys": [
+      "detail"
+    ],
+    "sample": {
+      "detail": "Parameter `codes` wajib diisi untuk endpoint ini (biaya 1 kode = 1 kuota). Contoh: /api/price/list?codes=BBCA,BBRI."
+    }
+  },
+  "totalRequestsUsed": 9
+}

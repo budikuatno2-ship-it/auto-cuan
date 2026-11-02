@@ -68,14 +68,21 @@ test('Day Trade radar request only disables on explicit false values', () => {
 });
 
 test('Day Trade no candidates at all sends empty heartbeat', async () => {
-  await withSendSpy(async (calls) => {
-    const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [] }), 'run-empty-heartbeat', '2026-07-02', 0, true, true, { scanned_count: 760, raw_batch_passed_count: 0, bypass_time_guard: true });
-    assert.equal(result.sent, true);
-    assert.equal(result.reason, 'daytrade_empty_heartbeat_sent');
-    assert.equal(calls.length, 1);
-    assert.match(calls[0], /empty heartbeat/);
-    assert.match(calls[0], /Scanned: 760/);
-  });
+  const prev = process.env.DAYTRADE_SEND_EMPTY_HEARTBEAT;
+  process.env.DAYTRADE_SEND_EMPTY_HEARTBEAT = 'true';
+  try {
+    await withSendSpy(async (calls) => {
+      const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [] }), 'run-empty-heartbeat', '2026-07-02', 0, true, true, { scanned_count: 760, raw_batch_passed_count: 0, bypass_time_guard: true });
+      assert.equal(result.sent, true);
+      assert.equal(result.reason, 'daytrade_empty_heartbeat_sent');
+      assert.equal(calls.length, 1);
+      assert.match(calls[0], /empty heartbeat/);
+      assert.match(calls[0], /Scanned: 760/);
+    });
+  } finally {
+    if (prev === undefined) delete process.env.DAYTRADE_SEND_EMPTY_HEARTBEAT;
+    else process.env.DAYTRADE_SEND_EMPTY_HEARTBEAT = prev;
+  }
 });
 
 
