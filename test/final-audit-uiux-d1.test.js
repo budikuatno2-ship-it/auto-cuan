@@ -193,7 +193,14 @@ for (const [theme, width] of [['light',320],['light',390],['light',768],['light'
     record('MATRIX_GEOMETRY', { theme, ...geometry });
     assert.ok(geometry.scroll <= geometry.client + 1, JSON.stringify(geometry));
     if (width < 1024) { assert.equal(geometry.font, '16px'); assert.ok(geometry.controls.every(control => control.height >= 44 && control.width >= 44), JSON.stringify(geometry.controls)); }
-    await search('TLKM'); await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header'); await page.keyboard.press('Enter'); await pause(150);
+    await search('TLKM');
+    // Deterministik: tunggu render hasil search selesai sebelum fokus.
+    // Tanpa ini, focus bisa mengenai node lama yang baru diganti innerHTML
+    // sehingga Enter tidak meng-expand (flaky CI baris 200).
+    await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 1, { timeout: 8000 });
+    await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('#marketStructureAccordionContainer [data-ticker="TLKM"]')?.classList.contains('is-expanded') === true, { timeout: 8000 });
     // The card header carries the real free float. 0% is a value, so it must
     // read "0,00%" and never collapse into an em dash.
     assert.match(await page.$eval('#marketStructureAccordionContainer [data-ticker="TLKM"]', el => el.innerText), /0,00%/);
