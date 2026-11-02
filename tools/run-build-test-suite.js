@@ -148,6 +148,7 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
     failedBatches++;
     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
     console.warn(`\n[WARN] Batch ${batchNum} experienced a failure. Re-running batch files in isolation to pinpoint root cause...`);
+    console.error(`::error::D1 batch ${batchNum} failed (exit ${res.status}); isolating ${batch.length} files`);
     sendVercelTelemetry(`[WARN] Batch ${batchNum} experienced a failure:\n${batch.join('\n')}`);
     for (const testFile of batch) {
       const singleRes = spawnSync(process.execPath, ['--test', testFile], {
@@ -159,6 +160,7 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
       });
       if (singleRes.status !== 0) {
         console.error(`\n[FAIL] Test file failed in isolation: ${testFile}`);
+        console.error(`::error file=${testFile}::D1 full-regression failed in isolation (exit ${singleRes.status})`);
         if (singleRes.stdout) process.stdout.write(singleRes.stdout);
         if (singleRes.stderr) process.stderr.write(singleRes.stderr);
         if (!failingFiles.includes(testFile)) failingFiles.push(testFile);
@@ -175,6 +177,7 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
 if (failingFiles.length > 0) {
   console.error(`\nTest suite finished with ${failingFiles.length} failing test file(s):`);
   failingFiles.forEach(f => console.error(` - ${f}`));
+  failingFiles.forEach(f => console.error(`::error file=${f}::D1 full-regression failing file`));
   sendVercelTelemetry(`Test suite finished with ${failingFiles.length} failing test file(s):\n${failingFiles.join('\n')}`);
   process.exit(1);
 } else {
