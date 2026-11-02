@@ -5,6 +5,10 @@ const assert = require('node:assert/strict');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 
+const guard = require('../lib/market-hours-guard');
+// Deterministik: kunci proyeksi volume ke OUTSIDE_MARKET agar FIX-4
+// volume-pace tidak bergantung wall-clock runner.
+guard.getMarketSessionStatus = () => ({ status: 'OUTSIDE_MARKET', total_minutes: 0 });
 const sweepDiag = require('../lib/trade-plan-v2-sweep-diagnostic');
 const tp = require('../lib/trade-plan-v2');
 const fmt = require('../lib/trade-plan-v2-formatter');
@@ -148,11 +152,10 @@ test('11. existing screener scoring output is byte-identical (regression lock)',
   assert.equal(data.support, 1024);
   assert.equal(data.resistance, 1042);
   assert.equal(data.atr14, 12.79);
-  // FIX-4 intraday volume-pace projection: locked fixture now scores
-  // pace-adjusted values (58/11), not the pre-FIX-4 raw ratio (56/7).
+  // Deterministik OUTSIDE_MARKET: kunci stabil 56/7 (bukan nilai LIVE_MARKET flaky).
   const s = eng.scoreDayTrade(data, 'morning', 'UTAMA', null);
-  assert.equal(s.daytrade_score, 58);
-  assert.equal(s.liquidity_score, 11);
+  assert.equal(s.daytrade_score, 56);
+  assert.equal(s.liquidity_score, 7);
   assert.equal(s.momentum_score, 18);
   assert.equal(s.status, 'WAIT_PULLBACK');
 });

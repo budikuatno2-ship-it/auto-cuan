@@ -6,6 +6,11 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 
+const guard = require('../lib/market-hours-guard');
+// Deterministik: kunci proyeksi volume ke OUTSIDE_MARKET agar FIX-4
+// volume-pace tidak bergantung wall-clock runner (LIVE_MARKET memproyeksikan
+// volume hari ini sehingga skor flaky 54/58/56 tergantung jam eksekusi).
+guard.getMarketSessionStatus = () => ({ status: 'OUTSIDE_MARKET', total_minutes: 0 });
 const diag = require('../lib/trade-plan-v2-daytrade-diagnostic');
 const eng = require('../lib/daytrade-screener-engine');
 
@@ -169,33 +174,33 @@ test('10. Day Trade base scoring formula output is unchanged (locked regression)
   assert.equal(data.resistance, 1042);
   assert.equal(data.atr14, 12.79);
   assert.equal(data.rsi14, 54.55);
-  // scoreDayTrade composite + components follow the production FIX-4 intraday
-  // volume-pace projection (LIVE_MARKET projects today's volume, so the locked
-  // fixture now scores pace-adjusted values, not the pre-FIX-4 raw ratio).
+  // Deterministik OUTSIDE_MARKET: FIX-4 pace projection nonaktif sehingga
+  // kunci regresi stabil lintas jam (56/7/18, penalti 0), bukan nilai
+  // LIVE_MARKET yang bergantung wall-clock (54/58/11 flaky).
   const s = eng.scoreDayTrade(data, 'morning', 'UTAMA', null);
-  assert.equal(s.daytrade_score, 58);
-  assert.equal(s.liquidity_score, 11);
-  assert.equal(s.prespike_score, 22);
+  assert.equal(s.daytrade_score, 56);
+  assert.equal(s.liquidity_score, 7);
+  assert.equal(s.prespike_score, 18);
   assert.equal(s.momentum_score, 18);
   assert.equal(s.risk_reward_score, 0);
   assert.equal(s.trend_score, 13);
-  assert.equal(s.penalty_score, -6);
+  assert.equal(s.penalty_score, 0);
   assert.equal(s.candle_score, 0);
   assert.equal(s.status, 'WAIT_PULLBACK');
 });
 
 test('11. Swing/Day base scoring helpers (score components) remain callable and unchanged', () => {
   // The individual base scoring functions used by Konglo / Non-Konglo / Day Trade
-  // are still exported with FIX-4 pace-adjusted formulas.
+  // are still exported with unchanged formulas (OUTSIDE_MARKET deterministic).
   const candles = deterministicCandles();
   const data = eng.analyzeDayTrade(candles, 'TEST');
   const levels = eng.calculateLevels(data);
-  assert.equal(eng.scoreLiquidity(data).score, 11);
-  assert.equal(eng.scorePreSpike(data), 22);
+  assert.equal(eng.scoreLiquidity(data).score, 7);
+  assert.equal(eng.scorePreSpike(data), 18);
   assert.equal(eng.scoreMomentum(data), 18);
   assert.equal(eng.scoreRiskReward(data, levels), 5);
   assert.equal(eng.scoreTrend(data), 13);
-  assert.equal(eng.calculatePenalty(data).penalty, -6);
+  assert.equal(eng.calculatePenalty(data).penalty, 0);
 });
 
 // ===================================================================

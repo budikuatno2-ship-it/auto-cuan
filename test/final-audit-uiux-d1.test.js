@@ -179,12 +179,20 @@ test('D1 repeated navigation retains controls and does not duplicate rows or lis
 });
 for (const [theme, width] of [['light',320],['light',390],['light',768],['light',1024],['light',1440],['light',1920],['dark',390],['dark',1440]]) {
   test(`D1 ${theme} ${width}: populated list, usable detail, keyboard return and no page overflow`, async () => {
-    await page.setViewport({ width, height: 900 }); await page.evaluate(theme => applyAppTheme(theme), theme); await pause(100);
+    await page.setViewport({ width, height: 900 }); await page.evaluate(theme => applyAppTheme(theme), theme);
+    // Deterministik: tunggu CSS media-query sentuh (<=1023px) benar-benar
+    // terpasang sebelum mengukur. Tanpa settle, batch penuh yang padat bisa
+    // mengukur .fchip/.btn.sm saat height masih 30px sehingga flaky 768px.
+    await page.waitForFunction(() => document.fonts ? document.fonts.status === 'loaded' : true, { timeout: 5000 }).catch(() => {});
+    if (width < 1024) {
+      await page.waitForFunction(() => [...document.querySelectorAll('#panel-tab-market-structure button,#marketStructureSearchInput,#marketStructureSortSelect')].filter(el => el.getBoundingClientRect().width).every(el => el.getBoundingClientRect().height >= 44 && el.getBoundingClientRect().width >= 44), { timeout: 8000 });
+    }
+    await pause(150);
     assert.equal((await rows()).length, 3); assert.ok((await rows()).every(row => row.visible));
     const geometry = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth, font: getComputedStyle(document.getElementById('marketStructureSearchInput')).fontSize, controls: [...document.querySelectorAll('#panel-tab-market-structure button,#marketStructureSearchInput,#marketStructureSortSelect')].filter(el => el.getBoundingClientRect().width).map(el => ({ id: el.id, height: el.getBoundingClientRect().height, width: el.getBoundingClientRect().width })) }));
     record('MATRIX_GEOMETRY', { theme, ...geometry });
     assert.ok(geometry.scroll <= geometry.client + 1, JSON.stringify(geometry));
-    if (width < 1024) { assert.equal(geometry.font, '16px'); assert.ok(geometry.controls.every(control => control.height >= 44 && control.width >= 44)); }
+    if (width < 1024) { assert.equal(geometry.font, '16px'); assert.ok(geometry.controls.every(control => control.height >= 44 && control.width >= 44), JSON.stringify(geometry.controls)); }
     await search('TLKM'); await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header'); await page.keyboard.press('Enter'); await pause(150);
     // The card header carries the real free float. 0% is a value, so it must
     // read "0,00%" and never collapse into an em dash.
