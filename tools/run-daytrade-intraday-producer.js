@@ -160,6 +160,20 @@ function readLoadAvg1() {
  * cron cannot spam: an alert is re-armed only after the snapshot becomes fresh
  * again (or the alarm module's cooldown elapses).
  */
+async function readSnapshotTradingDate(fsInstance, snapshotPath) {
+  // P5: baca tanggal trading snapshot (source_dates.daytrade) agar alarm
+  // di luar jam bursa berbasis lastTradingDay EOD, bukan umur menit mentah.
+  try {
+    if (!fsInstance.existsSync(snapshotPath)) return null;
+    const raw = JSON.parse(fsInstance.readFileSync(snapshotPath, 'utf8'));
+    const sd = raw && raw.source_dates ? raw.source_dates.daytrade : null;
+    if (typeof sd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sd)) return sd;
+    const fb = raw && (raw.market_date || raw.run_date || raw.trade_date);
+    if (typeof fb === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fb)) return fb.slice(0, 10);
+  } catch (_) {}
+  return null;
+}
+
 async function maybeAlertStaleSnapshot(ctx) {
   const deps = ctx.deps || {};
   const log = ctx.log || console.log;
@@ -185,13 +199,25 @@ async function maybeAlertStaleSnapshot(ctx) {
     }
   } catch (_) {}
 
+  // P5: teruskan tanggal snapshot + hari bursa terakhir ke alarm.
+  let snapshotDate = null;
+  let lastTradingDay = null;
+  try {
+    snapshotDate = await readSnapshotTradingDate(fsInstance, snapshotPath);
+    if (snapshotAlarm.resolveLastTradingDay) {
+      lastTradingDay = snapshotAlarm.resolveLastTradingDay(ctx.now);
+    }
+  } catch (_) {}
+
   const decision = snapshotAlarm.evaluate({
     snapshotMtime,
     now: ctx.now,
     marketOpen: ctx.market && ctx.market.isOpen === true,
     lastAlertAt,
     staleMinutes: deps.staleMinutes,
-    cooldownMs: deps.alarmCooldownMs
+    cooldownMs: deps.alarmCooldownMs,
+    snapshotDate,
+    lastTradingDay
   });
 
   if (!decision.shouldAlert) {
@@ -490,6 +516,7 @@ module.exports = {
   retryDelayFor,
   shouldRejectEmptySnapshot,
   maybeAlertStaleSnapshot,
+  readSnapshotTradingDate,
   UNKNOWN_STATUS_RETRY_DELAYS_MS,
   // Run-speed contract (full-universe scan feature).
   normalizeSpeed,

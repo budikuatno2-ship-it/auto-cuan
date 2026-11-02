@@ -359,3 +359,312 @@
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start);
   else start();
 })(typeof window !== 'undefined' ? window : this);
+
+/* ===== C9 motion upgrade (Fase C9: Landing/Auth/App/Si Mata, INP<200ms) =====
+   Vanilla, tanpa library. Prinsip: satu pointermove + satu rAF; hanya transform/opacity/
+   variabel CSS; berhenti saat prefers-reduced-motion:reduce atau document.hidden.
+   Bahasa Indonesia. Tanpa janji untung. */
+(function () {
+  if (window.__acC9) return; window.__acC9 = 'c9-v1';
+  var RMQ = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  function rm() { return !!(RMQ && RMQ.matches); }
+  function hidden() { return !!document.hidden; }
+  /* ---------- Landing: parallax halus hero (transform:translate3d) ---------- */
+  var pxEls = [], ticking = false;
+  function c9Parallax() {
+    if (rm() || hidden()) return;
+    var y = window.scrollY || 0;
+    for (var i = 0; i < pxEls.length; i++) {
+      var el = pxEls[i], sp = parseFloat(el.getAttribute('data-c9-speed') || '0.12');
+      el.style.setProperty('--c9-px', (-y * sp).toFixed(1) + 'px');
+    }
+    ticking = false;
+  }
+  function initParallax() {
+    pxEls = [].slice.call(document.querySelectorAll('[data-c9-parallax]'));
+    if (!pxEls.length) return;
+    pxEls.forEach(function (el) { el.classList.add('c9-parallax'); });
+    window.addEventListener('scroll', function () {
+      if (ticking || rm() || hidden()) return; ticking = true;
+      requestAnimationFrame(c9Parallax);
+    }, { passive: true });
+    c9Parallax();
+  }
+  /* ---------- Landing: spotlight candle hemat CPU (kursor, hero saja) ---------- */
+  var spotEl = null, spotRaf = 0, sx = 0, sy = 0;
+  function spotFrame() {
+    spotRaf = 0;
+    if (!spotEl || rm() || hidden()) return;
+    spotEl.style.setProperty('--c9-sx', sx.toFixed(1) + 'px');
+    spotEl.style.setProperty('--c9-sy', sy.toFixed(1) + 'px');
+  }
+  function initSpot() {
+    spotEl = document.querySelector('[data-c9-spot]');
+    if (!spotEl) return;
+    spotEl.classList.add('c9-spot');
+    var hero = spotEl.closest('.hero, .L, main, body') || document.body;
+    hero.addEventListener('pointermove', function (e) {
+      if (rm() || hidden() || e.pointerType === 'touch') return;
+      var r = spotEl.getBoundingClientRect();
+      sx = (e.clientX - r.left - r.width / 2) * 0.06;
+      sy = (e.clientY - r.top - r.height / 2) * 0.06;
+      if (!spotRaf) spotRaf = requestAnimationFrame(spotFrame);
+    }, { passive: true });
+  }
+  /* ---------- Landing: staggered scroll reveal section 01-07 via IO ---------- */
+  function initReveal() {
+    var els = document.querySelectorAll('[data-c9-reveal]');
+    if (!els.length || !('IntersectionObserver' in window)) {
+      [].forEach.call(els, function (el) { el.classList.add('c9-reveal', 'in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (ents) {
+      ents.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        if (rm()) { en.target.classList.add('c9-reveal', 'in'); return; }
+        en.target.classList.add('c9-reveal');
+        requestAnimationFrame(function () { en.target.classList.add('in'); });
+      });
+    }, { threshold: 0.12 });
+    [].forEach.call(els, function (el, i) {
+      el.style.transitionDelay = Math.min(i * 60, 360) + 'ms';
+      io.observe(el);
+    });
+  }
+  /* ---------- Landing: count-up angka saat masuk viewport ---------- */
+  function fmtId(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  function initCount() {
+    var els = document.querySelectorAll('[data-c9-count]');
+    if (!els.length) return;
+    function run(el) {
+      var to = parseFloat(el.getAttribute('data-c9-count'));
+      if (!isFinite(to)) return;
+      if (rm()) { el.textContent = fmtId(to); return; }
+      var t0 = performance.now(), dur = 1300;
+      function step(t) {
+        if (hidden()) { el.textContent = fmtId(to); return; }
+        var f = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - f, 4);
+        el.textContent = fmtId(to * e);
+        if (f < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+    if (!('IntersectionObserver' in window)) { [].forEach.call(els, run); return; }
+    var io = new IntersectionObserver(function (ents) {
+      ents.forEach(function (en) { if (en.isIntersecting) { io.unobserve(en.target); run(en.target); } });
+    }, { threshold: 0.4 });
+    [].forEach.call(els, function (el) { io.observe(el); });
+  }
+  /* ---------- Landing: transisi tab preview + slider kalkulator; marquee 45px/detik ---------- */
+  function initPreviewTabs() {
+    var btns = document.querySelectorAll('[data-c9-ptab]');
+    if (!btns.length) return;
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (rm()) return;
+        var pane = document.querySelector(b.getAttribute('data-c9-pane') || '.win');
+        if (pane && pane.animate) pane.animate(
+          [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+          { duration: 180, easing: 'cubic-bezier(0.22,1,0.36,1)' });
+      });
+    });
+    document.querySelectorAll('input[type=range][data-c9-slider]').forEach(function (r) {
+      r.addEventListener('input', function () {
+        var out = document.querySelector(r.getAttribute('data-c9-out') || '');
+        if (out && !rm() && out.animate) out.animate(
+          [{ opacity: 0.4, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }],
+          { duration: 150, easing: 'cubic-bezier(0.22,1,0.36,1)' });
+      });
+    });
+  }
+  function initMarquee() {
+    document.querySelectorAll('[data-c9-marquee]').forEach(function (el) {
+      var inner = el.querySelector('.c9-marquee') || el;
+      requestAnimationFrame(function () {
+        var w = inner.scrollWidth / 2;
+        inner.style.setProperty('--c9-dur', Math.max(20, Math.round(w / 45)) + 's');
+      });
+    });
+  }
+  /* ---------- Auth/Maintenance: spring dialog, field ring, slide langkah, shake 300ms, loading ---------- */
+  function initAuth() {
+    document.querySelectorAll('.dialog.dlg, .card.dlg').forEach(function (d) { d.classList.add('c9-dlg'); });
+    document.querySelectorAll('.ov.scrim, .ov').forEach(function (o) { o.classList.add('c9-scrim'); });
+    document.querySelectorAll('.inp, .fld').forEach(function (f) { f.classList.add('c9-field'); });
+    document.querySelectorAll('.swap').forEach(function (s) { s.classList.add('c9-step'); });
+    document.addEventListener('animationend', function (e) {
+      if (e.target && e.target.classList && e.target.classList.contains('c9-shake')) e.target.classList.remove('c9-shake');
+    }, true);
+    window.acC9Shake = function (el) {
+      if (!el || rm()) return;
+      el.classList.remove('c9-shake'); void el.offsetWidth; el.classList.add('c9-shake');
+    };
+    document.addEventListener('click', function (e) {
+      var b = e.target && e.target.closest ? e.target.closest('.btn.p') : null;
+      if (!b || !b.closest('.dialog, .card')) return;
+      if (rm()) return;
+      b.classList.add('c9-btn-loading');
+      setTimeout(function () { b.classList.remove('c9-btn-loading'); }, 1600);
+    }, true);
+    var badge = document.querySelector('.chip.w');
+    if (badge && /pemeliharaan/i.test(document.title + ' ' + document.body.textContent.slice(0, 500))) badge.classList.add('c9-pulse');
+  }
+  /* ---------- App: panel 150-200ms, stagger baris maks 15ms, tick 600ms, drawer/toast ---------- */
+  function initApp() {
+    if (!document.querySelector('.app .side')) return;
+    document.querySelectorAll('.page, .sheet').forEach(function (p) { p.classList.add('c9-panel'); });
+    document.querySelectorAll('.segx .ind, .utabs .on').forEach(function (p) { p.classList.add('c9-pill'); });
+    var rows = document.querySelectorAll('.tbl tbody tr, .rk, .ca');
+    var n = 0;
+    rows.forEach(function (r) {
+      if (n >= 15) return;
+      r.classList.add('c9-row');
+      r.style.transitionDelay = Math.min(n * 15, 210) + 'ms';
+      n++;
+    });
+    if ('IntersectionObserver' in window && rows.length) {
+      var io = new IntersectionObserver(function (ents) {
+        ents.forEach(function (en) { if (en.isIntersecting) { io.unobserve(en.target); en.target.classList.add('in'); } });
+      }, { threshold: 0.05 });
+      rows.forEach(function (r) { if (r.classList.contains('c9-row')) io.observe(r); });
+    } else rows.forEach(function (r) { r.classList.add('in'); });
+    document.querySelectorAll('.drawer, .lpanel').forEach(function (d) { d.classList.add('c9-drawer'); });
+    document.querySelectorAll('.toast').forEach(function (t) { t.classList.add('c9-toast'); });
+    if ('MutationObserver' in window) {
+      var budget = 0, last = 0;
+      new MutationObserver(function (muts) {
+        if (rm() || hidden()) return;
+        var now = performance.now();
+        if (now - last > 250) { budget = 24; last = now; }
+        for (var i = 0; i < muts.length && budget > 0; i++) {
+          var m = muts[i];
+          if (m.type !== 'characterData') continue;
+          var host = m.target.parentElement;
+          if (!host || host.closest('svg')) continue;
+          var t = host.closest('.num, .big');
+          if (!t) continue;
+          budget--;
+          t.classList.remove('c9-tick-up', 'c9-tick-dn');
+          (function (el) {
+            requestAnimationFrame(function () {
+              el.classList.add('c9-tick-up');
+              setTimeout(function () { el.classList.remove('c9-tick-up', 'c9-tick-dn'); }, 600);
+            });
+          })(t);
+        }
+      }).observe(document.body, { subtree: true, characterData: true, characterDataOldValue: true });
+    }
+  }
+  /* ---------- Si Mata C9: pupil rAF tunggal, kedip 3-7 detik, mood IHSG, bubble edukatif,
+     bisa dimatikan dari Pusat Akun, display:none di 4 Auth + Satu layar, berhenti saat
+     hidden/reduced-motion ---------- */
+  var mm = null, pupils = null, bub = null, eyeBtn = null, eyeRect = null;
+  var c9px = -9999, c9py = -9999, c9raf = 0, c9tgt = null, lastTr = '', lastNear = null, blinkT = 0;
+  var MSGS = {
+    'Auto-Cuan': ['Selamat datang! Jelajahi fitur lewat menu di bawah. Angka di sini contoh, bukan rekomendasi.', 'Geser ke bawah, tiap bagian muncul halus. Arahkan kursor ke kartu hero, cahayanya ikut.'],
+    'Dashboard': ['Baca kondisi pasar dulu, baru pilih saham. Angka contoh, bukan rekomendasi.', 'Kotak karantina itu sengaja dipisah. Jangan buru-buru.'],
+    'Masuk': ['Masuk dengan Gmail terdaftar. Password salah? Coba pulihkan lewat Telegram.'],
+    'Daftar akun': ['Daftar butuh Gmail aktif. Kode verifikasi dikirim ke bot Telegram.'],
+    'Pemulihan password': ['Ikuti langkah 1-2-3. Kode 6 digit dikirim ke Telegram yang tertaut.'],
+    'Lengkapi identitas akun': ['Tautkan Gmail sekali. Data watchlist dan portofolio tetap utuh.'],
+    'Pemeliharaan': ['Sistem sedang diperbarui. Watchlist dan portofolio tersimpan utuh.']
+  };
+  var COMMON = ['Aku mengawasi data, bukan dompetmu.', 'Stop loss itu sabuk pengaman, bukan tanda kalah.', 'Aku bukan penasihat investasi. Aku cuma mata.'];
+  function pageKey() { return (document.title || '').replace('&', '&'); }
+  function pick() {
+    var pool = (MSGS[pageKey()] || ['Halo! Aku ikut lihat halaman ini.']).concat(COMMON);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function say(t) {
+    if (!bub || !mm || mm.classList.contains('off') || mm.hidden) return;
+    bub.textContent = t;
+    bub.classList.remove('on');
+    requestAnimationFrame(function () { bub.classList.add('on'); });
+    clearTimeout(say.t);
+    say.t = setTimeout(function () { bub.classList.remove('on'); }, Math.max(4200, t.length * 70));
+  }
+  function isAuthPage() {
+    var t = pageKey();
+    return t === 'Masuk' || t === 'Daftar akun' || t === 'Pemulihan password' || t === 'Lengkapi identitas akun';
+  }
+  function isChartSingle() {
+    return !!document.querySelector('.cw.full') || !!document.querySelector('[data-chart-single="1"]') || document.body.classList.contains('chart-focus');
+  }
+  function syncMata() {
+    if (!mm) return;
+    var hide = isAuthPage() || isChartSingle();
+    mm.style.display = hide ? 'none' : '';
+    mm.hidden = hide;
+  }
+  function blinkLoop() {
+    if (!mm || rm() || hidden() || mm.hidden || mm.classList.contains('off')) { scheduleBlink(); return; }
+    var lids = mm.querySelectorAll('.mm-lid, .mata .lid, .lid');
+    lids.forEach(function (l) {
+      if (l.animate) l.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)', offset: 0.5 }, { transform: 'scaleY(0)' }], { duration: 220, easing: 'ease-in-out' });
+    });
+    scheduleBlink();
+  }
+  function scheduleBlink() {
+    clearTimeout(blinkT);
+    blinkT = setTimeout(blinkLoop, 3000 + Math.random() * 4000);
+  }
+  function frame() {
+    c9raf = 0;
+    if (rm() || hidden() || !mm || mm.hidden || mm.classList.contains('off')) return;
+    if (!eyeRect && eyeBtn) eyeRect = eyeBtn.getBoundingClientRect();
+    if (eyeRect && pupils) {
+      var cx = eyeRect.left + eyeRect.width / 2, cy = eyeRect.top + eyeRect.height * 0.47;
+      var dx = c9px - cx, dy = c9py - cy, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 260);
+      var tr = 'translate(' + (dx / d * 6.5 * k).toFixed(1) + ' ' + (dy / d * 6 * k).toFixed(1) + ')';
+      if (tr !== lastTr) { lastTr = tr; pupils.forEach(function (p) { p.setAttribute('transform', tr); }); }
+      var nr = d < 70;
+      if (nr !== lastNear) { lastNear = nr; mm.classList.toggle('near', nr); }
+    }
+  }
+  function initMata() {
+    mm = document.querySelector('.mm');
+    if (!mm) {
+      var wrap = document.querySelector('.mata-wrap');
+      if (wrap) {
+        mm = document.createElement('div');
+        mm.className = 'mm';
+        mm.innerHTML = '<div class="mm-bub" role="status" aria-live="polite"></div>';
+        document.body.appendChild(mm);
+      } else return;
+    }
+    pupils = mm.querySelectorAll('.mm-pupil, .mata .pupil, .pupil');
+    bub = mm.querySelector('.mm-bub, .bub');
+    eyeBtn = mm.querySelector('.mm-eye, .mata');
+    try { if (localStorage.getItem('ac-mata-off') === '1') mm.classList.add('off'); } catch (e) {}
+    if (eyeBtn) eyeBtn.addEventListener('click', function () { say(pick()); });
+    var chg = document.querySelector('[data-ihsg-chg]');
+    if (chg && bub) {
+      var v = parseFloat(chg.getAttribute('data-ihsg-chg'));
+      if (isFinite(v)) mm.setAttribute('data-mood', v >= 1.5 ? 'up2' : v >= 0.3 ? 'up' : v > -0.3 ? 'flat' : v > -1.5 ? 'down' : 'down2');
+    }
+    syncMata();
+    scheduleBlink();
+    document.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'touch' || rm() || hidden()) return;
+      c9px = e.clientX; c9py = e.clientY; c9tgt = e.target;
+      if (!c9raf) c9raf = requestAnimationFrame(frame);
+    }, { passive: true });
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && !rm()) { eyeRect = null; if (!c9raf) c9raf = requestAnimationFrame(frame); }
+    });
+    if (RMQ && RMQ.addEventListener) RMQ.addEventListener('change', function () { eyeRect = null; });
+    window.addEventListener('resize', function () { eyeRect = null; }, { passive: true });
+    new MutationObserver(syncMata).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  }
+  function start() {
+    if (rm()) {
+      document.querySelectorAll('[data-c9-reveal]').forEach(function (el) { el.classList.add('c9-reveal', 'in'); });
+      return;
+    }
+    initParallax(); initSpot(); initReveal(); initCount(); initPreviewTabs(); initMarquee(); initAuth(); initApp(); initMata();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+

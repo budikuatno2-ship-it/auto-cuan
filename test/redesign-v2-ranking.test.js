@@ -93,7 +93,7 @@ test('Ranking: normalizes rows with real data and calculates composite score', (
   assert.equal(norm.as_of, '2026-10-13');
 });
 
-test('Ranking: presets filter data correctly', () => {
+test('Ranking: presets filter data correctly (C6 7-preset canvas contract)', () => {
   const { sandbox } = createMockDom();
   const state = sandbox.window.rankingState;
   const render = sandbox.window.renderRankingTable;
@@ -108,25 +108,27 @@ test('Ranking: presets filter data correctly', () => {
     { t: 'TLKM', p: 3000, c: 0.5, rsi: 55.0, f1: -5, f3: 10, s: 60 }
   ];
 
+  // C6 kanonis 0..6: 0 Semua, 1 Nilai Transaksi, 2 Akumulasi Asing,
+  // 3 Akumulasi Domestik, 4 Momentum LPM, 5 Kenaikan Harga, 6 Rasio Valuasi.
   // Preset 0: Semua
   setPreset(0);
   assert.equal(state._currentFilteredRows.length, 3);
 
-  // Preset 1: Top gainer (c >= 1.5)
+  // Preset 1: Nilai Transaksi (p && v ada) — semua 3 baris punya p, v null -> dinormalisasi?
+  // Data uji tanpa v: preset 1 memfilter p!=null && v!=null -> 0 baris; assert kontrak kanonis.
   setPreset(1);
-  assert.equal(state._currentFilteredRows.length, 1);
-  assert.equal(state._currentFilteredRows[0].t, 'BBCA');
+  assert.equal(state._currentFilteredRows.length, 0);
 
-  // Preset 2: Asing beli (f1 > 0 && f3 > 0)
+  // Preset 2: Akumulasi Asing (f1>0 || f3>0) -> BBCA + TLKM
   setPreset(2);
-  assert.equal(state._currentFilteredRows.length, 1);
-  assert.equal(state._currentFilteredRows[0].t, 'BBCA');
-
-  // Preset 3: RSI rebound (rsi < 40)
-  setPreset(3);
   assert.equal(state._currentFilteredRows.length, 2);
   assert.ok(state._currentFilteredRows.some(r => r.t === 'BBCA'));
-  assert.ok(state._currentFilteredRows.some(r => r.t === 'GOTO'));
+  assert.ok(state._currentFilteredRows.some(r => r.t === 'TLKM'));
+
+  // Preset 5: Kenaikan Harga (c >= 1.5) -> BBCA saja
+  setPreset(5);
+  assert.equal(state._currentFilteredRows.length, 1);
+  assert.equal(state._currentFilteredRows[0].t, 'BBCA');
 });
 
 test('Ranking: sorts data placing nulls last', () => {

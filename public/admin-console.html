@@ -441,18 +441,27 @@ body {
     <div id="mBanner" class="banner" style="display:none" role="status">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9L2 18a2 2 0 001.7 3h16.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
       <span id="mBannerText">Mode maintenance aktif. Pengguna non-admin dialihkan ke layar pemeliharaan.</span>
-      <button class="btn sm" onclick="switchAdminTab(3)" style="margin-left:auto">Kelola</button>
+      <button class="btn sm" onclick="switchAdminTab(4)" style="margin-left:auto">Kelola</button>
+    </div>
+
+    <!-- S2: Banner peringatan keamanan real-time -->
+    <div id="secBanner" class="banner" style="display:none" role="alert">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M12 9v4M12 17h.01"/></svg>
+      <span id="secBannerText">Aman — Firewall & Anti-Bot Aktif</span>
+      <button class="btn sm" onclick="switchAdminTab(8)" style="margin-left:auto">Buka Tab Keamanan</button>
     </div>
 
     <!-- Navigation Tabs -->
-    <nav class="utabs" aria-label="Bagian admin" id="adminNavTabs">
-      <button class="tbtn on" onclick="switchAdminTab(0)" data-admin-tab="0">Ringkasan</button>
-      <button class="tbtn" onclick="switchAdminTab(1)" data-admin-tab="1">Online <span class="st i" id="tabOnlineCount">0</span></button>
-      <button class="tbtn" onclick="switchAdminTab(2)" data-admin-tab="2">Persetujuan Akun <span class="st a" id="tabPendingCount">0</span></button>
-      <button class="tbtn" onclick="switchAdminTab(3)" data-admin-tab="3">Mode Maintenance</button>
-      <button class="tbtn" onclick="switchAdminTab(4)" data-admin-tab="4">Voucher</button>
-      <button class="tbtn" onclick="switchAdminTab(5)" data-admin-tab="5">Job &amp; Data Pipeline</button>
-      <button class="tbtn" onclick="switchAdminTab(6)" data-admin-tab="6">Log Audit</button>
+    <nav class="utabs" aria-label="Bagian admin" id="adminNavTabs" role="tablist">
+      <button class="tbtn on" role="tab" aria-selected="true" onclick="switchAdminTab(0)" data-admin-tab="0">Ringkasan</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(1)" data-admin-tab="1">Online <span class="st i" id="tabOnlineCount">0</span></button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(2)" data-admin-tab="2">Persetujuan Akun <span class="st a" id="tabPendingCount">0</span></button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(3)" data-admin-tab="3">Pengguna</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(4)" data-admin-tab="4">Mode Maintenance</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(5)" data-admin-tab="5">Kupon/Voucher</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(6)" data-admin-tab="6">Job &amp; Data Pipeline</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(7)" data-admin-tab="7">Log Audit & Keamanan</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(8)" data-admin-tab="8">Keamanan & Audit <span class="st g" id="tabSecBadge">Aman</span></button>
     </nav>
 
     <!-- TAB 0: RINGKASAN -->
@@ -471,15 +480,36 @@ body {
           </div>
           <div>
             <div class="lbl">Kuota API data hari ini</div>
-            <div class="big num" id="statQuotaNum">8.412<span class="mut" style="font-size:14px;font-weight:600"> / 12.060</span></div>
-            <div class="meter"><i id="statQuotaBar" style="width:70%"></i></div>
-            <div class="sub">Reset 00:00 WIB · sisa kuota aman</div>
+            <div class="big num" id="statQuotaNum">—<span class="mut" style="font-size:14px;font-weight:600"> / —</span></div>
+            <div class="meter"><i id="statQuotaBar" style="width:0%"></i></div>
+            <div class="sub" id="statQuotaRemain">Sisa hari ini: — · Reset 00:00 WIB</div>
+            <div class="sub" id="statQuotaSync">Sinkron upstream: —</div>
+            <div class="sub" id="statQuotaPlan">Paket aktif: —</div>
+            <div class="sub" id="quotaDriftWarn" style="display:none;color:var(--ac-warn-t);font-weight:700">Peringatan drift: angka lokal vs upstream berbeda — dipakai nilai konservatif.</div>
           </div>
           <div>
             <div class="lbl">Status layanan</div>
             <div style="margin-top:8px"><span class="st g" id="statServiceStatus">Semua Normal</span></div>
             <div class="sub">API p95 &lt; 320 ms</div>
           </div>
+        </div>
+      </section>
+
+      <section class="sheet" style="margin-top:16px">
+        <div class="sec-h">
+          <h2>Ubah Konfigurasi Kuota Bulanan</h2>
+          <span>Admin ubah batas & reserve sekali klik tanpa edit kode VPS</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;padding:16px 20px">
+          <div><label class="flabel" for="quotaDailyLimit">Batas harian (override)</label><input id="quotaDailyLimit" type="number" class="inp" min="1" placeholder="cth 18080"></div>
+          <div><label class="flabel" for="quotaPlanExpiry">Tanggal berakhir paket</label><input id="quotaPlanExpiry" type="datetime-local" class="inp"></div>
+          <div><label class="flabel" for="quotaFloorDay">Reserve floor siang</label><input id="quotaFloorDay" type="number" class="inp" min="0"></div>
+          <div><label class="flabel" for="quotaFloorNight">Reserve floor malam</label><input id="quotaFloorNight" type="number" class="inp" min="0"></div>
+          <div><label class="flabel" for="quotaFloorWeekend">Reserve floor akhir pekan</label><input id="quotaFloorWeekend" type="number" class="inp" min="0"></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;padding:0 20px 18px;flex-wrap:wrap">
+          <button class="btn p" id="quotaSaveBtn" onclick="saveQuotaConfig()">Simpan Konfigurasi Kuota</button>
+          <span class="mut" id="quotaSaveStatus" style="font-size:12px">Perubahan dicatat di log audit.</span>
         </div>
       </section>
 
@@ -492,12 +522,7 @@ body {
           <table class="tbl">
             <thead><tr><th>Dataset</th><th>Terakhir sukses</th><th>Jadwal</th><th>Status</th></tr></thead>
             <tbody id="datasetFreshnessTbody">
-              <tr><td style="font-weight:600">Candle harian EOD bursa</td><td class="num mut">Hari bursa terakhir 16:45</td><td class="mut">16:40 WIB · Hari bursa</td><td><span class="st g">Segar</span></td></tr>
-              <tr><td style="font-weight:600">Broker summary harian</td><td class="num mut">Hari bursa terakhir 17:18</td><td class="mut">17:15 WIB · Hari bursa</td><td><span class="st g">Segar</span></td></tr>
-              <tr><td style="font-weight:600">Sektor hot &amp; konglomerasi</td><td class="num mut">Hari bursa terakhir 17:35</td><td class="mut">17:30 WIB · Hari bursa</td><td><span class="st g">Segar</span></td></tr>
-              <tr><td style="font-weight:600">KSEI kepemilikan 5%+</td><td class="num mut">30 Sep 2026</td><td class="mut">08:00 WIB · Bulanan</td><td><span class="st g">Arsip resmi</span></td></tr>
-              <tr><td style="font-weight:600">Laporan keuangan emiten</td><td class="num mut">Q2 2026</td><td class="mut">19:00 WIB · Berkala</td><td><span class="st a">Sebagian Q1</span></td></tr>
-              <tr><td style="font-weight:600">Pembersihan cache kedaluwarsa</td><td class="num mut">Hari ini 00:01</td><td class="mut">00:00 WIB · Harian</td><td><span class="st g">Lengkap</span></td></tr>
+              <tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Memuat status dataset dari heartbeat & jadwal cron…</td></tr>
             </tbody>
           </table>
         </div>
@@ -561,8 +586,33 @@ body {
       </section>
     </div>
 
-    <!-- TAB 3: MODE MAINTENANCE -->
+        <!-- TAB 3: PENGGUNA -->
     <div id="panelTab3" class="admin-panel" style="display:none">
+      <section class="sheet">
+        <div class="sec-h">
+          <h2>Pengguna</h2>
+          <span id="usersCountLabel">Memuat…</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair);flex-wrap:wrap">
+          <label class="search" style="width:280px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input id="usersSearchInput" placeholder="Cari username atau Gmail" oninput="onUsersSearch(this.value)">
+          </label>
+          <span class="mut" style="margin-left:auto;font-size:12px">Blokir / buka blokir tercatat di log audit</span>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:880px">
+            <thead><tr><th>Pengguna</th><th>Peran</th><th>Paket</th><th>Login terakhir</th><th>Status</th><th class="r">Aksi</th></tr></thead>
+            <tbody id="usersTableTbody">
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat daftar pengguna…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 4: MODE MAINTENANCE -->
+    <div id="panelTab4" class="admin-panel" style="display:none">
       <section class="sheet" style="padding:24px">
         <div style="display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--ac-hair);padding-bottom:20px">
           <div style="flex:1">
@@ -601,8 +651,8 @@ body {
       </section>
     </div>
 
-    <!-- TAB 4: VOUCHER -->
-    <div id="panelTab4" class="admin-panel" style="display:none">
+    <!-- TAB 5: KUPON/VOUCHER -->
+    <div id="panelTab5" class="admin-panel" style="display:none">
       <div style="display:grid;grid-template-columns:minmax(280px, 340px) 1fr;gap:20px;align-items:start">
         <section class="sheet" style="padding:20px">
           <h2 style="margin:0 0 16px;font-size:16px;font-weight:700">Buat Voucher Baru</h2>
@@ -649,8 +699,8 @@ body {
       </div>
     </div>
 
-    <!-- TAB 5: JOB & DATA PIPELINE -->
-    <div id="panelTab5" class="admin-panel" style="display:none">
+    <!-- TAB 6: JOB & DATA PIPELINE -->
+    <div id="panelTab6" class="admin-panel" style="display:none">
       <section class="sheet" style="margin-bottom:20px">
         <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div>
@@ -672,6 +722,7 @@ body {
           <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Sehat &amp; Lengkap:</span> <b id="statHealthOk" class="num" style="color:var(--ac-brand,#10B981)">—</b></div>
           <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Parsial:</span> <b id="statHealthWarn" class="num" style="color:var(--ac-warn,#F59E0B)">—</b></div>
           <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Terakhir Diperiksa:</span> <span id="healthLastChecked" class="num mut">—</span></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Sensus kelengkapan:</span> <span id="completenessMeta" class="num mut">—</span></div>
         </div>
 
         <div class="tw">
@@ -694,20 +745,44 @@ body {
         </div>
       </section>
 
-      <section class="sheet">
+            <section class="sheet" style="margin-bottom:20px">
+        <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2>Forecast Penyelesaian Backfill Kuota</h2>
+            <span>Dibaca dari berkas forecast, bukan angka hardcode</span>
+          </div>
+          <button class="btn sm p" onclick="refreshBackfillForecast()">Muat Ulang Forecast</button>
+          <button class="btn sm" onclick="triggerBackfillNow()">Picu Backfill Sekarang</button>
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin:16px 0;padding:12px 16px;background:var(--ac-subtle, rgba(255,255,255,0.03));border-radius:10px;border:1px solid var(--ac-hair);font-size:13px">
+          <div><span class="mut">Sisa antrean:</span> <b class="num" id="fcRemaining">—</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Perkiraan selesai:</span> <b class="num" id="fcFinish">—</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Batas paket:</span> <span class="num mut" id="fcExpiry">—</span></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Status:</span> <b id="fcStatus">—</b></div>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:880px">
+            <thead><tr><th>Tanggal</th><th>Hari</th><th class="r">Kapasitas</th><th class="r">Serapan</th><th class="r">Sisa</th><th>Status</th></tr></thead>
+            <tbody id="forecastTbody">
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat forecast penyelesaian backfill…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prov" style="margin-top:12px">
+          <span><b>Sumber:</b> <span class="mono">data/completeness/forecast.json</span> (dibangun dari antrean nyata). Kapasitas: hari kerja ~15.000 req/hari, akhir pekan ~18.030 req/hari.</span>
+        </div>
+      </section>
+
+<section class="sheet">
         <div class="sec-h">
           <h2>Job &amp; Data Pipeline</h2>
           <span>Jalankan ulang hanya bila sumber eksternal sudah pulih</span>
         </div>
         <div class="tw">
           <table class="tbl" style="min-width:880px">
-            <thead><tr><th>Job</th><th>Jadwal</th><th>Terakhir Jalan</th><th class="r">Durasi</th><th>Status</th><th class="r">Aksi</th></tr></thead>
+            <thead><tr><th>Job</th><th>Jadwal</th><th>Terakhir Sukses</th><th class="r">Durasi/Req</th><th>Status</th><th class="r">Aksi</th></tr></thead>
             <tbody id="jobsPipelineTbody">
-              <tr><td class="mono" style="font-weight:600">Candle harian EOD bursa</td><td class="mut">16:40 WIB</td><td class="num mut">16:45 WIB</td><td class="r num">2m 14s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron. Pemicu manual dinonaktifkan demi keamanan kuota API.">Otomatis</button></td></tr>
-              <tr><td class="mono" style="font-weight:600">Broker summary harian</td><td class="mut">17:15 WIB</td><td class="num mut">17:18 WIB</td><td class="r num">1m 40s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
-              <tr><td class="mono" style="font-weight:600">Sektor hot &amp; konglomerasi</td><td class="mut">17:30 WIB</td><td class="num mut">17:35 WIB</td><td class="r num">45s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
-              <tr><td class="mono" style="font-weight:600">KSEI kepemilikan 5%+</td><td class="mut">08:00 WIB</td><td class="num mut">08:05 WIB</td><td class="r num">3m 10s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
-              <tr><td class="mono" style="font-weight:600">Snapshot rasio fundamental</td><td class="mut">19:00 WIB</td><td class="num mut">19:04 WIB</td><td class="r num">58s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat status job dari heartbeat & jadwal cron…</td></tr>
             </tbody>
           </table>
         </div>
@@ -717,12 +792,12 @@ body {
       </section>
     </div>
 
-    <!-- TAB 6: LOG AUDIT -->
-    <div id="panelTab6" class="admin-panel" style="display:none">
+    <!-- TAB 7: LOG AUDIT & KEAMANAN -->
+    <div id="panelTab7" class="admin-panel" style="display:none">
       <section class="sheet">
         <div class="sec-h">
-          <h2>Log Audit Administrator</h2>
-          <span>Setiap aksi tercatat dan tidak dapat dimanipulasi</span>
+          <h2>Log Audit & Keamanan</h2>
+          <span>Setiap aksi tercatat dan tidak dapat dimanipulasi · terintegrasi Fase S2</span>
         </div>
         <div class="tw">
           <table class="tbl">
@@ -734,7 +809,72 @@ body {
           </table>
         </div>
       </section>
+      <section class="sheet" style="margin-top:16px">
+        <div class="sec-h">
+          <h2>Peristiwa Keamanan</h2>
+          <span>Login, sesi, dan anomali · baca /api/admin-logs</span>
+        </div>
+        <div class="tw">
+          <table class="tbl">
+            <thead><tr><th>Waktu (WIB)</th><th>Peristiwa</th><th>Detail</th></tr></thead>
+            <tbody id="securityEventsTbody">
+              <tr><td colspan="3" class="mut" style="text-align:center;padding:24px">Memuat peristiwa keamanan…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <!-- TAB 8: KEAMANAN & AUDIT (S2) -->
+    <div id="panelTab8" class="admin-panel" style="display:none">
+      <section class="sheet">
+        <div class="sec-h">
+          <h2>Status Pertahanan Real-Time</h2>
+          <span id="secUpdatedAt">Memuat status keamanan…</span>
+        </div>
+        <div style="padding:16px 20px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="st g" id="secStatusBadge">Aman</span>
+            <span class="mut" id="secStatusLabel" style="font-size:13px">Aman — Firewall & Anti-Bot Aktif</span>
+            <button class="btn sm" onclick="refreshSecurityPanel()" style="margin-left:auto">Muat Ulang</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px">
+            <div><div class="lbl">SSH ditolak (24 jam)</div><div class="big num" id="secSshRejected">—</div></div>
+            <div><div class="lbl">Bot/Flood diblokir (24 jam)</div><div class="big num" id="secBotBlocked">—</div></div>
+            <div><div class="lbl">Login gagal ditahan (24 jam)</div><div class="big num" id="secLoginBlocked">—</div></div>
+            <div><div class="lbl">IP dalam blokir aktif</div><div class="big num" id="secActiveBlocks">—</div></div>
+          </div>
+        </div>
+      </section>
+      <section class="sheet" style="margin-top:16px">
+        <div class="sec-h">
+          <h2>Blokir IP Manual</h2>
+          <span>Block IP / Unblock IP + konfirmasi audit</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;padding:16px 20px">
+          <input id="secBlockIpInput" class="inp mono" style="max-width:220px" placeholder="cth 203.0.113.99" autocomplete="off">
+          <input id="secBlockReasonInput" class="inp" style="max-width:280px" placeholder="Alasan (wajib, min 10 karakter)">
+          <button class="btn p" onclick="blockIpAction()">Block IP</button>
+          <button class="btn" onclick="unblockIpAction()">Unblock IP</button>
+        </div>
+        <div class="prov"><span id="secBlockStatus">Setiap aksi Block/Unblock tercatat di log insiden.</span></div>
+      </section>
+      <section class="sheet" style="margin-top:16px">
+        <div class="sec-h">
+          <h2>Log Insiden Terbaru</h2>
+          <span>Real-time dari data/security/security-state.json</span>
+        </div>
+        <div class="tw">
+          <table class="tbl">
+            <thead><tr><th>Waktu (WIB)</th><th>Jenis</th><th>IP Penyerang</th><th class="r">Percobaan</th><th>Tindakan Otomatis</th></tr></thead>
+            <tbody id="secIncidentsTbody">
+              <tr><td colspan="5" class="mut" style="text-align:center;padding:24px">Memuat insiden keamanan…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
+    </div>
+  </main>
+</div>
   </main>
 </div>
 

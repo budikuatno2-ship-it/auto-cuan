@@ -317,17 +317,19 @@ test('W2 review: --fresh clears prior terminal claims when a ticker now has real
 });
 
 test('W2-10: runtime schedule text consistently describes the 23:30 WIB final window', () => {
-  const repoRoot = path.join(__dirname, '..');
-  const runtimeFiles = [
-    'tools/run-daily-broker-update.js',
-    'deploy/vps/run-daily-broker-update.sh',
-    'deploy/vps/final-schedule.cron'
-  ];
-  for (const rel of runtimeFiles) {
-    const source = fs.readFileSync(path.join(repoRoot, rel), 'utf8');
-    assert.equal(/18:00-22:00|20:00-22:00|--final at 22:00|22:00 --final/.test(source), false, `${rel} must not describe a 22:00 final pass`);
-  }
-  const cron = fs.readFileSync(path.join(repoRoot, 'deploy/vps/final-schedule.cron'), 'utf8');
-  assert.ok(cron.includes('23:30'), 'cron source must state the 23:30 WIB final pass');
-  assert.ok(cron.includes('CRON_TZ=Asia/Jakarta'), 'cron source must pin Asia/Jakarta');
+ // Q1/P2: final pass P2 = broksum-retry --final 20:45 + quota-burn malam 22:45
+ // (selesai 23:45 < hard-stop 23:50). Jendela 23:30 tercakup via penyerap malam.
+ const repoRoot = path.join(__dirname, '..');
+ const runtimeFiles = [
+   'tools/run-daily-broker-update.js',
+   'deploy/vps/run-daily-broker-update.sh',
+   'deploy/vps/final-schedule.cron'
+ ];
+ for (const rel of runtimeFiles) {
+   const source = fs.readFileSync(path.join(repoRoot, rel), 'utf8');
+   assert.equal(/18:00-22:00|20:00-22:00|--final at 22:00|22:00 --final/.test(source), false, `${rel} must not describe a 22:00 final pass`);
+ }
+ const cron = fs.readFileSync(path.join(repoRoot, 'deploy/vps/final-schedule.cron'), 'utf8');
+ assert.ok(cron.includes('23:45') || cron.includes('23:15'), 'cron source must state the P2 late-night final window (23:15/23:45 < 23:50 hard-stop)');
+ assert.ok(cron.includes('CRON_TZ=Asia/Jakarta'), 'cron source must pin Asia/Jakarta');
 });

@@ -82,7 +82,7 @@ after(async () => {
 beforeEach(async () => {
   googleState = { success: true, google_link_state: 'unavailable', required: false }; submissions = []; googleError = false;
   await page.setViewport({ width: 1440, height: 900 });
-  await page.goto(origin + '/', { waitUntil: 'networkidle0' });
+  await page.goto(origin + '/', { waitUntil:'domcontentloaded' });
   await page.waitForFunction(() => window.__AUTOCUAN_ACCOUNT_CENTER_LAZY_V1__);
   await page.evaluate(() => { if (typeof hideOnboardingGuide === 'function') hideOnboardingGuide(true); applyAppTheme('light'); });
 });

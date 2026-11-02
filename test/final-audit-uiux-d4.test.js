@@ -153,7 +153,7 @@ async function ownership(selector) {
 beforeEach(async()=>{
  await page.setViewport({width:1440,height:900});
  await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:false,maxTouchPoints:1});
- await page.goto(origin+'/dashboard',{waitUntil:'networkidle0'});
+ await page.goto(origin+'/dashboard',{waitUntil:'domcontentloaded'});
  await page.evaluate(()=>{hideOnboardingGuide(true);applyAppTheme('light');});
 });
 for(const route of Object.keys(routes))for(const width of [390,1440])for(const theme of ['light','dark'])test(`D4 measured ${route} ${theme} ${width}`,async()=>{

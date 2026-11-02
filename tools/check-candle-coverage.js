@@ -2,17 +2,21 @@
 'use strict';
 
 /**
- * Candle coverage preflight for the nightly screener (2026-10-13).
+ * Candle coverage preflight for the nightly screener (2026-10-13, P5 2026-10-31).
  *
- * The EOD candle set for the official 962-emiten universe only reaches full
- * coverage around 21:12 WIB. Running the screener before that produced signals
- * on partial data (~87% at 19:00). This checker reports the day-T coverage so
+ * The EOD candle set for the official 963-emiten universe (964 files disk =
+ * 963 emiten + IHSG) only reaches full coverage around 21:12 WIB. Running the
+ * screener before that produced signals on partial data (~87% at 19:00).
+ * This checker reports the day-T coverage so
  * deploy/vps/run-screeners-preflight.sh can defer the sweep until the
  * threshold (default 95%) is met.
  *
+ * P5: checker HANYA memberi verdict jujur; TIDAK PERNAH memblokir screener
+ * sendiri (wrapper P5 selalu lanjut dengan GRACEFUL_DEGRADED).
+ *
  * Output contract (parsed by the shell wrapper):
- *   COVERAGE_OK coverage_pct=NN.NN tickers=N universe=962 date=YYYY-MM-DD
- *   COVERAGE_INSUFFICIENT coverage_pct=NN.NN tickers=N universe=962 date=YYYY-MM-DD
+ *   COVERAGE_OK coverage_pct=NN.NN tickers=N universe=963 date=YYYY-MM-DD
+ *   COVERAGE_INSUFFICIENT coverage_pct=NN.NN tickers=N universe=963 date=YYYY-MM-DD
  *
  * Usage:
  *   node tools/check-candle-coverage.js
@@ -30,7 +34,9 @@ const idxTradingCalendar = require('../lib/idx-trading-calendar');
 
 const ROOT = path.resolve(__dirname, '..');
 const PROD_MARKET_DB = '/home/ubuntu/auto-cuan-data/market.sqlite';
-const OFFICIAL_EMITEN_COUNT = 962;
+// P5: 963 emiten penuh (964 file disk = 963 emiten + IHSG). IHSG dikecualikan
+// dari hitungan emiten agar konsisten dengan data/daily-candles lokal.
+const OFFICIAL_EMITEN_COUNT = 963;
 
 function parseArgs(argv) {
   const options = { minPct: 95, date: null, dbPath: null, quiet: false };
@@ -136,7 +142,7 @@ if (require.main === module) {
   } catch (err) {
     console.error('check-candle-coverage fatal:', err && err.message ? err.message : err);
     // Fail-open: a broken checker must never block the nightly producer.
-    console.log('COVERAGE_OK coverage_pct=unknown tickers=0 universe=962 date=' + wibToday() + ' note=checker_error');
+    console.log('COVERAGE_OK coverage_pct=unknown tickers=0 universe=' + OFFICIAL_EMITEN_COUNT + ' date=' + wibToday() + ' note=checker_error');
     process.exitCode = 0;
   }
 }

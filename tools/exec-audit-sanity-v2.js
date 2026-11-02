@@ -3,8 +3,8 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 
-const SSH_KEY = 'D:/Private Key Oracle/ssh-key-2026-07-02.key';
-const VPS_HOST = 'ubuntu@168.110.221.197';
+const SSH_KEY = process.env.VPS_SSH_KEY || process.env.SSH_KEY || '';
+const VPS_HOST = process.env.VPS_SSH_HOST || process.env.VPS_HOST || '';
 
 function ssh(cmd, opts) {
   return execFileSync('ssh', [

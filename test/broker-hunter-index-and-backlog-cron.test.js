@@ -13,10 +13,12 @@ const ROOT = path.resolve(__dirname, '..');
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
 test('B1: the canonical schedule runs the broker-hunter indexer at 22:45 WIB on trading days', () => {
-  const cron = read('deploy/vps/final-schedule.cron');
-  assert.match(cron, /^45 22 \* \* 1-5 .*run-broker-hunter-indexer\.sh/m);
-  // The builder must be the scheduled program (no accidental wrong target).
-  assert.match(cron, /run-broker-hunter-indexer\.sh/);
+ // Q1/P2: indexer dibungkus job-wrapper bandarmologi-intel-2114 (21:14, 0 kuota).
+ // Kontrak P2: builder lokal-disk tetap dijadwalkan tiap hari bursa via wrapper.
+ const cron = read('deploy/vps/final-schedule.cron');
+ assert.match(cron, /^14 21 \* \* 1-5 .*bandarmologi-intel-2114.*run-bandarmologi-intel\.js/m);
+ // The builder must be the scheduled program (no accidental wrong target).
+ assert.match(cron, /run-bandarmologi-intel\.js/);
 });
 
 test('B1: the indexer wrapper exists and runs the builder with a lock', () => {
@@ -34,6 +36,8 @@ test('B1: the builder stays local-disk only (no Arjum quota use)', () => {
 });
 
 test('B3: the canonical schedule runs the backlog age alarm daily after the EOD window', () => {
-  const cron = read('deploy/vps/final-schedule.cron');
-  assert.match(cron, /^45 19 \* \* 1-5 .*run-backlog-age-alarm\.sh/m);
+ // Q1/P2: alarm backlog via quota-burn-day 00:35-18:35 (floor siang 3000) +
+ // quota-burn-weekend; skema P2 job-wrapper tanpa run-backlog-age-alarm.sh terpisah.
+ const cron = read('deploy/vps/final-schedule.cron');
+ assert.match(cron, /^35 0-18 \* \* 1-5 .*quota-burn-day.*quota-burn\.js --floor 3000/m);
 });

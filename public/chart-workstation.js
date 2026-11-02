@@ -1378,7 +1378,7 @@
         '</span>' +
         '<button type="button" id="' + chartId + '_collapse_btn" class="vbtn sm q" onclick="AutoCuanChartWorkstation.toggleCollapse(' + q + ')">Sembunyikan Chart</button>' +
         '<button type="button" class="vbtn sm q" onclick="AutoCuanChartWorkstation.turnOffAll(' + q + ')" title="Matikan semua layer opsional">Matikan Semua</button>' +
-        '<button type="button" class="vbtn sm q" onclick="AutoCuanChartWorkstation.reset(' + q + ')" title="Kembalikan ke preset Simpel">Reset</button>' +
+        '<button type="button" class="vbtn sm q" onclick="AutoCuanChartWorkstation.reset(' + q + ')" title="Kembalikan ke preset Simpel">Reset ke preset</button>' +
       '</div>' +
     '</div>';
     return html;
@@ -1470,7 +1470,7 @@
           '<h3 class="text-sm font-semibold" style="color: #ffffff !important; font-weight: 700 !important;">Pengaturan Mode &amp; Layer Chart</h3>' +
           '<p class="text-xs" style="color: #94a3b8 !important;">Pilih indikator teknikal, area struktur, dan metrik kuantitatif bandar</p>' +
         '</div>' +
-        '<button type="button" class="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded bg-dark-800 border border-dark-600/40" onclick="AutoCuanChartWorkstation.toggleDrawer(\'' + chartId + '\')">Tutup [X]</button>' +
+        '<button type="button" class="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded bg-dark-800 border border-dark-600/40" onclick="AutoCuanChartWorkstation.toggleDrawer(\'' + chartId + '\')">Selesai</button>' +
       '</div>' +
       '<div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">';
 

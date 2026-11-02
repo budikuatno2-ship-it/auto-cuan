@@ -52,7 +52,7 @@
     return '';
   }
 
-  // Formats an ISO timestamp as "16 Okt 2026, 16.05 WIB". Returns '' when
+  // Formats an ISO timestamp as "DD Mon YYYY, HH.MM WIB". Returns '' when
   // the value is missing or unparseable, so the caller never prints a guess.
   function formatWib(value) {
     if (!value) return '';

@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Simulasi rule .done J1 untuk 5 hari bursa terakhir (12-16 Okt 2026).
+ * Simulasi rule .done J1 untuk 5 hari bursa terakhir (rentang dinamis).
  * 0 request Arjum -- semua dari disk lokal.
  *
  * Membandingkan dua skenario candle:

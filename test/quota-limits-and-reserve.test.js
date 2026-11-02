@@ -63,14 +63,16 @@ test('B2: a vendor x-ratelimit-limit can only LOWER the configured plan, never r
   }
 });
 
-test('B2: candleFetcher getConfiguredDailyQuota defaults to 12060', () => {
+test('B2: candleFetcher getConfiguredDailyQuota defaults to plan (18080 pre-expiry)', () => {
   const origLimit = process.env.ARJUM_DAILY_LIMIT;
   const origQuota = process.env.ARJUM_DAILY_QUOTA;
   delete process.env.ARJUM_DAILY_LIMIT;
   delete process.env.ARJUM_DAILY_QUOTA;
 
   try {
-    assert.equal(candleFetcher.getConfiguredDailyQuota(), 12060);
+    // P1/Q1: candleFetcher mengikuti plan dinamis config/quota.json (preExpiry 18080),
+    // bukan angka vendor lama 12060 yang dulu membuat J1 kelaparan.
+    assert.equal(candleFetcher.getConfiguredDailyQuota(), 18080);
   } finally {
     if (origLimit !== undefined) process.env.ARJUM_DAILY_LIMIT = origLimit;
     if (origQuota !== undefined) process.env.ARJUM_DAILY_QUOTA = origQuota;

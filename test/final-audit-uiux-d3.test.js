@@ -83,7 +83,7 @@ const fixtures = [
 ].map((r,i)=>({...r, rank:i+1, score:80-i, last_price:1000, risk_reward:2, confidence:'A', swing_tier:'SWING_READY', final_status:'Swing Ready', risk_label:'Low Risk', entry_low:990,entry_high:1010,stop_loss:950,tp1:1100,tp2:1200, change_pct:1,volume_ratio_avg20:1.3,rsi14:60}));
 beforeEach(async () => {
  await page.setViewport({width:1440,height:900,isMobile:false,hasTouch:false});
- await page.goto(origin+'/dashboard?page=screener',{waitUntil:'networkidle0'});
+ await page.goto(origin+'/dashboard?page=screener',{waitUntil:'domcontentloaded'});
  await page.evaluate(fixtures => { hideOnboardingGuide(true); applyAppTheme('light'); navigateTo('screener'); stopScreenerPolling(); if(typeof stopNkPolling==='function')stopNkPolling(); _currentScreenerType='konglo'; _screenerFilter='all'; _screenerCache={results:fixtures}; document.getElementById('filter-pattern-personality').value='all'; document.getElementById('filter-high-wr').checked=false; renderScreenerTable(fixtures); kgToggleView('table'); },fixtures);
  await page.waitForNetworkIdle({idleTime:200,timeout:15000});
  await page.evaluate(fixtures => { stopScreenerPolling(); _screenerCache={results:fixtures}; renderScreenerTable(fixtures); kgToggleView('table'); }, fixtures);

@@ -1,4 +1,4 @@
-# Auto-Cuan Nginx Reverse Proxy — VPS 168.110.221.197
+# Auto-Cuan Nginx Reverse Proxy — VPS (host via inventaris internal)
 # Path di VPS: /etc/nginx/sites-available/autocuan
 # Symlink: ln -s /etc/nginx/sites-available/autocuan /etc/nginx/sites-enabled/autocuan
 #
@@ -55,7 +55,7 @@ upstream autocuan_web {
 server {
     listen 80;
     listen [::]:80;
-    server_name autocuan.web.id www.autocuan.web.id 168.110.221.197;
+    server_name autocuan.web.id www.autocuan.web.id;
 
     # Let's Encrypt challenge
     location /.well-known/acme-challenge/ {

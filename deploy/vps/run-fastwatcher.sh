@@ -82,6 +82,13 @@ exec /usr/bin/flock -n "$LOCK_FILE" bash -c '
     echo "[$(date +"%Y-%m-%d %H:%M:%S %Z")] SKIP_NON_TRADING_DAY — FastWatcher tidak jalan."
     exit 0
   fi
+  # P2: rc=2 = STALE_SOURCE (snapshot DayTrade basi) adalah skip terjadwal fail-closed,
+  # bukan gagal PATH/permission/module. Keluar 0 agar heartbeat cron tetap hijau
+  # tanpa mengarang kandidat. rc lain tetap gagal (exit 1).
+  if [ "$MAT_RC" -eq 2 ]; then
+    echo "[$(date +"%Y-%m-%d %H:%M:%S %Z")] SKIP_STALE_SOURCE — snapshot DayTrade basi, skip tick (fail-closed, no candidates invented)."
+    exit 0
+  fi
   if [ "$MAT_RC" -ne 0 ]; then
     echo "[$(date +"%Y-%m-%d %H:%M:%S %Z")] FASTWATCHER_SHORTLIST_MATERIALIZE_FAILED rc=$MAT_RC — skip tick (fail-closed, no candidates invented)."
     exit 1

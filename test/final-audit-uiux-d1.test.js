@@ -78,7 +78,7 @@ after(async () => {
 beforeEach(async () => {
   mode = 'success'; detailReads = 0;
   await page.setViewport({ width: 1440, height: 900 });
-  await page.goto(origin + '/dashboard?page=analisis&tab=market-structure', { waitUntil: 'networkidle0' });
+  await page.goto(origin + '/dashboard?page=analisis&tab=market-structure', { waitUntil:'domcontentloaded' });
   await page.evaluate(() => {
     hideOnboardingGuide(true);
     setWorkspaceSidebarVisible(true);
@@ -153,7 +153,7 @@ test('D1 no search results and empty universe show a truthful empty result', asy
   assert.match(await page.$eval('#marketStructureAccordionContainer', el => el.innerText), /Tidak ada saham/);
 });
 test('D1 first request failure is an error, not empty success', async () => {
-  mode = 'error'; await page.reload({ waitUntil: 'networkidle0' });
+  mode = 'error'; await page.reload({ waitUntil:'domcontentloaded' });
   await page.waitForFunction(() => document.getElementById('marketStructureDataState')?.innerText.includes('Daftar fixture tidak tersedia'));
   assert.equal(await page.$eval('#marketStructureDataState', el => !!el.getBoundingClientRect().height), true);
   assert.equal((await rows()).length, 0);
@@ -161,6 +161,7 @@ test('D1 first request failure is an error, not empty success', async () => {
 });
 test('D1 failed refresh retains valid rows with a local error notice', async () => {
   mode = 'error'; await page.evaluate(() => loadStrukturPasarUniverse());
+  await page.waitForFunction(() => document.getElementById('marketStructureRefreshBanner')?.innerText.includes('Gagal memperbarui'), { timeout: 30000 });
   assert.equal((await rows()).length, 3);
   assert.match(await page.$eval('#marketStructureRefreshBanner', el => el.innerText), /Gagal memperbarui/);
   assert.equal(await page.$eval('#marketStructureRefreshBanner', el => !!el.getBoundingClientRect().height), true);
@@ -209,7 +210,7 @@ for (const [theme, width] of [['light',320],['light',390],['light',768],['light'
   });
 }
 test('D1 reachable standalone and fetched fallback render the same list workflow', async () => {
-  await page.goto(origin + '/analisis-saham?tab=market-structure', { waitUntil: 'networkidle0' });
+  await page.goto(origin + '/analisis-saham?tab=market-structure', { waitUntil:'domcontentloaded' });
   await page.evaluate(() => {
     switchAnalisisTab('market-structure');
     var acc = document.getElementById('marketStructureAccordionContainer');
@@ -217,7 +218,7 @@ test('D1 reachable standalone and fetched fallback render the same list workflow
   });
   await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 3);
   assert.ok((await rows()).every(row => row.visible));
-  await page.goto(origin + '/dashboard', { waitUntil: 'networkidle0' });
+  await page.goto(origin + '/dashboard', { waitUntil:'domcontentloaded' });
   await page.evaluate(() => document.getElementById('tpl-analisis-saham').remove());
   await page.evaluate(() => {
     navigateTo('analisis', 'market-structure');

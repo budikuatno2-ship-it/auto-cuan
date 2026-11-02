@@ -10,15 +10,19 @@ describe('Mega Forensic 12 Bug Fixes Regression Suite', () => {
     assert.strictEqual(limit >= 18080, true, `Plan limit should be >= 18080, got ${limit}`);
   });
 
-  it('BUG-02 & BUG-12: catchup-missing-dates enforces hard floors (weekday: 5000, weekend: 0)', () => {
+  it('BUG-02 & BUG-12: catchup-missing-dates enforces dynamic floors from config/quota.json', () => {
     const { computeCatchupBudget } = require('../tools/catchup-missing-dates');
+    const qs = require('../lib/quota-state');
+    const cfg = qs.loadConfig();
+    const expWeekday = Math.floor(Number(cfg.reserveFloorWeekdayDaytime) || 0);
+    const expWeekend = Math.floor(Number(cfg.reserveFloorWeekend) || 0);
     const weekdayBudget = computeCatchupBudget(18080, 500, { isWeekend: false });
-    assert.strictEqual(weekdayBudget.floor, 5000, 'Weekday floor must be 5000');
-    assert.strictEqual(weekdayBudget.spendable, 18080 - 500 - 5000, 'Weekday spendable must respect 5000 floor');
+    assert.strictEqual(weekdayBudget.floor, expWeekday, 'Weekday floor must follow config/quota.json');
+    assert.strictEqual(weekdayBudget.spendable, 18080 - 500 - expWeekday, 'Weekday spendable must respect config floor');
 
     const weekendBudget = computeCatchupBudget(18080, 500, { isWeekend: true });
-    assert.strictEqual(weekendBudget.floor, 0, 'Weekend floor must be 0 (100% quota usable)');
-    assert.strictEqual(weekendBudget.spendable, 18080 - 500 - 0, 'Weekend spendable must respect 0 floor');
+    assert.strictEqual(weekendBudget.floor, expWeekend, 'Weekend floor must follow config/quota.json');
+    assert.strictEqual(weekendBudget.spendable, 18080 - 500 - expWeekend, 'Weekend spendable must respect config floor');
   });
 
   it('BUG-03: catchup TYPES only includes ALL and F (no historical accum/insider)', () => {

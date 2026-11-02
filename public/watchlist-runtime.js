@@ -5,6 +5,9 @@
   window.__AUTOCUAN_WATCHLIST_SET__ = new Set();
   var isLoading = false;
   var _wlFilter = 'all';
+  // C7: status Urungkan hapus watchlist (toast 5 detik + pemulihan via POST).
+  var _wlUndoState = { ticker: null, notes: null, timer: null };
+  var WL_UNDO_TIMEOUT_MS = 5000;
 
   function escapeHtml(str) {
     if (str == null) return '';
@@ -274,6 +277,55 @@
     }
   }
 
+  // C7: toast Urungkan 5 detik — klik Urungkan kirim POST pemulihan ke tabel.
+  function clearWlUndoTimer() {
+    if (_wlUndoState.timer) { try { clearTimeout(_wlUndoState.timer); } catch (_) {} _wlUndoState.timer = null; }
+  }
+  function hideWlUndoToast() {
+    var host = document.getElementById('wlUndoToastHost');
+    if (host && host.parentNode) host.parentNode.removeChild(host);
+  }
+  function showWlUndoToast(ticker) {
+    hideWlUndoToast();
+    clearWlUndoTimer();
+    var host = document.createElement('div');
+    host.id = 'wlUndoToastHost';
+    host.setAttribute('style', 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:120');
+    host.innerHTML = '<div class="toast" role="status" aria-live="polite"><span>' + escapeHtml(ticker) + ' dihapus dari watchlist</span><button type="button" id="wlUndoToastBtn" style="border:0;background:transparent;color:#6EE7B7;font-weight:600;cursor:pointer;margin-left:8px">Urungkan</button></div>';
+    document.body.appendChild(host);
+    var btn = document.getElementById('wlUndoToastBtn');
+    if (btn) btn.addEventListener('click', function () { undoWatchlistRemove(); });
+    _wlUndoState.timer = setTimeout(function () {
+      _wlUndoState.ticker = null; _wlUndoState.notes = null; _wlUndoState.timer = null;
+      hideWlUndoToast();
+    }, WL_UNDO_TIMEOUT_MS);
+  }
+  async function undoWatchlistRemove() {
+    var t = _wlUndoState.ticker;
+    var savedNotes = _wlUndoState.notes;
+    clearWlUndoTimer();
+    hideWlUndoToast();
+    _wlUndoState.ticker = null; _wlUndoState.notes = null;
+    if (!t) return;
+    try {
+      var res = await fetch('/api/sector-hot?action=watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ ticker: t, notes: savedNotes || null })
+      });
+      var json = await res.json();
+      if (json && json.success) {
+        window.__AUTOCUAN_WATCHLIST_SET__.add(t);
+        if (typeof showToast === 'function') showToast(t + ' dikembalikan ke Watchlist.', 'success');
+      }
+    } catch (err) { console.error('Error undo watchlist:', err); }
+    invalidateWatchlistCache();
+    updateAllWatchlistStars();
+    var pageEl = document.getElementById('page-watchlist');
+    if (pageEl && !pageEl.classList.contains('hidden')) loadUserWatchlist(true);
+  }
+
   async function toggleWatchlistTicker(ticker, notes, e) {
     if (e && e.stopPropagation) e.stopPropagation();
     if (!ticker) return;
@@ -283,6 +335,11 @@
 
     try {
       if (isBookmarked) {
+        var savedNotes = null;
+        if (window.__AUTOCUAN_WATCHLIST_DATA__) {
+          var found = window.__AUTOCUAN_WATCHLIST_DATA__.find(function (it) { return it.ticker === clean; });
+          if (found) savedNotes = found.notes || null;
+        }
         var res = await fetch('/api/sector-hot?action=watchlist&ticker=' + encodeURIComponent(clean), {
           method: 'DELETE',
           credentials: 'same-origin'
@@ -290,6 +347,9 @@
         var json = await res.json();
         if (json && json.success) {
           window.__AUTOCUAN_WATCHLIST_SET__.delete(clean);
+          _wlUndoState.ticker = clean;
+          _wlUndoState.notes = savedNotes;
+          showWlUndoToast(clean);
           if (typeof showToast === 'function') showToast(clean + ' dihapus dari Watchlist.', 'info');
         }
       } else {
@@ -593,6 +653,8 @@
   window.loadUserWatchlist = loadUserWatchlist;
   window.filterWatchlist = filterWatchlist;
   window.toggleWatchlistTicker = toggleWatchlistTicker;
+  window.undoWatchlistRemove = undoWatchlistRemove;
+  window.WL_UNDO_TIMEOUT_MS = WL_UNDO_TIMEOUT_MS;
   window.updateAllWatchlistStars = updateAllWatchlistStars;
   window.openCreateAlertModal = openCreateAlertModal;
   window.openEditAlertModal = openEditAlertModal;

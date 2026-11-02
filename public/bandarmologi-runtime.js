@@ -2281,23 +2281,34 @@
     return parseInt(p[2], 10) + ' ' + (months[m] || p[1]) + ' ' + p[0];
   }
 
-  function onDateInput(val) {
+  // C5: debounce pemilih Tanggal — ketikan cepat tidak memicu validasi/hitung
+  // berulang; Sabtu/Minggu tetap ditolak (bursa tutup).
+  var bandarDateDebounceTimer = null;
+  function validateBandarDate(val) {
     var statusEl = byId('bandarDateStatus');
-    if (!statusEl) return;
+    if (!statusEl) return false;
     if (!val) {
       statusEl.textContent = 'Pilih tanggal dulu.';
       statusEl.className = 'neg';
-      return;
+      return false;
     }
     var d = new Date(val + 'T12:00:00Z');
     var w = d.getUTCDay();
     if (w === 0 || w === 6) {
       statusEl.textContent = formatIndoDate(val) + ' akhir pekan, bursa tutup.';
       statusEl.className = 'neg';
-      return;
+      return false;
     }
     statusEl.textContent = 'Siap hitung ulang';
     statusEl.className = 'mut';
+    return true;
+  }
+  function onDateInput(val) {
+    if (bandarDateDebounceTimer) { try { clearTimeout(bandarDateDebounceTimer); } catch (_) {} }
+    bandarDateDebounceTimer = setTimeout(function() {
+      bandarDateDebounceTimer = null;
+      validateBandarDate(val);
+    }, 250);
   }
 
   function recalculateFlow() {
@@ -4407,7 +4418,7 @@
       var fill = (n.t === 'e') ? (isSel ? '#315F9A' : '#E9EFF6') : ((n.t === 'h') ? (isSel ? '#94602B' : '#F4EDE4') : (isSel ? '#7357A6' : '#EFEBF6'));
       var stroke = isSel ? '#0F7458' : C[n.t];
 
-      svgNodes += '<g class="node' + (isLinked ? '' : ' dim') + '" onclick="BandarmologiRuntime.selectInsiderNode(\'' + escapeHtml(key) + '\')">';
+      svgNodes += '<g class="node' + (isLinked ? '' : ' dim') + '" tabindex="0" role="button" aria-label="Sorot relasi ' + escapeHtml(key) + '" onclick="BandarmologiRuntime.selectInsiderNode(\'' + escapeHtml(key) + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();BandarmologiRuntime.selectInsiderNode(\'' + escapeHtml(key) + '\')}">';
       if (isP) {
         svgNodes += '<circle class="nb" cx="' + n.x + '" cy="' + n.y + '" r="' + (isSel ? 15 : 12) + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="2"/>';
       } else {

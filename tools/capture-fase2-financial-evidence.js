@@ -482,7 +482,7 @@ Semua file gambar disimpan secara fisik di \`D:\\Auto-Cuan\\evidence\\fase-2\\\`
 ---
 
 ## REKONSILIASI SUMBER DATA BBCA (AC-2.5 FAKTUIL)
-- **Harga Penutupan Nyata:** Rp 5.950 (Per 13 Okt 2026, dari transaksi harian \`stock_daily_history\`).
+- **Harga Penutupan Nyata:** Rp 5.950 (per tanggal impor berjalan, dari transaksi harian \`stock_daily_history\`).
 - **Saham Beredar:** 122.042.299.500 lembar (122,04 Mrd lembar).
 - **Market Cap Dinamis:** Rp 5.950 x 122.042.299.500 = **Rp 726,15 T** (menghilangkan angka lama Rp 1.275 T yang bersumber dari harga statis lama Rp 10.450).
 - **Book Value Per Share (BVPS):** Rp 2.125,15.

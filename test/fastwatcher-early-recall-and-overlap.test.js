@@ -144,42 +144,49 @@ function baseDeps(root, shortlistFile, engine, collector) {
 // 1. Scheduler producer dan FastWatcher tidak start pada menit sama
 // -------------------------------------------------------------------------
 test('FWE-01: DayTrade producer dan FastWatcher tidak start pada menit yang sama dalam crontab', () => {
-  const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
+ // Q1/P2: pola job-wrapper — "<menit> <jam> * * 1-5 ... job-wrapper.sh <nama> ... run-*.sh".
+ // Anchor: cari baris yang memuat run-*.sh (jam 09-15) lalu ambil field menit di awal baris itu.
+ const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
+ const cronLines = cron.split('\n');
+ const prodLine = cronLines.find((l) => l.includes('run-daytrade-producer.sh') && l.includes('09-15'));
+ const fwLine = cronLines.find((l) => l.includes('run-fastwatcher.sh') && l.includes('09-15') && !l.includes('1555'));
 
-  const producerMatch = cron.match(/^([0-9,*/]+)\s+9-15\s+\*\s+\*\s+1-5\s+.*run-daytrade-producer\.sh/m);
-  const fwMatch = cron.match(/^([0-9,*/]+)\s+9-15\s+\*\s+\*\s+1-5\s+.*run-fastwatcher\.sh/m);
+ const producerMatch = prodLine ? prodLine.trim().match(/^([0-9,*/]+)\s+09-15/) : null;
+ const fwMatch = fwLine ? fwLine.trim().match(/^([0-9,*/]+)\s+09-15/) : null;
 
-  assert.ok(producerMatch, 'DayTrade producer line must exist in cron');
-  assert.ok(fwMatch, 'FastWatcher line must exist in cron');
+ assert.ok(producerMatch, 'DayTrade producer line must exist in cron');
+ assert.ok(fwMatch, 'FastWatcher line must exist in cron');
 
-  const parseMinutes = (expr) => {
-    if (expr.startsWith('*/')) {
-      const step = parseInt(expr.slice(2), 10);
-      const mins = [];
-      for (let i = 0; i < 60; i += step) mins.push(i);
-      return mins;
-    }
-    return expr.split(',').map((x) => parseInt(x.trim(), 10));
-  };
+ const parseMinutes = (expr) => {
+   if (expr.startsWith('*/')) {
+     const step = parseInt(expr.slice(2), 10);
+     const mins = [];
+     for (let i = 0; i < 60; i += step) mins.push(i);
+     return mins;
+   }
+   return expr.split(',').map((x) => parseInt(x.trim(), 10));
+ };
 
-  const producerMins = parseMinutes(producerMatch[1]);
-  const fwMins = parseMinutes(fwMatch[1]);
+ const producerMins = parseMinutes(producerMatch[1]);
+ const fwMins = parseMinutes(fwMatch[1]);
 
-  assert.deepEqual(producerMins, [2, 17, 32, 47], 'Producer schedule must be 2,17,32,47');
-  assert.deepEqual(fwMins, [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55], 'FastWatcher schedule must be */5');
+ assert.deepEqual(producerMins, [2, 17, 32, 47], 'Producer schedule must be 2,17,32,47');
+ assert.deepEqual(fwMins, [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55], 'FastWatcher schedule must be */5');
 
-  const collision = producerMins.filter((m) => fwMins.includes(m));
-  assert.equal(collision.length, 0, `No shared execution minute allowed, found: ${collision.join(',')}`);
+ const collision = producerMins.filter((m) => fwMins.includes(m));
+ assert.equal(collision.length, 0, `No shared execution minute allowed, found: ${collision.join(',')}`);
 });
 
 // -------------------------------------------------------------------------
 // 2. First DayTrade producer current-day berjalan 09:02
 // -------------------------------------------------------------------------
 test('FWE-02: DayTrade producer pertama hari bursa berjalan tepat 09:02 WIB', () => {
-  const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
-  const producerMatch = cron.match(/^([0-9,*/]+)\s+(\d+)-(\d+)\s+\*\s+\*\s+1-5\s+.*run-daytrade-producer\.sh/m);
+ // Q1/P2: pola job-wrapper — menit di awal baris yang memuat run-daytrade-producer.sh.
+ const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
+ const prodLine = cron.split('\n').find((l) => l.includes('run-daytrade-producer.sh'));
+ const producerMatch = prodLine ? prodLine.match(/^\s*([0-9,*/]+)\s+(\d+)-(\d+)/) : null;
 
-  assert.ok(producerMatch);
+ assert.ok(producerMatch);
   const startHour = parseInt(producerMatch[2], 10);
   const firstMinute = parseInt(producerMatch[1].split(',')[0], 10);
 

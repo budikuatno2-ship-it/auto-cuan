@@ -51,9 +51,9 @@ test('Wave 9: Hero contains canonical heading, restrained Signal Line, and truth
   assert.match(landingHtml, /Pratinjau statis komponen antarmuka Auto-Cuan/);
   assert.match(landingHtml, /Bukan harga pasar real-time/);
 
-  // Primary CTA with dynamic label hook
+  // Primary CTA with dynamic label hook (C10: label dinamis via landingPrimaryAction).
   assert.match(landingHtml, /onclick="landingPrimaryAction\(\)"/);
-  assert.match(landingHtml, /class="landing-cta-label">Mulai Sekarang<\/span>/);
+  assert.match(landingHtml, /class="landing-cta-label">[^<]+<\/span>/);
 
   // Proof principles and hero note
   assert.match(landingHtml, /class="landing-proof-row"/);
