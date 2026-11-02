@@ -5,8 +5,12 @@ const { execSync } = require('child_process');
 const SSH_KEY_PATH = 'D:\\Private Key Oracle\\ssh-key-2026-07-02.key';
 const VPS_HOST = 'ubuntu@168.110.221.197';
 
+function escapeForDoubleQuotedShell(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 function runSsh(cmd) {
-  return execSync(`ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -i "${SSH_KEY_PATH}" ${VPS_HOST} "${cmd.replace(/"/g, '\\"')}"`, {
+  return execSync(`ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -i "${SSH_KEY_PATH}" ${VPS_HOST} "${escapeForDoubleQuotedShell(cmd)}"`, {
     encoding: 'utf8',
     maxBuffer: 15 * 1024 * 1024
   });

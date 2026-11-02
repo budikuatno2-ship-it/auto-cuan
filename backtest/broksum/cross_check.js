@@ -8,9 +8,13 @@ const { execSync } = require('child_process');
 const SSH_KEY_PATH = 'D:\\Private Key Oracle\\ssh-key-2026-07-02.key';
 const VPS_HOST = 'ubuntu@168.110.221.197';
 
+function escapeForDoubleQuotedShell(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 function getVpsBroksum() {
   const remoteCmd = `node -e "const fs = require('fs'); const d = JSON.parse(fs.readFileSync('/home/ubuntu/auto-cuan/data/arjum-data/broker-summary/BRPT/2026-09-08.json')); console.log(JSON.stringify(d));"`;
-  const raw = execSync(`ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -i "${SSH_KEY_PATH}" ${VPS_HOST} "${remoteCmd.replace(/"/g, '\\"')}"`, {
+  const raw = execSync(`ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -i "${SSH_KEY_PATH}" ${VPS_HOST} "${escapeForDoubleQuotedShell(remoteCmd)}"`, {
     encoding: 'utf8',
     maxBuffer: 15 * 1024 * 1024
   });

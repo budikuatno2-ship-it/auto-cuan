@@ -571,7 +571,7 @@
     'Pemeliharaan': ['Sistem sedang diperbarui. Watchlist dan portofolio tersimpan utuh.']
   };
   var COMMON = ['Aku mengawasi data, bukan dompetmu.', 'Stop loss itu sabuk pengaman, bukan tanda kalah.', 'Aku bukan penasihat investasi. Aku cuma mata.'];
-  function pageKey() { return (document.title || '').replace('&', '&'); }
+  function pageKey() { return (document.title || ''); }
   function pick() {
     var pool = (MSGS[pageKey()] || ['Halo! Aku ikut lihat halaman ini.']).concat(COMMON);
     return pool[Math.floor(Math.random() * pool.length)];
