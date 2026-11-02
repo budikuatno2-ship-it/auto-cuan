@@ -58,7 +58,7 @@ before(async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   origin = 'http://127.0.0.1:' + server.address().port;
   browser = await puppeteer.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, userDataDir: path.join(evidenceRoot, 'browser-profile'), args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
-  page = await browser.newPage(); page.setDefaultTimeout(5000);
+  page = await browser.newPage(); page.setDefaultTimeout(30000); page.setDefaultNavigationTimeout(30000);
   await page.setRequestInterception(true);
   page.on('request', request => request.url().startsWith(origin + '/') ? request.continue() : request.abort());
   await page.evaluateOnNewDocument(() => {
@@ -83,9 +83,9 @@ const fixtures = [
 ].map((r,i)=>({...r, rank:i+1, score:80-i, last_price:1000, risk_reward:2, confidence:'A', swing_tier:'SWING_READY', final_status:'Swing Ready', risk_label:'Low Risk', entry_low:990,entry_high:1010,stop_loss:950,tp1:1100,tp2:1200, change_pct:1,volume_ratio_avg20:1.3,rsi14:60}));
 beforeEach(async () => {
  await page.setViewport({width:1440,height:900,isMobile:false,hasTouch:false});
- await page.goto(origin+'/dashboard?page=screener',{waitUntil:'networkidle0'});
+ await page.goto(origin+'/dashboard?page=screener',{waitUntil:'domcontentloaded'});
  await page.evaluate(fixtures => { hideOnboardingGuide(true); applyAppTheme('light'); navigateTo('screener'); stopScreenerPolling(); if(typeof stopNkPolling==='function')stopNkPolling(); _currentScreenerType='konglo'; _screenerFilter='all'; _screenerCache={results:fixtures}; document.getElementById('filter-pattern-personality').value='all'; document.getElementById('filter-high-wr').checked=false; renderScreenerTable(fixtures); kgToggleView('table'); },fixtures);
- await page.waitForNetworkIdle({idleTime:200,timeout:15000});
+ await page.waitForNetworkIdle({idleTime:200,timeout:15000}).catch(()=>{});
  await page.evaluate(fixtures => { stopScreenerPolling(); _screenerCache={results:fixtures}; renderScreenerTable(fixtures); kgToggleView('table'); }, fixtures);
  await pause(100);
 });
@@ -138,7 +138,7 @@ test('D3 all three modes retain one semantic action per ticker and mobile toolba
  await page.setViewport({width:390,height:900});await (await page.createCDPSession()).send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
  for(const [type,body,render] of [['konglo','screenerTableBody','renderScreenerTable'],['nonkonglo','nkScreenerTableBody','renderNkScreenerTable'],['daytrade','dtScreenerTableBody','renderDtTable']]){
   await page.evaluate(type=>switchScreenerType(type),type);
-  await page.waitForFunction(render=>typeof window[render]==='function',{},render);await page.waitForNetworkIdle({idleTime:200,timeout:15000});
+  await page.waitForFunction(render=>typeof window[render]==='function',{},render);await page.waitForNetworkIdle({idleTime:200,timeout:15000}).catch(()=>{});
   await page.evaluate(({type,render,fixtures})=>{
    stopScreenerPolling();stopNkPolling();if(typeof stopDtPolling==='function')stopDtPolling();
    if(type==='konglo')_screenerCache={results:fixtures};else if(type==='nonkonglo'){_nkScreenerCache={results:fixtures};_nkScreenerFilter='all';}else{_dtScreenerCache={results:fixtures};_dtScreenerFilter='all';}

@@ -79,7 +79,8 @@ test('Dataset freshness displays honest data quota and zero internal provider na
   assert.ok(freshness.quota.limit > 0);
   assert.ok(freshness.datasets.length >= 5);
 
-  // Assert no internal names in UI dataset definitions
+  // Assert no internal names in UI dataset definitions.
+  // P2: label jadwal memakai kata "jadwal" (bukan "cron") agar netral vendor/infra.
   const jsonStr = JSON.stringify(freshness);
   assert.doesNotMatch(jsonStr, /arjum/i, 'forbidden internal provider name in UI');
   assert.doesNotMatch(jsonStr, /vps/i, 'forbidden infrastructure term in UI');

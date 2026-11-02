@@ -53,18 +53,17 @@ test('SWING-EOD-02: every Swing canonical branch uses the EOD sender helper', ()
   assert.match(region, /sendSwingEodTelegramMessage\(nkFinalMsg,/);
 });
 
-test('SWING-EOD-03: 21:30 producer remains canonical owner and generic Swing sends remain absent', () => {
+test('SWING-EOD-03: 21:25 preflight producer remains canonical owner and generic Swing sends remain absent', () => {
   const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
   const active = cron.split('\n')
     .filter((line) => line.trim() && !line.trim().startsWith('#'))
     .join('\n');
 
-  // REVISI 2026-10-13 (audit 1-12 Okt): the producer moved from 19:00 to
-  // 21:30 WIB (full 962-emiten EOD candle coverage lands ~21:12) and is now
-  // wrapped by the coverage preflight. The canonical ownership contract is
-  // unchanged: the producer, not a generic snapshot sender, owns Swing
-  // public delivery.
-  assert.match(active, /30 21 \* \* 1-5 .*run-screeners-preflight\.sh --execute --send/);
+  // P2 (2026-10-30): 3 screener Swing Konglo/Non-Konglo/DayTrade EOD + Top5 Radar
+  // 21:25 via screeners-preflight (gate >=95%). Kontrak kepemilikan kanonis
+  // tidak berubah: producer/preflight, bukan snapshot generik, yang memiliki
+  // pengiriman publik Swing.
+  assert.match(active, /25 21 \* \* 1-5 .*run-screeners-preflight\.sh --execute --send/);
   assert.doesNotMatch(active, /run-swing-konglo\.sh --send/);
   assert.doesNotMatch(active, /run-swing-non-konglo\.sh --send/);
   assert.doesNotMatch(active, /run-screener-dispatch\.sh --send/);

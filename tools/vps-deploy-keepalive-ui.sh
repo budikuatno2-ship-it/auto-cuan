@@ -12,7 +12,7 @@
 #   bash tools/vps-deploy-keepalive-ui.sh
 #
 # Usage (from a workstation, one shot):
-#   ssh ubuntu@168.110.221.197 'cd /home/ubuntu/auto-cuan && bash tools/vps-deploy-keepalive-ui.sh'
+#   ssh ubuntu@$VPS_SSH_HOST 'cd /home/ubuntu/auto-cuan && bash tools/vps-deploy-keepalive-ui.sh'
 #
 # The script is idempotent: re-running it after a failure is safe.
 # =============================================================================

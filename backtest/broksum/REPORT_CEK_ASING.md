@@ -1,10 +1,10 @@
 # LAPORAN AUDIT FORENSIK PENYIMPANAN BROKER SUMMARY ASING/DOMESTIK DI VPS PRODUKSI
 
-> **Klasifikasi:** Laporan Audit Investigasi Penyimpanan Data Broker Summary Asing & Domestik  
-> **Server Target:** VPS Oracle Cloud Produksi (`ubuntu@168.110.221.197`)  
-> **Metode Pemeriksaan:** *Read-only* penuh (`find`, `wc`, `grep`, `fs.readSync`, `sqlite3 -readonly SELECT`, inspeksi AST codebase)  
-> **Total Request API ke Server Eksternal/Arjum:** **0 request** (Batas Keras terpenuhi sempurna)  
-> **Tanggal Sensus:** 17 Oktober 2026  
+> **Klasifikasi:** Laporan Audit Investigasi Penyimpanan Data Broker Summary Asing & Domestik
+> **Server Target:** VPS Oracle Cloud Produksi (`ubuntu@168.110.221.197`)
+> **Metode Pemeriksaan:** *Read-only* penuh (`find`, `wc`, `grep`, `fs.readSync`, `sqlite3 -readonly SELECT`, inspeksi AST codebase)
+> **Total Request API ke Server Eksternal/Arjum:** **0 request** (Batas Keras terpenuhi sempurna)
+> **Tanggal Sensus:** 17 Oktober 2026
 > **Prinsip AntiSlop §107:** Sensus menyeluruh 100% file (bukan sampel 1 file), tanpa asumsi, pelaporan bukti empiris apa adanya.
 
 ---
@@ -27,7 +27,7 @@ Pemeriksaan komprehensif dijalankan terhadap **seluruh** file JSON pada direktor
 | **Tanpa Field `"flow"`** (Legacy Accumulation) | **287 file** | **0,15%** | File format lama tanpa field `flow` (misal `AADI/2026-08-03.json`) |
 | **Total File** | **186.912 file** | **100,00%** | — |
 
-*Catatan Format Legacy (287 file):*  
+*Catatan Format Legacy (287 file):*
 File-file seperti `AADI/2026-08-03.json` merupakan payload lama dari endpoint akumulasi internal yang memuat key `[date, stock_code, net_status, net_label, net_flow, top_buyers, top_sellers]` tanpa field `flow` sama sekali. Di luar 287 file legacy ini, **100% file broker summary harian yang ada memuat `"flow": "all"`**.
 
 ---
@@ -56,7 +56,7 @@ Dari total 2.139 baris hasil pencarian kata kunci di VPS ([`backtest/broksum/fin
    - `/home/ubuntu/auto-cuan/data/cache/bandarmologi-flow.json` (ukuran 18 KB, `updated_at: 2026-09-26`): File ini hanya menyimpan peringkat saham dengan akumulasi NBSA asing tertinggi per jendela waktu (top emiten per sesi 1, 7, 30 hari), **bukan** rincian transaksi per broker summary.
 4. **Script & Worker Runner:**
    - File kode worker seperti `deploy/vps/run-daily-broker-update.sh`, `scripts/idx-sync/sync_foreign_flow.py` (sinkronisasi NBSA makro).
-5. **Kesimpulan Pencarian Filesystem:**  
+5. **Kesimpulan Pencarian Filesystem:**
    **Tidak ditemukan folder atau file broker summary terpisah untuk transaksi asing maupun domestik di seluruh disk VPS.**
 
 ---

@@ -1,12 +1,12 @@
 # LAPORAN KUANTITATIF INDIKATOR BANDARMOLOGI (BROKER SUMMARY) JUNI–OKTOBER 2026
 
-> **Klasifikasi:** Laporan Kuantitatif Forensik Broker Summary & Pengujian Validitas Prediktif (*Information Coefficient*)  
-> **Subjek Analisis:** Data Broker Summary Harian Bursa Efek Indonesia (Arjum Feed)  
-> **Periode Analisis:** 1 Juni 2026 s.d. 16 Oktober 2026 (99 Hari Bursa Penuh)  
-> **Target Analisis:** Seluruh Saham Likuid IDX ($\ge \text{Rp } 1\text{ Miliar/hari}$) & Studi Kasus BRPT, BBCA, MEDC  
-> **Modul Indikator:** [`backtest/broksum/broksum-indicators.js`](backtest/broksum/broksum-indicators.js)  
-> **Runner Pengujian:** [`backtest/broksum/run_broksum_analysis.js`](backtest/broksum/run_broksum_analysis.js)  
-> **Hasil Ekspor Desain UI:** [`backtest/broksum/out/BRPT.json`](backtest/broksum/out/BRPT.json), [`BBCA.json`](backtest/broksum/out/BBCA.json), [`MEDC.json`](backtest/broksum/out/MEDC.json)  
+> **Klasifikasi:** Laporan Kuantitatif Forensik Broker Summary & Pengujian Validitas Prediktif (*Information Coefficient*)
+> **Subjek Analisis:** Data Broker Summary Harian Bursa Efek Indonesia (Arjum Feed)
+> **Periode Analisis:** 1 Juni 2026 s.d. 16 Oktober 2026 (99 Hari Bursa Penuh)
+> **Target Analisis:** Seluruh Saham Likuid IDX ($\ge \text{Rp } 1\text{ Miliar/hari}$) & Studi Kasus BRPT, BBCA, MEDC
+> **Modul Indikator:** [`backtest/broksum/broksum-indicators.js`](backtest/broksum/broksum-indicators.js)
+> **Runner Pengujian:** [`backtest/broksum/run_broksum_analysis.js`](backtest/broksum/run_broksum_analysis.js)
+> **Hasil Ekspor Desain UI:** [`backtest/broksum/out/BRPT.json`](backtest/broksum/out/BRPT.json), [`BBCA.json`](backtest/broksum/out/BBCA.json), [`MEDC.json`](backtest/broksum/out/MEDC.json)
 > **Prinsip AntiSlop §107:** Evaluasi tanpa glorifikasi, pelaporan jujur atas sampel pendek, tanpa pengelompokan broker artifisial, tanpa klaim pasti untung.
 
 ---
@@ -129,8 +129,8 @@ Pengujian dilakukan terhadap seluruh saham likuid BEI (omset $\ge$ Rp 1 Miliar/h
 ### 4.5 Label Klasifikasi Resmi
 Sesuai kriteria prompt objektif:
 
-> ### **STATUS KESIMPULAN: ALAT BACA SAJA**  
-> **(Tampil di Chart sebagai Alat Bantu Kontekstual Tanpa Sinyal Beli/Jual Otomatis)**  
+> ### **STATUS KESIMPULAN: ALAT BACA SAJA**
+> **(Tampil di Chart sebagai Alat Bantu Kontekstual Tanpa Sinyal Beli/Jual Otomatis)**
 > *Peringatan Kuantitatif: Sampel pengujian (~85 hari bursa efektif) tergolong pendek. Namun bukti empiris yang ada menunjukkan Information Coefficient berada di sekitar nol (-0,013) dan kuintil akumulasi tidak mengungguli kuintil distribusi. Indikator ini tidak layak dijadikan generator sinyal mandiri, tetapi bermanfaat sebagai panel pendukung visual bagi trader untuk melihat broker dominan dan level referensi modal `hab20`.*
 
 ---
@@ -421,7 +421,7 @@ Seluruh 197 hari bursa aktif tahun 2026 telah diekspor ulang secara lengkap ke d
 
 ## 8. PENYARINGAN HARI TANPA TRANSAKSI (T=0) & REKALKULASI KUANTITATIF PENUH
 
-> **Konteks Audit Lanjutan:** Penanganan Hari Libur Bursa Nasional & File Broksum Kosong  
+> **Konteks Audit Lanjutan:** Penanganan Hari Libur Bursa Nasional & File Broksum Kosong
 > **Prinsip Disiplin Kuantitatif AntiSlop §107:** Hari bursa non-aktif dengan omset nol (T=0) tidak boleh mengotori perhitungan rata-rata likuiditas berjalan, jendela konsistensi broker, maupun horizon pengujian *forward return*.
 
 ### 8.1 Identifikasi & Inventaris Hari T=0 Sepanjang 2026
@@ -504,5 +504,5 @@ Seluruh file JSON untuk kebutuhan visualisasi UI telah diekspor ulang bebas dari
    - **Total Sesi Aktif:** **188 hari bursa aktif** (9 hari T=0 dibuang).
    - **Jumlah T=0:** **0 bar**.
 
-> **STATUS RESMI TETAP:** **ALAT BACA SAJA**  
+> **STATUS RESMI TETAP:** **ALAT BACA SAJA**
 > *Rekomendasi implementasi:* Sajikan komponen bandarmologi broker summary di chart workstation sebagai data deskriptif / alat visual pembantu (siapa pemain dominan dan di level harga modal berapa), namun tidak boleh dijadikan pemicu scoring atau sinyal strategi beli otomatis.

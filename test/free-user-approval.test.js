@@ -691,7 +691,10 @@ function makePendingLoginUi(html) {
     registerApprovalPanel: makeElement(['hidden']),
     openVerificationBot: makeElement(['hidden'])
   };
+  // Isolated UI harness: closeLoginModal memanggil updateSiMataForAuth (maskot Si Mata).
+  // Sediakan stub no-op agar harness fokus pada kontrak panel approval, bukan maskot.
   const source =
+    'function updateSiMataForAuth() {}\n' +
     extractFunction(html, 'function validVerificationBotUrl') + '\n' +
     extractFunction(html, 'function formatVerificationExpiry') + '\n' +
     extractFunction(html, 'function displayApprovalPanel') + '\n' +

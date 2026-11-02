@@ -33,12 +33,16 @@ function probeParams() {
     test();
   `;
 
+  function escapeForDoubleQuotedShell(s) {
+    return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n\s*/g, ' ');
+  }
+
   const args = [
     '-o', 'StrictHostKeyChecking=no',
     '-o', 'ConnectTimeout=15',
     '-i', SSH_KEY_PATH,
     VPS_HOST,
-    `node -e "${remoteScript.replace(/\n\s+/g, ' ').replace(/"/g, '\\"')}"`
+    `node -e "${escapeForDoubleQuotedShell(remoteScript)}"`
   ];
 
   const out = execFileSync('ssh', args, { encoding: 'utf8' });

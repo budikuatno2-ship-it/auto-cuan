@@ -60,7 +60,11 @@ function parseArgs() {
     concurrency: 8,
     delayMs: 60,
     dryRun: false,
-    forceApi: false
+    forceApi: false,
+    tiered: false,
+    floor: null,
+    maxRequests: null,
+    batch: null
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -69,6 +73,8 @@ function parseArgs() {
       options.dryRun = true;
     } else if (arg === '--force-api') {
       options.forceApi = true;
+    } else if (arg === '--tiered') {
+      options.tiered = true;
     } else if (arg === '--concurrency' && args[i + 1]) {
       const c = parseInt(args[++i], 10);
       if (Number.isFinite(c) && c > 0) options.concurrency = Math.min(20, Math.max(1, c));
@@ -77,14 +83,57 @@ function parseArgs() {
       if (Number.isFinite(d) && d >= 0) options.delayMs = d;
     } else if (arg === '--tickers' && args[i + 1]) {
       options.tickers = args[++i].split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+    } else if (arg.startsWith('--tickers=')) {
+      options.tickers = arg.slice(10).split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+    } else if (arg === '--floor' && args[i + 1] !== undefined) {
+      const f = parseInt(args[++i], 10);
+      if (Number.isFinite(f) && f >= 0) options.floor = f;
+    } else if (arg.startsWith('--floor=')) {
+      const f = parseInt(arg.slice(8), 10);
+      if (Number.isFinite(f) && f >= 0) options.floor = f;
+    } else if (arg === '--max-requests' && args[i + 1] !== undefined) {
+      const m = parseInt(args[++i], 10);
+      if (Number.isFinite(m) && m > 0) options.maxRequests = m;
+    } else if (arg.startsWith('--max-requests=')) {
+      const m = parseInt(arg.slice(15), 10);
+      if (Number.isFinite(m) && m > 0) options.maxRequests = m;
+    } else if (arg === '--batch' && args[i + 1] !== undefined) {
+      const b = parseInt(args[++i], 10);
+      if (Number.isFinite(b) && b > 0) options.batch = b;
+    } else if (arg.startsWith('--batch=')) {
+      const b = parseInt(arg.slice(8), 10);
+      if (Number.isFinite(b) && b > 0) options.batch = b;
     }
   }
 
   return options;
 }
 
+// P2 — seleksi tiered via lib/insider-tiered-scheduler.js (hemat ~50% kuota).
+// Tier 1 (~194 emiten likuid/konglo) dicek setiap hari bursa;
+// Tier 2 digilir 2x/minggu (Grup A Senin+Kamis, Grup B Selasa+Jumat, Rabu sweep).
+function selectTieredTickers(allTickers) {
+  try {
+    const scheduler = require('../lib/insider-tiered-scheduler');
+    const classification = scheduler.classifyUniverse(allTickers);
+    const nowWib = new Date(Date.now() + 7 * 3600 * 1000);
+    let dow = nowWib.getUTCDay();
+    if (dow === 0) dow = 7;
+    const schedule = scheduler.getScheduleForDay(dow, classification);
+    if (schedule && Array.isArray(schedule.tickers) && schedule.tickers.length > 0) {
+      return { tickers: schedule.tickers, info: `${schedule.day_name || ''} tier1=${schedule.tier1_count} tier2=${schedule.tier2_count} total=${schedule.total_requests}` };
+    }
+  } catch (_) {}
+  return { tickers: allTickers, info: 'fallback-full-universe' };
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// P2: validator ticker IDX (fungsi ini hilang di versi lama -> ReferenceError saat runtime).
+function isValidIdxTicker(t) {
+  return typeof t === 'string' && /^[A-Z0-9.-]{2,10}$/.test(t.trim().toUpperCase());
 }
 
 function loadUniverseTickers() {
@@ -151,16 +200,58 @@ async function runInsiderCollector() {
   const opts = parseArgs();
   const startTime = Date.now();
 
+  // P2 — gate kuota Fase P1 + hard stop WIB sebelum request upstream.
+  let quotaState = null;
+  let wibHardStop = null;
+  try { quotaState = require('../lib/quota-state'); } catch (_) {}
+  try { wibHardStop = require('../lib/wib-hard-stop'); } catch (_) {}
+  const hardStopNow = () => {
+    try {
+      if (wibHardStop && typeof wibHardStop.shouldStop === 'function') return wibHardStop.shouldStop();
+      if (quotaState) return quotaState.isInForbiddenWindow(new Date());
+    } catch (_) {}
+    return false;
+  };
+  let floor = opts.floor;
+  try {
+    if (floor == null && quotaState) floor = quotaState.reserveFloorFor(new Date());
+  } catch (_) { floor = null; }
+  if (floor == null) floor = 300;
+  if (hardStopNow()) {
+    console.log('[insider] BERHENTI: jendela terlarang WIB (hard stop 23:50-00:10).');
+    return { totalRecords: 0, uniqueEmitens: 0, uniqueInsiders: 0, stopped: 'FORBIDDEN_WINDOW' };
+  }
+  try {
+    if (quotaState) {
+      const gate = quotaState.canConsumeQuota(1, 'insider-tiered', { reserveFloor: floor });
+      if (!gate.ok) {
+        console.log(`[insider] SKIP: gate kuota menolak (${gate.reason}).`);
+        return { totalRecords: 0, uniqueEmitens: 0, uniqueInsiders: 0, stopped: gate.reason };
+      }
+    }
+  } catch (_) {}
+
   console.log('====================================================');
   console.log('  AUTO-CUAN: FULL UNIVERSE INSIDER DATA COLLECTOR   ');
   console.log('====================================================');
   console.log(`Concurrency:    ${opts.concurrency} concurrent workers`);
   console.log(`Delay per call: ${opts.delayMs} ms`);
   console.log(`Dry Run:        ${opts.dryRun ? 'YA (Tidak menyimpan)' : 'TIDAK'}`);
+  console.log(`Tiered:         ${opts.tiered ? 'YA (hemat ~50% kuota)' : 'TIDAK'}`);
+  console.log(`Floor:          ${floor}`);
 
-  const allTickers = opts.tickers && opts.tickers.length > 0
+  let allTickers = opts.tickers && opts.tickers.length > 0
     ? opts.tickers
     : loadUniverseTickers();
+  if (opts.tiered && !(opts.tickers && opts.tickers.length > 0)) {
+    const sel = selectTieredTickers(allTickers);
+    allTickers = sel.tickers;
+    console.log(`Tiered select:  ${sel.info}`);
+  }
+  if (opts.maxRequests != null && Number.isFinite(opts.maxRequests) && allTickers.length > opts.maxRequests) {
+    allTickers = allTickers.slice(0, opts.maxRequests);
+    console.log(`Batch kecil:    dibatasi ${opts.maxRequests} emiten (uji env cron nyata)`);
+  }
 
   console.log(`Total Universe: ${allTickers.length} emiten\n`);
 

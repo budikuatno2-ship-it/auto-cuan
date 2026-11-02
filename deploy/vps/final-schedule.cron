@@ -1,132 +1,86 @@
-# BEGIN AUTO-CUAN FINAL SCHEDULE — 4 PILAR (LIVE vs EOD) — 2026-10-18
+# BEGIN AUTO-CUAN FINAL SCHEDULE — P2 WIB LOGIS & PENYERAP KUOTA PENUH
 # Timezone: Asia/Jakarta (WIB = UTC+7). Semua jam di bawah adalah WIB.
-# Live bursa: 09:00-16:00 WIB (02:00-09:00 UTC) — hanya FastWatcher & Daytrade
-#
-# REVISI 2026-10-18 (Deploy branch feat/daytrade-screener-v1):
-#   * J1: EOD update memakai --accum-source=api --insider-mode=daily.
-#     Menyimpan broker-summary All (unclipped) + Foreign (F) + kalkulasi Domestik (D=All-F).
-#   * J3: Generator lokal broker-accumulation dinonaktifkan (J1 single writer).
-#   * Backfill otomatis harian & akhir pekan (00:07 & 19:30 WIB) ditambahkan.
+# P2 — 2026-10-30 | Branch: feat/daytrade-screener-v1
+# Semua baris dipanggil via deploy/vps/job-wrapper.sh <nama-job> <timeout-detik> <perintah>.
+# Wrapper otomatis: TZ, PATH, cd, load .env aman, hard-stop 23:50-00:10,
+# flock -n /tmp/autocuan-<nama-job>.lock, nice/ionice, timeout -k 15,
+# heartbeat data/job-heartbeat/<nama-job>.json + log logs/cron/<nama-job>.log.
+# Kuota Arjum: dinamis via config/quota.json + lib/quota-state.js Fase P1 (tanpa hardcode).
+# HARD STOP: 23:50 WIB (config/quota.json hardStopWIB). NOL entri mulai 23:50-00:10 WIB.
 CRON_TZ=Asia/Jakarta
+TZ=Asia/Jakarta
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/ubuntu/.local/node-v22/bin
+HOME=/home/ubuntu
+MAILTO=""
 
-# ── INFRA HARIAN ──────────────────────────────────────────────────────────
-# B1 (2026-10-23): BACKFILL DIJEDA. Data harian (J1) lebih penting daripada
-# backfill riwayat. Baris di bawah TIDAK dihapus, hanya dikomentari. Pulihkan
-# dengan menghapus awalan "# " pada baris yang ditandai DIJEDA, setelah bagian C
-# selesai DAN B2-B3 terbukti.
-# Backfill candle historis (tengah malam)
-# DIJEDA 20261023 sampai J1 terkejar
-# 5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
+# ── INTRADAY Senin-Jumat ──
+# Suspension guard & universe sync tiap 15 mnt 08:00-20:00 (0 kuota, endpoint publik IDX).
+*/15 08-20 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh suspension-guard 900 bash /home/ubuntu/auto-cuan/deploy/vps/run-idx-suspension-guard.sh
+# FastWatcher tiap 5 mnt 09:00-15:55 (0 kuota, fail-closed di luar sesi).
+*/5 09-15 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh fastwatcher 600 bash /home/ubuntu/auto-cuan/deploy/vps/run-fastwatcher.sh --send
+55 15 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh fastwatcher-1555 600 bash /home/ubuntu/auto-cuan/deploy/vps/run-fastwatcher.sh --send
+# DayTrade Intraday Producer 09:02-15:47 tiap 15 mnt (0 kuota, cache lokal).
+2,17,32,47 09-15 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh daytrade-producer 900 bash /home/ubuntu/auto-cuan/deploy/vps/run-daytrade-producer.sh --execute --speed fast
+# Sektor Hot Intraday 09:05-15:35 tiap 30 mnt (0 kuota, agregasi candle lokal).
+5,35 09-15 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh sector-hot-intraday 600 bash /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh --force-local
 
-# Backfill otomatis broker summary asing (Hari kerja slot 1: 00:15 WIB)
-15 0 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum.log 2>&1
+# ── SORE EOD Senin-Jumat (candle + evaluasi, 0 kuota Yahoo kecuali IHSG 1 req) ──
+# Candle EOD 964+IHSG Yahoo 0 kuota 17:00.
+0 17 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh daily-candles 1800 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh
+# IHSG 17:05 (1 req Arjum).
+5 17 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh ihsg-candle 600 bash /home/ubuntu/auto-cuan/deploy/vps/run-ihsg-candle.sh
+# Track Record & Lifecycle ronde1 17:15.
+15 17 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh lifecycle-1715 900 bash /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply
+# Retry candle 17:45 (idempoten, hanya ticker tertinggal).
+45 17 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh daily-candles-retry 1200 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh --retry
+# Lifecycle & catatan admin ronde2 18:00.
+0 18 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh lifecycle-1800 900 bash /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply
+# Market context/breadth EOD 18:10 (0 kuota, komputasi lokal).
+10 18 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh market-context 900 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-context-collector.sh
+# Sektor Hot EOD 18:12 (0 kuota).
+12 18 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh sector-hot-eod 600 bash /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh --force-local
 
-# Backfill otomatis broker summary asing (Hari kerja slot 2: 02:30 WIB)
-30 2 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum.log 2>&1
+# ── MALAM1 Broksum & kompilasi lokal Senin-Jumat ──
+# Update ALL+Foreign 963 saham 19:45 (~1926 req).
+45 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh broksum-1945 2400 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh --accum-source=api --insider-mode=daily
+# Kompilasi domestik ALL-F + akumulasi rolling 0 kuota 20:25.
+25 20 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh domestic-compile-2025 1500 /home/ubuntu/.local/node-v22/bin/node tools/build-domestic-broksum-and-accum.js --apply --skip-hunter
+# Retry/sweep ALL+F 20:45 (idempoten).
+45 20 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh broksum-retry-2045 1500 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh --final --accum-source=api --insider-mode=daily
+# Kompilasi final akumulasi+konsistensi 0 kuota 21:10.
+10 21 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh domestic-compile-final-2110 1200 /home/ubuntu/.local/node-v22/bin/node tools/build-domestic-broksum-and-accum.js --apply --force
+# Broker hunter + bandarmologi intel 0 kuota 21:14.
+14 21 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh bandarmologi-intel-2114 900 /home/ubuntu/.local/node-v22/bin/node tools/run-bandarmologi-intel.js
 
-# Backfill otomatis broker summary asing (Hari kerja slot 3: 19:30 WIB)
-30 19 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum.log 2>&1
+# ── MALAM2 screener/landing/telegram Senin-Jumat ──
+# 3 screener Swing Konglo/Non-Konglo/DayTrade EOD + Top5 Radar 21:25 (preflight gate >=95%).
+25 21 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh screeners-preflight-2125 2700 bash /home/ubuntu/auto-cuan/deploy/vps/run-screeners-preflight.sh --execute --send
+# Top5 Radar turunan lokal 21:35.
+35 21 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh top5-radar 900 /home/ubuntu/.local/node-v22/bin/node tools/run-after-market-top5-lock.js
+# Snapshot landing & closing tape 21:40 (0 kuota).
+40 21 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh landing-snapshot 600 /home/ubuntu/.local/node-v22/bin/node tools/direct-refresh-landing.js
+# Rekap broadcast telegram 21:45.
+45 21 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh afternoon-recap 600 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send
 
-# Backfill otomatis broker summary asing (Akhir pekan: Sabtu & Minggu 00:15 & 12:00 WIB)
-15 0 * * 6,0 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekend >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum.log 2>&1
-0 12 * * 6,0 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekend >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum.log 2>&1
+# ── MALAM3 insider/fundamental/penyerap malam Senin-Minggu ──
+# Koleksi insider berjenjang ~455 req 22:00.
+0 22 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh insider-tiered-2200 1800 /home/ubuntu/.local/node-v22/bin/node tools/collect-insider-data.js --tiered --floor 300
+# Rolling refresh fundamental Q2/Q3 22:20.
+20 22 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh fundamental-refresh-2220 1500 /home/ubuntu/.local/node-v22/bin/node tools/run-fundamental-refresh.js --batch=20 --apply --floor 300
+# Penyerap sisa quota-burn.js floor malam 200 req s.d. 23:48 WIB 22:45 (timeout 3600 -> selesai 23:45).
+45 22 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-night-2245 3600 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 200
 
-# C (2026-10-23): PENGECORAN TANGGAL BOLONG — Sabtu 24 Okt 00:07 WIB.
-# Tidak ada J1/J2 di akhir pekan, jadi cadangan kecil (maks 1.500) saja.
-# Urutan terbaru dulu (22, 21, 20, lalu sisa 19 Okt), batch 50, berhenti bila
-# >20% gagal. Bila belum tuntas, jalankan lagi Minggu 00:07 (baris di bawah).
-# 23 Okt ditambahkan (J1 23 Okt gagal: guard jam operasional memblokir broker-summary).
-7 0 * * 6 bash /home/ubuntu/auto-cuan/deploy/vps/run-catchup-missing-dates.sh --dates 2026-10-23,2026-10-22,2026-10-21,2026-10-20,2026-10-19 --batch 50 >> /home/ubuntu/auto-cuan-runner/logs/catchup-missing-dates.log 2>&1
-7 0 * * 0 bash /home/ubuntu/auto-cuan/deploy/vps/run-catchup-missing-dates.sh --dates 2026-10-23,2026-10-22,2026-10-21,2026-10-20,2026-10-19 --batch 50 >> /home/ubuntu/auto-cuan-runner/logs/catchup-missing-dates.log 2>&1
+# ── SIANG & AKHIR PEKAN estafet quota-burn.js tiap jam menit :35 ──
+# Senin-Jumat 00:35-18:35 floor siang 3000.
+35 0-18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-day 3300 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 3000
+# Sabtu-Minggu 00:35-22:35 floor weekend 50 (~18030 req/hari terserap).
+35 0-22 * * 6,0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-weekend 3000 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 50
+# Sabtu-Minggu slot penutup 23:15 floor 50 (timeout 1800 -> selesai 23:45 < 23:50).
+15 23 * * 6,0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-weekend-late 1800 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 50
 
-# Lifecycle evaluator (sore, setelah bursa tutup)
-30 16 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
+# ── WATCHDOG operasional + security tiap 5 mnt (0 kuota upstream) ──
+*/5 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh watchdog 300 /home/ubuntu/.local/node-v22/bin/node tools/watchdog.js
+*/5 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh security-monitor 300 /home/ubuntu/.local/node-v22/bin/node tools/security-monitor.js
 
-# ── CANDLE HARIAN 962 SAHAM (Yahoo + cek silang Arjum) — 2026-10-18 ───────
-# Bursa tutup 16:00 WIB; bar final Yahoo lengkap ~16:20-16:30.
-# Job ini WAJIB lewat wrapper run-daily-candles.sh (flock + env).
-# IHSG selalu dari Arjum (1 request). Cek silang 20 saham (20 request).
-# Diulang 23:30 WIB untuk menangkap koreksi/revisi bar Yahoo.
-40 16 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-candles.log 2>&1
-30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-candles.log 2>&1
-
-# ── IHSG MANDIRI (B5, 2026-10-20) — 1 request/hari, bebas fallback ────────
-# Bar IHSG adalah anchor market-regime/breadth dan TIDAK boleh bergantung pada
-# pass 962 saham (yang bisa bail-out saat cross-check gagal). Job ini terpisah:
-# 1 request Arjum, idempoten (bar yang sudah ada tidak diambil lagi), dan
-# MEMBERI PERINGATAN kalau bar hari bursa belum ada pada 17:30 WIB.
-45 17 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-ihsg-candle.sh >> /home/ubuntu/auto-cuan-runner/logs/ihsg-candle.log 2>&1
-30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-ihsg-candle.sh >> /home/ubuntu/auto-cuan-runner/logs/ihsg-candle.log 2>&1
-
-# ── EOD MARKET DATA / BROKSUM INGESTION (16:30-17:30 WIB) ─────────────────
-# Window optimal: bursa tutup 16:00, KSEI merilis snapshot broker ~16:30-17:30.
-# Tiap 15 menit di dalam window supaya tanggal yang belum lengkap bisa lanjut;
-# coordinator tetap memeriksa kalender libur bursa (0 request saat libur).
-# Pending dates durable dan resume pada hari bursa berikutnya.
-30,45 16 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh --accum-source=api --insider-mode=daily >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
-0,15,30,45 17 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh --accum-source=api --insider-mode=daily >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
-# Pass final terminal (bila masih ada yang pending) — 23:30 WIB, tetap 1x/hari.
-30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh --final --accum-source=api --insider-mode=daily >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
-
-# ── KALKULASI AKUMULASI BANDAR (DINONAKTIFKAN — 2026-10-18) ───────────────
-# J1 adalah single writer resmi ke data/arjum-data/broker-accumulation/ via API.
-# Generator lokal J3 dinonaktifkan untuk mencegah race condition / double-write.
-# 0 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-broker-accumulation.sh >> /home/ubuntu/auto-cuan-runner/logs/broker-accumulation.log 2>&1
-
-# Afternoon recap (18:45 WIB) — dikirim SETELAH pasar tutup.
-45 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
-# Landing refresh (22:15 WIB, harian)
-15 22 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/direct-refresh-landing.js >> /home/ubuntu/auto-cuan-runner/logs/landing-refresh.log 2>&1
-
-# Suspension Guard IDX: refresh official suspend/unsuspend events every 15 minutes.
-*/15 8-20 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-idx-suspension-guard.sh >> /home/ubuntu/auto-cuan-runner/logs/idx-suspension-guard.log 2>&1
-
-# ── LIVE BURSA (Senin-Jumat, 09:00-16:00 WIB) ────────────────────────────
-2,17,32,47 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade-producer.sh --execute --speed full >> /home/ubuntu/auto-cuan-runner/logs/daytrade-producer.log 2>&1
-*/5 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-fastwatcher.sh --send >> /home/ubuntu/auto-cuan-runner/logs/fastwatcher.log 2>&1
-
-# ── PRODUCER SCREENER (Full universe sweep via VPS daemon + Snapshot) ────
-30 21 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screeners-preflight.sh --execute --send >> /home/ubuntu/auto-cuan-runner/logs/screeners.log 2>&1
-
-# ── END-OF-DAY / MALAM (Senin-Jumat, 21:30-22:15 WIB) ────────────────────
-15 22 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh --dry-run >> /home/ubuntu/auto-cuan-runner/logs/screener-dispatch.log 2>&1
-
-# BROKER HUNTER INDEX (B1, 2026-10-22) — 22:45 WIB, setelah J1 final.
-# Membangun ulang data/broker-hunter-indexes/ dari broker-summary lokal yang
-# sudah ditulis J1. Tidak memakai kuota Arjum (baca disk saja). Tanpa baris ini
-# index tetap basi sejak 12 Sep, seperti sebelum perbaikan ini.
-45 22 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-broker-hunter-indexer.sh >> /home/ubuntu/auto-cuan-runner/logs/broker-hunter-indexer.log 2>&1
-
-# INSIDER NETWORK & COMPILATION — 23:00 WIB (Senin-Jumat & Minggu)
-0 23 * * 0-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/build-full-insider-network.js >> /home/ubuntu/auto-cuan-runner/logs/build-insider-network.log 2>&1
-
-# BACKLOG AGE ALARM (B3, 2026-10-22) — 19:45 WIB, setelah jendela EOD.
-# Kalau antrean isi ulang H-1 lebih tua dari 24 jam DAN tidak berkurang, kirim
-# SATU peringatan/hari ke Telegram admin + tulis state untuk Admin Console.
-45 19 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-backlog-age-alarm.sh >> /home/ubuntu/auto-cuan-runner/logs/backlog-age-alarm.log 2>&1
-
-# ── TELEGRAM DELIVERY RETRY WORKER (tiap 15 menit, 17:00-23:45 WIB) ──────
-*/15 17-23 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-retry-telegram-delivery.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/retry-telegram-delivery.log 2>&1
-
-# ── WEBHOOK FAILOVER (DINONAKTIFKAN — long polling via PM2) ──────────────
-# Verifikasi bot memakai LONG POLLING mandiri via PM2
-# (autocuan-verify-bot, entry: tools/telegram-verify-bot.js). Tidak ada lagi
-# webhook Vercel (HTTP 402) maupun cloudflared tunnel yang bisa mati.
-#
-# PENTING: JANGAN aktifkan kembali baris di bawah. Failover ini akan
-# memasang ulang webhook dan mematikan polling (getUpdates → 409 Conflict).
-# Untuk mengembalikan mode webhook: pm2 delete autocuan-verify-bot lalu
-# buka komentar baris ini.
-# */10 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-webhook-failover.sh >> /home/ubuntu/auto-cuan-runner/logs/webhook-failover.log 2>&1
-
-# ── SECTOR HOT — VPS LOCAL ONLY ──────────────────────────────────────────
-*/30 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh --force-local >> /home/ubuntu/auto-cuan-runner/logs/sector-hot.log 2>&1
-
-# ── ORACLE ANTI-SUSPEND KEEP-ALIVE (ringan, setiap jam) ──────────────────
-# ── TELEGRAM MEMBER LIFECYCLE (Reminder, Review & Auto-kick — 02:15 WIB) ─────
-15 2 * * * /home/ubuntu/auto-cuan/deploy/vps/run-telegram-lifecycle.sh --execute --kick-expired >> /home/ubuntu/auto-cuan-runner/logs/telegram-lifecycle.log 2>&1
-
-0 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-keepalive.sh >> /home/ubuntu/auto-cuan-runner/logs/keepalive.log 2>&1
-*/5 * * * * /bin/bash /home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh >> /home/ubuntu/auto-cuan-runner/logs/verify-poller-watchdog.log 2>&1
-
-# END AUTO-CUAN FINAL SCHEDULE
+# END AUTO-CUAN FINAL SCHEDULE P2

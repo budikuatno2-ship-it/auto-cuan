@@ -342,7 +342,7 @@ async function run(argv) {
   // ACCUM_SOURCE=local stays available for historical re-derivation once the
   // all_data=true backfill is complete.
   const accumSource = (args.find(a => a.startsWith('--accum-source=')) || '').replace('--accum-source=', '') || process.env.ACCUM_SOURCE || 'api';
-  // 2b: Insider stays DAILY for all stocks while the 12.060 quota holds.
+  // 2b: Insider stays DAILY for all stocks while the dynamic quota (config/quota.json) holds.
   // weekly = all stocks on Saturday 01:00 + <=100 priority daily (prepared,
   // NOT enabled). Default is 'daily'.
   const insiderMode = (args.find(a => a.startsWith('--insider-mode=')) || '').replace('--insider-mode=', '') || process.env.INSIDER_MODE || 'daily';

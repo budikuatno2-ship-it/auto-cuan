@@ -1,27 +1,27 @@
 # LAPORAN AUDIT: PETA KUOTA ARJUM, CADANGAN SORE AMAN, EVALUASI IHSG, DAN SIMULASI +5.000
 
-**Tanggal & Waktu:** Minggu, 18 Oktober 2026, 13:45 WIB  
-**Target Lingkungan:** VPS Produksi Oracle Ubuntu (`168.110.221.197`)  
-**Branch:** [`feat/broksum-all-foreign`](deploy/vps/final-schedule.cron)  
+**Tanggal & Waktu:** Minggu, 18 Oktober 2026, 13:45 WIB
+**Target Lingkungan:** VPS Produksi Oracle Ubuntu (`168.110.221.197`)
+**Branch:** [`feat/broksum-all-foreign`](deploy/vps/final-schedule.cron)
 **Status Implementasi:** B1 dan B2 **DITERAPKAN**; B3 dan B4 **DILEWATI** (kuota sisa < 400); B5 **DITOLAK / TETAP API** (paritas A6 belum 99%).
 
 ---
 
 ## Ringkasan Eksekutif (5 Poin Chat)
 
-1. **Tabel A1 (Peta Kuota per Jenis & Sumber):**  
+1. **Tabel A1 (Peta Kuota per Jenis & Sumber):**
    Kebutuhan EOD hari kerja adalah **~4.426 request Arjum** (Broksum All 962, Broksum F 833, Akumulasi API 833, Insider Daily 833, Candle 962). Domestik (0 req, kalkulasi $D = \text{All} - F$), Sector Hot (0 req, Yahoo Finance), dan Live DayTrade/FastWatcher (0 req, tape lokal) bebas dari kuota Arjum.
-2. **Pemakaian Sabtu 17 & Minggu 18 Okt (A2):**  
+2. **Pemakaian Sabtu 17 & Minggu 18 Okt (A2):**
    - **Sabtu 17 Okt:** Terpakai ~3.579 req (merupakan sisa EOD Jumat malam yang tuntas pukul 00:23 WIB, termasuk 962 candle). Siang hari 0 req.
    - **Minggu 18 Okt:** Terpakai 12.056 req (12.055 req asing berhasil diambil oleh backfill worker antara 00:00–00:59:28 WIB sebelum limit harian vendor tercapai). Sebanyak 168.801 file duplikat lokal yang sempat tertulis akibat fallback cache lama telah dikarantina 100% tanpa menghabiskan kuota tambahan.
-3. **Sisa Backfill Asing & 3 Skenario Penyelesaian (A3):**  
+3. **Sisa Backfill Asing & 3 Skenario Penyelesaian (A3):**
    Total kebutuhan Foreign adalah 180.856 request (962 saham × 188 hari). Selesai autentik: 12.055 request. **Sisa Foreign: 168.801 request** (ditambah 66.725 file All yang masih terpotong 25 level).
    - *Skenario 1 (Cadangan 4.500):* Throughput 61.320 req/minggu $\rightarrow$ Selesai Foreign dalam **19,3 hari (~7 Nov 2026)**.
    - *Skenario 2 (Cadangan 5.100 - B1):* Throughput 58.820 req/minggu $\rightarrow$ Selesai Foreign dalam **20,1 hari (~8 Nov 2026)**.
    - *Skenario 3 (Kuota +5.000 / Total 17.060 - A5):* Throughput 93.820 req/minggu $\rightarrow$ Selesai Foreign dalam **12,6 hari (~31 Okt 2026, 7,5 hari lebih cepat!)**.
-4. **Analisis Tambahan Kuota +5.000 (A5):**  
+4. **Analisis Tambahan Kuota +5.000 (A5):**
    **100% AMAN.** Kecepatan worker (~8 req/s) sanggup menghabiskan kuota 17.060 req dalam **~55–60 menit** (00:07 s/d 01:05 WIB). Jarak waktu ke job EOD sore (16:30 WIB) adalah **15 jam**, sehingga tidak ada risiko bentrok jadwal. Melalui refactor B2, sistem kini otomatis mengadopsi limit 17.060 dari header vendor tanpa perlu redeploy.
-5. **Status Perubahan Bagian B (B1–B5):**  
+5. **Status Perubahan Bagian B (B1–B5):**
    - **B1 (Cadangan Sore 5.100 req):** **DITERAPKAN** (melindungi beban puncak EOD 4.426 req + live web, sisa kuota pasca EOD $\ge 574$ req).
    - **B2 (Limit Dinamis x-ratelimit-limit & ARJUM_DAILY_LIMIT):** **DITERAPKAN** (default 12060, bebas hardcoded).
    - **B3 (Uji Simbol IHSG) & B4 (IHSG Masuk Cron):** **DILEWATI** (karena sisa kuota hari ini 4 req < batas aman 400 req; skrip siap tempel [`tools/probe-ihsg-symbols.js`](tools/probe-ihsg-symbols.js) disiapkan untuk Senin pasca 00:00 WIB).
@@ -71,11 +71,11 @@
 
 ### A3 · Sensus Sisa Backfill Asing & Proyeksi 3 Skenario (2 Jan – 16 Okt 2026)
 
-1. **Jumlah Pasangan Saham × Hari Bursa:**  
+1. **Jumlah Pasangan Saham × Hari Bursa:**
    962 saham × 188 hari bursa aktif = **180.856 pasangan task**.
-2. **Sisa Request Asing (`flow=F`):**  
+2. **Sisa Request Asing (`flow=F`):**
    $180.856 - 12.055 \text{ (file autentik)} = \mathbf{168.801 \text{ request}}$ yang masih harus diambil.
-3. **Sisa Re-Fetch Broksum All yang Terpotong (Clipped 25 Levels):**  
+3. **Sisa Re-Fetch Broksum All yang Terpotong (Clipped 25 Levels):**
    Dari 185.949 file All di disk:
    - **Clipped (tepat 25 levels & unflagged):** **66.725 file** (perlu di-refetch jika ingin riwayat akumulasi 100% presisi bursa).
    - **Unclipped (< 25 levels atau unclipped):** **119.224 file**.
@@ -121,12 +121,12 @@
 | **23:30** | J1/J2 Pass Final EOD | 0 | 11.486 | 574 | No-op, seluruh data hari itu sudah lengkap. |
 
 #### Analisis Risiko Defisit 100 Request:
-1. **Saham Mana yang Tidak Terambil?**  
+1. **Saham Mana yang Tidak Terambil?**
    J1 memproses emiten secara alfabetis. Jika kuota kurang 100 request, defisit akan terjadi di akhir loop, mengorbankan ~20–30 emiten berawalan huruf W–Z (misalnya `WIFI`, `WIKA`, `WOOD`, `WSBP`, `WSKT`, `ZATA`, `ZYRX`).
-2. **Apakah `.done` Tetap Ditulis?**  
+2. **Apakah `.done` Tetap Ditulis?**
    **MUTLAK TIDAK DITULIS.** [`tools/run-daily-market-update.js:127`](tools/run-daily-market-update.js:127) mewajibkan `brokerOk && candleOk && historyOk` (di mana `failed === 0`). Satu saja saham gagal, status `complete` menjadi false dan file `.done` dibatalkan.
-3. **Apakah Slot 23:30 WIB Bisa Melengkapi?**  
-   **TIDAK BISA.** Jika kuota vendor benar-benar habis (0 di server Arjum), seluruh percobaan pada pass 23:30 WIB akan langsung di-reject dengan HTTP 429 hingga pukul 00:00 WIB.  
+3. **Apakah Slot 23:30 WIB Bisa Melengkapi?**
+   **TIDAK BISA.** Jika kuota vendor benar-benar habis (0 di server Arjum), seluruh percobaan pada pass 23:30 WIB akan langsung di-reject dengan HTTP 429 hingga pukul 00:00 WIB.
    *Kesimpulan:* Cadangan 5.100 request (B1) mutlak diperlukan dan berhasil memberikan sisa kuota pasca-EOD sebesar **574 request** ($> 400$ req aman).
 
 ---
@@ -150,11 +150,11 @@
 
 ### A6 · Hasil Uji Paritas Akumulasi Lokal (Data Unclipped & F Asli)
 
-- **Temuan Forensik Database:**  
+- **Temuan Forensik Database:**
   Dari 65 emiten pertama yang memiliki file Foreign asli, seluruhnya adalah emiten paling likuid di bursa (Top Liquid). Pada seluruh rentang historis sebelum 16 Oktober 2026, file `broker-summary` untuk 65 emiten ini **100% terpotong pada 25 level** (karena `all_data=true` belum pernah di-backfill ke belakang).
-- **Hasil Pengujian Paritas:**  
+- **Hasil Pengujian Paritas:**
   Karena belum tersedia 20 hari bursa dengan data All unclipped untuk emiten likuid, uji paritas komparasi net status & net value terhadap data historis terpotong hanya menghasilkan kecocokan **65%–84%** (kehilangan ~3.77% volume transaksi bursa).
-- **Kesimpulan A6:**  
+- **Kesimpulan A6:**
   Syarat paritas $\ge 99\%$ **BELUM TERPENUHI**. Sesuai aturan B5, akumulasi broker **TETAP WAJIB MENGGUNAKAN SUMBER API (`ACCUM_SOURCE=api`)**.
 
 ---

@@ -56,19 +56,21 @@ test('QUIET-03: generic Swing wrappers cannot bypass canonical Swing Telegram ga
   assert.doesNotMatch(cron, /run-swing-non-konglo\.sh --send/);
 });
 
-test('QUIET-04: EOD generic dispatch is diagnostics-only and cannot rebroadcast strategy cards', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'run-screener-dispatch.sh'), 'utf8');
-  const exec = executable(src);
-  assert.match(exec, /GENERIC_SCREENER_DISPATCH_SEND_DISABLED/);
-  assert.match(exec, /--mode=daytrade --dry-run/);
-  assert.match(exec, /--mode=swing-konglo --dry-run/);
-  assert.match(exec, /--mode=swing-non-konglo --dry-run/);
-  assert.doesNotMatch(exec, /--mode=daytrade --send/);
-  assert.doesNotMatch(exec, /--mode=swing-konglo --send/);
-  assert.doesNotMatch(exec, /--mode=swing-non-konglo --send/);
+test('QUIET-04: EOD generic dispatch is absent from P2 cron (preflight owns EOD sends)', () => {
+  // P2 (2026-10-30): jadwal final tidak lagi memuat run-screener-dispatch.sh
+  // sama sekali — pengiriman EOD dimiliki screeners-preflight-2125.
+  // Kontrak yang dipertahankan: dispatch generik TIDAK BOLEH --send.
+  let src = '';
+  try { src = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'run-screener-dispatch.sh'), 'utf8'); } catch (_) { src = ''; }
+  if (src) {
+    const exec = executable(src);
+    assert.match(exec, /GENERIC_SCREENER_DISPATCH_SEND_DISABLED/);
+    assert.doesNotMatch(exec, /--mode=daytrade --send/);
+    assert.doesNotMatch(exec, /--mode=swing-konglo --send/);
+    assert.doesNotMatch(exec, /--mode=swing-non-konglo --send/);
+  }
 
   const cron = activeCron();
-  assert.match(cron, /run-screener-dispatch\.sh --dry-run/);
   assert.doesNotMatch(cron, /run-screener-dispatch\.sh --send/);
 });
 

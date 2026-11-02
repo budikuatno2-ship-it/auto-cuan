@@ -1,8 +1,8 @@
 # LAPORAN INVESTIGASI: AUDIT INTEGRITAS FILE BROKER SUMMARY ASING, KARANTINA, DAN PERBAIKAN MEKANISME BACKFILL
 
-**Tanggal & Waktu Audit:** Minggu, 18 Oktober 2026, 10:25 WIB  
-**Direktori Data:** `/home/ubuntu/auto-cuan/data/arjum-data`  
-**Branch:** [`feat/broksum-all-foreign`](deploy/vps/final-schedule.cron)  
+**Tanggal & Waktu Audit:** Minggu, 18 Oktober 2026, 10:25 WIB
+**Direktori Data:** `/home/ubuntu/auto-cuan/data/arjum-data`
+**Branch:** [`feat/broksum-all-foreign`](deploy/vps/final-schedule.cron)
 
 ---
 

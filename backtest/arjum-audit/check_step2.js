@@ -80,7 +80,7 @@ for (const t of checkTickers) {
   }
   const data = JSON.parse(fs.readFileSync(p, 'utf8'));
   const candles = data.candles || [];
-  
+
   // Check duplicates
   const dates = candles.map(c => c.date);
   const uniqueDates = new Set(dates);

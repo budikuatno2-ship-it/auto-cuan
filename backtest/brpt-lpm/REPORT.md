@@ -1,13 +1,13 @@
 # LAPORAN EVALUASI PARITAS INDIKATOR LPM & BACKTEST KUANTITATIF BRPT (1D)
 
-> **Klasifikasi:** Laporan Kuantitatif Pasar Modal & Hasil Uji Paritas Algoritma  
-> **Target Analisis:** Barito Pacific Tbk (`BRPT.JK`), Timeframe Daily (`1D`)  
-> **Periode Analisis:** 18 Oktober 2021 s.d. 16 Oktober 2026 (5 Tahun / 1.199 Bar Lilin Harian)  
-> **Status Mode:** **Mode B (Implementasi Repo Reference + Pembersihan Audit B6)**  
-> **Engine Port:** [`backtest/brpt-lpm/indicators.js`](backtest/brpt-lpm/indicators.js)  
-> **Runner Paritas:** [`backtest/brpt-lpm/parity.test.js`](backtest/brpt-lpm/parity.test.js)  
-> **Engine Backtest:** [`backtest/brpt-lpm/backtest.js`](backtest/brpt-lpm/backtest.js)  
-> **File Transaksi:** [`backtest/brpt-lpm/trades.csv`](backtest/brpt-lpm/trades.csv)  
+> **Klasifikasi:** Laporan Kuantitatif Pasar Modal & Hasil Uji Paritas Algoritma
+> **Target Analisis:** Barito Pacific Tbk (`BRPT.JK`), Timeframe Daily (`1D`)
+> **Periode Analisis:** 18 Oktober 2021 s.d. 16 Oktober 2026 (5 Tahun / 1.199 Bar Lilin Harian)
+> **Status Mode:** **Mode B (Implementasi Repo Reference + Pembersihan Audit B6)**
+> **Engine Port:** [`backtest/brpt-lpm/indicators.js`](backtest/brpt-lpm/indicators.js)
+> **Runner Paritas:** [`backtest/brpt-lpm/parity.test.js`](backtest/brpt-lpm/parity.test.js)
+> **Engine Backtest:** [`backtest/brpt-lpm/backtest.js`](backtest/brpt-lpm/backtest.js)
+> **File Transaksi:** [`backtest/brpt-lpm/trades.csv`](backtest/brpt-lpm/trades.csv)
 > **Prinsip:** **AntiSlop §107 — Kebenaran & Ketelitian Matematika Lebih Penting daripada Angka yang Terlihat Bagus**
 
 ---
@@ -152,7 +152,7 @@ Data metrik komparatif lengkap:
 
 ## 6. DAFTAR LOG TRANSAKSI (`trades.csv`)
 
-Seluruh riwayat eksekusi 114 trade tersimpan lengkap di [`backtest/brpt-lpm/trades.csv`](backtest/brpt-lpm/trades.csv).  
+Seluruh riwayat eksekusi 114 trade tersimpan lengkap di [`backtest/brpt-lpm/trades.csv`](backtest/brpt-lpm/trades.csv).
 Berikut sampel 10 transaksi pertama dan terakhir dari strategi LPM Bullish Divergence (S1):
 
 | Sinyal Date | Entry Date | Entry (Rp) | SL (Rp) | TP1 (Rp) | Exit Date | Exit Price | Alasan Exit | Durasi | Net P/L (%) | R Multiple |

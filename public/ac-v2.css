@@ -984,6 +984,27 @@ html #appContent #page-screener .scr-head-act > * { flex: none; white-space: now
   .split { flex-direction: column; }
   .pane { flex: 1 1 100%; border-left: none; border-top: 1px solid var(--ac-hair); }
 }
+/* C4: kartu baris mobile (MobileScreener.dc.html .mrow) — anti-truncate.
+   Bug screener_mobile_dark.png: label "Arah" terpotong menjadi "...n" karena
+   kolom label memakai nowrap+ellipsis di lebar 390px. Kartu mobile memakai
+   grid 1fr auto dengan wrap, bukan ellipsis satu baris. */
+.c4-no-truncate, .c4-no-truncate * {
+  text-overflow: clip !important;
+  overflow: visible !important;
+}
+@media (max-width: 760px) {
+  .dt-card-item, .dt-card-item *, #dtCardGrid > div, #dtCardGrid > div *,
+  #kgCardGrid > div, #kgCardGrid > div *, #nkCardGrid > div, #nkCardGrid > div * {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    min-width: 0 !important;
+  }
+  .dt-card-item [style*="white-space:nowrap"], #dtCardGrid [style*="white-space:nowrap"],
+  #kgCardGrid [style*="white-space:nowrap"], #nkCardGrid [style*="white-space:nowrap"] {
+    white-space: normal !important;
+  }
+}
 
 /* ---- Kelompok 5: Sektor Hot (SektorHot.dc.html) ---- */
 .hm { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--ac-hair); border-top: 1px solid var(--ac-hair); }

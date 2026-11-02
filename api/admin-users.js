@@ -10,7 +10,7 @@ const { requirePremiumEntitlement } = require('../lib/subscription-auth');
 const { handleAdminForeignUpload } = require('../lib/admin-foreign-upload');
 const { handleAdminFundamentalsUpload } = require('../lib/admin-fundamentals-upload');
 const originalHandler = require('../lib/admin-users-handler');
-const { recordHeartbeat, getOnlineList, getDatasetFreshness, getJobPipeline, inspectDataHealth } = require('../lib/admin-console-service');
+const { recordHeartbeat, getOnlineList, getDatasetFreshness, getJobPipeline, inspectDataHealth, getOperationalStatus, getSecurityStatus, getCompletenessSummary, getBackfillForecast } = require('../lib/admin-console-service');
 
 const AI_EVAL_RUN_NAME = 'one-time-ai-data-20260803';
 const AI_EVAL_MODEL = 'claude-sonnet-4.6';
@@ -498,14 +498,79 @@ async function handler(req, res) {
     const jobs = getJobPipeline();
     const onlineSummary = getOnlineList().summary;
     const dataHealth = inspectDataHealth();
+    const operational = getOperationalStatus();
+    const security = getSecurityStatus();
+    const completeness = getCompletenessSummary();
+    const forecast = getBackfillForecast();
     return res.status(200).json({
       success: true,
       admin: auth.session.un,
       ...freshness,
       jobs,
       online_summary: onlineSummary,
-      data_health: dataHealth
+      data_health: dataHealth,
+      operational,
+      security,
+      completeness,
+      forecast
     });
+  }
+
+  // S2 — status keamanan real-time (banner + Tab Keamanan & Audit).
+  // Sumber: data/security/security-state.json. 403 untuk non-admin.
+  if (action === 'security_status') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    return res.status(200).json({ success: true, security: getSecurityStatus() });
+  }
+
+  // S2 — Blokir IP manual (Block IP) + konfirmasi audit.
+  // Body: { ip, reason?, ttlMinutes? }. Mencatat insiden IP_BLOCKED.
+  if (action === 'security_block_ip') {
+    if (!isSameOrigin(req)) {
+      return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+    }
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const shield = require('../lib/security-shield');
+      const ip = String((req.body && req.body.ip) || '').trim();
+      const reason = String((req.body && req.body.reason) || 'diblokir manual oleh admin').slice(0, 160);
+      const ttlMinutes = Number(req.body && req.body.ttlMinutes);
+      const ttlMs = Number.isFinite(ttlMinutes) && ttlMinutes > 0 ? Math.min(ttlMinutes, 24 * 60) * 60 * 1000 : 60 * 60 * 1000;
+      if (!ip) return res.status(400).json({ success: false, error: 'IP diperlukan.' });
+      const out = shield.blockIp(ip, { reason, by: (auth.session.un || 'admin'), ttlMs });
+      if (!out.ok) return res.status(400).json({ success: false, error: out.error || 'IP tidak valid.' });
+      return res.status(200).json({ success: true, blocked: out, security: getSecurityStatus() });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal memblokir IP.' });
+    }
+  }
+
+  // S2 — Buka blokir IP manual (Unblock IP) + konfirmasi audit.
+  // Body: { ip, reason? }. Mencatat insiden IP_UNBLOCKED.
+  if (action === 'security_unblock_ip') {
+    if (!isSameOrigin(req)) {
+      return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+    }
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const shield = require('../lib/security-shield');
+      const ip = String((req.body && req.body.ip) || '').trim();
+      const reason = String((req.body && req.body.reason) || 'dibuka oleh admin').slice(0, 160);
+      if (!ip) return res.status(400).json({ success: false, error: 'IP diperlukan.' });
+      const out = shield.unblockIp(ip, { reason, by: (auth.session.un || 'admin') });
+      return res.status(200).json({ success: true, unblocked: out, security: getSecurityStatus() });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal membuka blokir IP.' });
+    }
+  }
+
+  if (action === 'operational_status') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    return res.status(200).json({ success: true, operational: getOperationalStatus() });
   }
 
   if (action === 'data_health_inspect') {
@@ -516,6 +581,55 @@ async function handler(req, res) {
       success: true,
       data_health: dataHealth
     });
+  }
+
+  // P4: forecast penyelesaian backfill — dibaca dari data/completeness/forecast.json
+  // (dibangun tools/build-forecast.js dari antrean nyata). Tanpa hardcode angka di API/UI.
+  if (action === 'backfill_forecast') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const fp = path.resolve(__dirname, '..', 'data', 'completeness', 'forecast.json');
+      const forecast = JSON.parse(fs.readFileSync(fp, 'utf8'));
+      return res.status(200).json({ success: true, forecast });
+    } catch (e) {
+      return res.status(404).json({ success: false, error: 'Forecast belum tersedia.' });
+    }
+  }
+
+  // P1: endpoint kuota dinamis (baca + ubah khusus Admin, 403 untuk non-admin).
+  // GET: action 'quota_get' -> quota-state.json + config/quota.json (snapshot netral "Kuota API data").
+  // POST: action 'quota_update' + { patch } -> validasi, simpan config, tulis audit log.
+  if (action === 'quota_get') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const quotaState = require('../lib/quota-state');
+      const snap = quotaState.getQuotaSnapshot();
+      return res.status(200).json({ success: true, quota: snap });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal membaca kuota.' });
+    }
+  }
+
+  if (action === 'quota_update') {
+    if (!isSameOrigin(req)) {
+      return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+    }
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const quotaState = require('../lib/quota-state');
+      const patch = (req.body && req.body.patch) || {};
+      const saved = quotaState.saveConfig(patch, auth.session.un || 'admin');
+      if (!saved.ok) return res.status(400).json({ success: false, error: 'Patch kuota tidak valid.', details: saved.errors });
+      const snap = quotaState.getQuotaSnapshot();
+      return res.status(200).json({ success: true, quota: snap, config: saved.config });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal menyimpan kuota.' });
+    }
   }
 
   if (action === 'pattern_radar_scan') {

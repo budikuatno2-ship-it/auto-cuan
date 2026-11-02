@@ -41,6 +41,7 @@ sidebar = html[html.index('var SIDEBAR_COLLAPSE_KEY'):html.index('function rende
 manager = next(s.get_text() for s in soup.find_all('script') if 'var MODAL_CLOSERS' in s.get_text())
 mock = r"""
 var _landingShowcaseLoaded=false, _landingShowcaseRequest=null;
+window.updateSiMataForAuth=()=>{};
 window.__mode='error'; window.__calls=0;
 window.fetch=async()=>{__calls++;if(__mode==='hang')return new Promise(()=>{});if(__mode==='body-hang')return {ok:true,json:()=>new Promise(()=>{})};
 if(__mode==='error')return {ok:false,status:503};if(__mode==='malformed')return {ok:true,json:async()=>({success:false})};

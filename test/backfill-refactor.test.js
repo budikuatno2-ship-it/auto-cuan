@@ -90,23 +90,29 @@ test('Langkah 4: Refactor backfill-broksum.js unit tests', async (t) => {
   });
 
   await t.test('2c. [BUG FIX C4] Dynamic reserve quota computation handles EOD and weekend rollover', () => {
-    // Mode weekend returns 1000
+    // Q1: floor dinamis dari config/quota.json (tanpa hardcode di test).
+    const qs = require('../lib/quota-state');
+    const cfg = qs.loadConfig();
+    const expWeekend = Math.floor(Number(cfg.reserveFloorWeekend) || 0);
+    const expDay = Math.floor(Number(cfg.reserveFloorWeekdayDaytime) || 0);
+    const expNight = Math.floor(Number(cfg.reserveFloorWeekdayNight) || 0);
+    // Mode weekend returns config floor
     const weekendReserve = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekend');
-    assert.equal(weekendReserve, 1000, 'Weekend reserve must be 1000');
+    assert.equal(weekendReserve, expWeekend, 'Weekend reserve must follow config/quota.json');
 
-    // Monday morning (weekday before EOD .done) returns 5000
+    // Monday morning (weekday before EOD .done) returns daytime floor
     const mondayMorning = new Date('2026-10-19T03:00:00.000Z'); // 10:00 WIB
     const weekdayPreEod = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekday', mondayMorning);
-    assert.equal(weekdayPreEod, 5000, 'Weekday pre-EOD reserve must be 5000');
+    assert.equal(weekdayPreEod, expDay, 'Weekday pre-EOD reserve must follow config/quota.json');
 
     // Seed .done sentinel for 2026-10-19
     const eodDir = path.join(targetDir, '_eod');
     fs.mkdirSync(eodDir, { recursive: true });
     fs.writeFileSync(path.join(eodDir, '2026-10-19.done'), '{}');
 
-    // Weekday after EOD .done sentinel returns 800 (WEEKDAY_RESERVE)
+    // Weekday after EOD .done sentinel returns night floor (WEEKDAY_RESERVE)
     const weekdayPostEod = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekday', mondayMorning);
-    assert.equal(weekdayPostEod, 800, 'Weekday post-EOD reserve must be 800');
+    assert.equal(weekdayPostEod, expNight, 'Weekday post-EOD reserve must follow config/quota.json');
   });
 
   await t.test('3. Prioritas urutan: likuid duluan, tanggal terbaru ke terlama', () => {

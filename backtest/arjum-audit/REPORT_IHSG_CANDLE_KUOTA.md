@@ -1,31 +1,31 @@
 # LAPORAN AUDIT: DATA IHSG, CRON CANDLE HARIAN, DAN MODEL KUOTA ARJUM
 
-**Tanggal & Waktu Audit:** Minggu, 18 Oktober 2026, 12:45 WIB  
-**Target Lingkungan:** VPS Produksi Oracle Ubuntu (`168.110.221.197`)  
-**Status Eksekusi:** Read-Only (0 request baru ke Arjum live API)  
-**File Output Laporan:** [`backtest/arjum-audit/REPORT_IHSG_CANDLE_KUOTA.md`](backtest/arjum-audit/REPORT_IHSG_CANDLE_KUOTA.md)  
+**Tanggal & Waktu Audit:** Minggu, 18 Oktober 2026, 12:45 WIB
+**Target Lingkungan:** VPS Produksi Oracle Ubuntu (`168.110.221.197`)
+**Status Eksekusi:** Read-Only (0 request baru ke Arjum live API)
+**File Output Laporan:** [`backtest/arjum-audit/REPORT_IHSG_CANDLE_KUOTA.md`](backtest/arjum-audit/REPORT_IHSG_CANDLE_KUOTA.md)
 
 ---
 
 ## Ringkasan Eksekutif (5 Poin Utama)
 
-1. **Kesimpulan Langkah 1 (Status Data IHSG):**  
+1. **Kesimpulan Langkah 1 (Status Data IHSG):**
    **Data candle IHSG / COMPOSITE TIDAK ADA di disk lokal (`data/daily-candles/`) maupun di SQLite (`market.sqlite`).** Data IHSG saat ini hidup secara *on-demand* di RAM cache API web (TTL 5 menit) yang ditarik langsung dari Yahoo Finance (`^JKSE`) tanpa pernah disimpan ke penyimpanan permanen.
-2. **Hasil Uji Simbol IHSG di Arjum (Langkah 3):**  
+2. **Hasil Uji Simbol IHSG di Arjum (Langkah 3):**
    **Status: BELUM DIUJI ke API live Arjum hari ini.** Kuota harian akun Minggu 18 Oktober telah terpakai 12.056 dari limit 12.060 request (sisa 4 request < batas ambang aman 400 request). Sesuai aturan batas keras, pemanggilan live ditahan untuk mencegah pemicuan circuit breaker / HTTP 429.
-3. **Kebutuhan Kuota IHSG (Langkah 4):**  
+3. **Kebutuhan Kuota IHSG (Langkah 4):**
    - **Backfill Sekali Jalan:** **1 request** (kapasitas 500 bar per request Arjum `/api/history` mencakup riwayat 2 tahun sejak September 2024).
    - **Tambahan Harian:** **1 request/hari** jika via Arjum (atau **0 request/hari** jika mempertahankan Yahoo Finance `^JKSE`).
    - **Indeks Tambahan (15 Indeks: LQ45, IDX30, 11 Sektoral, dll):** 15 request backfill sekali jalan, dan 15 request/hari untuk update harian.
-4. **Tabel Kuota Senin 19 Oktober 2026 (Langkah 5):**  
+4. **Tabel Kuota Senin 19 Oktober 2026 (Langkah 5):**
    Dengan kuota 12.060 request/hari, total pengeluaran job EOD produksi (J1 + J2) diestimasi **~4.423 request** (Broksum All 962 + Broksum F 833 + Akumulasi API 833 + Insider Harian 833 + Candle 962). Cadangan dinamis backfill **4.500 request** sebelum EOD selesai terbukti presisi mengamankan pass EOD sore dan pass final 23:30 WIB, menyisakan ruang **~6.837 request** untuk kelanjutan backfill asing pada slot malam 19:30 WIB.
-5. **Kebutuhan Minimum untuk Skenario Kuota 1.000/Hari (Langkah 5.4):**  
+5. **Kebutuhan Minimum untuk Skenario Kuota 1.000/Hari (Langkah 5.4):**
    Jika kuota turun ke 1.000 request/hari saat paket Supporter berakhir:
    - Candle EOD dialihkan ke Yahoo Finance / endpoint massal (0 req).
    - Akumulasi beralih ke komputasi lokal deterministik ($D = \text{All} - F$, 0 req).
    - Broksum All dan Foreign difokuskan pada **Top 200 saham paling likuid** (400 req).
    - Insider beralih ke mode mingguan akhir pekan (50 req pada hari kerja).
-   - Backfill historis dihentikan (0 req).  
+   - Backfill historis dihentikan (0 req).
    Total kebutuhan minimum adalah **~500 request/hari**, menjaga fitur utama website tetap berjalan tanpa defisit kuota.
 
 ---
@@ -301,7 +301,7 @@ Perubahan minimal pada pemuatan universe agar menyertakan simbol `IHSG`:
 +++ b/tools/fetch-daily-candles.js
 @@ -21,6 +21,7 @@ const { createClient: createHybridClient, marketDataVpsEnabled } = require('../
  const { isValidIdxTicker } = require('../lib/idx-ticker');
- 
+
 +const BENCHMARK_SYMBOLS = ['IHSG'];
 +
  function loadTickers() {

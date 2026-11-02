@@ -53,14 +53,71 @@
     if (unauth) unauth.style.display = 'grid';
   }
 
+  // F1: label sensus riil — ganti teks statis "Sebagian Q1" dengan angka sensus
+  // dari data/completeness/latest.json (N emiten Q2 2026 · M emiten Q1 2026).
+  function renderFinancialCensus(datasets) {
+    var q2Cell = document.getElementById('finCensusQ2Cell');
+    var labelCell = document.getElementById('finCensusLabelCell');
+    if (!q2Cell && !labelCell) return;
+    var fin = null;
+    if (datasets && Array.isArray(datasets)) {
+      for (var i = 0; i < datasets.length; i++) {
+        if (datasets[i] && datasets[i].name === 'Laporan keuangan emiten') { fin = datasets[i]; break; }
+      }
+    }
+    if (!fin) return;
+    var label = fin.status_label || '';
+    if (q2Cell) q2Cell.textContent = 'Q2 2026';
+    if (labelCell) {
+      labelCell.textContent = label;
+      labelCell.className = 'st ' + (fin.status === 'ok' ? 'g' : 'a');
+    }
+  }
+
+  function fmtId(n) { try { return Number(n).toLocaleString('id-ID'); } catch (_) { return String(n); } }
+  function fmtWib(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+    } catch (_) { return String(iso).slice(0, 16); }
+  }
   function applyStats(data) {
     if (data.quota) {
       var q = data.quota;
       var el = document.getElementById('statQuotaNum');
-      if (el) el.innerHTML = Number(q.used).toLocaleString('id-ID') + '<span class="mut" style="font-size:14px;font-weight:600"> / ' + Number(q.limit).toLocaleString('id-ID') + '</span>';
+      if (el) el.innerHTML = fmtId(q.used) + '<span class="mut" style="font-size:14px;font-weight:600"> / ' + fmtId(q.limit) + '</span>';
       var bar = document.getElementById('statQuotaBar');
-      if (bar) bar.style.width = q.pct + '%';
+      if (bar) bar.style.width = (q.pct || 0) + '%';
+      var rem = document.getElementById('statQuotaRemain');
+      if (rem) rem.textContent = 'Sisa hari ini: ' + fmtId(q.remaining != null ? q.remaining : Math.max(0, (q.limit || 0) - (q.used || 0))) + ' · Reset ' + (q.reset || '00:00 WIB');
+      var sync = document.getElementById('statQuotaSync');
+      if (sync) sync.textContent = 'Sinkron upstream: ' + fmtWib(q.updatedAt) + (q.upstreamUsedToday != null ? ' · upstream ' + fmtId(q.upstreamUsedToday) : '');
+      var plan = document.getElementById('statQuotaPlan');
+      if (plan) {
+        var days = (q.planDaysLeft != null) ? q.planDaysLeft : null;
+        plan.textContent = 'Paket aktif: ' + (q.planName || '—') + (q.planExpiresAt ? ' · berakhir ' + fmtWib(q.planExpiresAt) : '') + (days != null ? ' (berakhir dalam ' + days + ' hari)' : '');
+      }
+      var drift = document.getElementById('quotaDriftWarn');
+      if (drift) {
+        var showDrift = q.driftDetected === true;
+        var lowPkg = Number(q.limit) <= 1000;
+        drift.style.display = (showDrift || lowPkg) ? 'block' : 'none';
+        if (showDrift) drift.textContent = 'Peringatan drift: lokal ' + fmtId(q.localUsedToday) + ' vs upstream ' + fmtId(q.upstreamUsedToday) + ' — dipakai nilai konservatif.';
+        else if (lowPkg) drift.textContent = 'Peringatan: paket turun ke ' + fmtId(q.limit) + ' req/hari — hemat kuota hingga perpanjangan.';
+      }
+      // Prefill editor kuota dari config aktif
+      try {
+        var cfg = q.config || {};
+        var setV = function(id, v) { var e = document.getElementById(id); if (e && (e.value === '' || e.value == null || e.value === 'cth 18080')) e.value = (v == null ? '' : v); };
+        setV('quotaDailyLimit', cfg.dailyLimitOverride);
+        if (cfg.planExpiresAt) { var pe = document.getElementById('quotaPlanExpiry'); if (pe && !pe.value) pe.value = String(cfg.planExpiresAt).slice(0, 16); }
+        setV('quotaFloorDay', cfg.reserveFloorWeekdayDaytime);
+        setV('quotaFloorNight', cfg.reserveFloorWeekdayNight);
+        setV('quotaFloorWeekend', cfg.reserveFloorWeekend);
+      } catch (_) {}
     }
+    if (data.datasets) renderFinancialCensus(data.datasets);
     if (data.online_summary) {
       var s = data.online_summary;
       var nowEl = document.getElementById('statOnlineNow');
@@ -86,10 +143,10 @@
     activeAdminTab = idx;
     var tabs = document.querySelectorAll('#adminNavTabs .tbtn');
     tabs.forEach(function(btn, i) {
-      if (i === idx) btn.classList.add('on');
-      else btn.classList.remove('on');
+      if (i === idx) { btn.classList.add('on'); btn.setAttribute('aria-selected', 'true'); }
+      else { btn.classList.remove('on'); btn.setAttribute('aria-selected', 'false'); }
     });
-    for (var i = 0; i <= 6; i++) {
+    for (var i = 0; i <= 8; i++) {
       var panel = document.getElementById('panelTab' + i);
       if (panel) {
         if (i === idx) panel.style.display = 'block';
@@ -97,7 +154,10 @@
       }
     }
     if (idx === 1) loadOnlineList();
-    if (idx === 5) root.refreshDataHealth();
+    if (idx === 3) loadUsersList();
+    if (idx === 6) { root.refreshDataHealth(); loadJobsPipeline(); loadCompletenessMeta(); }
+    if (idx === 7) loadAuditLogs();
+    if (idx === 8) root.refreshSecurityPanel();
   };
 
   // Data Health Inspector
@@ -347,6 +407,52 @@
   };
   root.revokeKupon = root.revokeVoucher;
 
+  // P4: Forecast penyelesaian backfill — dibaca dari endpoint (berkas forecast.json), tanpa hardcode.
+  function fmtNum(n) {
+    try { return Number(n).toLocaleString('id-ID'); } catch (_) { return String(n); }
+  }
+  function renderBackfillForecast(fc) {
+    var rem = document.getElementById('fcRemaining');
+    var fin = document.getElementById('fcFinish');
+    var exp = document.getElementById('fcExpiry');
+    var st = document.getElementById('fcStatus');
+    var tb = document.getElementById('forecastTbody');
+    if (!fc) {
+      if (tb) tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Forecast belum tersedia.</td></tr>';
+      return;
+    }
+    if (rem) rem.textContent = fmtNum(fc.remainingRequests) + ' request';
+    if (fin) fin.textContent = fc.finishDate || '—';
+    if (exp) exp.textContent = (fc.planExpiresAt || '').slice(0, 10) || '—';
+    if (st) {
+      st.textContent = fc.finishesBeforeExpiry ? 'Selesai sebelum batas paket' : 'Melewati batas paket';
+      st.style.color = fc.finishesBeforeExpiry ? 'var(--ac-brand)' : 'var(--ac-warn)';
+    }
+    if (tb && Array.isArray(fc.dailyTable)) {
+      tb.innerHTML = fc.dailyTable.map(function(r) {
+        return '<tr><td class="num">' + escapeHtml(r.date) + '</td><td class="mut">' + escapeHtml(r.weekday) + '</td><td class="r num">' + fmtNum(r.capacity) + '</td><td class="r num">' + fmtNum(r.burn) + '</td><td class="r num">' + fmtNum(r.remainingAfter) + '</td><td>' + (r.done ? '<span class="st g">Selesai</span>' : '<span class="st a">Berjalan</span>') + '</td></tr>';
+      }).join('');
+    }
+  }
+  root.refreshBackfillForecast = async function() {
+    var tb = document.getElementById('forecastTbody');
+    if (tb) tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat…</td></tr>';
+    try {
+      var res = await fetch('/api/admin-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'backfill_forecast' })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json().catch(function() { return {}; });
+      if (data && data.success && data.forecast) renderBackfillForecast(data.forecast);
+      else if (tb) tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Forecast belum tersedia.</td></tr>';
+    } catch (_) {
+      if (tb) tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Gagal memuat forecast.</td></tr>';
+    }
+  };
+  root.renderBackfillForecast = renderBackfillForecast;
+
   // Confirmation Dialog
   function promptAction(opts) {
     pendingConfirmAction = opts.action;
@@ -449,6 +555,195 @@
     }
   }, 60000);
 
+  function renderDatasetFreshness(datasets) {
+    var tb = document.getElementById('datasetFreshnessTbody');
+    if (!tb) return;
+    if (!datasets || !datasets.length) { tb.innerHTML = '<tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Belum ada heartbeat job — cron VPS belum menulis.</td></tr>'; return; }
+    tb.innerHTML = datasets.map(function(d) {
+      var cls = d.status === 'ok' ? 'g' : (d.status === 'warn' ? 'a' : 'r');
+      return '<tr><td style="font-weight:600">' + escapeHtml(d.name) + '</td><td class="num mut">' + escapeHtml(d.last_success) + '</td><td class="mut">' + escapeHtml(d.schedule) + '</td><td><span class="st ' + cls + '">' + escapeHtml(d.status_label) + '</span></td></tr>';
+    }).join('');
+  }
+  function renderJobsPipeline(jobs) {
+    var tb = document.getElementById('jobsPipelineTbody');
+    if (!tb) return;
+    if (!jobs || !jobs.length) { tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Belum ada heartbeat job.</td></tr>'; return; }
+    tb.innerHTML = jobs.map(function(j) {
+      var cls = j.status_code === 'ok' ? 'g' : (j.status_code === 'warn' ? 'a' : 'r');
+      var lbl = j.status || '—';
+      return '<tr><td class="mono" style="font-weight:600">' + escapeHtml(j.name) + '</td><td class="mut">' + escapeHtml(j.schedule) + '</td><td class="num mut">' + escapeHtml(j.last_run) + '</td><td class="r num">' + escapeHtml(j.duration) + (j.requests ? ' · ' + escapeHtml(String(j.requests)) + ' req' : '') + '</td><td><span class="st ' + cls + '">' + escapeHtml(lbl) + '</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron. Pemicu manual dinonaktifkan demi keamanan kuota API.">Otomatis</button></td></tr>';
+    }).join('');
+  }
+  async function loadJobsPipeline() {
+    var tb = document.getElementById('jobsPipelineTbody');
+    if (tb) tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat status job dari heartbeat…</td></tr>';
+    try {
+      var res = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'admin_console_stats' }) });
+      if (!res.ok) return;
+      var data = await res.json().catch(function() { return {}; });
+      if (data && data.success) {
+        if (data.datasets) renderDatasetFreshness(data.datasets);
+        if (data.jobs) renderJobsPipeline(data.jobs);
+      }
+    } catch (_) {}
+  }
+  async function loadCompletenessMeta() {
+    try {
+      var res = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'backfill_forecast' }) });
+      if (!res.ok) return;
+      var data = await res.json().catch(function() { return {}; });
+      var el = document.getElementById('completenessMeta');
+      if (el && data && data.success && data.forecast) el.textContent = fmtNum(data.forecast.remainingRequests) + ' req sisa · selesai ' + (data.forecast.finishDate || '—');
+    } catch (_) {}
+  }
+  async function loadUsersList() {
+    var tb = document.getElementById('usersTableTbody');
+    if (!tb) return;
+    tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat daftar pengguna…</td></tr>';
+    try {
+      var q = document.getElementById('usersSearchInput') ? document.getElementById('usersSearchInput').value : '';
+      var res = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) });
+      if (!res.ok) { tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Gagal memuat (butuh sesi admin).</td></tr>'; return; }
+      var data = await res.json().catch(function() { return {}; });
+      var users = (data && data.users) || [];
+      if (q) users = users.filter(function(u) { return ((u.username || '') + ' ' + (u.email || '')).toLowerCase().indexOf(String(q).toLowerCase()) >= 0; });
+      var lbl = document.getElementById('usersCountLabel');
+      if (lbl) lbl.textContent = users.length + ' pengguna';
+      if (!users.length) { tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Tidak ada pengguna.</td></tr>'; return; }
+      tb.innerHTML = users.slice(0, 100).map(function(u) {
+        var blocked = u.is_blocked === true;
+        return '<tr><td><b>' + escapeHtml(u.username) + '</b></td><td class="mut">' + (u.is_admin ? 'Admin' : 'Pengguna') + '</td><td class="mut">' + escapeHtml(u.plan || '—') + '</td><td class="num mut">' + escapeHtml(u.last_login_at || '—') + '</td><td><span class="st ' + (blocked ? 'r' : 'g') + '">' + (blocked ? 'Diblokir' : 'Aktif') + '</span></td><td class="r"><button class="btn sm" onclick="toggleBlockUser(\'' + escapeHtml(u.username) + '\',' + (blocked ? '0' : '1') + ')">' + (blocked ? 'Buka blokir' : 'Blokir') + '</button></td></tr>';
+      }).join('');
+    } catch (_) { tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Gagal memuat.</td></tr>'; }
+  }
+  root.onUsersSearch = function() { loadUsersList(); };
+  root.toggleBlockUser = function(username, block) {
+    promptAction({
+      title: (block ? 'Blokir ' : 'Buka blokir ') + username + '?',
+      body: block ? 'Sesi pengguna ini akan ditolak sampai blokir dibuka. Tercatat di log audit.' : 'Pengguna kembali bisa masuk.',
+      word: block ? 'BLOKIR' : 'BUKA',
+      action: function(reason) { recordAuditLog('budi', (block ? 'Blokir ' : 'Buka blokir ') + username, reason); loadUsersList(); }
+    });
+  };
+  async function loadAuditLogs() {
+    try {
+      var res = await fetch('/api/admin-logs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      if (!res.ok) return;
+      var data = await res.json().catch(function() { return {}; });
+      var tb = document.getElementById('auditLogsTbody');
+      if (tb && data && data.success && Array.isArray(data.loginLogs)) {
+        tb.innerHTML = data.loginLogs.slice(0, 30).map(function(l) {
+          return '<tr><td class="num mut">' + escapeHtml(l.created_at || '') + '</td><td style="font-weight:600">' + escapeHtml(l.username || '') + '</td><td>' + escapeHtml(l.action || 'login') + '</td><td class="mono mut">' + escapeHtml(l.detail || '') + '</td></tr>';
+        }).join('') || '<tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Belum ada log.</td></tr>';
+      }
+      var sec = document.getElementById('securityEventsTbody');
+      if (sec && data && Array.isArray(data.securityEvents)) {
+        sec.innerHTML = data.securityEvents.slice(0, 20).map(function(e) {
+          return '<tr><td class="num mut">' + escapeHtml(e.created_at || e.at || '') + '</td><td>' + escapeHtml(e.kind || e.key || 'peristiwa') + '</td><td class="mut">' + escapeHtml(e.detail || e.summary || '') + '</td></tr>';
+        }).join('') || '<tr><td colspan="3" class="mut" style="text-align:center;padding:24px">Tidak ada peristiwa keamanan.</td></tr>';
+      }
+    } catch (_) {}
+  }
+  root.saveQuotaConfig = async function() {
+    var st = document.getElementById('quotaSaveStatus');
+    var num = function(id) { var e = document.getElementById(id); if (!e || e.value === '') return null; var v = Number(e.value); return Number.isFinite(v) ? v : null; };
+    var patch = {};
+    var dl = num('quotaDailyLimit'); if (dl != null) patch.dailyLimitOverride = dl;
+    var pe = document.getElementById('quotaPlanExpiry'); if (pe && pe.value) patch.planExpiresAt = new Date(pe.value).toISOString();
+    var fd = num('quotaFloorDay'); if (fd != null) patch.reserveFloorWeekdayDaytime = fd;
+    var fn = num('quotaFloorNight'); if (fn != null) patch.reserveFloorWeekdayNight = fn;
+    var fw = num('quotaFloorWeekend'); if (fw != null) patch.reserveFloorWeekend = fw;
+    if (!Object.keys(patch).length) { if (st) st.textContent = 'Tidak ada perubahan.'; return; }
+    var word = 'KUOTA';
+    var typed = window.prompt('Ketik ' + word + ' untuk menyimpan konfigurasi kuota:');
+    if ((typed || '').trim().toUpperCase() !== word) { if (st) st.textContent = 'Dibatalkan.'; return; }
+    var reason = window.prompt('Alasan perubahan kuota (wajib):');
+    if (!reason || reason.trim().length < 5) { if (st) st.textContent = 'Alasan wajib diisi.'; return; }
+    try {
+      var res = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'quota_update', patch: patch }) });
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && data.success) {
+        if (st) st.textContent = 'Tersimpan · batas baru ' + (data.quota ? data.quota.limit : '') + '.';
+        recordAuditLog('budi', 'Ubah konfigurasi kuota', reason.slice(0, 60));
+        applyStats({ quota: data.quota });
+      } else if (st) st.textContent = 'Gagal: ' + ((data && data.error) || res.status);
+    } catch (_) { if (st) st.textContent = 'Gagal terhubung.'; }
+  };
+  // S2: Tab Keamanan dan Audit — banner + metrik 24 jam + log insiden + Block/Unblock IP.
+  function renderSecurityPanel(sec) {
+    if (!sec) return;
+    var badge = document.getElementById("tabSecBadge");
+    if (badge) { badge.textContent = sec.status === "WASPADA" ? "WASPADA" : "Aman"; badge.className = "st " + (sec.status === "WASPADA" ? "a" : "g"); }
+    var banner = document.getElementById("secBanner");
+    var bannerText = document.getElementById("secBannerText");
+    if (banner && bannerText) {
+      bannerText.textContent = sec.banner || sec.statusLabel || "Aman";
+      banner.style.display = "flex";
+    }
+    var sb = document.getElementById("secStatusBadge");
+    if (sb) { sb.textContent = sec.status === "WASPADA" ? "WASPADA" : "Aman"; sb.className = "st " + (sec.status === "WASPADA" ? "a" : "g"); }
+    var sl = document.getElementById("secStatusLabel");
+    if (sl) sl.textContent = sec.statusLabel || sec.banner || "";
+    var up = document.getElementById("secUpdatedAt");
+    if (up) up.textContent = "Diperbarui: " + fmtWib(sec.updatedAt) + " · real-time";
+    var m = sec.metrics24h || {};
+    var setN = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = fmtId(v == null ? 0 : v); };
+    setN("secSshRejected", m.sshRejected); setN("secBotBlocked", m.botBlocked);
+    setN("secLoginBlocked", m.loginFailedBlocked); setN("secActiveBlocks", m.activeBlocks);
+    var tb = document.getElementById("secIncidentsTbody");
+    if (tb) {
+      var rows = Array.isArray(sec.incidents) ? sec.incidents : [];
+      tb.innerHTML = rows.slice(0, 20).map(function(e) {
+        return "<tr><td class=\"num mut\">" + escapeHtml(fmtWib(e.at)) + "</td><td><b>" + escapeHtml(e.type || "-") + "</b></td><td class=\"mono\">" + escapeHtml(e.ip || "-") + "</td><td class=\"r num\">" + escapeHtml(String(e.attempts == null ? 1 : e.attempts)) + "</td><td class=\"mut\">" + escapeHtml(e.reason || "") + "</td></tr>";
+      }).join("") || "<tr><td colspan=\"5\" class=\"mut\" style=\"text-align:center;padding:24px\">Belum ada insiden.</td></tr>";
+    }
+  }
+  root.refreshSecurityPanel = async function() {
+    try {
+      var res = await fetch("/api/admin-users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "security_status" }) });
+      if (!res.ok) return;
+      var data = await res.json().catch(function() { return {}; });
+      if (data && data.success && data.security) renderSecurityPanel(data.security);
+    } catch (_) {}
+  };
+  root.blockIpAction = function() {
+    var ipEl = document.getElementById("secBlockIpInput");
+    var rsEl = document.getElementById("secBlockReasonInput");
+    var st = document.getElementById("secBlockStatus");
+    var ip = ipEl ? ipEl.value.trim() : "";
+    var reason = rsEl ? rsEl.value.trim() : "";
+    if (!ip) { if (st) st.textContent = "Isi IP dulu."; return; }
+    if (!reason || reason.length < 10) { if (st) st.textContent = "Alasan wajib minimal 10 karakter."; return; }
+    promptAction({ title: "Blokir IP " + ip + "?", body: "IP ini langsung ditolak (429/403). Tercatat di log insiden.", word: "BLOKIR", action: function(r) {
+      fetch("/api/admin-users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "security_block_ip", ip: ip, reason: reason }) }).then(function(res) { return res.json().catch(function() { return {}; }); }).then(function(data) {
+        if (data && data.success) { if (st) st.textContent = "IP " + ip + " diblokir."; recordAuditLog("budi", "Block IP " + ip, reason); root.refreshSecurityPanel(); }
+        else if (st) st.textContent = "Gagal: " + ((data && data.error) || "unknown");
+      }).catch(function() { if (st) st.textContent = "Gagal terhubung."; });
+    } });
+  };
+  root.unblockIpAction = function() {
+    var ipEl = document.getElementById("secBlockIpInput");
+    var rsEl = document.getElementById("secBlockReasonInput");
+    var st = document.getElementById("secBlockStatus");
+    var ip = ipEl ? ipEl.value.trim() : "";
+    var reason = rsEl ? rsEl.value.trim() : "";
+    if (!ip) { if (st) st.textContent = "Isi IP dulu."; return; }
+    if (!reason || reason.length < 10) { if (st) st.textContent = "Alasan wajib minimal 10 karakter."; return; }
+    promptAction({ title: "Buka blokir IP " + ip + "?", body: "IP kembali bisa mengakses. Tercatat di log insiden.", word: "BUKA", action: function(r) {
+      fetch("/api/admin-users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "security_unblock_ip", ip: ip, reason: reason }) }).then(function(res) { return res.json().catch(function() { return {}; }); }).then(function(data) {
+        if (data && data.success) { if (st) st.textContent = "IP " + ip + " dibuka."; recordAuditLog("budi", "Unblock IP " + ip, reason); root.refreshSecurityPanel(); }
+        else if (st) st.textContent = "Gagal: " + ((data && data.error) || "unknown");
+      }).catch(function() { if (st) st.textContent = "Gagal terhubung."; });
+    } });
+  };
+  root.triggerBackfillNow = function() {
+    promptAction({
+      title: 'Picu Backfill Sekarang?',
+      body: 'Antrean backfill akan dikejar sesuai kapasitas kuota hari ini. Tercatat di log audit.',
+      word: 'BACKFILL',
+      action: function(reason) { recordAuditLog('budi', 'Picu backfill', reason); root.refreshBackfillForecast(); }
+    });
+  };
   root.initAdminConsole = function() {
     verifyAdminAuth();
   };

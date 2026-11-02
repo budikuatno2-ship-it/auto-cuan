@@ -21,17 +21,24 @@ function makeBase(tickers) {
 }
 
 test('C: the weekday budget keeps the daily jobs safe (J1 + J2 + IHSG + retry + web)', () => {
-  const b = tool.computeCatchupBudget(18080, 0);
-  assert.equal(b.remaining, 18080);
-  assert.equal(b.floor, 5000);
-  assert.equal(b.spendable, 18080 - 5000);
+ // Q1: floor dinamis dari config/quota.json (tanpa hardcode di test).
+ const qs = require('../lib/quota-state');
+ const cfg = qs.loadConfig();
+ const expDay = Math.floor(Number(cfg.reserveFloorWeekdayDaytime) || 0);
+ const b = tool.computeCatchupBudget(18080, 0);
+ assert.equal(b.remaining, 18080);
+ assert.equal(b.floor, expDay);
+ assert.equal(b.spendable, 18080 - expDay);
 });
 
-test('C: the WEEKEND budget drops the J1/J2 reserve and caps it at 1,000', () => {
-  const b = tool.computeCatchupBudget(18080, 0, { isWeekend: true });
-  assert.equal(b.isWeekend, true);
-  assert.equal(b.floor, 1000);
-  assert.equal(b.spendable, 18080 - 1000);
+test('C: the WEEKEND budget drops the J1/J2 reserve and caps it at config floor', () => {
+ const qs = require('../lib/quota-state');
+ const cfg = qs.loadConfig();
+ const expWe = Math.floor(Number(cfg.reserveFloorWeekend) || 0);
+ const b = tool.computeCatchupBudget(18080, 0, { isWeekend: true });
+ assert.equal(b.isWeekend, true);
+ assert.equal(b.floor, expWe);
+ assert.equal(b.spendable, 18080 - expWe);
 });
 
 test('C: Saturday/Sunday are detected in WIB', () => {
@@ -59,16 +66,18 @@ test('C: missing emiten are counted PER TYPE (ALL, F)', () => {
 });
 
 test('C: dry-run lists missing cells per date, newest first, and spends nothing', async () => {
-  const { tmp, base } = makeBase(['BBCA', 'BBRI', 'TLKM']);
-  fs.writeFileSync(path.join(base, 'broker-summary', 'BBCA', '2026-10-22.json'), '{}');
+ const { tmp, base } = makeBase(['BBCA', 'BBRI', 'TLKM']);
+ fs.writeFileSync(path.join(base, 'broker-summary', 'BBCA', '2026-10-22.json'), '{}');
 
-  const client = { getConfiguredDailyQuota: () => 18080, fetchBrokerSummary: async () => { throw new Error('must not fetch in dry-run'); } };
-  const tracker = { getUsedToday: () => 0 };
-  const summary = await tool.run(['--dry-run', '--dates', '2026-10-22,2026-10-21'], { env: { ARJUM_DATA_DIR: base }, client, tracker, todayWib: '2026-10-24' });
+ const client = { getConfiguredDailyQuota: () => 18080, fetchBrokerSummary: async () => { throw new Error('must not fetch in dry-run'); } };
+ const tracker = { getUsedToday: () => 0 };
+ const summary = await tool.run(['--dry-run', '--dates', '2026-10-22,2026-10-21'], { env: { ARJUM_DATA_DIR: base }, client, tracker, todayWib: '2026-10-24' });
+ const qs = require('../lib/quota-state');
+ const expWe = Math.floor(Number(qs.loadConfig().reserveFloorWeekend) || 0);
 
-  assert.equal(summary.dry_run, true);
-  assert.equal(summary.is_weekend, true);
-  assert.equal(summary.floor, 1000);
+ assert.equal(summary.dry_run, true);
+ assert.equal(summary.is_weekend, true);
+ assert.equal(summary.floor, expWe);
   assert.equal(summary.plan[0].date, '2026-10-22');
   assert.equal(summary.plan[0].missing.ALL, 2, 'BBCA already has ALL');
   assert.equal(summary.plan[0].missing.F, 3);

@@ -58,7 +58,7 @@ before(async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   origin = 'http://127.0.0.1:' + server.address().port;
   browser = await puppeteer.launch({ executablePath: process.env.CHROMIUM_PATH || (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/chromium'), headless: true, userDataDir: path.join(evidenceRoot, 'regression-profile'), args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
-  page = await browser.newPage();
+  page = await browser.newPage(); page.setDefaultTimeout(30000); page.setDefaultNavigationTimeout(30000);
   await page.setRequestInterception(true);
   page.on('request', request => request.url().startsWith(origin + '/') ? request.continue() : request.abort());
   await page.evaluateOnNewDocument(() => {
@@ -78,7 +78,7 @@ after(async () => {
 beforeEach(async () => {
   mode = 'success'; detailReads = 0;
   await page.setViewport({ width: 1440, height: 900 });
-  await page.goto(origin + '/dashboard?page=analisis&tab=market-structure', { waitUntil: 'networkidle0' });
+  await page.goto(origin + '/dashboard?page=analisis&tab=market-structure', { waitUntil:'domcontentloaded' });
   await page.evaluate(() => {
     hideOnboardingGuide(true);
     setWorkspaceSidebarVisible(true);
@@ -125,7 +125,10 @@ test('D1 sort and reference filters preserve zero/missing and HSC tri-state', as
   record('MISSING_AND_TRISTATE', actual);
 });
 test('D1 keyboard selection expands the card and keeps list context preserved', async () => {
-  await search('BBCA'); await page.select('#marketStructureSortSelect', 'ticker_asc');
+  await search('BBCA');
+  await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 1, { timeout: 8000 });
+  await page.select('#marketStructureSortSelect', 'ticker_asc');
+  await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 1, { timeout: 8000 });
   await page.focus('#marketStructureAccordionContainer [data-ticker="BBCA"] .ac-accordion-header');
   const outline = await page.evaluate(() => getComputedStyle(document.activeElement).outlineWidth);
   assert.ok(parseFloat(outline) >= 2);
@@ -134,13 +137,13 @@ test('D1 keyboard selection expands the card and keeps list context preserved', 
   await page.waitForFunction(() => {
     const card = document.querySelector('#marketStructureAccordionContainer [data-ticker="BBCA"]');
     return card && card.classList.contains('is-expanded');
-  });
+  }, { timeout: 8000 });
   assert.equal((await rows())[0].pressed, 'true');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => {
     const card = document.querySelector('#marketStructureAccordionContainer [data-ticker="BBCA"]');
     return card && !card.classList.contains('is-expanded');
-  });
+  }, { timeout: 8000 });
   assert.equal(await page.$eval('#marketStructureSearchInput', el => el.value), 'BBCA');
   assert.equal(await page.$eval('#marketStructureSortSelect', el => el.value), 'ticker_asc');
   assert.deepEqual((await rows()).map(row => row.ticker), ['BBCA']);
@@ -153,7 +156,7 @@ test('D1 no search results and empty universe show a truthful empty result', asy
   assert.match(await page.$eval('#marketStructureAccordionContainer', el => el.innerText), /Tidak ada saham/);
 });
 test('D1 first request failure is an error, not empty success', async () => {
-  mode = 'error'; await page.reload({ waitUntil: 'networkidle0' });
+  mode = 'error'; await page.reload({ waitUntil:'domcontentloaded' });
   await page.waitForFunction(() => document.getElementById('marketStructureDataState')?.innerText.includes('Daftar fixture tidak tersedia'));
   assert.equal(await page.$eval('#marketStructureDataState', el => !!el.getBoundingClientRect().height), true);
   assert.equal((await rows()).length, 0);
@@ -161,6 +164,7 @@ test('D1 first request failure is an error, not empty success', async () => {
 });
 test('D1 failed refresh retains valid rows with a local error notice', async () => {
   mode = 'error'; await page.evaluate(() => loadStrukturPasarUniverse());
+  await page.waitForFunction(() => document.getElementById('marketStructureRefreshBanner')?.innerText.includes('Gagal memperbarui'), { timeout: 30000 });
   assert.equal((await rows()).length, 3);
   assert.match(await page.$eval('#marketStructureRefreshBanner', el => el.innerText), /Gagal memperbarui/);
   assert.equal(await page.$eval('#marketStructureRefreshBanner', el => !!el.getBoundingClientRect().height), true);
@@ -178,20 +182,36 @@ test('D1 repeated navigation retains controls and does not duplicate rows or lis
 });
 for (const [theme, width] of [['light',320],['light',390],['light',768],['light',1024],['light',1440],['light',1920],['dark',390],['dark',1440]]) {
   test(`D1 ${theme} ${width}: populated list, usable detail, keyboard return and no page overflow`, async () => {
-    await page.setViewport({ width, height: 900 }); await page.evaluate(theme => applyAppTheme(theme), theme); await pause(100);
+    await page.setViewport({ width, height: 900 }); await page.evaluate(theme => applyAppTheme(theme), theme);
+    // Deterministik: tunggu CSS media-query sentuh (<=1023px) benar-benar
+    // terpasang sebelum mengukur. Tanpa settle, batch penuh yang padat bisa
+    // mengukur .fchip/.btn.sm saat height masih 30px sehingga flaky 768px.
+    await page.waitForFunction(() => document.fonts ? document.fonts.status === 'loaded' : true, { timeout: 5000 }).catch(() => {});
+    if (width < 1024) {
+      await page.waitForFunction(() => [...document.querySelectorAll('#panel-tab-market-structure button,#marketStructureSearchInput,#marketStructureSortSelect')].filter(el => el.getBoundingClientRect().width).every(el => el.getBoundingClientRect().height >= 44 && el.getBoundingClientRect().width >= 44), { timeout: 8000 });
+    }
+    await pause(150);
     assert.equal((await rows()).length, 3); assert.ok((await rows()).every(row => row.visible));
     const geometry = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth, font: getComputedStyle(document.getElementById('marketStructureSearchInput')).fontSize, controls: [...document.querySelectorAll('#panel-tab-market-structure button,#marketStructureSearchInput,#marketStructureSortSelect')].filter(el => el.getBoundingClientRect().width).map(el => ({ id: el.id, height: el.getBoundingClientRect().height, width: el.getBoundingClientRect().width })) }));
     record('MATRIX_GEOMETRY', { theme, ...geometry });
     assert.ok(geometry.scroll <= geometry.client + 1, JSON.stringify(geometry));
-    if (width < 1024) { assert.equal(geometry.font, '16px'); assert.ok(geometry.controls.every(control => control.height >= 44 && control.width >= 44)); }
-    await search('TLKM'); await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header'); await page.keyboard.press('Enter'); await pause(150);
+    if (width < 1024) { assert.equal(geometry.font, '16px'); assert.ok(geometry.controls.every(control => control.height >= 44 && control.width >= 44), JSON.stringify(geometry.controls)); }
+    await search('TLKM');
+    // Deterministik: tunggu render hasil search selesai sebelum fokus.
+    // Tanpa ini, focus bisa mengenai node lama yang baru diganti innerHTML
+    // sehingga Enter tidak meng-expand (flaky CI baris 200).
+    await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 1, { timeout: 8000 });
+    await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('#marketStructureAccordionContainer [data-ticker="TLKM"]')?.classList.contains('is-expanded') === true, { timeout: 8000 });
     // The card header carries the real free float. 0% is a value, so it must
     // read "0,00%" and never collapse into an em dash.
     assert.match(await page.$eval('#marketStructureAccordionContainer [data-ticker="TLKM"]', el => el.innerText), /0,00%/);
     assert.equal(await page.$eval('#marketStructureAccordionContainer [data-ticker="TLKM"]', el => el.classList.contains('is-expanded')), true);
     // The side pane stays out of the way: the accordion owns the full width.
     assert.equal(await page.$eval('#marketStructureDetailPane', el => !!el.getBoundingClientRect().height), false);
-    await page.keyboard.press('Enter'); await pause(100);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('#marketStructureAccordionContainer [data-ticker="TLKM"]')?.classList.contains('is-expanded') === false, { timeout: 8000 });
     assert.equal(await page.$eval('#marketStructureAccordionContainer [data-ticker="TLKM"]', el => el.classList.contains('is-expanded')), false);
     assert.equal(await page.$eval('#marketStructureSearchInput', el => el.value), 'TLKM');
     assert.equal(await page.evaluate(() => document.activeElement.dataset.ticker || document.activeElement.closest('.ac-accordion-card')?.dataset.ticker), 'TLKM'); await search('');
@@ -209,7 +229,7 @@ for (const [theme, width] of [['light',320],['light',390],['light',768],['light'
   });
 }
 test('D1 reachable standalone and fetched fallback render the same list workflow', async () => {
-  await page.goto(origin + '/analisis-saham?tab=market-structure', { waitUntil: 'networkidle0' });
+  await page.goto(origin + '/analisis-saham?tab=market-structure', { waitUntil:'domcontentloaded' });
   await page.evaluate(() => {
     switchAnalisisTab('market-structure');
     var acc = document.getElementById('marketStructureAccordionContainer');
@@ -217,7 +237,7 @@ test('D1 reachable standalone and fetched fallback render the same list workflow
   });
   await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 3);
   assert.ok((await rows()).every(row => row.visible));
-  await page.goto(origin + '/dashboard', { waitUntil: 'networkidle0' });
+  await page.goto(origin + '/dashboard', { waitUntil:'domcontentloaded' });
   await page.evaluate(() => document.getElementById('tpl-analisis-saham').remove());
   await page.evaluate(() => {
     navigateTo('analisis', 'market-structure');

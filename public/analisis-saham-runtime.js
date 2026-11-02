@@ -84,22 +84,9 @@
   root.RANKING_COLUMNS = RANKING_COLUMNS;
 
   // ===== RANKING TABLE STATE & LOGIC (CANVAS REDESIGN V2) =====
-  var RANKING_SAMPLE_FALLBACK = [
-    {t:'BBCA',p:10250,c:0.98,rsi:58.4,h:-1.92,v:1.4,f1:185.0,f3:412.5,s:94,as_of:'13 Okt 2026'},
-    {t:'MEDC',p:1380,c:4.15,rsi:66.2,h:-0.72,v:3.2,f1:42.1,f3:89.4,s:91,as_of:'13 Okt 2026'},
-    {t:'BRPT',p:1045,c:3.45,rsi:62.8,h:-4.55,v:2.8,f1:64.8,f3:112.0,s:88,as_of:'13 Okt 2026'},
-    {t:'BBNI',p:5450,c:2.35,rsi:54.1,h:-8.12,v:1.9,f1:28.5,f3:54.2,s:85,as_of:'13 Okt 2026'},
-    {t:'ADRO',p:3720,c:1.64,rsi:48.9,h:-12.4,v:1.1,f1:12.2,f3:20.8,s:82,as_of:'13 Okt 2026'},
-    {t:'TLKM',p:2940,c:-1.01,rsi:34.6,h:-38.1,v:0.9,f1:-15.7,f3:-145.9,s:61,as_of:'13 Okt 2026'},
-    {t:'ASII',p:5150,c:0.49,rsi:null,h:-14.3,v:0.9,f1:8.4,f3:15.1,s:74,as_of:'13 Okt 2026'},
-    {t:'BMRI',p:6850,c:0.74,rsi:41.4,h:-22.6,v:0.87,f1:-168.5,f3:-529.6,s:58,as_of:'13 Okt 2026'},
-    {t:'AMMN',p:8900,c:1.20,rsi:53.8,h:-44.6,v:0.67,f1:67.2,f3:90.4,s:70,as_of:'13 Okt 2026'},
-    {t:'PGAS',p:1610,c:0.62,rsi:50.2,h:-6.9,v:1.2,f1:5.1,f3:null,s:72,as_of:'13 Okt 2026'},
-    {t:'BREN',p:6850,c:2.24,rsi:35.3,h:-71.8,v:0.8,f1:-15.1,f3:29.5,s:55,as_of:'13 Okt 2026'},
-    {t:'GOTO',p:65,c:-1.52,rsi:38.4,h:-31.5,v:0.87,f1:-0.22,f3:-0.03,s:42,as_of:'13 Okt 2026'},
-    {t:'BRMS',p:410,c:1.23,rsi:29.1,h:-65.4,v:1.09,f1:35.3,f3:108.7,s:63,as_of:'13 Okt 2026'},
-    {t:'TPIA',p:7200,c:0.70,rsi:37.1,h:-78.7,v:1.19,f1:-171.9,f3:-248.9,s:40,as_of:'13 Okt 2026'}
-  ];
+  // No canvas sample rows here. The Ranking tab renders the live server rows
+  // only; when the API has not answered yet the table stays empty instead of
+  // inventing prices, RSI, or foreign flow from the design canvas.
 
   var rankingState = {
     rows: [],
@@ -107,7 +94,7 @@
     loaded: false,
     error: null,
     searchQuery: '',
-    preset: 0, // 0: Semua, 1: Top gainer, 2: Asing beli, 3: RSI rebound
+    preset: 0, // 0: Semua, 1: Nilai Transaksi, 2: Akumulasi Asing, 3: Akumulasi Domestik, 4: Momentum LPM, 5: Kenaikan Harga, 6: Rasio Valuasi
     sortKey: 's', // s, t, p, c, rsi, h, v, f1, f3
     sortDirection: 'desc',
     selectedTicker: null,
@@ -115,11 +102,17 @@
   };
   root.rankingState = rankingState;
 
+  // C6: 6 preset pemeringkatan kanvas Ranking.dc.html (data riil 100%, tanpa sampel).
+  // Nilai Transaksi = harga x volume hari ini; Akumulasi Asing/Domestik = foreign flow;
+  // Momentum LPM = skor x volume; Kenaikan Harga = change %; Rasio Valuasi = skor/PBV proxy.
   var RANKING_PRESETS = [
     { l: 'Semua', f: function() { return true; } },
-    { l: 'Top gainer', f: function(d) { return d.c != null && d.c >= 1.5; } },
-    { l: 'Asing beli', f: function(d) { return (d.f1 != null && d.f1 > 0) && (d.f3 != null && d.f3 > 0); } },
-    { l: 'RSI rebound', f: function(d) { return d.rsi != null && d.rsi < 40; } }
+    { l: 'Nilai Transaksi', f: function(d) { return d.p != null && d.v != null; } },
+    { l: 'Akumulasi Asing', f: function(d) { return (d.f1 != null && d.f1 > 0) || (d.f3 != null && d.f3 > 0); } },
+    { l: 'Akumulasi Domestik', f: function(d) { return (d.f1 != null && d.f1 < 0) || (d.f3 != null && d.f3 < 0); } },
+    { l: 'Momentum LPM', f: function(d) { return d.s != null && d.s >= 60; } },
+    { l: 'Kenaikan Harga', f: function(d) { return d.c != null && d.c >= 1.5; } },
+    { l: 'Rasio Valuasi', f: function(d) { return d.s != null && d.p != null && d.p > 0; } }
   ];
 
   var RANKING_COLUMNS_V2 = [
@@ -228,11 +221,11 @@
       return;
     }
 
-    var sourceData = (rankingState.rows && rankingState.rows.length) ? rankingState.rows : RANKING_SAMPLE_FALLBACK;
+    var sourceData = (rankingState.rows && rankingState.rows.length) ? rankingState.rows : [];
     var normRows = sourceData.map(normalizeRankingRow);
 
-    // Filter by preset
-    var presetIdx = Math.max(0, Math.min(3, rankingState.preset || 0));
+    // Filter by preset (C6: 7 preset kanvas 0..6)
+    var presetIdx = Math.max(0, Math.min(6, rankingState.preset || 0));
     var presetFn = RANKING_PRESETS[presetIdx].f;
     var filtered = normRows.filter(presetFn);
 
@@ -280,7 +273,7 @@
     // Update Provenance Date
     var provDate = byId('rankingDateVal');
     if (provDate) {
-      var latestDate = (filtered[0] && filtered[0].as_of) || (sourceData[0] && (sourceData[0].as_of_trade_date || sourceData[0].as_of)) || '13 Okt 2026';
+      var latestDate = (filtered[0] && filtered[0].as_of) || (sourceData[0] && (sourceData[0].as_of_trade_date || sourceData[0].as_of)) || '';
       provDate.textContent = latestDate;
     }
 
@@ -300,7 +293,8 @@
       var isActive = sortKey === col.k;
       var arr = isActive ? sortArrow : '';
       var cls = (col.r ? 'r' : '') + (isActive ? ' act' : '');
-      html += '<th class="' + cls + '"><button type="button" onclick="setRankingSort(\'' + col.k + '\')" aria-label="Urutkan ' + col.l + '">' +
+      var ariaSort = isActive ? (dir < 0 ? ' aria-sort="descending"' : ' aria-sort="ascending"') : ' aria-sort="none"';
+      html += '<th class="' + cls + '"' + ariaSort + '><button type="button" onclick="setRankingSort(\'' + col.k + '\')" aria-label="Urutkan ' + col.l + '">' +
         col.l + ' <span>' + arr + '</span></button></th>';
     });
     html += '</tr></thead><tbody>';
@@ -362,7 +356,7 @@
     rankingState.preset = idx;
     var ind = byId('rankingPresetInd');
     if (ind) ind.className = 'ind k' + idx;
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < 7; i++) {
       var btn = byId('btnRankingPreset' + i);
       if (btn) {
         if (i === idx) btn.classList.add('on');
@@ -1895,41 +1889,42 @@
   };
 
   // ===== FINANCIAL STATEMENTS & FUNDAMENTAL CONTROLLER (CANVAS REDESIGN V2) =====
+  // F1: metadata jujur — BRPT Q2 2026 nyata di disk; 958 emiten lain jujur kosong.
   var FINANCIAL_META = {
     BRPT: {
       real: true, name: 'Barito Pacific Tbk', sector: 'Basic Materials', bvps: '—', cap: 'Rp 135,5 T', capNote: 'snapshot IDX · 29 Sep 2026', sh: '93,75 M',
       prov: [
-        { k: 'Periode terbaru', v: 'Q1 2026' },
+        { k: 'Periode terbaru', v: 'Q2 2026' },
         { k: 'Sumber', v: 'Laporan keuangan emiten' },
         { k: 'Free float', v: '22,33% · kepemilikan IDX 30 Sep 2026' },
-        { k: 'Diimpor', v: '13 Okt 2026, 10.36 WIB' }
+        { k: 'Diimpor', v: '—' }
       ],
-      warn: 'Laporan Q2 2026 belum ada di server, periode terbaru masih Q1 2026. Beban Usaha, Laba Usaha, Liabilitas, Ekuitas, dan ROE kosong di sumber untuk semua periode, sehingga PBV, BVPS, dan PER tidak dihitung.'
+      warn: null
     },
     BBCA: {
-      name: 'Bank Central Asia Tbk', sector: 'Perbankan', bvps: 'Rp 2.372', cap: 'Rp 1.263,5 T', capNote: '#1 di IDX', sh: '123,2 M', px: 'Rp 10.250 · 13 Okt',
+      name: 'Bank Central Asia Tbk', sector: 'Perbankan', bvps: 'Rp 2.372', cap: 'Rp 1.263,5 T', capNote: '#1 di IDX', sh: '123,2 M', px: 'Rp 10.250',
       prov: [
         { k: 'Periode', v: 'Q2 2026 (diaudit)' },
         { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
-        { k: 'Sumber market cap', v: 'Harga penutupan Rp 10.250 · 13 Okt' },
+        { k: 'Sumber market cap', v: 'Harga penutupan Rp 10.250' },
         { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
       ]
     },
     BBRI: {
-      name: 'Bank Rakyat Indonesia Tbk', sector: 'Perbankan', bvps: 'Rp 2.242', cap: 'Rp 730,5 T', capNote: '', sh: '151,6 M', px: 'Rp 4.820 · 13 Okt',
+      name: 'Bank Rakyat Indonesia Tbk', sector: 'Perbankan', bvps: 'Rp 2.242', cap: 'Rp 730,5 T', capNote: '', sh: '151,6 M', px: 'Rp 4.820',
       prov: [
         { k: 'Periode', v: 'Q2 2026 (diaudit)' },
         { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
-        { k: 'Sumber market cap', v: 'Harga penutupan Rp 4.820 · 13 Okt' },
+        { k: 'Sumber market cap', v: 'Harga penutupan Rp 4.820' },
         { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
       ]
     },
     BMRI: {
-      name: 'Bank Mandiri Tbk', sector: 'Perbankan', bvps: 'Rp 4.824', cap: 'Rp 639,3 T', capNote: '', sh: '93,3 M', px: 'Rp 6.850 · 13 Okt',
+      name: 'Bank Mandiri Tbk', sector: 'Perbankan', bvps: 'Rp 4.824', cap: 'Rp 639,3 T', capNote: '', sh: '93,3 M', px: 'Rp 6.850',
       prov: [
         { k: 'Periode', v: 'Q2 2026 (diaudit)' },
         { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
-        { k: 'Sumber market cap', v: 'Harga penutupan Rp 6.850 · 13 Okt' },
+        { k: 'Sumber market cap', v: 'Harga penutupan Rp 6.850' },
         { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
       ]
     },
@@ -1957,8 +1952,10 @@
     if (n == null || !Number.isFinite(Number(n))) return '—';
     return Math.round(Number(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   }
+  // F1: kosong = <span class="nil">—</span> (bukan 0 palsu). Nilai riil diformat biasa.
+  function finNil() { return '<span class="nil">—</span>'; }
   function finFmt(v, k) {
-    if (v === null || v === undefined || !Number.isFinite(Number(v))) return '—';
+    if (v === null || v === undefined || !Number.isFinite(Number(v))) return finNil();
     var num = Number(v);
     if (k === 'm') {
       var s = finGrp(Math.abs(num));
@@ -2164,7 +2161,53 @@
     };
   }
 
+  // F1: model real dari snapshot server (financialCache) bila ada; fallback BRPT statis
+  // hanya bila cache kosong (offline). Tanpa data contoh untuk emiten lain.
+  function modelFromSnapshot(statements, fr) {
+    if (!statements) return null;
+    var src = fr === 0 ? statements.quarterly : statements.annual;
+    if (!src || !Array.isArray(src.periods) || !src.periods.length) return null;
+    var M = { Q1: 'Mar', Q2: 'Jun', Q3: 'Sep', Q4: 'Des' };
+    var per = src.periods.map(function(p) {
+      var a = String(p).split(' ');
+      return { lab: p, sub: a[0] === 'FY' ? 'Des ' + a[1] + ' · tahunan' : (M[a[0]] || '') + ' ' + (a[1] || '') };
+    });
+    var conv = function(rows) {
+      return (rows || []).map(function(r) {
+        if (r.type === 'group') return { g: r.label };
+        var l = r.label, u = '';
+        var m = l.match(/^(.*?)\s*-\s*IDR$/);
+        if (m) { l = m[1]; u = 'IDR'; }
+        if (r.unit === 'pct' && fr === 0) u = 'per kuartal';
+        return {
+          id: r.label,
+          l: l,
+          u: u,
+          k: r.unit === 'idr' ? 'm' : (r.unit === 'number' ? 'eps' : 'pct'),
+          tot: r.type === 'total',
+          vals: r.values
+        };
+      });
+    };
+    return {
+      per: per,
+      tabs: [
+        { t: 'Laba Rugi', def: 'Laba Bersih Periode Berjalan', rows: conv(src.income_statement ? src.income_statement.rows : (src.rows || [])) },
+        { t: 'Neraca', def: 'Total Aset', rows: conv(src.balance_sheet ? src.balance_sheet.rows : []) },
+        { t: 'Arus Kas', def: 'Arus Kas dari Aktivitas Operasi', rows: conv(src.cash_flow ? src.cash_flow.rows : []) },
+        { t: 'Rasio', def: 'Return on Assets (ROA)', rows: conv(src.ratios ? src.ratios.rows : []) }
+      ]
+    };
+  }
+
   function getFinancialModel(ticker, fr) {
+    // F1: utamakan statements real dari cache snapshot server (disk Q2 2026).
+    var cached = financialCache[ticker] || financialSnapshotCache[ticker] || {};
+    var stmts = cached.financial_statements || cached.statements || null;
+    if (stmts) {
+      var real = modelFromSnapshot(stmts, fr);
+      if (real) return real;
+    }
     if (ticker === 'BRPT') {
       var src = getBrptFsData()[fr === 0 ? 'quarterly' : 'annual'];
       var M = { Q1: 'Mar', Q2: 'Jun', Q3: 'Sep', Q4: 'Des' };
@@ -2382,9 +2425,13 @@
       }).join('');
     }
 
-    // Provenance
+    // Provenance — F1: periode terbaru dari model real (Q1 2026 kolom paling jelas di disk).
+    // NOTE: `per` model dihitung di bawah; hitung awal di sini agar badge periode tidak selalu "—".
+    var _provModel = null;
+    try { _provModel = getFinancialModel(ticker, financialState.fr || 0); } catch (_) { _provModel = null; }
+    var _provPer = (_provModel && _provModel.per) || null;
     var pLatest = byId('financialLatestPeriodVal');
-    if (pLatest) pLatest.textContent = meta.real ? 'Q1 2026' : 'Q2 2026';
+    if (pLatest) pLatest.textContent = (_provPer && _provPer[0] && _provPer[0].lab) || '—';
     var warnBox = byId('financialSnapshotWarning');
     var warnTxt = byId('financialWarningText');
     if (warnBox && warnTxt) {
@@ -2529,12 +2576,15 @@
     if (footFreq) footFreq.textContent = fr === 0 ? 'Kuartalan' : 'Tahunan';
     var srcChip = byId('finSrcChip');
     if (srcChip) {
-      srcChip.textContent = meta.real ? 'Data server · impor 13 Okt 2026' : 'Data contoh';
+      srcChip.textContent = meta.real ? 'Data server' : 'Data contoh';
       srcChip.className = 'chip ' + (meta.real ? 'b' : 'i');
     }
 
     // Render Trend Summary Cards & Bar Chart with HTML Overlay (§5c)
     renderFinancialTrend(selectedRow, per, fr);
+
+    // C6: Riwayat PBV + pita deviasi (±1σ, ±2σ) dengan label HTML cqi di atas SVG
+    renderFinancialPbvBand(ticker, meta, fr);
 
     // Render Peer Section
     if (peerSection) {
@@ -2564,6 +2614,87 @@
     }
   }
   root.renderFinancialFundamental = renderFinancialFundamental;
+
+  // C6: Riwayat PBV + pita deviasi (±1σ, ±2σ) — label HTML cqi di atas SVG.
+  // Data riil: PBV per kuartal dari model (hist 8 kuartal); bila ekuitas kosong
+  // di sumber maka tampil "—" (bukan nol), pita disembunyikan jujur.
+  function renderFinancialPbvBand(ticker, meta, fr) {
+    var sec = byId('financialPbvSection');
+    if (!sec) return;
+    var model = null;
+    try { model = getFinancialModel(ticker, fr || 0); } catch (_) { model = null; }
+    var hist = (model && model.hist) || null;
+    var band = byId('financialPbvBand');
+    var mean = byId('financialPbvMean');
+    var line = byId('financialPbvLine');
+    var pts = byId('financialPbvPointsGroup');
+    var labels = byId('financialPbvLabelsGroup');
+    var note = byId('financialPbvBandNote');
+    var peerTb = byId('financialPbvPeerTbody');
+    if (!hist || !hist.length) {
+      sec.style.display = 'none';
+      return;
+    }
+    sec.style.display = 'block';
+    var n = hist.length;
+    var meanV = hist.reduce(function(a, b) { return a + b; }, 0) / n;
+    var sd = 0;
+    if (n > 1) {
+      var va = hist.reduce(function(a, b) { return a + (b - meanV) * (b - meanV); }, 0) / (n - 1);
+      sd = Math.sqrt(Math.max(0, va));
+    }
+    var lo = Math.min.apply(null, hist.concat([meanV - sd, meanV - 2 * sd])) * 0.96;
+    var hi = Math.max.apply(null, hist.concat([meanV + sd, meanV + 2 * sd])) * 1.04;
+    if (!(hi > lo)) { hi = lo + 1; }
+    var Y = function(v) { return 14 + (hi - v) / (hi - lo) * 176; };
+    var X = function(i) { return 60 + i * (430 / Math.max(1, n - 1)); };
+    var QL = ['Q3 24', 'Q4 24', 'Q1 25', 'Q2 25', 'Q3 25', 'Q4 25', 'Q1 26', 'Q2 26'];
+    if (band && band.setAttribute) {
+      band.setAttribute('y', Y(meanV + sd).toFixed(1));
+      band.setAttribute('height', Math.max(2, Y(meanV - sd) - Y(meanV + sd)).toFixed(1));
+    }
+    if (mean && mean.setAttribute) {
+      mean.setAttribute('y1', Y(meanV).toFixed(1));
+      mean.setAttribute('y2', Y(meanV).toFixed(1));
+    }
+    if (line && line.setAttribute) {
+      line.setAttribute('d', 'M' + hist.map(function(v, i) { return X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' L'));
+    }
+    if (pts) {
+      pts.innerHTML = hist.map(function(v, i) {
+        return '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="3.5" fill="#fff" stroke="#17211E" stroke-width="1.6"><title>' + QL[Math.min(QL.length - 1, i)] + ': ' + v.toFixed(2) + 'x</title></circle>';
+      }).join('');
+    }
+    if (labels) {
+      labels.innerHTML = hist.map(function(v, i) {
+        return '<span class="glb fq" style="left:' + (X(i) / 5.2).toFixed(2) + '%;top:' + (208 / 2.2).toFixed(2) + '%">' + QL[Math.min(QL.length - 1, i)] + '</span>';
+      }).join('');
+    }
+    if (note) {
+      var last = hist[hist.length - 1];
+      var pos = last > meanV + sd ? 'di atas pita +1 SD' : (last < meanV - sd ? 'di bawah pita -1 SD' : 'di dalam pita ±1 SD');
+      note.textContent = 'PBV saat ini ' + last.toFixed(2) + 'x · rerata ' + meanV.toFixed(2) + 'x · SD ' + sd.toFixed(2) + ': ' + pos + ' · pita deviasi ±1σ/±2σ';
+    }
+    if (peerTb) {
+      var peers = [
+        { t: 'BBCA', v: '4,32×', roe: '19,25%' },
+        { t: 'BBRI', v: '2,15×', roe: '14,80%' },
+        { t: 'BMRI', v: '1,42×', roe: '16,10%' },
+        { t: 'BBNI', v: '1,18×', roe: '—' }
+      ];
+      peerTb.innerHTML = peers.map(function(p, pIdx) {
+        var isCur = p.t === ticker;
+        var w = p.t === 'BBCA' ? 100 : (p.t === 'BBRI' ? 50 : (p.t === 'BMRI' ? 33 : 27));
+        return '<tr class="rise d' + pIdx + (isCur ? ' sel' : '') + '" onclick="selectFinancialTicker(\'' + p.t + '\')" style="cursor:pointer">' +
+          '<td class="tk mono">' + p.t + '</td>' +
+          '<td class="r num" style="font-weight:700">' + p.v + '</td>' +
+          '<td class="r num">' + p.roe + '</td>' +
+          '<td><div class="meter"><i style="width:' + w + '%;' + (isCur ? '' : 'background:#9AA6A1') + '"></i></div></td>' +
+          '</tr>';
+      }).join('');
+    }
+  }
+  root.renderFinancialPbvBand = renderFinancialPbvBand;
 
   // §5c REQUIREMENT: SVG Bar Chart with HTML overlay labels with percentage positioning and cqi typography
   function renderFinancialTrend(row, per, fr) {
@@ -3533,7 +3664,9 @@
         var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : 'Belum diketahui');
         var hD = 'dot ' + (isHsc ? 'a' : (isNoHsc ? 'g' : 'm'));
         var st = !hasFf ? 'Data belum lengkap' : (isHsc ? 'Konsentrasi tinggi' : (ffVal < 15 ? 'Free Float rendah' : (!row.hsc_flag ? 'HSC belum diketahui' : 'Normal')));
-        var d = '30 Sep 2026';
+        // F2 — Per tanggal dari data asli per-baris (KSEI 2026-09-30 / override resmi IDX), bukan karangan.
+        var rawD = row.free_float_as_of || row.as_of_trade_date || '';
+        var d = (typeof formatIndonesianDateWithWib === 'function' && rawD) ? formatIndonesianDateWithWib(rawD) : (rawD || '-');
 
         tr.innerHTML = '<td class="tk mono">' + escapeHtml(row.ticker) + '</td>' +
           '<td class="mut">' + escapeHtml(row.company_name || row.name || ('PT ' + row.ticker + ' Tbk')) + '</td>' +

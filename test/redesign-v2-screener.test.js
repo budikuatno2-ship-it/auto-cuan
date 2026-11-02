@@ -109,7 +109,8 @@ test('Alat lanjutan disclosure houses legacy presets, pattern filter, mode subti
   ['kgAdvTools', 'nkAdvTools', 'dtAdvTools', 'kgRrSlot', 'nkRrSlot', 'dtRrSlot', 'kgSharedAdvSlot', 'nkSharedAdvSlot', 'dtSharedAdvSlot', 'scrSharedAdv'].forEach((id) => {
     assert.ok(page.includes('id="' + id + '"'), id);
   });
-  assert.equal((page.match(/<details class="scr-adv" id="(kg|nk|dt)AdvTools">/g) || []).length, 3, 'all 3 Alat lanjutan disclosures are closed by default');
+  // Kelas ganda scr-adv + adv-tools (styling + print-hide); hitung pola longgar.
+  assert.equal((page.match(/<details class="scr-adv[^"]*" id="(kg|nk|dt)AdvTools">/g) || []).length, 3, 'all 3 Alat lanjutan disclosures are closed by default');
   ['screenerPresetsContainer', 'patternFilterContainer', 'screenerSubtitle', 'nkScreenerSubtitle', 'dtScreenerSubtitle', 'kgRiskFilter', 'kgTypeFilter', 'kgHideVeryHigh', 'kgScoreDetails', 'nkRiskFilter', 'dtRiskFilter', 'dtTypeFilter'].forEach((id) => {
     assert.ok(page.includes('id="' + id + '"'), 'legacy id preserved: ' + id);
   });

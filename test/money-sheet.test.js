@@ -112,13 +112,17 @@ test('analysis sidebar destinations are unique and there is no duplicate strip i
  const html=read('public/index.html');const nav=html.slice(html.indexOf('<aside id="appSidebar"'),html.indexOf('</aside>',html.indexOf('<aside id="appSidebar"')));
  // The invariant is uniqueness, not a magic count: every analysis destination
  // must appear exactly once so the workspace can never grow a duplicate strip.
- // FIX-22 added `chart` (Chart Workstation) as a tenth first-class destination,
- // so the guard asserts "no duplicates" and pins each known tab to exactly one.
+ // C1: Chart Workstation bukan menu sidebar (19 menu Handoff §4.3). Akses via
+ // Analisis & Chart > subtab Chart Workstation; `chart` hanya alias via
+ // PROMOTED_ANALISIS_MAP, bukan data-analysis-tab ke-10. Q1: pin 9 destinasi.
  const dests=(nav.match(/data-analysis-tab="([^"]+)"/g)||[]).map(s=>s.replace(/^data-analysis-tab="|"$/g,''));
  assert.equal(new Set(dests).size,dests.length,'a duplicated analysis destination would render a duplicate strip');
- for(const tab of ['chart','analisis-chart','bandarmologi','intel','hunter','insider','ranking','financial','market-structure','pattern']) {
+ for(const tab of ['analisis-chart','bandarmologi','intel','hunter','insider','ranking','financial','market-structure','pattern']) {
   assert.equal((nav.match(new RegExp('data-analysis-tab="' + tab + '"','g'))||[]).length,1,tab);
  }
+ // Q1: `chart` wajib tetap terjangkau sebagai alias, bukan tab duplikat.
+ assert.equal((nav.match(/data-analysis-tab="chart"/g)||[]).length,0,'chart alias must not duplicate sidebar');
+ assert.match(html,/'chart'\s*:\s*'analisis-chart'/,'chart alias map missing');
  for(const file of ['partials/analisis-saham.partial.html','public/partials/analisis-saham.partial.html']) assert.doesNotMatch(read(file),/class="analisis-tab-strip/);
  assert.equal((html.match(/id="tabBandarmologi"/g)||[]).length,1);
  assert.equal((html.match(/id="tabFinancial"/g)||[]).length,1);

@@ -1,9 +1,9 @@
 # INVENTARIS FILE CSV & DATASET SQLite DI VPS PRODUKSI (READ-ONLY)
 
-> **Host:** `ubuntu@168.110.221.197`  
-> **Waktu Eksekusi:** 2026-10-17T07:27:36.480Z  
-> **Metode:** Read-Only 100% (`find`, `head`, `wc -l`, `sha256sum`, `sqlite3 -readonly`)  
-> **File Laporan:** `backtest/brpt-lpm/data/vps_csv/INVENTORY.md`  
+> **Host:** `ubuntu@168.110.221.197`
+> **Waktu Eksekusi:** 2026-10-17T07:27:36.480Z
+> **Metode:** Read-Only 100% (`find`, `head`, `wc -l`, `sha256sum`, `sqlite3 -readonly`)
+> **File Laporan:** `backtest/brpt-lpm/data/vps_csv/INVENTORY.md`
 
 ---
 

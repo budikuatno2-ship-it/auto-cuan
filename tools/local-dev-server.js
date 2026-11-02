@@ -6,6 +6,8 @@ const path = require('path');
 const { createStaticResponder } = require('../lib/static-assets');
 const { isAllowedDataPath } = require('../lib/data-route-allowlist');
 const { applySecurityHeaders, handleCspReport } = require('../lib/security-headers');
+// S1: perisai terpusat (rate-limiter auth/data, anti-bot, 6 header, validasi ticker).
+const shield = require('../lib/security-shield');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
@@ -720,6 +722,11 @@ const server = http.createServer(async (req, res) => {
     !pathname.startsWith('/api/') && !pathname.startsWith('/data/') &&
     !/\.[a-z0-9]{2,5}$/i.test(pathname);
   applySecurityHeaders(res, { csp: isDocumentRequest, env: process.env });
+  // S1: 6 header perisai (nosniff, DENY, referrer, permissions, HSTS, CSP bersih)
+  // pada SEMUA respons origin. Tidak menimpa header yang sudah diset (mis. HSTS
+  // C2 di atas); CSP enforced S1 hanya ditambahkan bila belum ada CSP apa pun
+  // agar kontrak API/aset tidak terganggu.
+  try { shield.applyShieldHeaders(res, { api: pathname.startsWith('/api/') }); } catch (_) {}
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');

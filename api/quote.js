@@ -17,7 +17,32 @@ var dailyHistoryStore = require('../lib/stock-daily-history-store');
 var { buildFinancialSnapshot } = require('../lib/financial-snapshot');
 var fcaTransition2026 = require('../lib/fca-transition-2026');
 var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+// S1: perisai terpusat (anti-bot + validasi ticker ketat + header).
+var shield = null;
+try { shield = require('../lib/security-shield'); } catch (_) { shield = null; }
 var { hotQuoteCache } = require('../lib/in-memory-ttl-cache');
+var c10FileCache = null;
+try { c10FileCache = require('../lib/c10-json-file-cache'); } catch (_) { c10FileCache = null; }
+function c10EtagForPayload(payload) {
+  try {
+    var str = JSON.stringify(payload);
+    var h = 0;
+    for (var i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; }
+    return 'W/"q' + (str.length) + '-' + (h >>> 0).toString(16) + '"';
+  } catch (_) { return null; }
+}
+function c10Maybe304Quote(req, res, payload) {
+  try {
+    var etag = c10EtagForPayload(payload);
+    if (etag && res && typeof res.setHeader === 'function') res.setHeader('ETag', etag);
+    var inm = req && req.headers && (req.headers['if-none-match'] || req.headers['If-None-Match']);
+    if (inm && etag && String(inm).split(',').map(function (x) { return x.trim(); }).indexOf(etag) >= 0) {
+      if (res && typeof res.status === 'function') { res.status(304); res.end(); }
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
 
 function setHeaderSafe(res, name, value) {
   if (!res || res.headersSent || res.writableEnded) return;
@@ -164,6 +189,7 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
     var cached = hotQuoteCache.get(cacheKey);
     if (cached) {
       setHeaderSafe(res, 'X-Cache', 'HIT');
+      try { var c10e = c10EtagForPayload((typeof cachedQuote !== 'undefined' && cachedQuote) ? cachedQuote : (typeof cached !== 'undefined' ? cached : null)); if (c10e) { setHeaderSafe(res, 'ETag', c10e); var c10inm = req && req.headers && (req.headers['if-none-match'] || req.headers['If-None-Match']); if (c10inm && String(c10inm).split(',').map(function (x) { return x.trim(); }).indexOf(c10e) >= 0) { if (canSendResponse(res)) { res.status(304); res.end(); } return; } } } catch (_) {}
       setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
       return res.status(200).json(cached);
     }
@@ -249,6 +275,7 @@ async function handleDailyMarketContextAction(req, res) {
   var cached = hotQuoteCache.get(cacheKey);
   if (cached) {
     setHeaderSafe(res, 'X-Cache', 'HIT');
+      try { var c10e = c10EtagForPayload((typeof cachedQuote !== 'undefined' && cachedQuote) ? cachedQuote : (typeof cached !== 'undefined' ? cached : null)); if (c10e) { setHeaderSafe(res, 'ETag', c10e); var c10inm = req && req.headers && (req.headers['if-none-match'] || req.headers['If-None-Match']); if (c10inm && String(c10inm).split(',').map(function (x) { return x.trim(); }).indexOf(c10e) >= 0) { if (canSendResponse(res)) { res.status(304); res.end(); } return; } } } catch (_) {}
     setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     return res.status(200).json(cached);
   }
@@ -439,6 +466,7 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       var cached = hotQuoteCache.get(cacheKey);
       if (cached) {
         setHeaderSafe(res, 'X-Cache', 'HIT');
+      try { var c10e = c10EtagForPayload((typeof cachedQuote !== 'undefined' && cachedQuote) ? cachedQuote : (typeof cached !== 'undefined' ? cached : null)); if (c10e) { setHeaderSafe(res, 'ETag', c10e); var c10inm = req && req.headers && (req.headers['if-none-match'] || req.headers['If-None-Match']); if (c10inm && String(c10inm).split(',').map(function (x) { return x.trim(); }).indexOf(c10e) >= 0) { if (canSendResponse(res)) { res.status(304); res.end(); } return; } } } catch (_) {}
         setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
         if (canSendResponse(res)) {
           return res.status(200).json(cached);
@@ -560,6 +588,22 @@ async function handler(req, res) {
 
   var ticker = null;
   try {
+    try { if (shield) shield.applyShieldHeaders(res, { api: true }); } catch (_) {}
+    // S1: anti-bot berlapis (sliding-window + deteksi scraper) sebelum limiter lama.
+    try {
+      if (shield) {
+        var sIpQ = shield.clientIpFromReq(req);
+        var sUaQ = (req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '';
+        var sChkQ = shield.dataCheck(sIpQ, { hasSession: false, userAgent: String(sUaQ) });
+        if (sChkQ.limited) {
+          if (canSendResponse(res)) {
+            try { res.setHeader('Retry-After', String(sChkQ.retryAfterSeconds || 60)); } catch (_) {}
+            return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+          }
+          return;
+        }
+      }
+    } catch (_) {}
     if (!quoteLimiter.check(clientAddress(req))) {
       if (canSendResponse(res)) {
         return res.status(429).json({ error: 'Too many requests. Please slow down.' });
@@ -595,12 +639,43 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'Parameter ticker wajib diisi.' });
     }
 
-    ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
-    // Normalize IHSG aliases to canonical 'IHSG'
-    if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
-    // BUG-QUOTE-05: simbol benchmark resmi BEI memuat angka (LQ45, IDX30).
-    // Pola huruf-saja menolaknya dengan 400 padahal itu instrumen perbandingan utama.
-    if (!/^[A-Z0-9]{3,6}$/.test(ticker) && ticker !== 'IHSG') {
+    // S1: validasi ketat terpusat — tolak traversal/command-injection/XSS dulu
+    // (pesan generik, tanpa gema payload). Pola S1 (4 huruf/IHSG) diterima;
+    // pola lama (LQ45/IDX30) tetap didukung untuk kompatibilitas benchmark BEI.
+    try {
+      if (shield) {
+        var sValQ = shield.validateTicker(ticker);
+        if (!sValQ.ok) {
+          if (!canSendResponse(res)) return;
+          return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
+        }
+        if (sValQ.clean === 'IHSG' || /^[A-Z]{4}$/.test(sValQ.clean)) {
+          ticker = sValQ.clean;
+        } else {
+          ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
+          if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
+          if (!/^[A-Z0-9]{3,6}$/.test(ticker) && ticker !== 'IHSG') {
+            if (!canSendResponse(res)) return;
+            return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
+          }
+        }
+        try {
+          var sIpQ2 = shield.clientIpFromReq(req);
+          var sUaQ2 = (req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '';
+          shield.dataRecordHit(sIpQ2, ticker, { userAgent: String(sUaQ2) });
+        } catch (_) {}
+      } else {
+        ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
+        // Normalize IHSG aliases to canonical 'IHSG'
+        if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
+        // BUG-QUOTE-05: simbol benchmark resmi BEI memuat angka (LQ45, IDX30).
+        // Pola huruf-saja menolaknya dengan 400 padahal itu instrumen perbandingan utama.
+        if (!/^[A-Z0-9]{3,6}$/.test(ticker) && ticker !== 'IHSG') {
+          if (!canSendResponse(res)) return;
+          return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
+        }
+      }
+    } catch (_) {
       if (!canSendResponse(res)) return;
       return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
     }
@@ -616,6 +691,7 @@ async function handler(req, res) {
       if (cachedQuote) {
         clearTimeout(timeoutGuard);
         setHeaderSafe(res, 'X-Cache', 'HIT');
+      try { var c10e = c10EtagForPayload((typeof cachedQuote !== 'undefined' && cachedQuote) ? cachedQuote : (typeof cached !== 'undefined' ? cached : null)); if (c10e) { setHeaderSafe(res, 'ETag', c10e); var c10inm = req && req.headers && (req.headers['if-none-match'] || req.headers['If-None-Match']); if (c10inm && String(c10inm).split(',').map(function (x) { return x.trim(); }).indexOf(c10e) >= 0) { if (canSendResponse(res)) { res.status(304); res.end(); } return; } } } catch (_) {}
         setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
         if (canSendResponse(res)) {
           return res.status(200).json(cachedQuote);
@@ -1028,7 +1104,8 @@ function loadBoardLocalCache() {
     var path = require('path');
     var filePath = path.join(__dirname, '..', 'data', 'arjum-data', 'stock-boards.json');
     if (fs.existsSync(filePath)) {
-      BOARD_LOCAL_CACHE = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (c10FileCache) { BOARD_LOCAL_CACHE = c10FileCache.getJsonFile(filePath, 30000).data; }
+      else { BOARD_LOCAL_CACHE = JSON.parse(fs.readFileSync(filePath, 'utf8')); }
       BOARD_LOCAL_CACHE_TS = Date.now();
       return BOARD_LOCAL_CACHE;
     }

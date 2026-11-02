@@ -118,6 +118,7 @@
     const sort = $('mmSheetSort').value;
     if (sort === 'amount') rows.sort((a,b) => b.amount-a.amount);
     if (sort === 'label') rows.sort((a,b) => a.label.localeCompare(b.label, 'id'));
+    if (sort === 'type') { const order = { income: 0, expense: 1, saving: 2, transfer: 3 }; rows.sort((a,b) => (order[a.type] - order[b.type]) || a.label.localeCompare(b.label, 'id')); }
     return rows;
   }
   function renderRows(focus, force) {
@@ -145,11 +146,42 @@
     });
     $('mmCashflowSpreadsheetBody').replaceChildren(fragment);
     $('mmSheetRowCount').textContent = rows.length + ' dari ' + sheet.rows.length + ' baris';
+    try { const tot = sheet.rows.reduce((a,r) => a + (Number(r.amount) || 0), 0); const tEl = $('mmSheetTotalAmount'); if (tEl) tEl.textContent = format(tot); } catch (_) {}
+    try { const empty = $('mmEmptyState'); if (empty) { const showEmpty = sheet.rows.length === 0; empty.hidden = !showEmpty; $('mmSheetViewport').hidden = loading ? true : false; if (showEmpty) updateCopyPrevLabel(); } } catch (_) {}
+    try { showUndoToast(); } catch (_) {}
     if (!rows.length) notice(sheet.rows.length ? 'Tidak ada pos yang cocok dengan pencarian.' : 'Lembar masih kosong. Tambahkan baris untuk mulai menyusun anggaran.');
     else if (!invalid.size) notice('');
     if (focus) focusCell(focus.id, focus.col);
     updateTotals();
     if (grid) grid.refresh();
+  }
+  function prevMonthValue(value) { const p = String(value || '').split('-').map(Number); if (p.length < 2 || !p[0] || !p[1]) return null; const d = new Date(p[0], p[1] - 2, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  function updateCopyPrevLabel() { try { const btn = $('mmCopyPrev'); if (!btn || !month) return; const pm = prevMonthValue(month); if (pm) btn.textContent = 'Salin pos dari ' + monthLabel(pm); } catch (_) {} }
+  async function copyPrevMonth() {
+    if (!sheet || loading || saving) return;
+    const pm = prevMonthValue(month); if (!pm) return notice('Bulan sebelumnya tidak valid.', 'error');
+    try {
+      const data = await request('/api/money-management?action=get-sheet&month=' + encodeURIComponent(pm));
+      const src = data && data.data && data.data.sheet ? Model.normalize(data.data.sheet) : null;
+      if (!src || !src.rows.length) return notice('Bulan ' + monthLabel(pm) + ' belum punya pos untuk disalin.', 'error');
+      const clones = src.rows.map(r => ({ id: id(), type: r.type, category: r.category, label: r.label, amount: r.amount, note: r.note || '' }));
+      transact(() => { sheet.rows = sheet.rows.concat(clones); }, { id: clones[0].id, col: 2 });
+      notice(clones.length + ' pos disalin dari ' + monthLabel(pm) + '. Periksa nominal lalu Simpan.');
+    } catch (error) { notice(error && error.message ? error.message : 'Gagal menyalin bulan sebelumnya.', 'error'); }
+  }
+  let undoToastTimer = 0;
+  function showUndoToast() {
+    try {
+      const box = $('mmUndoToast'), txt = $('mmUndoToastText'); if (!box) return;
+      const last = undo && undo.length ? undo[undo.length - 1] : null;
+      if (!last) { box.hidden = true; return; }
+      let label = 'Perubahan dibatalkan';
+      try { const prev = JSON.parse(last); const cur = JSON.parse(encode()); if (prev.sheet && cur.sheet && prev.sheet.rows.length > cur.sheet.rows.length) label = 'Baris dihapus'; } catch (_) {}
+      if (txt) txt.textContent = label;
+      box.hidden = false;
+      if (undoToastTimer) clearTimeout(undoToastTimer);
+      undoToastTimer = setTimeout(() => { try { box.hidden = true; } catch (_) {} }, 8000);
+    } catch (_) {}
   }
   function transact(change, focus) {
     if (!sheet || loading) return;
@@ -433,6 +465,8 @@
     $('mmUndo').addEventListener('click', () => restore('undo'));
     $('mmRedo').addEventListener('click', () => restore('redo'));
     $('mmExport').addEventListener('click', exportCSV);
+    if ($('mmCopyPrev')) $('mmCopyPrev').addEventListener('click', copyPrevMonth);
+    if ($('mmUndoToastBtn')) $('mmUndoToastBtn').addEventListener('click', () => restore('undo'));
     $('mmSheetSearch').addEventListener('input', () => { commitEdit(); renderRows(); });
     $('mmSheetSort').addEventListener('change', () => { commitEdit(); renderRows(); });
     $('mmOpenPortfolio').addEventListener('click', () => { if (typeof root.navigateTo === 'function') root.navigateTo('portofolio'); });

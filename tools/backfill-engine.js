@@ -139,8 +139,14 @@ async function run() {
   }
 
   let dailyQuota = arjumClient.getConfiguredDailyQuota();
+  // P1: reserve dinamis dari config/quota.json (tanpa hardcode).
   let eodReserve = parseInt(process.env.ARJUM_EOD_RESERVE, 10);
-  if (!Number.isFinite(eodReserve) || eodReserve < 0) eodReserve = 5000;
+  if (!Number.isFinite(eodReserve) || eodReserve < 0) {
+    try {
+      const qs = require('../lib/quota-state');
+      eodReserve = qs.reserveFloorFor(new Date());
+    } catch (_) { eodReserve = 0; }
+  }
 
   // Max usage limit for backfill engine: accounts for EOD reserve
   let dailyLimit = Math.max(0, dailyQuota - eodReserve);

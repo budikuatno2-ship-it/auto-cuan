@@ -96,11 +96,34 @@ async function fetchJson(baseUrl, path, cronSecret) {
 }
 
 function isSafeDryRun(data) {
-  return data && data.success === true && data.mode === 'lock_only' && data.dry_run === true && data.sent === false && data.telegram_sent === false && data.skipped_send === true && data.write_suppressed_by_dry_run === true;
+  // P2: terima bentuk ketat daemon baru (bukti eksplisit dry-run) ATAU bentuk aman
+  // aktual daemon (read-only terbukti: tidak ada kirim, tidak ada lock/insert).
+  // hasTelegramRisk + executed_lock/lock_success/insert_count tetap menolak
+  // respons yang tidak aman — pelonggaran ini tidak melemahkan safety.
+  // Bentuk aktual daemon (2026-10-30): {success, sent:false, dry_run:true,
+  // lock_only:true, reason, inserted_count:0, picked_count:0, candidate_count:0,
+  // sent_count:0, telegram:null} — tanpa flag skipped_send/write_suppressed.
+  if (!data || data.success !== true) return false;
+  if (hasTelegramRisk(data)) return false;
+  if (data.executed_lock === true || data.lock_success === true) return false;
+  if (Number(data.would_insert_count || 0) !== 0 || Number(data.lock_count || 0) !== 0) return false;
+  if (Number(data.inserted_count || 0) !== 0 || Number(data.sent_count || 0) !== 0) return false;
+  if (data.telegram != null && data.telegram !== false) return false;
+  const strict = data.mode === 'lock_only' && data.dry_run === true && data.skipped_send === true && data.write_suppressed_by_dry_run === true;
+  const provenReadOnly = data.sent === false && data.dry_run === true
+    && (data.telegram_sent === false || data.telegram == null)
+    && (data.lock_only === true || data.would_lock !== true);
+  return strict === true || provenReadOnly === true;
 }
 
 function hasTelegramRisk(data) {
-  return data && (data.sent !== false || data.telegram_sent !== false || data.skipped_send !== true);
+  // P2: toleran terhadap bentuk aktual daemon (tanpa telegram_sent, telegram:null)
+  // selama terbukti tidak ada pengiriman. Field hilang/ambigu selain itu = risiko.
+  if (!data || typeof data !== 'object') return true;
+  if (data.sent === true || data.telegram_sent === true) return true;
+  if (data.telegram != null && data.telegram !== false) return true;
+  if (data.sent === false && (data.telegram_sent === false || data.telegram == null)) return false;
+  return true;
 }
 
 function makeSummary(baseUrl, dryRun, lock, executedLock) {
@@ -143,6 +166,10 @@ async function main() {
     printHelp();
     return 0;
   }
+  // P2: alasan blokir terjadwal (screener belum siap / tidak ada kandidat / sudah terkunci)
+  // adalah skip fail-closed yang sah -> keluar 0 agar heartbeat cron hijau.
+  // Respons tak-aman (risiko telegram / lock tak terduga) tetap keluar non-0.
+  const SCHEDULED_SKIP_REASONS = new Set(['screeners_not_ready', 'top5_gate_blocked', 'no_candidates', 'already_locked', 'already_locked_dry_run']);
   if (!process.env.CRON_SECRET) throw Object.assign(new Error('CRON_SECRET is required; set it before running this manual runner.'), { exitCode: 1 });
   if (opts.executeLock && !opts.yes) throw Object.assign(new Error('--execute-lock requires --yes.'), { exitCode: 4 });
   if (opts.executeLock && isServerlessHost(opts.baseUrl)) {
@@ -151,6 +178,18 @@ async function main() {
 
   const dryRun = await fetchJson(opts.baseUrl, DRY_PATH, process.env.CRON_SECRET);
   if (!isSafeDryRun(dryRun)) {
+    // P2: respons aman-terbukti-tidak-menulis dengan alasan skip terjadwal
+    // (mis. screeners_not_ready) -> keluar 0 (skip sah, bukan gagal infra).
+    const provenNoWrite = dryRun && dryRun.sent === false && dryRun.telegram_sent === false
+      && dryRun.would_lock !== true && Number(dryRun.would_insert_count || 0) === 0
+      && Number(dryRun.lock_count || 0) === 0 && dryRun.executed_lock !== true && dryRun.lock_success !== true;
+    if (provenNoWrite && SCHEDULED_SKIP_REASONS.has(String(dryRun.reason || ''))) {
+      const summary = makeSummary(opts.baseUrl, dryRun, null, false);
+      if (!opts.json) printHuman(summary);
+      console.log(JSON.stringify(summary, null, 2));
+      console.log(`SKIP_${String(dryRun.reason).toUpperCase()} — dry-run aman tanpa tulis; skip terjadwal (fail-closed).`);
+      return 0;
+    }
     const exitCode = hasTelegramRisk(dryRun) || dryRun && dryRun.write_suppressed_by_dry_run !== true ? 2 : 4;
     const summary = makeSummary(opts.baseUrl, dryRun, null, false);
     if (!opts.json) printHuman(summary);

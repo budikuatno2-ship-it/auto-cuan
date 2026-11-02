@@ -21,6 +21,7 @@ function load() {
     addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
     getElementById: () => null,
     querySelector: () => null,
+    querySelectorAll: () => [],
     createElement: () => ({ classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } }, setAttribute() {}, querySelector: () => ({ addEventListener() {}, classList: { remove() {}, add() {} } }), querySelectorAll: () => [] })
   };
   const win = {

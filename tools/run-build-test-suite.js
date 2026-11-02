@@ -17,18 +17,19 @@ if (!process.env.REVIEW_ACCESS_TOKEN) {
 process.env.SECURITY_GUARD_MODE = process.env.SECURITY_GUARD_MODE || 'off';
 
 if (!process.env.CHROMIUM_PATH) {
-  if (process.platform === 'win32') {
-    const winPaths = [
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
-    ];
-    for (const p of winPaths) {
-      if (fs.existsSync(p)) {
-        process.env.CHROMIUM_PATH = p;
-        break;
-      }
-    }
+ if (process.platform === 'win32') {
+   const winPaths = [
+     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+     'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
+   ];
+   for (const p of winPaths) {
+     if (fs.existsSync(p)) {
+       process.env.CHROMIUM_PATH = p;
+       break;
+     }
+   }
   } else {
     const linuxPaths = [
       '/usr/bin/google-chrome',
@@ -126,8 +127,10 @@ if (isFullSuite) {
 const suiteLabel = isFullSuite ? 'Full Regression Suite' : 'Smoke/Contract Build Suite';
 console.log(`\n--- Running ${suiteLabel} (${existingFiles.length} test files from ${path.basename(curatedConfigFile)}) ---`);
 
-// Smoke suite runs in a single fast batch (~8s), full regression uses safe batches
-const BATCH_SIZE = isFullSuite ? (process.env.VERCEL === '1' ? 10 : 20) : 50;
+ // Smoke suite runs in a single fast batch (~8s), full regression uses safe batches
+ // D1: browser-heavy batches (D1-D9/mobile) flaky under parallel load (nav timeout 5s).
+ // Shrink to 10 so each node --test process holds fewer concurrent Chromium pages.
+const BATCH_SIZE = isFullSuite ? 10 : 50;
 let failedBatches = 0;
 let passedFiles = 0;
 const failingFiles = [];
@@ -145,6 +148,7 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
     failedBatches++;
     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
     console.warn(`\n[WARN] Batch ${batchNum} experienced a failure. Re-running batch files in isolation to pinpoint root cause...`);
+    console.error(`::error::D1 batch ${batchNum} failed (exit ${res.status}); isolating ${batch.length} files`);
     sendVercelTelemetry(`[WARN] Batch ${batchNum} experienced a failure:\n${batch.join('\n')}`);
     for (const testFile of batch) {
       const singleRes = spawnSync(process.execPath, ['--test', testFile], {
@@ -156,6 +160,7 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
       });
       if (singleRes.status !== 0) {
         console.error(`\n[FAIL] Test file failed in isolation: ${testFile}`);
+        console.error(`::error file=${testFile}::D1 full-regression failed in isolation (exit ${singleRes.status})`);
         if (singleRes.stdout) process.stdout.write(singleRes.stdout);
         if (singleRes.stderr) process.stderr.write(singleRes.stderr);
         if (!failingFiles.includes(testFile)) failingFiles.push(testFile);
@@ -172,6 +177,7 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
 if (failingFiles.length > 0) {
   console.error(`\nTest suite finished with ${failingFiles.length} failing test file(s):`);
   failingFiles.forEach(f => console.error(` - ${f}`));
+  failingFiles.forEach(f => console.error(`::error file=${f}::D1 full-regression failing file`));
   sendVercelTelemetry(`Test suite finished with ${failingFiles.length} failing test file(s):\n${failingFiles.join('\n')}`);
   process.exit(1);
 } else {

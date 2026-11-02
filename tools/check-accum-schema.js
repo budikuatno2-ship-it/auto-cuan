@@ -2,8 +2,9 @@
 
 const { execFileSync } = require('child_process');
 
-const SSH_KEY = 'D:/Private Key Oracle/ssh-key-2026-07-02.key';
-const VPS_HOST = 'ubuntu@168.110.221.197';
+// Q1: kredensial VPS wajib via env, tidak hardcode di repo ter-track.
+const SSH_KEY = process.env.VPS_SSH_KEY || process.env.SSH_KEY || '';
+const VPS_HOST = process.env.VPS_SSH_HOST || process.env.VPS_HOST || '';
 
 function ssh(remoteCmd) {
   return execFileSync('ssh', [

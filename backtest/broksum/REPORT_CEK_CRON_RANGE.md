@@ -1,10 +1,10 @@
 # LAPORAN AUDIT RIWAYAT PENGUMPULAN BROKSUM TIGA FLOW & UJI PARAMETER RENTANG TANGGAL ARJUM
 
-> **Klasifikasi:** Laporan Audit Forensik Kode/Penjadwal & Pengujian Parameter Rentang API  
-> **Server Target:** VPS Oracle Cloud Produksi (`ubuntu@168.110.221.197`) & Repositori Git  
-> **Target Endpoint API:** `https://stock.arjum.com/api/broker-summary/{code}`  
-> **Total Request API Digunakan:** **3 dari batas maksimal 6 request** (Batas Keras terpenuhi sempurna, kunci API tidak pernah dicetak)  
-> **Tanggal Audit:** 17 Oktober 2026  
+> **Klasifikasi:** Laporan Audit Forensik Kode/Penjadwal & Pengujian Parameter Rentang API
+> **Server Target:** VPS Oracle Cloud Produksi (`ubuntu@168.110.221.197`) & Repositori Git
+> **Target Endpoint API:** `https://stock.arjum.com/api/broker-summary/{code}`
+> **Total Request API Digunakan:** **3 dari batas maksimal 6 request** (Batas Keras terpenuhi sempurna, kunci API tidak pernah dicetak)
+> **Tanggal Audit:** 17 Oktober 2026
 > **Prinsip AntiSlop §107:** Bukti empiris presisi, kutipan commit SHA otentik, tanpa fabrikasi.
 
 ---
@@ -132,7 +132,7 @@ Pencocokan nilai transaksi asing pada jendela 5 hari (7–11 September 2026) dar
 ---
 
 ### 3. Implikasi Rentang Panjang (Point B.3)
-Karena endpoint Arjum broker-summary menghasilkan **ringkasan gabungan multi-hari (*multi-day range aggregation*)**, pemanggilan rentang tanggal panjang (seperti `start_date=2026-01-02&end_date=2026-10-16`) **tidak akan mengembalikan 188 bar harian**, melainkan hanya 1 objek ringkasan tunggal dari akumulasi 188 hari tersebut.  
+Karena endpoint Arjum broker-summary menghasilkan **ringkasan gabungan multi-hari (*multi-day range aggregation*)**, pemanggilan rentang tanggal panjang (seperti `start_date=2026-01-02&end_date=2026-10-16`) **tidak akan mengembalikan 188 bar harian**, melainkan hanya 1 objek ringkasan tunggal dari akumulasi 188 hari tersebut.
 Oleh sebab itu, strategi menarik riwayat harian dalam 1 request per saham **tidak dimungkinkan oleh desain API Arjum**.
 
 ---

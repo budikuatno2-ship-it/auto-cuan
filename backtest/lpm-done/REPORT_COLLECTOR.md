@@ -1,11 +1,11 @@
 # LAPORAN IMPLEMENTASI COLLECTOR DONE DETAILS TAHAP 1 (ORDER FLOW LPM)
 
-> **Klasifikasi:** Laporan Teknis Pengujian API, Validasi Agregasi, dan Pengisian Riwayat Tertua  
-> **Target Endpoint:** `GET https://stock.arjum.com/api/done-details`  
-> **Tanggal Pelaksanaan:** 17 Oktober 2026  
-> **Script Kolektor:** [`backtest/lpm-done/collect-done.js`](backtest/lpm-done/collect-done.js)  
-> **Script Runner Refill:** [`backtest/lpm-done/run_refill.js`](backtest/lpm-done/run_refill.js)  
-> **Daftar Prioritas:** [`backtest/lpm-done/priority.txt`](backtest/lpm-done/priority.txt)  
+> **Klasifikasi:** Laporan Teknis Pengujian API, Validasi Agregasi, dan Pengisian Riwayat Tertua
+> **Target Endpoint:** `GET https://stock.arjum.com/api/done-details`
+> **Tanggal Pelaksanaan:** 17 Oktober 2026
+> **Script Kolektor:** [`backtest/lpm-done/collect-done.js`](backtest/lpm-done/collect-done.js)
+> **Script Runner Refill:** [`backtest/lpm-done/run_refill.js`](backtest/lpm-done/run_refill.js)
+> **Daftar Prioritas:** [`backtest/lpm-done/priority.txt`](backtest/lpm-done/priority.txt)
 > **Prinsip Operasional:** Zero repo modification, zero cron/pm2 installation, read-only VPS, kuota produksi dilindungi ($\ge 1.500$ sisa).
 
 ---

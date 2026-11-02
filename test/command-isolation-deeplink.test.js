@@ -626,17 +626,18 @@ test('hybrid: switch-verify-webhook only ever selects a public VPS origin', asyn
 });
 
 test('vps-only production sector-hot uses the real local refresher', function () {
-  const src = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'run-sector-hot.sh'), 'utf8');
-  assert.match(src, /scripts\/refresh-sector-hot\.js/);
-  assert.doesNotMatch(src, /tools\/run-screener\.js/);
-  assert.match(src, /LOCAL_RESULT="failed"/);
-  assert.match(src, /exit 1/);
+ // Q1/P2: sector-hot via job-wrapper --force-local (intraday + EOD), refresher lokal
+ // scripts/refresh-sector-hot.js. Webhook-failover warisan tidak wajib di P2.
+ const src = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'run-sector-hot.sh'), 'utf8');
+ assert.match(src, /scripts\/refresh-sector-hot\.js/);
+ assert.doesNotMatch(src, /tools\/run-screener\.js/);
+ assert.match(src, /LOCAL_RESULT="failed"/);
+ assert.match(src, /exit 1/);
 
-  const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
-  const active = cron.split('\n').filter(function (line) {
-    return line.trim() && !line.trim().startsWith('#');
-  }).join('\n');
-  assert.match(active, /run-sector-hot\.sh --force-local/);
-  assert.doesNotMatch(active, /run-sector-hot\.sh(?! --force-local)/);
-  assert.match(cron, /run-webhook-failover\.sh/);
+ const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
+ const active = cron.split('\n').filter(function (line) {
+   return line.trim() && !line.trim().startsWith('#');
+ }).join('\n');
+ assert.match(active, /run-sector-hot\.sh --force-local/);
+ assert.doesNotMatch(active, /run-sector-hot\.sh(?! --force-local)/);
 });

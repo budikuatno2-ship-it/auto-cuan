@@ -1,11 +1,11 @@
 # LAPORAN PERBAIKAN AGREGAT DONE DETAILS v2: ELIMINASI ARTEFAK HARGA TERKUNCI (ARA/ARB) & PEMISAHAN SESI LELANG
 
-> **Klasifikasi:** Laporan Kuantitatif Forensik Mikrostruktur Pasar Modal & Kalibrasi Ulang Tape Reading  
-> **Subjek Analisis:** Data Transaksi Tik-per-Tik (*Done Details / Order Flow Tape*) Bursa Efek Indonesia  
-> **Target Pengujian:** BRPT, MEDC, ADRO, AKRA, ACES, ASII (Sesi 8 September 2026 & 16 Oktober 2026)  
-> **Modul Pembaruan:** [`backtest/lpm-done/aggregate_v2.js`](backtest/lpm-done/aggregate_v2.js)  
-> **Runner Rekalkulasi:** [`backtest/lpm-done/recalculate_v2.js`](backtest/lpm-done/recalculate_v2.js)  
-> **Data Agregat Baru:** [`backtest/lpm-done/agg_v2/`](backtest/lpm-done/agg_v2/) (Tanpa menimpa `agg/` lama)  
+> **Klasifikasi:** Laporan Kuantitatif Forensik Mikrostruktur Pasar Modal & Kalibrasi Ulang Tape Reading
+> **Subjek Analisis:** Data Transaksi Tik-per-Tik (*Done Details / Order Flow Tape*) Bursa Efek Indonesia
+> **Target Pengujian:** BRPT, MEDC, ADRO, AKRA, ACES, ASII (Sesi 8 September 2026 & 16 Oktober 2026)
+> **Modul Pembaruan:** [`backtest/lpm-done/aggregate_v2.js`](backtest/lpm-done/aggregate_v2.js)
+> **Runner Rekalkulasi:** [`backtest/lpm-done/recalculate_v2.js`](backtest/lpm-done/recalculate_v2.js)
+> **Data Agregat Baru:** [`backtest/lpm-done/agg_v2/`](backtest/lpm-done/agg_v2/) (Tanpa menimpa `agg/` lama)
 > **Prinsip AntiSlop §107:** Koreksi ilmiah tanpa kompromi, kejujuran matematika di atas interpretasi yang keliru.
 
 ---

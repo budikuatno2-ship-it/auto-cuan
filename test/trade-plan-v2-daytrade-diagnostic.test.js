@@ -6,6 +6,11 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 
+const guard = require('../lib/market-hours-guard');
+// Deterministik: kunci proyeksi volume ke OUTSIDE_MARKET agar FIX-4
+// volume-pace tidak bergantung wall-clock runner (LIVE_MARKET memproyeksikan
+// volume hari ini sehingga skor flaky 54/58/56 tergantung jam eksekusi).
+guard.getMarketSessionStatus = () => ({ status: 'OUTSIDE_MARKET', total_minutes: 0 });
 const diag = require('../lib/trade-plan-v2-daytrade-diagnostic');
 const eng = require('../lib/daytrade-screener-engine');
 
@@ -169,7 +174,9 @@ test('10. Day Trade base scoring formula output is unchanged (locked regression)
   assert.equal(data.resistance, 1042);
   assert.equal(data.atr14, 12.79);
   assert.equal(data.rsi14, 54.55);
-  // scoreDayTrade composite + components are unchanged.
+  // Deterministik OUTSIDE_MARKET: FIX-4 pace projection nonaktif sehingga
+  // kunci regresi stabil lintas jam (56/7/18, penalti 0), bukan nilai
+  // LIVE_MARKET yang bergantung wall-clock (54/58/11 flaky).
   const s = eng.scoreDayTrade(data, 'morning', 'UTAMA', null);
   assert.equal(s.daytrade_score, 56);
   assert.equal(s.liquidity_score, 7);
@@ -184,7 +191,7 @@ test('10. Day Trade base scoring formula output is unchanged (locked regression)
 
 test('11. Swing/Day base scoring helpers (score components) remain callable and unchanged', () => {
   // The individual base scoring functions used by Konglo / Non-Konglo / Day Trade
-  // are still exported with unchanged formulas.
+  // are still exported with unchanged formulas (OUTSIDE_MARKET deterministic).
   const candles = deterministicCandles();
   const data = eng.analyzeDayTrade(candles, 'TEST');
   const levels = eng.calculateLevels(data);

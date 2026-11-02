@@ -1,11 +1,11 @@
 # LAPORAN EVALUASI INDIKATOR "DUA SKENARIO" (ANALOG HISTORIS) & PENGUJIAN KOLAM MULTI-SAHAM
 
-> **Klasifikasi:** Laporan Kuantitatif Replay Engine & Evaluasi Proyeksi Probabilistik Masa Depan  
-> **Target Analisis:** BRPT, BBCA, TLKM, ADRO, ANTM, MEDC  
-> **Periode Analisis:** 2 Januari 2015 s.d. 16 Oktober 2026 (~11,8 Tahun / ~2.899 Bar Lilin Harian)  
-> **Kolam Analog:** 80 Saham Terlikuid IDX (Berdasarkan Median Turnover 60 Hari Terakhir di SQLite VPS)  
-> **File Kode Sumber (Tanpa Ubah):** [`backtest/dua-skenario/dua-skenario.js`](backtest/dua-skenario/dua-skenario.js) & [`backtest/dua-skenario/run-dua-skenario.js`](backtest/dua-skenario/run-dua-skenario.js)  
-> **File Data:** [`backtest/dua-skenario/data/BRPT.json`](backtest/dua-skenario/data/BRPT.json) dan [`backtest/dua-skenario/data/universe/`](backtest/dua-skenario/data/universe/)  
+> **Klasifikasi:** Laporan Kuantitatif Replay Engine & Evaluasi Proyeksi Probabilistik Masa Depan
+> **Target Analisis:** BRPT, BBCA, TLKM, ADRO, ANTM, MEDC
+> **Periode Analisis:** 2 Januari 2015 s.d. 16 Oktober 2026 (~11,8 Tahun / ~2.899 Bar Lilin Harian)
+> **Kolam Analog:** 80 Saham Terlikuid IDX (Berdasarkan Median Turnover 60 Hari Terakhir di SQLite VPS)
+> **File Kode Sumber (Tanpa Ubah):** [`backtest/dua-skenario/dua-skenario.js`](backtest/dua-skenario/dua-skenario.js) & [`backtest/dua-skenario/run-dua-skenario.js`](backtest/dua-skenario/run-dua-skenario.js)
+> **File Data:** [`backtest/dua-skenario/data/BRPT.json`](backtest/dua-skenario/data/BRPT.json) dan [`backtest/dua-skenario/data/universe/`](backtest/dua-skenario/data/universe/)
 > **Prinsip AntiSlop §107:** Bukti empiris diutamakan, kejujuran matematika tanpa glorifikasi, tanpa klaim pasti untung.
 
 ---
@@ -28,7 +28,7 @@ Karena data harian 2020 tidak tersedia di SQLite internal, sesuai klausul Langka
 - **Karakteristik Data:** Harga historis Yahoo Finance disesuaikan terhadap aksi korporasi (*adjusted close*). Oleh karena itu, level harga lama tidak selalu jatuh pada fraksi tick IDX resmi (misal: 949, 974). Namun untuk pencocokan bentuk pola (*pattern shape*) dan rasio pergerakan log-return pada `dua-skenario.js`, hal ini valid karena model beroperasi pada skala bentuk ternormalisasi $z$-score dan rasio relatif, bukan harga nominal kaku.
 
 ### 1.3 Penyusunan Kolam Analog 80 Saham Terlikuid
-Dari database produksi VPS SQLite (`stock_daily_history`), diekstrak 80 emiten dengan nilai median transaksi harian (*turnover = volume × close*) tertinggi selama 60 hari bursa terakhir.  
+Dari database produksi VPS SQLite (`stock_daily_history`), diekstrak 80 emiten dengan nilai median transaksi harian (*turnover = volume × close*) tertinggi selama 60 hari bursa terakhir.
 - **Top 5 Terlikuid:** BBCA (Rp 724 Miliar/hari), BBRI (Rp 515 Miliar/hari), BMRI (Rp 510 Miliar/hari), BUMI (Rp 498 Miliar/hari), TPIA (Rp 399 Miliar/hari).
 - Emiten target BRPT berada di peringkat ke-16 (Rp 152 Miliar/hari).
 - Seluruh 80 emiten diunduh riwayat panjangnya sejak 2015 ke direktori [`backtest/dua-skenario/data/universe/`](backtest/dua-skenario/data/universe/).
@@ -105,14 +105,14 @@ Tabel kalibrasi membandingkan probabilitas prediksi model ($P_{\text{pred}}$) te
   * Bin 35–45%: Prediksi 40,9% $\rightarrow$ Aktual 37,7% ($N=146$)
   * Bin 45–55%: Prediksi 50,0% $\rightarrow$ Aktual 45,2% ($N=281$)
   * Bin 55–65%: Prediksi 59,4% $\rightarrow$ Aktual 47,7% ($N=266$)
-  * Bin $\ge 65\%$: Prediksi 69,2% $\rightarrow$ **Aktual 51,9%** ($N=81$)  
+  * Bin $\ge 65\%$: Prediksi 69,2% $\rightarrow$ **Aktual 51,9%** ($N=81$)
   *(Saat model sangat yakin turun [<35% naik], kenyataannya harga 62,5% naik!)*
 - **Kolam 79 Saham (OOS $N=670$):**
   * Bin $<35\%$: Prediksi 30,9% $\rightarrow$ **Aktual 39,5%** ($N=43$)
   * Bin 35–45%: Prediksi 40,8% $\rightarrow$ Aktual 46,6% ($N=146$)
   * Bin 45–55%: Prediksi 50,0% $\rightarrow$ Aktual 49,3% ($N=268$)
   * Bin 55–65%: Prediksi 59,0% $\rightarrow$ Aktual 43,0% ($N=179$)
-  * Bin $\ge 65\%$: Prediksi 69,9% $\rightarrow$ **Aktual 52,9%** ($N=34$)  
+  * Bin $\ge 65\%$: Prediksi 69,9% $\rightarrow$ **Aktual 52,9%** ($N=34$)
   *(Kalibrasi membaik secara signifikan: $39{,}5\% < 52{,}9\%$, hubungan monoton naik terpenuhi).*
 
 ---
@@ -201,7 +201,7 @@ Harga penutupan terakhir: **Rp 1.210** (16 Oktober 2026).
 Berdasarkan pengujian walk-forward 11,8 tahun dan validasi empiris gerbang out-of-sample:
 
 ### 1. Bukti Hipotesis Kolam Analog:
-Dugaan pemilik produk bahwa *"riwayat satu saham terlalu pendek sehingga model analog gagal skill"* **TERBUKTI BENAR SECARA EMPIRIS**.  
+Dugaan pemilik produk bahwa *"riwayat satu saham terlalu pendek sehingga model analog gagal skill"* **TERBUKTI BENAR SECARA EMPIRIS**.
 Pada model mandiri BRPT ($N=1$ saham), kalibrasi out-of-sample terbalik secara ekstrem. Namun ketika kolam diperluas ke 80 saham paling likuid di BEI (173.939 jendela kandidat), model analog berhasil:
 - Memperbaiki Brier Skill OOS dari $-0{,}0\%$ menjadi **+3,2%**.
 - Mengembalikan keteraturan kalibrasi probabilistik (kelompok $\ge 65\%$ naik menghasilkan 52,9% kenaikan aktual, lebih tinggi dari kelompok $<35\%$ yang hanya 39,5%).
@@ -214,7 +214,7 @@ Model analog multi-saham tidak bekerja sama baiknya pada seluruh emiten:
 
 ### 3. Klasifikasi Status Akhir:
 
-> ### **STATUS FITUR: LAYAK DITAMPILKAN (EKSPERIMEN)**  
+> ### **STATUS FITUR: LAYAK DITAMPILKAN (EKSPERIMEN)**
 > *(Dengan Batasan Ketat: HANYA untuk emiten yang lolos ketiga kriteria gerbang OOS dengan kolam multi-saham, seperti BRPT dan TLKM. Untuk emiten yang gagal gerbang tampil seperti BBCA, ADRO, dan ANTM, antarmuka wajib mengembalikan status `ANALOG_LEMAH` atau hanya menampilkan pita rentang historis tanpa proyeksi arah).*
 
 *Peringatan Risiko Finansial:* Proyeksi analog historis adalah estimasi probabilistik berbasis kemiripan geometri masa lalu. Pasar modal selalu memiliki risiko rezim baru yang belum pernah terjadi sebelumnya (*black swan*). Tidak ada jaminan keuntungan pasti dalam penggunaan proyeksi ini.

@@ -133,15 +133,17 @@ test('IDTP-04: producer materializes snapshot only after published terminal stat
 });
 
 test('IDTP-05: versioned schedule restores the 15-minute intraday producer before consumers', () => {
-  const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
-  assert.match(
-    cron,
-    /2,17,32,47 9-15 \* \* 1-5 \/home\/ubuntu\/auto-cuan\/deploy\/vps\/run-daytrade-producer\.sh --execute/,
-    'DayTrade FAST producer must run every 15 minutes from 09:02 cadence'
-  );
-  assert.match(cron, /run-fastwatcher\.sh --send/);
-  assert.doesNotMatch(cron, /run-daytrade\.sh --send/,
-    'generic DayTrade snapshot sender must not bypass FastWatcher confirmation ownership');
+ // Q1/P2: producer via job-wrapper daytrade-producer (2,17,32,47 09-15) + fastwatcher --send.
+ // Pola P2: "<menit> <jam> * * 1-5 ... job-wrapper.sh <nama-job> <timeout> bash ...run-daytrade-producer.sh --execute".
+ const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
+ assert.match(
+   cron,
+   /2,17,32,47 09-15 \* \* 1-5[\s\S]*?run-daytrade-producer\.sh --execute/,
+   'DayTrade FAST producer must run every 15 minutes from 09:02 cadence'
+ );
+ assert.match(cron, /run-fastwatcher\.sh --send/);
+ assert.doesNotMatch(cron, /run-daytrade\.sh --send/,
+   'generic DayTrade snapshot sender must not bypass FastWatcher confirmation ownership');
 });
 
 test('IDTP-06: VPS producer wrapper uses canonical env loader and single-flight lock', () => {

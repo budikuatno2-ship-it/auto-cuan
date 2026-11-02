@@ -73,12 +73,13 @@ test('the written snapshot is readable by the bot loader shape', () => {
 });
 
 test('the written snapshot is readable by the AI grounding layer', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'snap-'));
-  try {
-    const { snapshot } = producer.buildSnapshot({
-      screener: payload([ROW_KONGLO]),
-      'nk-screener-results': payload([ROW_NK])
-    });
+ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'snap-'));
+ try {
+   // Q1: hermetis — rootDir temp agar snapshot repo tidak terbaca (FIX-3 preserve).
+   const { snapshot } = producer.buildSnapshot({
+     screener: payload([ROW_KONGLO]),
+     'nk-screener-results': payload([ROW_NK])
+   }, { rootDir: dir });
     const target = producer.snapshotPath(dir);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, JSON.stringify(snapshot));
@@ -99,10 +100,19 @@ test('the written snapshot is readable by the AI grounding layer', () => {
 });
 
 test('buildSnapshot never invents rows or scores', () => {
-  const { snapshot, counts } = producer.buildSnapshot({ screener: payload([]) });
-  assert.strictEqual(counts.screener, 0);
-  assert.strictEqual(snapshot.swing, undefined, 'an empty source must not create an empty bucket');
-  assert.strictEqual(snapshot.daytrade, undefined);
+ // Q1: hermetis — rootDir temp kosong agar snapshot repo 5,7 MB tidak terbaca (FIX-3 preserve).
+ const fs = require('node:fs');
+ const os = require('node:os');
+ const path = require('node:path');
+ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'snap-empty-'));
+ try {
+   const { snapshot, counts } = producer.buildSnapshot({ screener: payload([]) }, { rootDir: dir });
+   assert.strictEqual(counts.screener, 0);
+   assert.strictEqual(snapshot.swing, undefined, 'an empty source must not create an empty bucket');
+   assert.strictEqual(snapshot.daytrade, undefined);
+ } finally {
+   fs.rmSync(dir, { recursive: true, force: true });
+ }
 });
 
 test('rows without a ticker are dropped rather than written', () => {

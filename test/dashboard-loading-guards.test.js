@@ -53,11 +53,12 @@ test('normal dashboard fetch only requests locked web-daily-picks (no admin prev
 
 
 test('dashboard detail onclick handlers reference an existing openDashboardPickDetail function', () => {
-  assert.ok(html.indexOf('function openDashboardPickDetail(ticker)') >= 0, 'openDashboardPickDetail must exist');
-  assert.ok(html.indexOf("openScrDetail(r, /Day Trade/i.test(r.category || '') ? 'daytrade' : 'konglo')") >= 0,
-    'openDashboardPickDetail must route to screener detail with daytrade/konglo type');
-  const dashboardStart = html.indexOf('<!-- Compact Top 5 + Monitor -->');
-  const dashboardEnd = html.indexOf('<!-- Modal Detail Screener -->');
+ assert.ok(html.indexOf('function openDashboardPickDetail(ticker)') >= 0, 'openDashboardPickDetail must exist');
+ assert.ok(html.indexOf("openScrDetail(r, /Day Trade/i.test(r.category || '') ? 'daytrade' : 'konglo')") >= 0,
+   'openDashboardPickDetail must route to screener detail with daytrade/konglo type');
+ // Q1: komentar C4 menambahkan sufiks "(C4: ...)" pada marker; cocokkan awalan saja.
+ const dashboardStart = html.indexOf('<!-- Compact Top 5 + Monitor');
+ const dashboardEnd = html.indexOf('<!-- Modal Detail Screener -->');
   const dashboardHtml = html.slice(dashboardStart, dashboardEnd > dashboardStart ? dashboardEnd : undefined);
   const detailRefs = dashboardHtml.match(/openDashboardPickDetail\(/g) || [];
   assert.ok(detailRefs.length > 0, 'dashboard should have detail click handlers');

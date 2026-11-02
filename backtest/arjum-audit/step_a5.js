@@ -5,7 +5,7 @@ async function checkWeb() {
   console.log('=== TEST 1: BBCA (Saham dengan file F ASLI) ===');
   const bbcaAll = await bandarmologiService.getBandarmologiData('BBCA', { date: '2026-10-16', flow: 'all' });
   const bbcaF = await bandarmologiService.getBandarmologiData('BBCA', { date: '2026-10-16', flow: 'F' });
-  
+
   const bbcaAllBuy = (bbcaAll.broker_summary.gross_buyers || []).reduce((a, b) => a + Number(b.bval || b.buy_val || 0), 0);
   const bbcaFBuy = (bbcaF.broker_summary.gross_buyers || []).reduce((a, b) => a + Number(b.bval || b.buy_val || 0), 0);
   console.log({

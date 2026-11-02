@@ -52,8 +52,11 @@ function fileFor(ticker, date) {
 async function main() {
   loadEnvFile();
   const dryRun = process.argv.includes('--dry-run');
-  const dailyLimit = Number(arg('daily-limit', process.env.ARJUM_DAILY_QUOTA || 5000));
-  const reserve = Number(arg('reserve', process.env.ARJUM_EOD_RESERVE || 1100));
+  // P1: limit/reserve dinamis dari modul pusat; flag CLI/env tetap override bila diisi.
+  const quotaState = require('../lib/quota-state');
+  const dynSnap = quotaState.getQuotaSnapshot();
+  const dailyLimit = Number(arg('daily-limit', process.env.ARJUM_DAILY_QUOTA || dynSnap.limit));
+  const reserve = Number(arg('reserve', process.env.ARJUM_EOD_RESERVE || quotaState.reserveFloorFor(new Date())) || 0);
   const effective = Math.max(0, dailyLimit - reserve);
   const delayMs = Number(arg('delay', 260));
 

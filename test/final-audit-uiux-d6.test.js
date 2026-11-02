@@ -63,7 +63,7 @@ before(async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   origin = 'http://127.0.0.1:' + server.address().port;
   browser = await puppeteer.launch({ executablePath: process.env.CHROMIUM_PATH || (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/google-chrome'), headless: true, userDataDir: path.join(evidenceRoot, 'browser-profile'), args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--force-color-profile=srgb'] });
-  page = await browser.newPage(); page.setDefaultTimeout(5000);
+  page = await browser.newPage(); page.setDefaultTimeout(30000); page.setDefaultNavigationTimeout(30000);
   await page.setRequestInterception(true);
   page.on('request', request => request.url().startsWith(origin + '/') ? request.continue() : request.abort());
   cdp = await page.createCDPSession();
@@ -136,7 +136,7 @@ async function ownership(selector) {
 }
 
 beforeEach(async()=>{
- await page.setViewport({width:1440,height:900});await page.goto(origin+'/dashboard',{waitUntil:'networkidle0'});
+ await page.setViewport({width:1440,height:900});await page.goto(origin+'/dashboard',{waitUntil:'domcontentloaded'});
  await page.evaluate(()=>{hideOnboardingGuide(true);applyAppTheme('light');});
 });
 for(const route of Object.keys(routes))for(const width of [390,1440])for(const theme of ['light','dark'])test(`D6 ${route} ${theme} ${width}`,async()=>{

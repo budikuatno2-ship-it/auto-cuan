@@ -8,7 +8,7 @@
  * - Test symbols in order: COMPOSITE, IHSG, ^JKSE.
  * - Max 3 requests total; stops as soon as one symbol succeeds.
  * - Saves response payload to data/arjum-data/_staging/ihsg-test/{symbol}.json.
- * - Compares last 5 closes with Yahoo Finance ^JKSE (16 Okt 2026 close: 5185.1).
+ * - Compares last 5 closes with Yahoo Finance ^JKSE (referensi harian berjalan).
  *   Difference > 0.5% considered a failure.
  * - Quota guard: will NOT execute if remaining quota < 400.
  */
