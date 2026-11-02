@@ -148,9 +148,11 @@ test('11. existing screener scoring output is byte-identical (regression lock)',
   assert.equal(data.support, 1024);
   assert.equal(data.resistance, 1042);
   assert.equal(data.atr14, 12.79);
+  // FIX-4 intraday volume-pace projection: locked fixture now scores
+  // pace-adjusted values (58/11), not the pre-FIX-4 raw ratio (56/7).
   const s = eng.scoreDayTrade(data, 'morning', 'UTAMA', null);
-  assert.equal(s.daytrade_score, 56);
-  assert.equal(s.liquidity_score, 7);
+  assert.equal(s.daytrade_score, 58);
+  assert.equal(s.liquidity_score, 11);
   assert.equal(s.momentum_score, 18);
   assert.equal(s.status, 'WAIT_PULLBACK');
 });
