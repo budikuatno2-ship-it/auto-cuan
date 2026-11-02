@@ -1,0 +1,13 @@
+{
+  "dailyLimitOverride": null,
+  "planName": "Supporter",
+  "planExpiresAt": "2026-11-17T23:59:59+07:00",
+  "postExpiryDefaultLimit": 1000,
+  "preExpiryDefaultLimit": 18080,
+  "reserveFloorWeekdayDaytime": 3000,
+  "reserveFloorWeekdayNight": 200,
+  "reserveFloorWeekend": 50,
+  "hardStopWIB": "23:50",
+  "forbiddenWindowStartWIB": "23:50",
+  "forbiddenWindowEndWIB": "00:10"
+}
