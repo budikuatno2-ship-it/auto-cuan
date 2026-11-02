@@ -125,7 +125,10 @@ test('D1 sort and reference filters preserve zero/missing and HSC tri-state', as
   record('MISSING_AND_TRISTATE', actual);
 });
 test('D1 keyboard selection expands the card and keeps list context preserved', async () => {
-  await search('BBCA'); await page.select('#marketStructureSortSelect', 'ticker_asc');
+  await search('BBCA');
+  await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 1, { timeout: 8000 });
+  await page.select('#marketStructureSortSelect', 'ticker_asc');
+  await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 1, { timeout: 8000 });
   await page.focus('#marketStructureAccordionContainer [data-ticker="BBCA"] .ac-accordion-header');
   const outline = await page.evaluate(() => getComputedStyle(document.activeElement).outlineWidth);
   assert.ok(parseFloat(outline) >= 2);
@@ -134,13 +137,13 @@ test('D1 keyboard selection expands the card and keeps list context preserved', 
   await page.waitForFunction(() => {
     const card = document.querySelector('#marketStructureAccordionContainer [data-ticker="BBCA"]');
     return card && card.classList.contains('is-expanded');
-  });
+  }, { timeout: 8000 });
   assert.equal((await rows())[0].pressed, 'true');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => {
     const card = document.querySelector('#marketStructureAccordionContainer [data-ticker="BBCA"]');
     return card && !card.classList.contains('is-expanded');
-  });
+  }, { timeout: 8000 });
   assert.equal(await page.$eval('#marketStructureSearchInput', el => el.value), 'BBCA');
   assert.equal(await page.$eval('#marketStructureSortSelect', el => el.value), 'ticker_asc');
   assert.deepEqual((await rows()).map(row => row.ticker), ['BBCA']);
@@ -207,7 +210,8 @@ for (const [theme, width] of [['light',320],['light',390],['light',768],['light'
     assert.equal(await page.$eval('#marketStructureAccordionContainer [data-ticker="TLKM"]', el => el.classList.contains('is-expanded')), true);
     // The side pane stays out of the way: the accordion owns the full width.
     assert.equal(await page.$eval('#marketStructureDetailPane', el => !!el.getBoundingClientRect().height), false);
-    await page.keyboard.press('Enter'); await pause(100);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('#marketStructureAccordionContainer [data-ticker="TLKM"]')?.classList.contains('is-expanded') === false, { timeout: 8000 });
     assert.equal(await page.$eval('#marketStructureAccordionContainer [data-ticker="TLKM"]', el => el.classList.contains('is-expanded')), false);
     assert.equal(await page.$eval('#marketStructureSearchInput', el => el.value), 'TLKM');
     assert.equal(await page.evaluate(() => document.activeElement.dataset.ticker || document.activeElement.closest('.ac-accordion-card')?.dataset.ticker), 'TLKM'); await search('');
