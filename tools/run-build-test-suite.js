@@ -127,8 +127,10 @@ if (isFullSuite) {
 const suiteLabel = isFullSuite ? 'Full Regression Suite' : 'Smoke/Contract Build Suite';
 console.log(`\n--- Running ${suiteLabel} (${existingFiles.length} test files from ${path.basename(curatedConfigFile)}) ---`);
 
-// Smoke suite runs in a single fast batch (~8s), full regression uses safe batches
-const BATCH_SIZE = isFullSuite ? (process.env.VERCEL === '1' ? 10 : 20) : 50;
+ // Smoke suite runs in a single fast batch (~8s), full regression uses safe batches
+ // D1: browser-heavy batches (D1-D9/mobile) flaky under parallel load (nav timeout 5s).
+ // Shrink to 10 so each node --test process holds fewer concurrent Chromium pages.
+const BATCH_SIZE = isFullSuite ? 10 : 50;
 let failedBatches = 0;
 let passedFiles = 0;
 const failingFiles = [];

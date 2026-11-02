@@ -34,7 +34,7 @@ async function startFixture() {
  let browser;
  try {
   browser = await puppeteer.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',headless:true,args:['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage']});
-  const page = await browser.newPage(); page.setDefaultTimeout(7000);
+  const page = await browser.newPage(); page.setDefaultTimeout(30000); page.setDefaultNavigationTimeout(30000);
   await page.setRequestInterception(true);
   page.on('request', req => req.url().startsWith(origin + '/') ? req.continue() : req.abort());
   await page.setViewport({width:390,height:900});
