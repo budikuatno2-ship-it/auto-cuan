@@ -56,7 +56,7 @@ for (let i = 0; i < tickers.length; i++) {
       const startTail = Math.max(0, stat.size - readTailLen);
       const fd = fs.openSync(filePath, 'r');
       fs.readSync(fd, bufTail, 0, readTailLen, startTail);
-      
+
       const tailStr = bufTail.toString('utf8', 0, readTailLen);
       let m = tailStr.match(/"flow"\\s*:\\s*"([^"]+)"/);
       if (m) {

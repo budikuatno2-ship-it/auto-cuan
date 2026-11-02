@@ -1,11 +1,11 @@
 # LAPORAN EVALUASI PARAMETER `flow` PADA ENDPOINT ARJUM BROKER SUMMARY
 
-> **Klasifikasi:** Laporan Audit Kuantitatif API & Integritas Data Aliran Asing (*Foreign Flow*)  
-> **Target Endpoint:** `GET https://stock.arjum.com/api/broker-summary/{code}`  
-> **Tanggal Pengujian:** 17 Oktober 2026  
-> **Subjek Analisis:** Saham Barito Pacific Tbk (`BRPT`), Sesi 8 September 2026  
-> **File Laporan:** [`backtest/broksum/REPORT_FLOW_FOREIGN.md`](backtest/broksum/REPORT_FLOW_FOREIGN.md)  
-> **Total Request Digunakan:** 6 request (sesuai batas keras maksimal 6 GET, tanpa pencetakan API key)  
+> **Klasifikasi:** Laporan Audit Kuantitatif API & Integritas Data Aliran Asing (*Foreign Flow*)
+> **Target Endpoint:** `GET https://stock.arjum.com/api/broker-summary/{code}`
+> **Tanggal Pengujian:** 17 Oktober 2026
+> **Subjek Analisis:** Saham Barito Pacific Tbk (`BRPT`), Sesi 8 September 2026
+> **File Laporan:** [`backtest/broksum/REPORT_FLOW_FOREIGN.md`](backtest/broksum/REPORT_FLOW_FOREIGN.md)
+> **Total Request Digunakan:** 6 request (sesuai batas keras maksimal 6 GET, tanpa pencetakan API key)
 > **Prinsip:** AntiSlop §107 — Bukti empiris presisi, tanpa asumsi atau fabrikasi data.
 
 ---
@@ -128,7 +128,7 @@ Pemeriksaan menyeluruh terhadap pemanggilan `fetchBrokerSummary` di seluruh repo
    - Job terjadwal EOD `deploy/vps/run-daily-market-update.sh` hanya menjalankan `tools/run-daily-broker-update.js` yang menarik `flow: "all"`.
 
 ### 3.3 Kesimpulan Audit Penyimpanan:
-**Broker summary versi asing (`flow=F`) BELUM PERNAH diambil secara batch/terjadwal maupun disimpan ke basis data VPS.**  
+**Broker summary versi asing (`flow=F`) BELUM PERNAH diambil secara batch/terjadwal maupun disimpan ke basis data VPS.**
 Semua data broker summary yang tersimpan di disk VPS sejak 2 Januari 2026 hingga 16 Oktober 2026 adalah versi **agregat seluruh investor (`flow: "all"`)**.
 
 ---

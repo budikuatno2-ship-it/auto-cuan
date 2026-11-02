@@ -1,16 +1,16 @@
 # LAPORAN AUDIT FORENSIK TOTAL: 12 MANDAT UTAMA PEMILIK SISTEM AUTO-CUAN
-**Tanggal Dokumen:** 25 Oktober 2026  
-**Status Sifat:** 100% READ-ONLY FORENSIC MEGA AUDIT  
-**Target File Output:** [`backtest/arjum-audit/MEGA_AUDIT_20261024/06_AUDIT_LENGKAP_12_POIN_PEMILIK.md`](backtest/arjum-audit/MEGA_AUDIT_20261024/06_AUDIT_LENGKAP_12_POIN_PEMILIK.md)  
-**Auditor:** Roo Autonomous Software Engineer  
-**Lingkungan Investigasi:** Workspace Lokal (`d:\auto-cuan-2`) & Remote Production VPS Oracle Cloud (`ubuntu@168.110.221.197`) via SSH Keyed Connection  
+**Tanggal Dokumen:** 25 Oktober 2026
+**Status Sifat:** 100% READ-ONLY FORENSIC MEGA AUDIT
+**Target File Output:** [`backtest/arjum-audit/MEGA_AUDIT_20261024/06_AUDIT_LENGKAP_12_POIN_PEMILIK.md`](backtest/arjum-audit/MEGA_AUDIT_20261024/06_AUDIT_LENGKAP_12_POIN_PEMILIK.md)
+**Auditor:** Roo Autonomous Software Engineer
+**Lingkungan Investigasi:** Workspace Lokal (`d:\auto-cuan-2`) & Remote Production VPS Oracle Cloud (`ubuntu@168.110.221.197`) via SSH Keyed Connection
 **Metodologi:** Sensus Fisik Data Disk VPS, Pembacaan Kode Baris-demi-Baris Tanpa Lewat, Analisis Log Aktual 24–25 Oktober 2026, dan Verifikasi Integrasi End-to-End.
 
 ---
 
 ## 1. AUDIT SENSUS DATA 962 SAHAM & IHSG (2 JANUARI – 23 OKTOBER 2026) DI VPS
 
-Sensus dijalankan menggunakan skrip inspeksi Node.js murni read-only langsung pada filesystem VPS `/home/ubuntu/auto-cuan/data/`.  
+Sensus dijalankan menggunakan skrip inspeksi Node.js murni read-only langsung pada filesystem VPS `/home/ubuntu/auto-cuan/data/`.
 Kalender bursa IDX mencatat tepat **193 hari bursa aktif** dari tanggal `2026-01-02` s.d. `2026-10-23` (mengacu pada [`lib/idx-trading-calendar.js:32`](lib/idx-trading-calendar.js:32) dan libur bursa resmi). Universe emiten terdaftar adalah **962 saham** (`data/daytrade-observe-tickers.txt`). Total sel data teoritis adalah $962 \times 193 = \mathbf{185.666\text{ sel}}$.
 
 ### 1A. Sensus Broker Summary ALL (`data/arjum-data/broker-summary/`)
@@ -112,7 +112,7 @@ Kalender bursa IDX mencatat tepat **193 hari bursa aktif** dari tanggal `2026-01
 ## 3. AUDIT PEMBAGIAN KUOTA ARJUM 18.080/HARI (5.000 HARIAN VS ~13.000 BACKFILL)
 
 ### 3.1 Investigasi Realitas Log Minggu 25 Okt 2026 (Baru Terpakai 708 Request)
-Pemilik mendapati bahwa pada Minggu 25 Okt pukul 09:44 WIB kuota baru terpakai 708 request dari 18.080.  
+Pemilik mendapati bahwa pada Minggu 25 Okt pukul 09:44 WIB kuota baru terpakai 708 request dari 18.080.
 **Bukti Forensik Log VPS:** Berkas `/home/ubuntu/auto-cuan-runner/logs/catchup-missing-dates.log` baris 171–340 membuktikan secara nyata:
 ```json
 [2026-10-25 00:07:01 WIB] [CATCHUP] START argv=--dates 2026-10-22,2026-10-21,2026-10-20,2026-10-19 --batch 50
@@ -126,7 +126,7 @@ Pemilik mendapati bahwa pada Minggu 25 Okt pukul 09:44 WIB kuota baru terpakai 7
 [2026-10-25 00:18:24 WIB] [CATCHUP] END rc=0
 ```
 * **Akar Masalah:**
-  1. Parameter `--batch 50` pada crontab membatasi perulangan pada [`tools/catchup-missing-dates.js:204`](tools/catchup-missing-dates.js:204):  
+  1. Parameter `--batch 50` pada crontab membatasi perulangan pada [`tools/catchup-missing-dates.js:204`](tools/catchup-missing-dates.js:204):
      `const batch = union.slice(0, opts.batch);`
   2. Untuk masing-masing tanggal, skrip HANYA mengambil 50 emiten pertama. Setelah memproses 50 emiten untuk 4 tanggal ($108 + 200 + 200 + 200 = 708$ request), loop selesai dan skrip keluar dengan status sukses (`rc=0`).
   3. Skrip tidak melakukan perulangan batch berikutnya (misal batch 51–100, dst.), sehingga kuota akhir pekan sebesar ~16.500 yang bebas dipakai malah dibiarkan menganggur!

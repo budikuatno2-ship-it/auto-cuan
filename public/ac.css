@@ -565,4 +565,3 @@ body:has([data-chart-single="1"]) .mm,body:has([data-chart-single="1"]) .mata-wr
 .c9-pulse{animation:none!important}
 *,*::before,*::after{transition-duration:0.01ms!important;animation-duration:0.01ms!important}
 }
-

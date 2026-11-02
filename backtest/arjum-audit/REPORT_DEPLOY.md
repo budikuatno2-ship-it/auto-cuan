@@ -1,11 +1,11 @@
 # LAPORAN DEPLOYMENT PRODUKSI: BRANCH BROKSUM ALL + FOREIGN & PERBAIKAN PETA CRON
 
-**Tanggal & Waktu Deploy:** Minggu, 18 Oktober 2026, 09:15 WIB (02:15 UTC)  
-**Target Lingkungan:** VPS Produksi Oracle Ubuntu (`168.110.221.197`)  
-**Git Tag Pra-Deploy:** [`pre-broksum-deploy-20261018`](deploy/vps/final-schedule.cron) (berbasis commit `64ca84a1`)  
-**Branch Terdeploy:** [`feat/broksum-all-foreign`](deploy/vps/final-schedule.cron)  
-**HEAD Commit:** `13b8e5a1` (`chore(cron): update final-schedule.cron for broksum deploy`)  
-**Status Layanan:** `autocuan-web` (PM2 PID `4162975`) online & responsif (HTTP 200 OK)  
+**Tanggal & Waktu Deploy:** Minggu, 18 Oktober 2026, 09:15 WIB (02:15 UTC)
+**Target Lingkungan:** VPS Produksi Oracle Ubuntu (`168.110.221.197`)
+**Git Tag Pra-Deploy:** [`pre-broksum-deploy-20261018`](deploy/vps/final-schedule.cron) (berbasis commit `64ca84a1`)
+**Branch Terdeploy:** [`feat/broksum-all-foreign`](deploy/vps/final-schedule.cron)
+**HEAD Commit:** `13b8e5a1` (`chore(cron): update final-schedule.cron for broksum deploy`)
+**Status Layanan:** `autocuan-web` (PM2 PID `4162975`) online & responsif (HTTP 200 OK)
 
 ---
 
@@ -90,7 +90,7 @@ Berikut perbandingan resmi crontab sebelum vs sesudah deployment:
 +#   * J3: Generator lokal broker-accumulation dinonaktifkan (J1 single writer).
 +#   * Backfill otomatis harian & akhir pekan (00:07 & 19:30 WIB) ditambahkan.
  CRON_TZ=Asia/Jakarta
- 
+
  # ── INFRA HARIAN ──────────────────────────────────────────────────────────
  # Backfill candle historis (tengah malam)
  5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
@@ -106,7 +106,7 @@ Berikut perbandingan resmi crontab sebelum vs sesudah deployment:
 +
  # Lifecycle evaluator (sore, setelah bursa tutup)
  30 16 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
- 
+
  # ── EOD MARKET DATA / BROKSUM INGESTION (16:30-17:30 WIB) ─────────────────
 -30,45 16 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
 -0,15,30,45 17 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
@@ -114,7 +114,7 @@ Berikut perbandingan resmi crontab sebelum vs sesudah deployment:
 +30,45 16 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh --accum-source=api --insider-mode=daily >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
 +0,15,30,45 17 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh --accum-source=api --insider-mode=daily >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
 +30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh --final --accum-source=api --insider-mode=daily >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
- 
+
 -# ── KALKULASI AKUMULASI BANDAR (tepat 18:00 WIB) ──────────────────────────
 -# 0 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-broker-accumulation.sh >> /home/ubuntu/auto-cuan-runner/logs/broker-accumulation.log 2>&1
 +# ── KALKULASI AKUMULASI BANDAR (DINONAKTIFKAN — 2026-10-18) ───────────────
@@ -133,7 +133,7 @@ Pengecekan live di VPS produksi menunjukkan seluruh servis berjalan normal:
   ```bash
   curl -s "http://127.0.0.1:3000/api/sector-hot?action=bandarmologi&ticker=BBCA&date=latest&flow=F"
   # Mengembalikan data Foreign BBCA dengan status from_cache: true, is_demo: false, latensi <10ms
-  
+
   curl -s "http://127.0.0.1:3000/api/sector-hot?action=bandarmologi&ticker=BBCA&date=latest&flow=D"
   # Mengembalikan data Domestik BBCA hasil komputasi All - F dengan status from_cache: true, latensi <10ms
   ```

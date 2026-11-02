@@ -7,7 +7,7 @@ if (fs.existsSync(logPath)) {
   const content = fs.readFileSync(logPath, 'utf8');
   const lines = content.split('\n');
   console.log('Total lines in backfill-foreign.log:', lines.length);
-  
+
   // Find lines with timestamps or start/stop
   const headLines = lines.slice(0, 30);
   console.log('Head:');

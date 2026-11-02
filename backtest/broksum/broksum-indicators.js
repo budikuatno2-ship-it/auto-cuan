@@ -108,7 +108,7 @@ function parseDailyBroksum(dailyBroksumJson) {
 
 /**
  * Compute broker summary metrics across a time-series of daily broker summaries.
- * 
+ *
  * @param {Array<{date: string, broksum: object, close: number, prevClose?: number}>} series
  * @returns {Array<object>} Output series matching prompt contract
  */

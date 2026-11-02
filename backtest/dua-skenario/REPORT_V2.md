@@ -1,13 +1,13 @@
 # LAPORAN EVALUASI DUA SKENARIO v2: DATA ARJUM & EVALUASI SELURUH BURSA
 
-> **Klasifikasi:** Laporan Audit Kuantitatif Replay Engine v2 & Kalibrasi Seluruh Bursa BEI  
-> **Target Analisis:** Seluruh Bursa Efek Indonesia (957 Emiten Terdaftar di `idx-tickers.csv`)  
-> **Periode Analisis:** 2024 s.d. 2026 (Dataset Arjum 500 Sesi) & 2015 s.d. 2026 (Dataset Panjang Yahoo Suplemen)  
-> **Engine Port:** [`backtest/dua-skenario/dua-skenario-v2.js`](backtest/dua-skenario/dua-skenario-v2.js)  
-> **Runner Evaluasi:** [`backtest/dua-skenario/run-v2.js`](backtest/dua-skenario/run-v2.js)  
-> **Data Input:** [`backtest/dua-skenario/data/all/`](backtest/dua-skenario/data/all/) (957 file emiten)  
-> **Hasil Evaluasi:** [`backtest/dua-skenario/hasil-v2-evaluasi-seed42.json`](backtest/dua-skenario/hasil-v2-evaluasi-seed42.json) & [`backtest/dua-skenario/hasil-v2-evaluasi-seed43.json`](backtest/dua-skenario/hasil-v2-evaluasi-seed43.json)  
-> **Hasil Proyeksi Seluruh Bursa:** [`backtest/dua-skenario/hasil-v2-proyeksi.json`](backtest/dua-skenario/hasil-v2-proyeksi.json)  
+> **Klasifikasi:** Laporan Audit Kuantitatif Replay Engine v2 & Kalibrasi Seluruh Bursa BEI
+> **Target Analisis:** Seluruh Bursa Efek Indonesia (957 Emiten Terdaftar di `idx-tickers.csv`)
+> **Periode Analisis:** 2024 s.d. 2026 (Dataset Arjum 500 Sesi) & 2015 s.d. 2026 (Dataset Panjang Yahoo Suplemen)
+> **Engine Port:** [`backtest/dua-skenario/dua-skenario-v2.js`](backtest/dua-skenario/dua-skenario-v2.js)
+> **Runner Evaluasi:** [`backtest/dua-skenario/run-v2.js`](backtest/dua-skenario/run-v2.js)
+> **Data Input:** [`backtest/dua-skenario/data/all/`](backtest/dua-skenario/data/all/) (957 file emiten)
+> **Hasil Evaluasi:** [`backtest/dua-skenario/hasil-v2-evaluasi-seed42.json`](backtest/dua-skenario/hasil-v2-evaluasi-seed42.json) & [`backtest/dua-skenario/hasil-v2-evaluasi-seed43.json`](backtest/dua-skenario/hasil-v2-evaluasi-seed43.json)
+> **Hasil Proyeksi Seluruh Bursa:** [`backtest/dua-skenario/hasil-v2-proyeksi.json`](backtest/dua-skenario/hasil-v2-proyeksi.json)
 > **Prinsip AntiSlop §107:** Bukti empiris tanpa kompromi, kejujuran matematika di atas hasil yang terlihat bagus, tanpa klaim pasti untung.
 
 ---
@@ -206,7 +206,7 @@ Meskipun gagal pada prediksi arah, model analog **sangat akurat dalam mengestima
 
 ### 4. Klasifikasi Resmi:
 
-> ### **STATUS FITUR: TAMPILKAN RENTANG SAJA**  
+> ### **STATUS FITUR: TAMPILKAN RENTANG SAJA**
 > *(Sistem dilarang keras menampilkan probabilitas arah naik/turun atau melabeli Skenario A / Skenario B di antarmuka publik. Sistem HANYA diizinkan menampilkan estimasi rentang harga konservatif [Pita p10 s.d. p90] untuk 321 saham yang berstatus `RENTANG_SAJA`, dan menyembunyikan proyeksi sepenuhnya [`SEMBUNYIKAN`] untuk 533 saham lainnya).*
 
 *Peringatan Risiko Finansial:* Estimasi rentang harga p10–p90 berbasis analogi historis adalah proyeksi dispersi statistik masa lalu, bukan batas pasti pergerakan pasar. Harga saham di Bursa Efek Indonesia dapat menembus rentang proyeksi sewaktu-waktu akibat sentimen fundamental, aksi korporasi, atau volatilitas pasar makro.

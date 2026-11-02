@@ -99,17 +99,17 @@ test('Langkah 4: Refactor backfill-broksum.js unit tests', async (t) => {
     // Mode weekend returns config floor
     const weekendReserve = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekend');
     assert.equal(weekendReserve, expWeekend, 'Weekend reserve must follow config/quota.json');
- 
+
     // Monday morning (weekday before EOD .done) returns daytime floor
     const mondayMorning = new Date('2026-10-19T03:00:00.000Z'); // 10:00 WIB
     const weekdayPreEod = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekday', mondayMorning);
     assert.equal(weekdayPreEod, expDay, 'Weekday pre-EOD reserve must follow config/quota.json');
- 
+
     // Seed .done sentinel for 2026-10-19
     const eodDir = path.join(targetDir, '_eod');
     fs.mkdirSync(eodDir, { recursive: true });
     fs.writeFileSync(path.join(eodDir, '2026-10-19.done'), '{}');
- 
+
     // Weekday after EOD .done sentinel returns night floor (WEEKDAY_RESERVE)
     const weekdayPostEod = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekday', mondayMorning);
     assert.equal(weekdayPostEod, expNight, 'Weekday post-EOD reserve must follow config/quota.json');

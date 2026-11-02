@@ -1,11 +1,11 @@
 # LAPORAN EVALUASI ENDPOINT ARJUM `/api/done-details` UNTUK LIQUIDITY PRESSURE MODEL (LPM) BERBASIS TRANSAKSI
 
-> **Klasifikasi:** Laporan Teknis Evaluasi API & Kelayakan Order Flow / Tape Reading  
-> **Target Endpoint:** `GET https://stock.arjum.com/api/done-details`  
-> **Tanggal Evaluasi:** 17 Oktober 2026  
-> **Lingkungan Pengujian:** Oracle VPS Produksi (`ubuntu@168.110.221.197`, Read-Only)  
-> **Total Request Digunakan:** 29 request (dari batas keras maksimal 40 request, rate limit $\le 2\text{ req/detik}$)  
-> **Artefak Sampel:** [`backtest/lpm-done/sample_BRPT_20261016.json`](backtest/lpm-done/sample_BRPT_20261016.json) (200 baris pertama transaksi BRPT 16 Okt 2026)  
+> **Klasifikasi:** Laporan Teknis Evaluasi API & Kelayakan Order Flow / Tape Reading
+> **Target Endpoint:** `GET https://stock.arjum.com/api/done-details`
+> **Tanggal Evaluasi:** 17 Oktober 2026
+> **Lingkungan Pengujian:** Oracle VPS Produksi (`ubuntu@168.110.221.197`, Read-Only)
+> **Total Request Digunakan:** 29 request (dari batas keras maksimal 40 request, rate limit $\le 2\text{ req/detik}$)
+> **Artefak Sampel:** [`backtest/lpm-done/sample_BRPT_20261016.json`](backtest/lpm-done/sample_BRPT_20261016.json) (200 baris pertama transaksi BRPT 16 Okt 2026)
 > **Prinsip AntiSlop §107:** Bukti empiris tanpa fabrikasi, field absen ditulis "tidak ada", tanpa mencetak kunci rahasia.
 
 ---
@@ -196,7 +196,7 @@ Data dari endpoint `/api/done-details` adalah **emas kuantitatif** untuk bandarm
 
 Sesuai kriteria kesimpulan baku pada prompt:
 
-> ### **KESIMPULAN: RIWAYAT TERSEDIA**  
+> ### **KESIMPULAN: RIWAYAT TERSEDIA**
 > **(Sejak 8 September 2026 / rentang retensi bergulir ~30–40 hari kalender terakhir)**
 
 ### Implikasi Operasional:

@@ -17,7 +17,7 @@ async function pull(ticker){
   const periods=['quarterly','annually'];
   const dir=path.join('data','arjum-data','financial-statements',ticker);
   fs.mkdirSync(dir,{recursive:true});
-  
+
   for(const type of types){
     for(const period of periods){
       try{
