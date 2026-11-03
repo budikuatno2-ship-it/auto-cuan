@@ -178,6 +178,34 @@ module.exports = {
         AUTO_CUAN_MARKET_DATA_VPS: '1',
         NODE_OPTIONS: '--dns-result-order=ipv4first --no-network-family-autoselection'
       }
+    },
+    {
+      // V3-F01 (2026-11-03 DARURAT): scheduler permanen tiap menit cek WIB.
+      // 00:01 reset+catchup; 00:15-15:30 backfill terukur; 09:00-16:05 FastWatcher
+      // 0 kuota; 16:30&17:00 candle EOD 100% Yahoo; 19:45 Broksum ALL+Foreign;
+      // 20:25&21:10 domestik+akumulasi; 21:25 screener; 21:45 telegram;
+      // 22:00&22:20 insider+Q2; 22:45-23:49 night burn hingga 23:50 hard-stop.
+      name: 'auto-cuan-scheduler',
+      script: path.join(ROOT, 'scripts', 'scheduler-daemon.js'),
+      cwd: ROOT,
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: true,
+      max_restarts: 20,
+      restart_delay: 5000,
+      kill_timeout: 10000,
+      time: true,
+      merge_logs: true,
+      max_memory_restart: '200M',
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Jakarta',
+        AUTO_CUAN_ROOT: ROOT,
+        AUTO_CUAN_MARKET_DATA_VPS: '1',
+        CANDLE_SOURCE: 'yahoo',
+        CANDLE_CROSSCHECK: 'false',
+        NODE_OPTIONS: '--dns-result-order=ipv4first --no-network-family-autoselection'
+      }
     }
   ]
 };

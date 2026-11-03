@@ -1,11 +1,14 @@
-# BEGIN AUTO-CUAN FINAL SCHEDULE — P2 WIB LOGIS & PENYERAP KUOTA PENUH
+# BEGIN AUTO-CUAN FINAL SCHEDULE — V3-F01 PERMANEN (P2 + DARURAT 2026-11-03)
 # Timezone: Asia/Jakarta (WIB = UTC+7). Semua jam di bawah adalah WIB.
-# P2 — 2026-10-30 | Branch: feat/daytrade-screener-v1
+# V3-F01 — 2026-11-03 | Branch: feat/daytrade-screener-v1
 # Semua baris dipanggil via deploy/vps/job-wrapper.sh <nama-job> <timeout-detik> <perintah>.
-# Wrapper otomatis: TZ, PATH, cd, load .env aman, hard-stop 23:50-00:10,
+# Wrapper otomatis: TZ, PATH, cd, load .env VPS aman, hard-stop 23:50-00:10,
 # flock -n /tmp/autocuan-<nama-job>.lock, nice/ionice, timeout -k 15,
 # heartbeat data/job-heartbeat/<nama-job>.json + log logs/cron/<nama-job>.log.
-# Kuota Arjum: dinamis via config/quota.json + lib/quota-state.js Fase P1 (tanpa hardcode).
+# Kuota Arjum: dinamis via config/quota.json + lib/quota-state.js (V3-F01 reset harian).
+# Aturan V3-F01: weekdayBackfillLimit=13000, reserveFloorWeekday=5000 (exit 0 mutlak
+# saat sisa<=5000), weekend full 18080 reserveFloorWeekend=0.
+# pending-catchup-queue.json dieksekusi 00:00:01/00:01 WIB.
 # HARD STOP: 23:50 WIB (config/quota.json hardStopWIB). NOL entri mulai 23:50-00:10 WIB.
 CRON_TZ=Asia/Jakarta
 TZ=Asia/Jakarta
@@ -25,8 +28,16 @@ MAILTO=""
 # Sektor Hot Intraday 09:05-15:35 tiap 30 mnt (0 kuota, agregasi candle lokal).
 5,35 09-15 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh sector-hot-intraday 600 bash /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh --force-local
 
-# ── SORE EOD Senin-Jumat (candle + evaluasi, 0 kuota Yahoo kecuali IHSG 1 req) ──
-# Candle EOD 964+IHSG Yahoo 0 kuota 17:00.
+# ── RESET + CATCHUP 00:00/00:01 (V3-F01 permanen) ──
+# pending-catchup-queue.json dieksekusi 00:00:01/00:01 WIB (reset harian + kejar tanggal bolong).
+1 0 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh catchup-0001 600 /home/ubuntu/.local/node-v22/bin/node tools/catchup-missing-dates.js
+# Backfill terukur weekday 00:15-15:30 (cap 13000 via floor 5000) — estafet dengan :35.
+15 0 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-0015 3300 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 5000
+
+# ── SORE EOD Senin-Jumat (candle 100% Yahoo 0 kuota + deteksi libur) ──
+# Candle EOD 963 saham 100% Yahoo 0 kuota 16:30 (deteksi libur via kalender IDX).
+30 16 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh daily-candles-1630 1800 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh
+# Candle EOD 963 saham 100% Yahoo 0 kuota 17:00.
 0 17 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh daily-candles 1800 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh
 # IHSG 17:05 (1 req Arjum).
 5 17 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh ihsg-candle 600 bash /home/ubuntu/auto-cuan/deploy/vps/run-ihsg-candle.sh
@@ -63,24 +74,24 @@ MAILTO=""
 # Rekap broadcast telegram 21:45.
 45 21 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh afternoon-recap 600 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send
 
-# ── MALAM3 insider/fundamental/penyerap malam Senin-Minggu ──
-# Koleksi insider berjenjang ~455 req 22:00.
-0 22 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh insider-tiered-2200 1800 /home/ubuntu/.local/node-v22/bin/node tools/collect-insider-data.js --tiered --floor 300
-# Rolling refresh fundamental Q2/Q3 22:20.
-20 22 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh fundamental-refresh-2220 1500 /home/ubuntu/.local/node-v22/bin/node tools/run-fundamental-refresh.js --batch=20 --apply --floor 300
-# Penyerap sisa quota-burn.js floor malam 200 req s.d. 23:48 WIB 22:45 (timeout 3600 -> selesai 23:45).
-45 22 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-night-2245 3600 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 200
+# ── MALAM3 insider/fundamental/penyerap malam Senin-Minggu (V3-F01 floor 5000 weekday) ──
+# Koleksi insider berjenjang ~455 req 22:00 (exit 0 mutlak saat sisa<=5000).
+0 22 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh insider-tiered-2200 1800 /home/ubuntu/.local/node-v22/bin/node tools/collect-insider-data.js --tiered --floor 5000
+# Rolling refresh fundamental Q2 22:20 (exit 0 mutlak saat sisa<=5000).
+20 22 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh fundamental-refresh-2220 1500 /home/ubuntu/.local/node-v22/bin/node tools/run-fundamental-refresh.js --batch=20 --apply --floor 5000
+# Night burn 22:45-23:49 hingga 23:50 hard-stop (floor 5000 weekday, 0 weekend).
+45 22 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-night-2245 3600 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 5000
 
-# ── SIANG & AKHIR PEKAN estafet quota-burn.js tiap jam menit :35 ──
-# Senin-Jumat 00:35-18:35 floor siang 3000.
-35 0-18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-day 3300 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 3000
-# Sabtu-Minggu 00:35-22:35 floor weekend 50 (~18030 req/hari terserap).
-35 0-22 * * 6,0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-weekend 3000 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 50
-# Sabtu-Minggu slot penutup 23:15 floor 50 (timeout 1800 -> selesai 23:45 < 23:50).
-15 23 * * 6,0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-weekend-late 1800 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 50
+# ── SIANG & AKHIR PEKAN estafet quota-burn.js tiap jam menit :35 (V3-F01) ──
+# Senin-Jumat 00:35-18:35 floor 5000 (exit 0 mutlak saat sisa<=5000, cap backfill 13000).
+35 0-18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-day 3300 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 5000
+# Sabtu-Minggu 00:35-22:35 floor weekend 0 (penuh 18080 terserap).
+35 0-22 * * 6,0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-weekend 3000 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 0
+# Sabtu-Minggu slot penutup 23:15 floor 0 (timeout 1800 -> selesai 23:45 < 23:50).
+15 23 * * 6,0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-weekend-late 1800 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 0
 
 # ── WATCHDOG operasional + security tiap 5 mnt (0 kuota upstream) ──
 */5 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh watchdog 300 /home/ubuntu/.local/node-v22/bin/node tools/watchdog.js
 */5 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh security-monitor 300 /home/ubuntu/.local/node-v22/bin/node tools/security-monitor.js
 
-# END AUTO-CUAN FINAL SCHEDULE P2
+# END AUTO-CUAN FINAL SCHEDULE V3-F01 PERMANEN
