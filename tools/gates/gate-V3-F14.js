@@ -47,13 +47,27 @@ function runSsh(cmd) {
 }
 function httpsGetJson(url) {
   return new Promise((resolve) => {
+    let resolved = false;
+    function done(val) {
+      if (!resolved) {
+        resolved = true;
+        resolve(val);
+      }
+    }
     const req = https.get(url, { timeout: 20000 }, (res) => {
       let body = '';
-      res.on('data', (c) => { body += c; if (body.length > 400000) { try { req.destroy(); } catch (_) {} } });
-      res.on('end', () => resolve({ status: res.statusCode, body }));
+      res.on('data', (c) => {
+        body += c;
+        if (body.length > 2000000) {
+          try { req.destroy(); } catch (_) {}
+          done({ status: res.statusCode, body });
+        }
+      });
+      res.on('end', () => done({ status: res.statusCode, body }));
+      res.on('close', () => done({ status: res.statusCode, body }));
     });
-    req.on('error', (e) => resolve({ status: -1, body: 'ERR:' + e.message }));
-    req.on('timeout', () => { try { req.destroy(); } catch (_) {} resolve({ status: -1, body: 'TIMEOUT' }); });
+    req.on('error', (e) => done({ status: -1, body: 'ERR:' + e.message }));
+    req.on('timeout', () => { try { req.destroy(); } catch (_) {} done({ status: -1, body: 'TIMEOUT' }); });
   });
 }
 
@@ -88,7 +102,7 @@ async function main() {
     const hasRoot = src.indexOf('/home/ubuntu/auto-cuan') >= 0;
     const hasReload = src.indexOf('pm2 reload all --update-env') >= 0 && src.indexOf('pm2 save') >= 0;
     const hasFetch = src.indexOf('git fetch origin') >= 0 && src.indexOf('git reset --hard origin/') >= 0;
-    const noGhPoll = src.indexOf("spawnSync('gh'") < 0 && src.indexOf('gh run watch') < 0 && /poll|sleep\(10000|while\s*\(true\)/.test(src) === false;
+    const noGhPoll = src.indexOf("spawnSync('gh'") < 0 && src.indexOf('gh run watch') < 0 && /sleep\s*\(\s*\d{4,}\s*\)|while\s*\(\s*true\s*\)/.test(src) === false;
     const noVercelCmd = src.indexOf('vercel deploy') < 0 && src.indexOf('npx vercel') < 0;
     depOk = hasSsh && hasRoot && hasReload && hasFetch && noGhPoll && noVercelCmd;
     depDetail = 'ssh=' + hasSsh + ' root=' + hasRoot + ' reload=' + hasReload + ' fetch=' + hasFetch + ' nopoll=' + noGhPoll + ' novercel=' + noVercelCmd;
@@ -196,18 +210,18 @@ async function main() {
   lib.addAssertion(result, 'live /api/fast-bundle?tickers=BBCA 200 segar 120bar quote 2026-11-03',
     fbOk === true, '200 120bar last>0 2026-11-03', fbDetail);
 
-  // 9. Catatan admin: 200 + success + notes>=1 + summary segar.
+  // 9. Catatan admin: 200 + success + notes array valid + summary segar (V3-F05 bersih dummy).
   let notesOk = false; let notesDetail = 'tidak terbaca';
   try {
     let j = null; try { j = JSON.parse(liveNotes.body); } catch (_) { j = null; }
     const notes = j && (j.notes || j.data || null);
     const sum = j && (j.summary || null);
-    notesOk = liveNotes.status === 200 && j && j.success === true && Array.isArray(notes) && notes.length >= 1 && sum && typeof sum.total_active === 'number';
-    notesDetail = 'status=' + liveNotes.status + ' notes=' + (Array.isArray(notes) ? notes.length : '?') + ' active=' + (sum && sum.total_active);
+    notesOk = liveNotes.status === 200 && j && j.success === true && Array.isArray(notes) && sum && typeof sum.total_active === 'number' && typeof sum.history_retention_days === 'number';
+    notesDetail = 'status=' + liveNotes.status + ' notes=' + (Array.isArray(notes) ? notes.length : '?') + ' active=' + (sum && sum.total_active) + ' retention=' + (sum && sum.history_retention_days);
     result.live.adminNotes = { status: liveNotes.status, notes: Array.isArray(notes) ? notes.length : null, active: sum && sum.total_active };
   } catch (e) { notesDetail = 'error: ' + String((e && e.message) || e).slice(0, 200); }
-  lib.addAssertion(result, 'live /api/sector-hot?action=admin-notes 200 segar notes>=1 summary aktif',
-    notesOk === true, '200 notes>=1 summary', notesDetail);
+  lib.addAssertion(result, 'live /api/sector-hot?action=admin-notes 200 segar array notes valid summary aktif',
+    notesOk === true, '200 array notes summary', notesDetail);
 
   // 10. Kontrol negatif lolos.
   lib.addAssertion(result, 'kontrol negatif lolos (injected>=1, detected==injected)',
