@@ -1,0 +1,1 @@
+#!/usr/bin/env node\nvar fs=require("fs"),path=require("path");\nvar CD="/home/ubuntu/auto-cuan/data/daily-candles";\nvar BD="/home/ubuntu/auto-cuan/data/arjum-data/broker-summary";\nvar FD="/home/ubuntu/auto-cuan/data/arjum-data/broker-summary-F";\nvar OUT="/tmp/backtest-rolling-200d-v2.json";\nvar engine=require("../lib/daytrade-screener-engine");

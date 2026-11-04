@@ -1,0 +1,17 @@
+{
+  "startedAt": "2026-10-30T23:41:09+07:00",
+  "finishedAt": "2026-10-30T23:41:09+07:00",
+  "durationMs": 134,
+  "spent": 10,
+  "skipped": 0,
+  "failed": 0,
+  "stopped": "BUDGET_REACHED",
+  "floor": 200,
+  "limit": 18080,
+  "usedBefore": 501,
+  "usedNow": 501,
+  "priorities": [
+    "P1"
+  ],
+  "budget": 10
+}

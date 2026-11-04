@@ -1,0 +1,151 @@
+{
+  "tool": "tools/build-forecast.js",
+  "generatedAt": "2026-10-30T16:54:40.447Z",
+  "sourceQueue": "data/backfill-queue.json",
+  "sourceQueueGeneratedAt": "2026-10-30T16:40:28.724Z",
+  "remainingRequests": 219374,
+  "remainingByPriority": {
+    "P1": 5580,
+    "P2": 5304,
+    "P3": 92930,
+    "P4": 115560
+  },
+  "capacityPerDay": {
+    "weekday": 15000,
+    "weekend": 18030,
+    "note": "Kapasitas serapan operasional kontrak P4 (setelah reserve floor + job harian)"
+  },
+  "planExpiresAt": "2026-11-17T23:59:59+07:00",
+  "startDate": "2026-10-31",
+  "finishDate": "2026-11-13",
+  "finishesBeforeExpiry": true,
+  "daysNeeded": 14,
+  "dailyTable": [
+    {
+      "date": "2026-10-31",
+      "weekday": "Sab",
+      "isWeekend": true,
+      "capacity": 18030,
+      "burn": 18030,
+      "remainingAfter": 201344,
+      "done": false
+    },
+    {
+      "date": "2026-11-01",
+      "weekday": "Min",
+      "isWeekend": true,
+      "capacity": 18030,
+      "burn": 18030,
+      "remainingAfter": 183314,
+      "done": false
+    },
+    {
+      "date": "2026-11-02",
+      "weekday": "Sen",
+      "isWeekend": false,
+      "capacity": 15000,
+      "burn": 15000,
+      "remainingAfter": 168314,
+      "done": false
+    },
+    {
+      "date": "2026-11-03",
+      "weekday": "Sel",
+      "isWeekend": false,
+      "capacity": 15000,
+      "burn": 15000,
+      "remainingAfter": 153314,
+      "done": false
+    },
+    {
+      "date": "2026-11-04",
+      "weekday": "Rab",
+      "isWeekend": false,
+      "capacity": 15000,
+      "burn": 15000,
+      "remainingAfter": 138314,
+      "done": false
+    },
+    {
+      "date": "2026-11-05",
+      "weekday": "Kam",
+      "isWeekend": false,
+      "capacity": 15000,
+      "burn": 15000,
+      "remainingAfter": 123314,
+      "done": false
+    },
+    {
+      "date": "2026-11-06",
+      "weekday": "Jum",
+      "isWeekend": false,
+      "capacity": 15000,
+      "burn": 15000,
+      "remainingAfter": 108314,
+      "done": false
+    },
+    {
+      "date": "2026-11-07",
+      "weekday": "Sab",
+      "isWeekend": true,
+      "capacity": 18030,
+      "burn": 18030,
+      "remainingAfter": 90284,
+      "done": false
+    },
+    {
+      "date": "2026-11-08",
+      "weekday": "Min",
+      "isWeekend": true,
+      "capacity": 18030,
+      "burn": 18030,
+      "remainingAfter": 72254,
+      "done": false
+    },
+    {
+      "date": "2026-11-09",
+      "weekday": "Sen",
+      "isWeekend": false,
+      "capacity": 15000,
+      "burn": 15000,
+      "remainingAfter": 57254,
+      "done": false
+    },
+    {
+      "date": "2026-11-10",
+      "weekday": "Sel",
+      "isWeekend": false,
+      "capacity": 15000,
+      "burn": 15000,
+      "remainingAfter": 42254,
+      "done": false
+    },
+    {
+      "date": "2026-11-11",
+      "weekday": "Rab",
+      "isWeekend": false,
+      "capacity": 15000,
+      "burn": 15000,
+      "remainingAfter": 27254,
+      "done": false
+    },
+    {
+      "date": "2026-11-12",
+      "weekday": "Kam",
+      "isWeekend": false,
+      "capacity": 15000,
+      "burn": 15000,
+      "remainingAfter": 12254,
+      "done": false
+    },
+    {
+      "date": "2026-11-13",
+      "weekday": "Jum",
+      "isWeekend": false,
+      "capacity": 15000,
+      "burn": 12254,
+      "remainingAfter": 0,
+      "done": true
+    }
+  ]
+}

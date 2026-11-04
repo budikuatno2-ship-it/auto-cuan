@@ -1,0 +1,458 @@
+{
+  "range": "1w",
+  "days": 5,
+  "generated_at": "2026-10-28T13:13:42.024Z",
+  "total_tickers": 30,
+  "items": [
+    {
+      "ticker": "ADRO",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.13,
+      "arah_all": "Akumulasi",
+      "top_buyers_all": [
+        "DX",
+        "AK",
+        "OD"
+      ],
+      "net_val_foreign": -43986327000,
+      "net_val_domestic": 43986327000,
+      "bandar_vwap": 2440
+    },
+    {
+      "ticker": "AKRA",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.02,
+      "arah_all": "Netral",
+      "top_buyers_all": [
+        "AK",
+        "YU",
+        "BB"
+      ],
+      "net_val_foreign": -46131481000,
+      "net_val_domestic": 46131481000,
+      "bandar_vwap": 1403
+    },
+    {
+      "ticker": "AMMN",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 2.06,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "NI",
+        "SQ",
+        "TP"
+      ],
+      "net_val_foreign": 80435155000,
+      "net_val_domestic": -80435155000,
+      "bandar_vwap": 3790
+    },
+    {
+      "ticker": "ANTM",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.15,
+      "arah_all": "Akumulasi",
+      "top_buyers_all": [
+        "YU",
+        "AK",
+        "PD"
+      ],
+      "net_val_foreign": -228505264000,
+      "net_val_domestic": 228505264000,
+      "bandar_vwap": 2795
+    },
+    {
+      "ticker": "ARTO",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 0.55,
+      "arah_all": "Distribusi Kuat",
+      "top_buyers_all": [
+        "CP",
+        "AK",
+        "YP"
+      ],
+      "net_val_foreign": 475157000,
+      "net_val_domestic": -475157000,
+      "bandar_vwap": 560
+    },
+    {
+      "ticker": "ASII",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.34,
+      "arah_all": "Akumulasi",
+      "top_buyers_all": [
+        "AK",
+        "CC",
+        "KZ"
+      ],
+      "net_val_foreign": 44264070000,
+      "net_val_domestic": -44264070000,
+      "bandar_vwap": 4793
+    },
+    {
+      "ticker": "BBCA",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 0.89,
+      "arah_all": "Distribusi",
+      "top_buyers_all": [
+        "YU",
+        "BK",
+        "SQ"
+      ],
+      "net_val_foreign": -512537697500,
+      "net_val_domestic": 512537697500,
+      "bandar_vwap": 5135
+    },
+    {
+      "ticker": "BBNI",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.28,
+      "arah_all": "Akumulasi",
+      "top_buyers_all": [
+        "CC",
+        "NI",
+        "OD"
+      ],
+      "net_val_foreign": -424806364000,
+      "net_val_domestic": 424806364000,
+      "bandar_vwap": 3321
+    },
+    {
+      "ticker": "BBRI",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 2.16,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "NI",
+        "CC",
+        "OD"
+      ],
+      "net_val_foreign": -738563142000,
+      "net_val_domestic": 738563142000,
+      "bandar_vwap": 2895
+    },
+    {
+      "ticker": "BMRI",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.31,
+      "arah_all": "Akumulasi",
+      "top_buyers_all": [
+        "NI",
+        "CC",
+        "KZ"
+      ],
+      "net_val_foreign": -833488909000,
+      "net_val_domestic": 833488909000,
+      "bandar_vwap": 3836
+    },
+    {
+      "ticker": "BREN",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.39,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "NI",
+        "ZP",
+        "PD"
+      ],
+      "net_val_foreign": -18662513000,
+      "net_val_domestic": 18662513000,
+      "bandar_vwap": 2048
+    },
+    {
+      "ticker": "BRPT",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 0.72,
+      "arah_all": "Distribusi",
+      "top_buyers_all": [
+        "YP",
+        "DR",
+        "CC"
+      ],
+      "net_val_foreign": 1450401000,
+      "net_val_domestic": -1450401000,
+      "bandar_vwap": 1246
+    },
+    {
+      "ticker": "CPIN",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.56,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "AK",
+        "PD",
+        "XL"
+      ],
+      "net_val_foreign": 51015338000,
+      "net_val_domestic": -51015338000,
+      "bandar_vwap": 2659
+    },
+    {
+      "ticker": "CUAN",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 0.63,
+      "arah_all": "Distribusi Kuat",
+      "top_buyers_all": [
+        "DX",
+        "KZ",
+        "CC"
+      ],
+      "net_val_foreign": -36462766200,
+      "net_val_domestic": 36462766200,
+      "bandar_vwap": 436
+    },
+    {
+      "ticker": "DEWA",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 2.01,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "BK",
+        "CC",
+        "XL"
+      ],
+      "net_val_foreign": 43075322600,
+      "net_val_domestic": -43075322600,
+      "bandar_vwap": 233
+    },
+    {
+      "ticker": "GOTO",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 0.93,
+      "arah_all": "Netral",
+      "top_buyers_all": [
+        "DH",
+        "RX",
+        "SS"
+      ],
+      "net_val_foreign": -26654972300,
+      "net_val_domestic": 26654972300,
+      "bandar_vwap": 24
+    },
+    {
+      "ticker": "ICBP",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 0.52,
+      "arah_all": "Distribusi Kuat",
+      "top_buyers_all": [
+        "BK",
+        "YU",
+        "PD"
+      ],
+      "net_val_foreign": -47402695000,
+      "net_val_domestic": 47402695000,
+      "bandar_vwap": 5716
+    },
+    {
+      "ticker": "INDF",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 0.75,
+      "arah_all": "Distribusi",
+      "top_buyers_all": [
+        "AK",
+        "OK",
+        "BK"
+      ],
+      "net_val_foreign": -19920205000,
+      "net_val_domestic": 19920205000,
+      "bandar_vwap": 6371
+    },
+    {
+      "ticker": "INKP",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.57,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "DH",
+        "PP",
+        "OD"
+      ],
+      "net_val_foreign": -213752500,
+      "net_val_domestic": 213752500,
+      "bandar_vwap": 6720
+    },
+    {
+      "ticker": "KLBF",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.11,
+      "arah_all": "Akumulasi",
+      "top_buyers_all": [
+        "NI",
+        "KZ",
+        "BK"
+      ],
+      "net_val_foreign": 24468351000,
+      "net_val_domestic": -24468351000,
+      "bandar_vwap": 724
+    },
+    {
+      "ticker": "MDKA",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 0.91,
+      "arah_all": "Netral",
+      "top_buyers_all": [
+        "CC",
+        "AK",
+        "SQ"
+      ],
+      "net_val_foreign": -8640107500,
+      "net_val_domestic": 8640107500,
+      "bandar_vwap": 2021
+    },
+    {
+      "ticker": "MEDC",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.41,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "AK",
+        "YU",
+        "NI"
+      ],
+      "net_val_foreign": 48283284500,
+      "net_val_domestic": -48283284500,
+      "bandar_vwap": 1408
+    },
+    {
+      "ticker": "PGAS",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 0.68,
+      "arah_all": "Distribusi Kuat",
+      "top_buyers_all": [
+        "CC",
+        "NI",
+        "MG"
+      ],
+      "net_val_foreign": -165339975000,
+      "net_val_domestic": 165339975000,
+      "bandar_vwap": 1248
+    },
+    {
+      "ticker": "PGEO",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 2.03,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "PD",
+        "KZ",
+        "YU"
+      ],
+      "net_val_foreign": -2212421500,
+      "net_val_domestic": 2212421500,
+      "bandar_vwap": 980
+    },
+    {
+      "ticker": "PTBA",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 0.81,
+      "arah_all": "Distribusi",
+      "top_buyers_all": [
+        "LG",
+        "YP",
+        "CC"
+      ],
+      "net_val_foreign": -159612258000,
+      "net_val_domestic": 159612258000,
+      "bandar_vwap": 3184
+    },
+    {
+      "ticker": "PTRO",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.4,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "BK",
+        "CP",
+        "OD"
+      ],
+      "net_val_foreign": -5605777000,
+      "net_val_domestic": 5605777000,
+      "bandar_vwap": 2928
+    },
+    {
+      "ticker": "SMGR",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.13,
+      "arah_all": "Akumulasi",
+      "top_buyers_all": [
+        "BK",
+        "AK",
+        "NI"
+      ],
+      "net_val_foreign": 6271893500,
+      "net_val_domestic": -6271893500,
+      "bandar_vwap": 1485
+    },
+    {
+      "ticker": "TLKM",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.13,
+      "arah_all": "Akumulasi",
+      "top_buyers_all": [
+        "YU",
+        "OD",
+        "KZ"
+      ],
+      "net_val_foreign": -1024087316000,
+      "net_val_domestic": 1024087316000,
+      "bandar_vwap": 2153
+    },
+    {
+      "ticker": "TPIA",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 1.94,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "HP",
+        "OD",
+        "LG"
+      ],
+      "net_val_foreign": -77815947500,
+      "net_val_domestic": 77815947500,
+      "bandar_vwap": 1479
+    },
+    {
+      "ticker": "UNTR",
+      "net_lot_all": 0,
+      "net_val_all": 0,
+      "bs_ratio_3_all": 2.12,
+      "arah_all": "Akumulasi Kuat",
+      "top_buyers_all": [
+        "RX",
+        "BB",
+        "AK"
+      ],
+      "net_val_foreign": -20066390000,
+      "net_val_domestic": 20066390000,
+      "bandar_vwap": 25960
+    }
+  ]
+}

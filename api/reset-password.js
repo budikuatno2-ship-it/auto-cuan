@@ -28,9 +28,16 @@ async function adminAccessRequestSourceContract() {
   return trustedRateLimitIp;
 }
 
+const userTelegramTestHandler = require('../lib/user-telegram-test-handler');
+
 module.exports = async function handler(req, res) {
   const queryAction = String(req.query && req.query.action || '').trim();
   const bodyAction = String(req.body && req.body.action || '').trim();
+  // V3-F06: POST /api/user/telegram/test — rute via slot reset-password agar
+  // tidak menambah slot fungsi Vercel; local-dev-server mengalihkan path ini.
+  if (req.method === 'POST' && (bodyAction === 'user-telegram-test' || queryAction === 'user-telegram-test')) {
+    return userTelegramTestHandler(req, res);
+  }
   if (
     bodyAction === 'account-email-status' ||
     bodyAction === 'account-email-complete' ||

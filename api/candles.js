@@ -98,18 +98,24 @@ module.exports = async function handler(req, res) {
   setPrivateResponseHeaders(res);
   try { if (shield) shield.applyShieldHeaders(res, { api: true }); } catch (_) {}
   // S1: anti-bot berlapis (sliding-window + deteksi scraper) sebelum limiter lama.
+  // Sesi yang sah (cookie ac_sess valid) dikecualikan dari heuristik sapu ticker
+  // agar verifikasi live D1 tidak kena 429 saat memuat chart multi-ticker.
+  // Limiter lama per-IP tetap berlaku untuk semua pemanggil (termasuk sesi sah)
+  // agar satu klien tidak bisa membanjiri upstream Yahoo tanpa batas.
+  var sHasSession = false;
   try {
     if (shield) {
       var sIp = shield.clientIpFromReq(req);
       var sUa = (req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '';
-      var sChk = shield.dataCheck(sIp, { hasSession: false, userAgent: String(sUa) });
+      try { sHasSession = adminSession.requireAuthenticatedSession(req).ok === true; } catch (_) { sHasSession = false; }
+      var sChk = shield.dataCheck(sIp, { hasSession: sHasSession, userAgent: String(sUa) });
       if (sChk.limited) {
         try { res.setHeader('Retry-After', String(sChk.retryAfterSeconds || 60)); } catch (_) {}
         return res.status(429).json({ error: 'Too many requests. Please slow down.' });
       }
     }
   } catch (_) {}
-  if (!candlesLimiter.check(clientAddress(req))) {
+  if (!sHasSession && !candlesLimiter.check(clientAddress(req))) {
     return res.status(429).json({ error: 'Too many requests. Please slow down.' });
   }
   try {

@@ -66,15 +66,32 @@
     }
   }
 
+  // V3-F05: enforce admin-only visibility for all admin controls (non-admin => display:none).
+  function applyAdminVisibilityLock() {
+    var admin = isUserAdmin();
+    var btnNew = document.getElementById('btnNewAdminNote');
+    if (btnNew) btnNew.style.display = admin ? '' : 'none';
+    try {
+      var els = document.querySelectorAll('[data-admin-only]');
+      for (var i = 0; i < els.length; i += 1) {
+        var el = els[i];
+        if (admin) {
+          if (el.style.display === 'none') el.style.display = '';
+          el.removeAttribute('hidden');
+        } else {
+          el.style.display = 'none';
+          el.setAttribute('hidden', 'hidden');
+        }
+      }
+    } catch (_) {}
+  }
+
   // Load Catatan Admin data from API
   async function loadCatatanAdmin(silent) {
     var activeGrid = document.getElementById('anActiveGrid');
     var histTableBody = document.getElementById('anHistoryTableBody');
-    var btnNew = document.getElementById('btnNewAdminNote');
 
-    if (btnNew) {
-      btnNew.style.display = isUserAdmin() ? '' : 'none';
-    }
+    applyAdminVisibilityLock();
 
     if (!silent && activeGrid && (!activeGrid.children || activeGrid.children.length === 0)) {
       activeGrid.innerHTML = '<div class="col-span-full py-12 text-center text-gray-500"><div class="spinner inline-block mr-2"></div> Memuat catatan admin...</div>';
@@ -225,9 +242,10 @@
         cardsHtml += '      Lihat di chart';
         cardsHtml += '    </a>';
         cardsHtml += '    <span class="mut" style="font-size:12px">area, target, dan batas langsung tergambar</span>';
-        if (isUserAdmin()) {
-          cardsHtml += '    <button type="button" class="btn sm" style="margin-left:auto" onclick="openEditNoteDrawer(\'' + escapeHtml(n.id) + '\')">Edit</button>';
-        }
+        // V3-F05: Lihat di chart | Edit | Hapus. Edit+Hapus admin-only, display:none utk non-admin.
+        var _adminBtnDisplay = isUserAdmin() ? '' : 'display:none';
+        cardsHtml += '    <button type="button" class="btn sm" data-admin-only="1" style="margin-left:auto;' + _adminBtnDisplay + '" onclick="openEditNoteDrawer(\'' + escapeHtml(n.id) + '\')">Edit</button>';
+        cardsHtml += '    <button type="button" class="btn sm danger" data-admin-only="1" style="' + _adminBtnDisplay + '" onclick="deleteAdminNote(\'' + escapeHtml(n.id) + '\')">Hapus</button>';
         cardsHtml += '  </div>';
         cardsHtml += '</article>';
       });
@@ -267,6 +285,7 @@
       });
       if (histTableBody) histTableBody.innerHTML = rowsHtml;
     }
+    applyAdminVisibilityLock();
   }
 
   function switchAdminNoteTab(tab) {
@@ -596,6 +615,32 @@
     }
   }
 
+  // V3-F05: Hapus catatan (admin-only). DELETE /api/admin-notes?id=... -> {ok:true}.
+  async function deleteAdminNote(noteId) {
+    if (!noteId) return;
+    if (!isUserAdmin()) return;
+    var label = noteId;
+    try {
+      if (_catatanAdminCache && Array.isArray(_catatanAdminCache.notes)) {
+        var f = _catatanAdminCache.notes.find(function (x) { return x && x.id === noteId; });
+        if (f && f.ticker) label = f.ticker + ' (' + noteId + ')';
+      }
+    } catch (_) {}
+    if (!confirm('Hapus catatan ' + label + ' secara permanen?')) return;
+    try {
+      var res = await fetch('/api/admin-notes?id=' + encodeURIComponent(noteId), { method: 'DELETE' });
+      var json = await res.json();
+      if (!json.success && !json.ok) {
+        alert(json.error || 'Gagal menghapus catatan.');
+        return;
+      }
+      await loadCatatanAdmin();
+      if (typeof showToast === 'function') showToast('Catatan admin dihapus.', 'info');
+    } catch (_) {
+      alert('Terjadi kesalahan jaringan.');
+    }
+  }
+
   async function submitCloseAdminNote() {
     if (!_editingNoteId) return;
     var editReason = document.getElementById('anEditReasonInput') ? document.getElementById('anEditReasonInput').value.trim() : '';
@@ -882,6 +927,8 @@
   window.updateAdminNoteDrawerCalc = updateAdminNoteDrawerCalc;
   window.submitAdminNote = submitAdminNote;
   window.submitCloseAdminNote = submitCloseAdminNote;
+  window.deleteAdminNote = deleteAdminNote;
+  window.applyAdminVisibilityLock = applyAdminVisibilityLock;
   window.onAdminNoteTickerInput = onAdminNoteTickerInput;
   window.loadDashboardCatatanAdmin = loadDashboardCatatanAdmin;
   window.openNoteInChart = openNoteInChart;

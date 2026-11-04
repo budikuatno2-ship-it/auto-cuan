@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-03",
+  "localUsedToday": 0,
+  "upstreamUsedToday": 501,
+  "upstreamDailyLimit": null,
+  "effectiveDailyLimit": 18080,
+  "drift": 501,
+  "driftDetected": true,
+  "updatedAt": "2026-11-03T12:04:58.569Z"
+}

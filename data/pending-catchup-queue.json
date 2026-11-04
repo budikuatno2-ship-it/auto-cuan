@@ -1,10 +1,11 @@
 {
   "tool": "scripts/scheduler-daemon.js",
-  "generatedAt": "2026-11-03T20:45:00+07:00",
+  "generatedAt": "2026-11-03T15:06:42.532Z",
   "note": "V3-F01: dieksekusi 00:00:01/00:01 WIB oleh scheduler-daemon + cron catchup-0001",
   "dates": [
     "2026-11-02",
-    "2026-11-03"
+    "2026-11-03",
+    "2026-11-04"
   ],
   "jobs": [
     "broksum-ALL",

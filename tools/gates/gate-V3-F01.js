@@ -116,7 +116,8 @@ for (const d of dates) {
 }
 lib.addAssertion(result, 'berkas broksum ALL & Foreign 2026-11-02/03 ada (lokal/VPS)', brokOk === true, '4 sel >0', JSON.stringify(brokDetail));
 
-// 5. crontab -l + PM2 auto-cuan-scheduler online (SSH non-interaktif).
+ // 5. crontab -l + PM2 auto-cuan-scheduler online (SSH non-interaktif).
+ // pm2 list (tabel ringkas) dipakai agar nama scheduler tidak terpotong head.
 let schedOk = false, schedDetail = 'tidak terbaca';
 try {
   const KEY = 'D:\\Private Key Oracle\\ssh-key-2026-07-02.key';
@@ -125,7 +126,7 @@ try {
   const cron = String(c1.stdout || '');
   const hasCatchup = cron.includes('catchup-0001');
   const hasBurn = cron.includes('quota-burn');
-  const c2 = spawnSync('ssh', ['-n', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-i', KEY, 'ubuntu@168.110.221.197', 'pm2 jlist 2>/dev/null | head -c 6000'],
+  const c2 = spawnSync('ssh', ['-n', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-i', KEY, 'ubuntu@168.110.221.197', 'pm2 list 2>&1 | head -30'],
     { encoding: 'utf8', timeout: 30000, shell: false });
   const pm = String((c2.stdout || '') + (c2.stderr || ''));
   const schedOnline = pm.includes('auto-cuan-scheduler') && /online/i.test(pm);

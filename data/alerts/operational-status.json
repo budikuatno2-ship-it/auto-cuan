@@ -1,0 +1,37 @@
+{
+  "ok": false,
+  "at": "2026-11-03T11:54:44.318Z",
+  "checked": {
+    "heartbeats": 1,
+    "pm2": 0,
+    "quota": 1,
+    "daytrade": 1,
+    "disk": 1
+  },
+  "issues": [
+    {
+      "at": "2026-11-03T11:54:44.318Z",
+      "key": "heartbeat:quota-burn:stale",
+      "severity": "warning",
+      "source": "heartbeat",
+      "detail": "quota-burn: heartbeat basi (5473.6 mnt > 300 mnt)"
+    },
+    {
+      "at": "2026-11-03T11:54:44.318Z",
+      "key": "quota:drift",
+      "severity": "warning",
+      "source": "quota",
+      "detail": "Kuota API data drift terdeteksi (selisih 501, dipakai 501/18080)"
+    }
+  ],
+  "quota": {
+    "label": "Kuota API data",
+    "used": 501,
+    "limit": 18080,
+    "remaining": 17579,
+    "pct": 2.8,
+    "driftDetected": true
+  },
+  "summary": "DARURAT: 2 insiden",
+  "reader": "Admin Console: baca file ini untuk panel status operasional"
+}

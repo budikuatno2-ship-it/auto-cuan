@@ -1,0 +1,1075 @@
+{
+  "landing": {
+    "path": "/dashboard",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "dashboard",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-dashboard"
+    ],
+    "bodyLen": 3330,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "dashboard": {
+    "path": "/dashboard",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "dashboard",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-dashboard"
+    ],
+    "bodyLen": 3687,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "screener": {
+    "path": "/screener",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "screener",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-screener"
+    ],
+    "bodyLen": 3841,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "sektor": {
+    "path": "/sektor",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "sektor",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-sektor"
+    ],
+    "bodyLen": 2992,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "catatan-admin": {
+    "path": "/catatan-admin",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "catatan-admin",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-catatan-admin"
+    ],
+    "bodyLen": 2768,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "analisis-chart": {
+    "path": "/dashboard?page=analisis&tab=analisis-chart&ticker=BBCA",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "analisis",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-analisis"
+    ],
+    "bodyLen": 3431,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "bandarmologi": {
+    "path": "/dashboard?page=analisis&tab=summary&ticker=BBCA",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "analisis",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-analisis"
+    ],
+    "bodyLen": 2901,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "intel": {
+    "path": "/dashboard?page=analisis&tab=intel&ticker=BBCA",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "analisis",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-analisis"
+    ],
+    "bodyLen": 3116,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "hunter": {
+    "path": "/dashboard?page=analisis&tab=hunter&ticker=BBCA",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "analisis",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-analisis"
+    ],
+    "bodyLen": 3150,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "insider": {
+    "path": "/dashboard?page=analisis&tab=insider&ticker=BBCA",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "analisis",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-analisis"
+    ],
+    "bodyLen": 3407,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "ranking": {
+    "path": "/dashboard?page=analisis&tab=ranking&ticker=BBCA",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "analisis",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-analisis"
+    ],
+    "bodyLen": 3143,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "financial": {
+    "path": "/dashboard?page=analisis&tab=financial&ticker=BBCA",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "analisis",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-analisis"
+    ],
+    "bodyLen": 4488,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "market-structure": {
+    "path": "/dashboard?page=analisis&tab=market-structure&ticker=BBCA",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "analisis",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-analisis"
+    ],
+    "bodyLen": 7033,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "watchlist": {
+    "path": "/watchlist",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "watchlist",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-watchlist"
+    ],
+    "bodyLen": 3018,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "portofolio": {
+    "path": "/dashboard?page=portofolio",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "portofolio",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": {
+      "w": 1126,
+      "h": 749,
+      "display": "block",
+      "vis": "visible",
+      "hidden": false
+    },
+    "gateVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-portofolio",
+      "page-today"
+    ],
+    "bodyLen": 3368,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "trackrecord": {
+    "path": "/trackrecord",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "trackrecord",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-trackrecord"
+    ],
+    "bodyLen": 3070,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "money-management": {
+    "path": "/kelola-keuangan",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "money-management",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-money-management"
+    ],
+    "bodyLen": 3676,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "admin-console": {
+    "path": "/admin-console",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "admin-console",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-admin-console"
+    ],
+    "bodyLen": 3098,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "pattern-radar": {
+    "path": "/pattern-radar",
+    "title": "Pattern Radar · Auto-Cuan",
+    "currentPage": null,
+    "landingVisible": null,
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": null,
+    "visiblePages": [],
+    "bodyLen": 1408,
+    "bodyHead": "Auto-Cuan Meja kerja riset IDX Dashboard Temukan Screener Sektor Hot Catatan Admin Riset Analisis & Chart Bandarmologi Sinyal Intelijen Broker Hunter Insider Ra",
+    "scrollW": 1440,
+    "innerW": 1440,
+    "h1": "Pattern Radar"
+  },
+  "ketentuan": {
+    "path": "/ketentuan",
+    "title": "Ketentuan dan Batasan Risiko · Auto-Cuan",
+    "currentPage": null,
+    "landingVisible": null,
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": null,
+    "visiblePages": [],
+    "bodyLen": 3799,
+    "bodyHead": "Auto-Cuan Masuk Daftar akun Ketentuan layanan Batasan risiko Ketentuan dan batasan Auto-Cuan adalah alat riset dan perencanaan untuk saham Bursa Efek Indonesia",
+    "scrollW": 1440,
+    "innerW": 1440,
+    "h1": "Ketentuan dan batasan"
+  },
+  "maintenance": {
+    "path": "/maintenance",
+    "title": "Pemeliharaan Sistem · Auto-Cuan",
+    "currentPage": null,
+    "landingVisible": null,
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": null,
+    "visiblePages": [],
+    "bodyLen": 523,
+    "bodyHead": "Auto-Cuan Pemeliharaan terjadwal Kami sedang memperbarui sistem Kami sedang memperbarui data pasar dan server. Posisi di sekuritas Anda tidak terpengaruh. Pant",
+    "scrollW": 1440,
+    "innerW": 1440,
+    "h1": "Kami sedang memperbarui sistem"
+  },
+  "notfound": {
+    "path": "/this-page-does-not-exist-fase20",
+    "title": "Halaman tidak ditemukan · Auto-Cuan",
+    "currentPage": null,
+    "landingVisible": null,
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": null,
+    "visiblePages": [],
+    "bodyLen": 701,
+    "bodyHead": "Auto-Cuan 404 / ROUTE_NOT_FOUND Halaman ini tidak ada di radar Alamat yang kamu buka tidak tersedia atau sudah dipindahkan. Pilih jalur yang paling masuk akal ",
+    "scrollW": 1440,
+    "innerW": 1440,
+    "h1": "Halaman ini tidak ada di radar"
+  },
+  "portofolio-2": {
+    "path": "/dashboard?page=portofolio",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "portofolio",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": {
+      "w": 1126,
+      "h": 749,
+      "display": "block",
+      "vis": "visible",
+      "hidden": false
+    },
+    "gateVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-portofolio",
+      "page-today"
+    ],
+    "bodyLen": 3368,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "portfolioTabs": {
+    "buttons": [
+      {
+        "tab": "analisis-chart",
+        "tag": "BUTTON",
+        "cls": "sidebar-item",
+        "text": "Analisis & Chart"
+      },
+      {
+        "tab": "bandarmologi",
+        "tag": "BUTTON",
+        "cls": "sidebar-item",
+        "text": "Bandarmologi"
+      },
+      {
+        "tab": "intel",
+        "tag": "BUTTON",
+        "cls": "sidebar-item",
+        "text": "Sinyal Intelijen"
+      },
+      {
+        "tab": "hunter",
+        "tag": "BUTTON",
+        "cls": "sidebar-item",
+        "text": "Broker Hunter"
+      },
+      {
+        "tab": "insider",
+        "tag": "BUTTON",
+        "cls": "sidebar-item",
+        "text": "Insider"
+      },
+      {
+        "tab": "ranking",
+        "tag": "BUTTON",
+        "cls": "sidebar-item",
+        "text": "RankingPRO"
+      },
+      {
+        "tab": "financial",
+        "tag": "BUTTON",
+        "cls": "sidebar-item",
+        "text": "Financial"
+      },
+      {
+        "tab": "market-structure",
+        "tag": "BUTTON",
+        "cls": "sidebar-item",
+        "text": "Struktur Pasar"
+      },
+      {
+        "tab": "pattern",
+        "tag": "BUTTON",
+        "cls": "sidebar-item",
+        "text": "Pattern Radar"
+      },
+      {
+        "tab": "today",
+        "tag": "BUTTON",
+        "cls": "tab active",
+        "text": "Hari Ini"
+      },
+      {
+        "tab": "planner",
+        "tag": "BUTTON",
+        "cls": "tab",
+        "text": "Rencana Posisi"
+      },
+      {
+        "tab": "watch",
+        "tag": "BUTTON",
+        "cls": "tab",
+        "text": "Posisi Aktif"
+      },
+      {
+        "tab": "risk",
+        "tag": "BUTTON",
+        "cls": "tab",
+        "text": "Risk Lab"
+      },
+      {
+        "tab": "scenarios",
+        "tag": "BUTTON",
+        "cls": "tab",
+        "text": "Skenario"
+      },
+      {
+        "tab": "journal",
+        "tag": "BUTTON",
+        "cls": "tab",
+        "text": "Jurnal"
+      },
+      {
+        "tab": "ai",
+        "tag": "BUTTON",
+        "cls": "tab",
+        "text": "Asisten AI"
+      },
+      {
+        "tab": "risk",
+        "tag": "BUTTON",
+        "cls": "btn small primary",
+        "text": "🛡️ Cut Loss & Avg Down Guard"
+      },
+      {
+        "tab": "scenarios",
+        "tag": "BUTTON",
+        "cls": "btn small",
+        "text": "⚡ What-if Skenario Posisi"
+      },
+      {
+        "tab": "risk",
+        "tag": "BUTTON",
+        "cls": "btn small",
+        "text": "🛡️ Cut Loss & Avg Down Guard"
+      },
+      {
+        "tab": "scenarios",
+        "tag": "BUTTON",
+        "cls": "btn small primary",
+        "text": "⚡ What-if Skenario Posisi"
+      }
+    ],
+    "panels": [],
+    "hasOpenPortfolioTab": true,
+    "hasSwitchPortfolioTab": false,
+    "fns": [
+      "getPortfolioKey",
+      "loadPortfolio",
+      "savePortfolio",
+      "normalizePortfolioTicker",
+      "computePortfolioTotals",
+      "portfolioPriceCellHtml",
+      "renderPortfolioView",
+      "renderPortfolio",
+      "renderPortfolioTable",
+      "fetchPortfolioQuotesBounded",
+      "refreshPortfolioPrices",
+      "clearPortfolioTimer",
+      "checkPortfolioAccess",
+      "initPortfolioCommandCenter",
+      "openPortfolioTab"
+    ]
+  },
+  "bandar-2": {
+    "path": "/dashboard?page=analisis&tab=summary&ticker=BBCA",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "analisis",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-analisis"
+    ],
+    "bodyLen": 2901,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "bandar": {
+    "buttons": [],
+    "fns": [
+      "bandarBadgeText",
+      "bandarBadgeColor",
+      "bandarScoreBadgeHtml",
+      "loadBandarmologiTab"
+    ]
+  },
+  "admin-2": {
+    "path": "/admin-console",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "admin-console",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-admin-console"
+    ],
+    "bodyLen": 3098,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "adminTabs": {
+    "tabs": [
+      "Ringkasan",
+      "Online 0",
+      "Persetujuan Akun 0",
+      "Mode Maintenance",
+      "Kupon",
+      "Job & Data Pipeline",
+      "Log Audit"
+    ],
+    "panels": [
+      {
+        "id": "panelTab0",
+        "display": ""
+      },
+      {
+        "id": "panelTab1",
+        "display": "none"
+      },
+      {
+        "id": "panelTab2",
+        "display": "none"
+      },
+      {
+        "id": "panelTab3",
+        "display": "none"
+      },
+      {
+        "id": "panelTab4",
+        "display": "none"
+      },
+      {
+        "id": "panelTab5",
+        "display": "none"
+      },
+      {
+        "id": "panelTab6",
+        "display": "none"
+      }
+    ]
+  },
+  "analisis-2": {
+    "path": "/dashboard?page=analisis&tab=analisis-chart&ticker=BBCA",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "analisis",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-analisis"
+    ],
+    "bodyLen": 3431,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "analisisTabs": {
+    "buttons": [
+      {
+        "tab": "analisis-chart",
+        "text": "Analisis & Chart",
+        "cls": "sidebar-item active"
+      },
+      {
+        "tab": "bandarmologi",
+        "text": "Bandarmologi",
+        "cls": "sidebar-item"
+      },
+      {
+        "tab": "intel",
+        "text": "Sinyal Intelijen",
+        "cls": "sidebar-item"
+      },
+      {
+        "tab": "hunter",
+        "text": "Broker Hunter",
+        "cls": "sidebar-item"
+      },
+      {
+        "tab": "insider",
+        "text": "Insider",
+        "cls": "sidebar-item"
+      },
+      {
+        "tab": "ranking",
+        "text": "RankingPRO",
+        "cls": "sidebar-item"
+      },
+      {
+        "tab": "financial",
+        "text": "Financial",
+        "cls": "sidebar-item"
+      },
+      {
+        "tab": "market-structure",
+        "text": "Struktur Pasar",
+        "cls": "sidebar-item"
+      },
+      {
+        "tab": "pattern",
+        "text": "Pattern Radar",
+        "cls": "sidebar-item"
+      }
+    ],
+    "fns": [
+      "getAnalysisUsageKey",
+      "getAnalysisCount",
+      "incrementAnalysisUsage",
+      "getAnalysisLimit",
+      "getAnalysisLimitMsg",
+      "logAnalysisResult",
+      "handleAnalisisSubmit",
+      "quickAnalisis",
+      "describeAnalisisFailure",
+      "renderAnalisisFailure",
+      "runAnalisisFromDashboard",
+      "openChartFromAnalisis",
+      "copyAnalisisResult",
+      "openMarketContextFromAnalisis",
+      "openNewsFromAnalisis",
+      "handleAnalisisFollowUp",
+      "resetAnalysisContext",
+      "updateAnalysisContext",
+      "handleAnalysis",
+      "loadStockAnalysis",
+      "exportAnalisisPDF",
+      "_extractAnalysisText",
+      "_renderCompactAnalysis",
+      "triggerAiChartAnalysis",
+      "switchAnalisisSubTab",
+      "switchAnalisisTab",
+      "handleAnalisisLogout",
+      "jalankanAnalisisSaham",
+      "initStandaloneAnalisisPage"
+    ]
+  },
+  "landing-2": {
+    "path": "/dashboard",
+    "title": "Auto-Cuan | IDX Stock Radar",
+    "currentPage": "dashboard",
+    "landingVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "appVisible": null,
+    "gateVisible": null,
+    "maintVisible": {
+      "w": 0,
+      "h": 0,
+      "display": "none",
+      "vis": "visible",
+      "hidden": true
+    },
+    "visiblePages": [
+      "page-dashboard"
+    ],
+    "bodyLen": 3687,
+    "bodyHead": "Lewati ke konten utama Chat Baru Chat baru Hari ini Dark Mode B budi ADMIN Auto-Cuan Meja kerja riset IDX Dashboard TEMUKAN Screener Sektor Hot Catatan Admin ",
+    "scrollW": 1430,
+    "innerW": 1440,
+    "h1": "Auto-Cuan sedang dalam pemeliharaan"
+  },
+  "authModals": {
+    "modals": {
+      "authChoiceModal": {
+        "display": "none",
+        "vis": "visible",
+        "opacity": "1",
+        "cls": "hidden fixed inset-0 z-[9998] bg-black/70 backdrop-blur-sm f",
+        "hidden": true
+      },
+      "loginModal": {
+        "display": "none",
+        "vis": "visible",
+        "opacity": "1",
+        "cls": "hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm f",
+        "hidden": true
+      },
+      "registerModal": {
+        "display": "none",
+        "vis": "visible",
+        "opacity": "1",
+        "cls": "hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm f",
+        "hidden": true
+      },
+      "selfResetModal": {
+        "display": "none",
+        "vis": "visible",
+        "opacity": "1",
+        "cls": "hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm f",
+        "hidden": true
+      },
+      "googleProfileModal": null,
+      "resetPasswordModal": {
+        "display": "none",
+        "vis": "visible",
+        "opacity": "1",
+        "cls": "hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm f",
+        "hidden": true
+      }
+    },
+    "fns": [
+      "openAuthChoiceModal",
+      "openLoginModal",
+      "openRegisterModal",
+      "openSelfResetModal"
+    ]
+  }
+}

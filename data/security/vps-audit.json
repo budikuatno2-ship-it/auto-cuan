@@ -1,0 +1,197 @@
+{
+  "at": "2026-11-04T02:15:19.612Z",
+  "host": "168.110.221.197",
+  "ufw": {
+    "ok": true,
+    "active": true,
+    "defaultDeny": true,
+    "ruleCount": 6,
+    "rules": [
+      "22/tcp                     LIMIT IN    Anywhere                  ",
+      "80/tcp                     ALLOW IN    Anywhere                   # S1 HTTP",
+      "443/tcp                    ALLOW IN    Anywhere                   # S1 HTTPS",
+      "22/tcp (v6)                LIMIT IN    Anywhere (v6)             ",
+      "80/tcp (v6)                ALLOW IN    Anywhere (v6)              # S1 HTTP",
+      "443/tcp (v6)               ALLOW IN    Anywhere (v6)              # S1 HTTPS"
+    ]
+  },
+  "fail2ban": {
+    "ok": true,
+    "active": true,
+    "jails": [
+      "nginx-bad-request",
+      "nginx-botsearch",
+      "nginx-http-auth",
+      "nginx-limit-req",
+      "sshd"
+    ],
+    "banned": 93
+  },
+  "fail2banSshd": {
+    "ok": true,
+    "raw": "Status for the jail: sshd\n|- Filter\n|  |- Currently failed:\t1\n|  |- Total failed:\t1358\n|  `- Journal matches:\t_SYSTEMD_UNIT=sshd.service + _COMM=sshd\n`- Actions\n   |- Currently banned:\t0\n   |- Total banned:\t93\n   `- Banned IP list:\t\n"
+  },
+  "processes": {
+    "ok": true,
+    "total": 174,
+    "foreignCount": 0,
+    "foreign": []
+  },
+  "ports": {
+    "ok": true,
+    "total": 22,
+    "listening": [
+      {
+        "proto": "udp",
+        "port": 53,
+        "proc": "",
+        "raw": "udp   UNCONN 0      0            127.0.0.54:53         0.0.0.0:*"
+      },
+      {
+        "proto": "udp",
+        "port": 53,
+        "proc": "",
+        "raw": "udp   UNCONN 0      0         127.0.0.53%lo:53         0.0.0.0:*"
+      },
+      {
+        "proto": "udp",
+        "port": 68,
+        "proc": "",
+        "raw": "udp   UNCONN 0      0      10.0.0.10%enp0s6:68         0.0.0.0:*"
+      },
+      {
+        "proto": "udp",
+        "port": 111,
+        "proc": "",
+        "raw": "udp   UNCONN 0      0               0.0.0.0:111        0.0.0.0:*"
+      },
+      {
+        "proto": "udp",
+        "port": 47187,
+        "proc": "cloudflared",
+        "raw": "udp   UNCONN 0      0                     *:47187            *:*    users:((\"cloudflared\",pid=1754136,fd=4))"
+      },
+      {
+        "proto": "udp",
+        "port": 47609,
+        "proc": "cloudflared",
+        "raw": "udp   UNCONN 0      0                     *:47609            *:*    users:((\"cloudflared\",pid=3121715,fd=8))"
+      },
+      {
+        "proto": "udp",
+        "port": 111,
+        "proc": "",
+        "raw": "udp   UNCONN 0      0                  [::]:111           [::]:*"
+      },
+      {
+        "proto": "tcp",
+        "port": 20241,
+        "proc": "cloudflared",
+        "raw": "tcp   LISTEN 0      4096          127.0.0.1:20241      0.0.0.0:*    users:((\"cloudflared\",pid=1754136,fd=8))"
+      },
+      {
+        "proto": "tcp",
+        "port": 20242,
+        "proc": "cloudflared",
+        "raw": "tcp   LISTEN 0      4096          127.0.0.1:20242      0.0.0.0:*    users:((\"cloudflared\",pid=3121715,fd=7))"
+      },
+      {
+        "proto": "tcp",
+        "port": 443,
+        "proc": "",
+        "raw": "tcp   LISTEN 0      511             0.0.0.0:443        0.0.0.0:*"
+      },
+      {
+        "proto": "tcp",
+        "port": 3010,
+        "proc": "node /home/ubun",
+        "raw": "tcp   LISTEN 0      511           127.0.0.1:3010       0.0.0.0:*    users:((\"node /home/ubun\",pid=3121654,fd=23))"
+      },
+      {
+        "proto": "tcp",
+        "port": 22,
+        "proc": "",
+        "raw": "tcp   LISTEN 0      4096            0.0.0.0:22         0.0.0.0:*"
+      },
+      {
+        "proto": "tcp",
+        "port": 111,
+        "proc": "",
+        "raw": "tcp   LISTEN 0      4096            0.0.0.0:111        0.0.0.0:*"
+      },
+      {
+        "proto": "tcp",
+        "port": 53,
+        "proc": "",
+        "raw": "tcp   LISTEN 0      4096         127.0.0.54:53         0.0.0.0:*"
+      },
+      {
+        "proto": "tcp",
+        "port": 3000,
+        "proc": "node /home/ubun",
+        "raw": "tcp   LISTEN 0      511           127.0.0.1:3000       0.0.0.0:*    users:((\"node /home/ubun\",pid=3135304,fd=23))"
+      },
+      {
+        "proto": "tcp",
+        "port": 80,
+        "proc": "",
+        "raw": "tcp   LISTEN 0      511             0.0.0.0:80         0.0.0.0:*"
+      },
+      {
+        "proto": "tcp",
+        "port": 53,
+        "proc": "",
+        "raw": "tcp   LISTEN 0      4096      127.0.0.53%lo:53         0.0.0.0:*"
+      },
+      {
+        "proto": "tcp",
+        "port": 3001,
+        "proc": "node /home/ubun",
+        "raw": "tcp   LISTEN 0      511             0.0.0.0:3001       0.0.0.0:*    users:((\"node /home/ubun\",pid=3121651,fd=23))"
+      },
+      {
+        "proto": "tcp",
+        "port": 443,
+        "proc": "",
+        "raw": "tcp   LISTEN 0      511                [::]:443           [::]:*"
+      },
+      {
+        "proto": "tcp",
+        "port": 22,
+        "proc": "",
+        "raw": "tcp   LISTEN 0      4096               [::]:22            [::]:*"
+      },
+      {
+        "proto": "tcp",
+        "port": 111,
+        "proc": "",
+        "raw": "tcp   LISTEN 0      4096               [::]:111           [::]:*"
+      },
+      {
+        "proto": "tcp",
+        "port": 80,
+        "proc": "",
+        "raw": "tcp   LISTEN 0      511                [::]:80            [::]:*"
+      }
+    ]
+  },
+  "binaries": {
+    "ok": true,
+    "hashes": [
+      {
+        "sha256": "05a69ccdcb795f2a8b86c145e71a6a37cce84fccef5aaf25a8fe38bc9423e732",
+        "path": "/usr/bin/node"
+      }
+    ],
+    "raw": "05a69ccdcb795f2a8b86c145e71a6a37cce84fccef5aaf25a8fe38bc9423e732  /usr/bin/node\nv22.23.1\nOK\n"
+  },
+  "ghidra": {
+    "text_segments": 174,
+    "imports_open_ports": 22,
+    "strings_hashes": 1,
+    "xref_firewall": true,
+    "xref_ids": true,
+    "verdict": "BERSIH-0-ASING"
+  },
+  "pass": true
+}

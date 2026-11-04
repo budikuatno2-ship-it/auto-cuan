@@ -625,10 +625,121 @@ async function handler(req, res) {
       const patch = (req.body && req.body.patch) || {};
       const saved = quotaState.saveConfig(patch, auth.session.un || 'admin');
       if (!saved.ok) return res.status(400).json({ success: false, error: 'Patch kuota tidak valid.', details: saved.errors });
+      // V3-F02: bila diubah mepet reset atau sisaKuota<=0, antrekan prioritas
+      // jalan otomatis 00:00:01 WIB (jadwal cron tetap sama).
+      let queued = null;
+      try {
+        const snap0 = quotaState.getQuotaSnapshot();
+        const q = quotaState.shouldQueueAtReset(snap0, new Date());
+        if (q.queue) queued = quotaState.enqueuePendingCatchup('quota_update:' + q.reason, new Date());
+      } catch (_) {}
       const snap = quotaState.getQuotaSnapshot();
-      return res.status(200).json({ success: true, quota: snap, config: saved.config });
+      return res.status(200).json({ success: true, quota: snap, config: saved.config, queued });
     } catch (e) {
       return res.status(500).json({ success: false, error: 'Gagal menyimpan kuota.' });
+    }
+  }
+
+  // V3-F02: Panel Kontrol Fleksibel Kuota API — semua aksi khusus admin (403 non-admin).
+  // kill_jobs: SIGTERM upstream saja (web tidak dimatikan).
+  if (action === 'quota_kill_jobs') {
+    if (!isSameOrigin(req)) return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const quotaState = require('../lib/quota-state');
+      const r = quotaState.requestKillAllJobs(auth.session.un || 'admin');
+      return res.status(200).json({ success: true, ...r });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal meminta kill jobs.' });
+    }
+  }
+
+  // force_catchup: antrean prioritas susulan hari ini (jalan jika kuota ada / 00:00:01 saat reset).
+  if (action === 'quota_force_catchup') {
+    if (!isSameOrigin(req)) return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const quotaState = require('../lib/quota-state');
+      const q = quotaState.enqueuePendingCatchup('force-catchup:' + (auth.session.un || 'admin'), new Date());
+      const snap = quotaState.getQuotaSnapshot();
+      const gate = quotaState.shouldQueueAtReset(snap, new Date());
+      return res.status(200).json({ success: true, queued: q, runNow: gate.queue === false && snap.remaining > 0, quota: snap });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal mengantre catchup.' });
+    }
+  }
+
+  // trigger satuan 0 kuota: candle-yahoo | domestic-compile | accumulation | screeners-3x | reset-cache.
+  if (action === 'quota_trigger_job') {
+    if (!isSameOrigin(req)) return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const quotaState = require('../lib/quota-state');
+      const name = req.body && req.body.job;
+      const r = quotaState.triggerZeroQuotaJob(name, auth.session.un || 'admin');
+      if (!r.ok) return res.status(400).json({ success: false, error: r.error });
+      return res.status(200).json({ success: true, ...r });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal trigger job.' });
+    }
+  }
+
+  // holiday_set: saklar manual normal/buka/libur + checkbox backfill sisa kuota.
+  if (action === 'quota_holiday_set') {
+    if (!isSameOrigin(req)) return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const quotaState = require('../lib/quota-state');
+      const body = req.body || {};
+      const patch = {};
+      if ('mode' in body) patch.holidayManualMode = body.mode;
+      if ('dateWIB' in body) patch.holidayManualDateWIB = body.dateWIB;
+      if ('backfillRemainder' in body) patch.holidayBackfillRemainder = body.backfillRemainder;
+      if (!('dateWIB' in body) && patch.holidayManualMode && patch.holidayManualMode !== 'normal') {
+        patch.holidayManualDateWIB = quotaState.getWibDateKey(new Date());
+      }
+      if (patch.holidayManualMode === 'normal') patch.holidayManualDateWIB = null;
+      const saved = quotaState.saveConfig(patch, auth.session.un || 'admin');
+      if (!saved.ok) return res.status(400).json({ success: false, error: 'Patch libur tidak valid.', details: saved.errors });
+      const snap = quotaState.getQuotaSnapshot();
+      return res.status(200).json({ success: true, quota: snap, config: saved.config, holiday: snap.holiday });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal menyimpan saklar libur.' });
+    }
+  }
+
+  // holiday_detect: deteksi libur 3 lapis (L1 weekend, L2 candle 17:00 0 kuota, L3 batal Broksum ~1928).
+  if (action === 'quota_holiday_detect') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const quotaState = require('../lib/quota-state');
+      const body = req.body || {};
+      const holiday = quotaState.detectHoliday3Layer(new Date(), {
+        ihsgHasNewBar: body.ihsgHasNewBar,
+        majorityHasNewBar: body.majorityHasNewBar
+      });
+      return res.status(200).json({ success: true, holiday });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal deteksi libur.' });
+    }
+  }
+
+  // preflight_check: Dynamic Preflight Gate (candle+ALL saja vs candle+ALL+Foreign).
+  if (action === 'quota_preflight_check') {
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const quotaState = require('../lib/quota-state');
+      const body = req.body || {};
+      const r = quotaState.preflightAllows({ candleOk: body.candleOk, allOk: body.allOk, foreignOk: body.foreignOk });
+      return res.status(200).json({ success: true, ...r });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal cek preflight.' });
     }
   }
 

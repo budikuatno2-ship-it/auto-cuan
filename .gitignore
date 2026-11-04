@@ -136,6 +136,8 @@ docs/motion-trace/
 screenshots/
 docs/evidence/**/*.png
 docs/evidence/*.png
+handoff-redesign/
+data/fast-bundle/
 
 # DeepScan weekly full-history cache and generated readiness report
 data/deepscan-history/
@@ -149,3 +151,5 @@ missing*
 {console*
 {try*
 tmp_fail.log
+.puppeteer-cache/
+**/.puppeteer-cache/

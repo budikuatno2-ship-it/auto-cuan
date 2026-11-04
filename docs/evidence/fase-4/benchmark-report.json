@@ -1,20 +1,20 @@
 {
-  "timestamp": "2026-11-02T00:55:56.854Z",
+  "timestamp": "2026-11-02T08:34:18.030Z",
   "criteria": {
     "AC-4.1": {
       "name": "In-Memory TTL Cache Server (< 50ms warm, p95 < 300ms)",
       "quote_endpoint": {
         "before_fase0_ms": 915,
-        "after_cold_ms": 1.06,
-        "after_warm_p50_ms": 0.29,
-        "after_warm_p95_ms": 0.44,
+        "after_cold_ms": 1.64,
+        "after_warm_p50_ms": 0.36,
+        "after_warm_p95_ms": 0.94,
         "passed": true
       },
       "market_structure_endpoint": {
         "before_fase0_ms": 78,
-        "after_cold_ms": 2.05,
-        "after_warm_p50_ms": 0.07,
-        "after_warm_p95_ms": 0.24,
+        "after_cold_ms": 2.9,
+        "after_warm_p50_ms": 0.06,
+        "after_warm_p95_ms": 0.19,
         "passed": true
       }
     },
@@ -35,9 +35,9 @@
     },
     "AC-4.4": {
       "name": "Memory Heap Growth across 3x Tab Cycles (< 10%)",
-      "initial_heap_kb": 21421,
-      "final_heap_kb": 21564,
-      "growth_pct": 0.66,
+      "initial_heap_kb": 21437,
+      "final_heap_kb": 22018,
+      "growth_pct": 2.71,
       "passed": true
     }
   },

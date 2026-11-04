@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Daily Afternoon Recap — safe VPS runner wrapper.
+# Daily Afternoon Recap — safe VPS runner wrapper (V3-F06: broadcast malam 21:45 WIB).
 #
 # Usage in VPS crontab (after testing):
-#   15 16 * * 1-5  /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
+#   45 21 * * 1-5  /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
 #
-# That's 16:15 WIB (09:15 UTC) on weekdays — after IDX trading closes
-# and after market context data settles.
+# That's 21:45 WIB (14:45 UTC) on weekdays — rekap malam setelah screener
+# preflight 21:25 + Top5 21:35 + landing snapshot 21:40 (final-schedule.cron).
+# Dynamic Preflight Gate: skrip ini TIDAK memblokir saat foreign belum lengkap;
+# runner tetap kirim rekap (fallback jujur bila picks kosong) agar rutin terkirim.
 #
 # Guarantees:
 #   - forces TZ=Asia/Jakarta for child process;

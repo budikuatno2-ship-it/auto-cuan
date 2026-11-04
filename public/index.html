@@ -136,6 +136,8 @@
 <script src="/lifecycle-polling-guard.js?v=20261014-v1"></script>
 <link rel="stylesheet" href="/c10-hardening.css?v=20261101-v1">
 <link rel="stylesheet" href="/account-hardening.css?v=20261001-v1">
+<link rel="stylesheet" href="/ac.css?v=20261104-v3f10">
+<script src="/app.js?v=20261104-v3f10" defer></script>
 </head>
 <body class="min-h-screen text-gray-100">
 <a href="#appMain" id="skipToContentLink" class="skip-link" onclick="return skipToMainContent(event)" onkeydown="if(event.key==='Enter'||event.keyCode===13){return skipToMainContent(event);}">Lewati ke konten utama</a>
@@ -269,11 +271,11 @@
       </button>
       <div id="landingMenu" class="landing-menu items-center" aria-label="Jelajahi Auto-Cuan">
         <a href="#landingMarket">Pasar</a>
-        <a href="#landingScan">Screener</a>
-        <a href="#landingInvestigate">Investigasi</a>
+        <a href="#landingScan">Screener 3 Mode</a>
+        <a href="#landingInvestigate">Bandarmologi</a>
         <a href="#landingValidate">Fundamental</a>
         <a href="#landingAi">Asisten AI</a>
-        <a href="#landingMonitor">Monitoring</a>
+        <a href="#landingMonitor">Portfolio & Track Record</a>
         <a href="#landingTrust">Integritas Data</a>
         <button type="button" onclick="openLoginModal()" class="landing-link">Masuk</button>
         <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary landing-menu-cta"><span class="landing-cta-label">Daftar dengan Gmail</span><span aria-hidden="true">&#8599;</span></button>
@@ -343,7 +345,7 @@
               <span class="preview-dot"></span>
               <span class="preview-dot"></span>
             </div>
-            <span class="preview-sample-pill" aria-label="Indikator data contoh"><span class="preview-sample-dot" aria-hidden="true"></span> DATA CONTOH &middot; PRATINJAU STATIS</span>
+            <span class="preview-sample-pill" aria-label="Indikator data contoh"><span class="preview-sample-dot" aria-hidden="true"></span> SNAPSHOT EOD &middot; DATA BURSA RIIL</span>
             <div class="landing-preview-tabs" role="tablist" aria-label="Pratinjau produk: Dashboard, Screener, Bandarmologi">
               <button type="button" class="preview-tab active" role="tab" aria-selected="true" data-c3prev="dashboard" onclick="acSwitchPreview('dashboard')">Dashboard</button>
               <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3prev="screener" onclick="acSwitchPreview('screener')">Screener</button>
@@ -355,7 +357,7 @@
               <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="daytrade" onclick="acSwitchPreviewSub('daytrade')">Day Trade</button>
             </div>
             <div class="landing-preview-meta">
-              <span class="preview-status-badge">Ilustrasi Komponen Meja Kerja</span>
+              <span class="preview-status-badge">Snapshot EOD Meja Kerja</span>
             </div>
           </div>
 
@@ -364,43 +366,43 @@
               <!-- Panel 1: Sinyal & Konteks -->
               <div class="preview-pane">
                 <div class="preview-pane-head">
-                  <span class="preview-pane-label">01 SKOR &amp; RADAR (CONTOH)</span>
-                  <span class="preview-pane-tag">Kandidat Model Swing</span>
+                  <span class="preview-pane-label">01 SKOR &amp; RADAR EOD</span>
+                  <span class="preview-pane-tag">Kandidat Swing EOD</span>
                 </div>
                 <div class="preview-score-card">
                   <div class="score-display">
-                    <span class="score-number">82</span>
+                    <span class="score-number">85</span>
                     <span class="score-scale">/100</span>
                   </div>
                   <div class="score-details">
-                    <strong>Konfluensi Terkonfirmasi</strong>
-                    <p>Skor akumulasi broker dan struktur harga selaras dengan rencana swing.</p>
+                    <strong>DSNG · Siap Swing · 2026-11-03 FINAL_EOD</strong>
+                    <p>Skor 85 dari mesin konglo. Entry Rp 1.534 - Rp 1.550. Bukan rekomendasi transaksi.</p>
                   </div>
                 </div>
                 <div class="preview-plan-row">
-                  <div><span>Entry Area</span><strong>Rp 4.620 - 4.660</strong></div>
-                  <div><span>Target Profit</span><strong class="text-positive">Rp 4.980 (+7,3%)</strong></div>
-                  <div><span>Stop Loss</span><strong class="text-negative">Rp 4.490 (-3,2%)</strong></div>
-                  <div><span>Risk:Reward</span><strong>2,28x</strong></div>
+                  <div><span>Entry Area</span><strong>Rp 1.534 - Rp 1.550</strong></div>
+                  <div><span>Target Profit</span><strong class="text-positive">Rp 2.230 (+43,9%)</strong></div>
+                  <div><span>Stop Loss</span><strong class="text-negative">Rp 1.210 (-21,9%)</strong></div>
+                  <div><span>Risk:Reward</span><strong>2,00x</strong></div>
                 </div>
               </div>
 
               <!-- Panel 2: Investigasi Aliran Dana -->
               <div class="preview-pane">
                 <div class="preview-pane-head">
-                  <span class="preview-pane-label">02 ALIRAN DANA &amp; BROKER (CONTOH)</span>
-                  <span class="preview-pane-tag">Akumulasi Model</span>
+                  <span class="preview-pane-label">02 ALIRAN DANA &amp; BROKER EOD</span>
+                  <span class="preview-pane-tag">Akumulasi EOD</span>
                 </div>
                 <div class="preview-flow-stats">
                   <div class="flow-stat">
-                    <span>Net Akumulasi Top 3</span>
-                    <strong class="text-positive">+Rp 64,8 M</strong>
-                    <small>Broker Pembeli: ZP, CC, AK</small>
+                    <span>BREN · Radar Day-Trade</span>
+                    <strong class="text-positive">Rp 2.100</strong>
+                    <small>Sinyal: WAIT_PULLBACK · RR 2,46</small>
                   </div>
                   <div class="flow-stat">
-                    <span>Distribusi Ritel</span>
-                    <strong class="text-negative">-Rp 41,2 M</strong>
-                    <small>Broker Penjual: YP, PD, XC</small>
+                    <span>Rencana BREN</span>
+                    <strong class="text-negative">SL Rp 1.980</strong>
+                    <small>Target Rp 2.430 · Entry Rp 2.060 - Rp 2.110</small>
                   </div>
                 </div>
                 <div class="preview-flow-bar" aria-label="Perbandingan akumulasi">
@@ -416,8 +418,8 @@
               <!-- Panel 3: Validasi Struktur & Fundamental -->
               <div class="preview-pane">
                 <div class="preview-pane-head">
-                  <span class="preview-pane-label">03 VALIDASI DATA (CONTOH)</span>
-                  <span class="preview-pane-tag">Data Sampel Lapkeu</span>
+                  <span class="preview-pane-label">03 VALIDASI DATA EOD</span>
+                  <span class="preview-pane-tag">Data Lapkeu EOD</span>
                 </div>
                 <div class="preview-metrics-list">
                   <div class="metric-row">
@@ -446,8 +448,8 @@
           </div>
 
           <div class="landing-preview-footer">
-            <span class="preview-provenance-tag">DATA CONTOH MEJA KERJA</span>
-            <span class="preview-provenance-desc">Pratinjau statis komponen antarmuka Auto-Cuan. Bukan harga pasar real-time dan bukan rekomendasi transaksi. Seluruh angka di atas merupakan ilustrasi tata letak.</span>
+            <span class="preview-provenance-tag">SNAPSHOT EOD MEJA KERJA</span>
+            <span class="preview-provenance-desc">Snapshot EOD riil 2026-11-03 FINAL_EOD dari 3 mesin screener. Bukan rekomendasi transaksi.</span>
           </div>
         </div>
       </div>
@@ -467,7 +469,7 @@
       <div class="stats">
         <div><b>963</b><span>emiten dengan candle harian dari sumber data bursa</span></div>
         <div><b>500</b><span>sesi riwayat per emiten untuk chart dan indikator</span></div>
-        <div><b>2.907</b><span>sampel uji walk-forward lintas bursa untuk rentang harga</span></div>
+        <div><b>2.907</b><span>data uji walk-forward lintas bursa untuk rentang harga</span></div>
         <div><b>77%</b><span>harga 10 hari kemudian jatuh di rentang p10-p90 (target 80%)</span></div>
       </div>
       <p class="landing-hero-note" style="margin-top:14px">Sumber: cakupan candle harian bursa per data bursa terkini; uji walk-forward Dua Skenario v2 (seed 42, out-of-sample). Uji arah tidak lolos, karena itu yang ditampilkan hanya rentang.</p>
@@ -936,7 +938,7 @@
      #dashboardScreen — see test/auth-modals-outside-dashboard-screen.test.js. -->
 
 <!-- LOGIN MODAL -->
-<div id="loginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+<div id="loginModal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center p-4" style="background-color:rgba(6,10,18,0.92)!important;backdrop-filter:blur(18px) saturate(140%)!important;-webkit-backdrop-filter:blur(18px) saturate(140%)!important;z-index:9999!important" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
     <div class="w-full max-w-[420px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
         <div class="flex items-start justify-between gap-3">
             <div>
@@ -1260,7 +1262,7 @@ html.light #googleCompleteProfileModal input {
         <!-- Groups and order follow HANDOFF §4: Dashboard · Temukan · Riset ·
              Pantau · Admin. Icons are the canvas set (public/ac-icons.js). -->
         <section class="sidebar-nav-group" aria-label="Dashboard">
-            <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item active" data-sidebar-page="dashboard" data-label="Dashboard" title="Dashboard">
+            <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item active" data-sidebar-page="dashboard" data-label="Dashboard" title="Dashboard" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>
                 <span class="sidebar-label">Dashboard</span>
             </button>
@@ -1268,15 +1270,15 @@ html.light #googleCompleteProfileModal input {
 
         <section class="sidebar-nav-group" aria-label="Temukan">
             <p class="sidebar-group-label" aria-hidden="true">Temukan</p>
-            <button id="nav-screener" type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-label="Screener" data-premium-nav="true" title="Screener">
+            <button id="nav-screener" type="button" onclick="navigateTo('screener')" class="sidebar-item" data-sidebar-page="screener" data-label="Screener" data-premium-nav="true" data-v3f10-locked="true" title="Screener">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
                 <span class="sidebar-label">Screener</span>
             </button>
-            <button id="tabSektorHot" type="button" onclick="navigateTo('sektor')" class="sidebar-item" data-sidebar-page="sektor" data-label="Sektor Hot" data-premium-nav="true" title="Sektor Hot">
+            <button id="tabSektorHot" type="button" onclick="navigateTo('sektor')" class="sidebar-item" data-sidebar-page="sektor" data-label="Sektor Hot" data-premium-nav="true" title="Sektor Hot" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>
                 <span class="sidebar-label">Sektor Hot</span>
             </button>
-            <button id="tabCatatanAdmin" type="button" onclick="navigateTo('catatan-admin')" class="sidebar-item" data-sidebar-page="catatan-admin" data-label="Catatan Admin" title="Catatan Admin">
+            <button id="tabCatatanAdmin" type="button" onclick="navigateTo('catatan-admin')" class="sidebar-item" data-sidebar-page="catatan-admin" data-label="Catatan Admin" title="Catatan Admin" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h4"/></svg>
                 <span class="sidebar-label">Catatan Admin</span>
                 <span class="cnt ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--ac-raised)] border border-[var(--ac-hair)]" id="navCatatanAdminCount" style="display:none">3</span>
@@ -1285,36 +1287,36 @@ html.light #googleCompleteProfileModal input {
 
         <section class="sidebar-nav-group" aria-label="Riset">
             <p class="sidebar-group-label" aria-hidden="true">Riset</p>
-            <button id="tabAnalisisChart" type="button" onclick="navigateTo('analisis', 'analisis-chart')" class="sidebar-item" data-sidebar-page="analisis" data-analysis-tab="analisis-chart" data-tab="analisis-chart" data-label="Analisis &amp; Chart" title="Analisis &amp; Chart">
+            <button id="tabAnalisisChart" type="button" onclick="navigateTo('analisis', 'analisis-chart')" class="sidebar-item" data-sidebar-page="analisis" data-analysis-tab="analisis-chart" data-tab="analisis-chart" data-label="Analisis &amp; Chart" title="Analisis &amp; Chart" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>
                 <span class="sidebar-label">Analisis &amp; Chart</span>
             </button>
             <!-- C1: Chart Workstation bukan menu sidebar (19 menu Handoff §4.3). Akses via Analisis & Chart > subtab Chart Workstation. Tombol duplikat dihapus permanen. -->
-            <button id="tabBandarmologi" type="button" onclick="navigateTo('analisis', 'bandarmologi')" class="sidebar-item" data-sidebar-page="bandarmologi" data-analysis-tab="bandarmologi" data-tab="bandarmologi" data-label="Bandarmologi" title="Bandarmologi">
+            <button id="tabBandarmologi" type="button" onclick="navigateTo('analisis', 'bandarmologi')" class="sidebar-item" data-sidebar-page="bandarmologi" data-analysis-tab="bandarmologi" data-tab="bandarmologi" data-label="Bandarmologi" title="Bandarmologi" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
                 <span class="sidebar-label">Bandarmologi</span>
             </button>
-            <button id="tabSinyalIntelijen" type="button" onclick="navigateTo('analisis', 'intel')" class="sidebar-item" data-sidebar-page="intel" data-analysis-tab="intel" data-tab="intel" data-label="Sinyal Intelijen" title="Sinyal Intelijen">
+            <button id="tabSinyalIntelijen" type="button" onclick="navigateTo('analisis', 'intel')" class="sidebar-item" data-sidebar-page="intel" data-analysis-tab="intel" data-tab="intel" data-label="Sinyal Intelijen" title="Sinyal Intelijen" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>
                 <span class="sidebar-label">Sinyal Intelijen</span>
             </button>
-            <button id="tabBrokerHunter" type="button" onclick="navigateTo('analisis', 'hunter')" class="sidebar-item" data-sidebar-page="hunter" data-analysis-tab="hunter" data-tab="hunter" data-label="Broker Hunter" title="Broker Hunter">
+            <button id="tabBrokerHunter" type="button" onclick="navigateTo('analisis', 'hunter')" class="sidebar-item" data-sidebar-page="hunter" data-analysis-tab="hunter" data-tab="hunter" data-label="Broker Hunter" title="Broker Hunter" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
                 <span class="sidebar-label">Broker Hunter</span>
             </button>
-            <button id="tabJejaringInsider" type="button" onclick="navigateTo('analisis', 'insider')" class="sidebar-item" data-sidebar-page="insider" data-analysis-tab="insider" data-tab="insider" data-label="Insider" title="Insider">
+            <button id="tabJejaringInsider" type="button" onclick="navigateTo('analisis', 'insider')" class="sidebar-item" data-sidebar-page="insider" data-analysis-tab="insider" data-tab="insider" data-label="Insider" title="Insider" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>
                 <span class="sidebar-label">Insider</span>
             </button>
-            <button id="tabRankingHarian" type="button" onclick="navigateTo('analisis', 'ranking')" class="sidebar-item" data-sidebar-page="ranking" data-analysis-tab="ranking" data-tab="ranking" data-label="Ranking" title="Ranking">
+            <button id="tabRankingHarian" type="button" onclick="navigateTo('analisis', 'ranking')" class="sidebar-item" data-sidebar-page="ranking" data-analysis-tab="ranking" data-tab="ranking" data-label="Ranking" title="Ranking" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
                 <span class="sidebar-label">Ranking</span><span id="rankingLockIcon" class="sidebar-badge" aria-label="Akses terbatas">PRO</span>
             </button>
-            <button id="tabFinancial" type="button" onclick="navigateTo('analisis', 'financial')" class="sidebar-item" data-sidebar-page="financial" data-analysis-tab="financial" data-tab="financial" data-label="Financial" title="Financial">
+            <button id="tabFinancial" type="button" onclick="navigateTo('analisis', 'financial')" class="sidebar-item" data-sidebar-page="financial" data-analysis-tab="financial" data-tab="financial" data-label="Financial" title="Financial" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>
                 <span class="sidebar-label">Financial</span>
             </button>
-            <button id="tabMarketStructure" type="button" onclick="navigateTo('analisis', 'market-structure')" class="sidebar-item" data-sidebar-page="market-structure" data-analysis-tab="market-structure" data-tab="market-structure" data-label="Struktur Pasar" title="Struktur Pasar">
+            <button id="tabMarketStructure" type="button" onclick="navigateTo('analisis', 'market-structure')" class="sidebar-item" data-sidebar-page="market-structure" data-analysis-tab="market-structure" data-tab="market-structure" data-label="Struktur Pasar" title="Struktur Pasar" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>
                 <span class="sidebar-label">Struktur Pasar</span>
             </button>
@@ -1322,23 +1324,23 @@ html.light #googleCompleteProfileModal input {
 
         <section class="sidebar-nav-group" aria-label="Pantau">
             <p class="sidebar-group-label" aria-hidden="true">Pantau</p>
-            <button type="button" id="tabWatchlist" onclick="navigateTo('watchlist')" class="sidebar-item" data-sidebar-page="watchlist" data-label="Watchlist" data-premium-nav="true" title="Watchlist">
+            <button type="button" id="tabWatchlist" onclick="navigateTo('watchlist')" class="sidebar-item" data-sidebar-page="watchlist" data-label="Watchlist" data-premium-nav="true" title="Watchlist" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>
                 <span class="sidebar-label">Watchlist</span>
             </button>
-            <button type="button" id="tabPortofolio" onclick="navigateTo('portofolio')" class="sidebar-item" data-sidebar-page="portofolio" data-label="Portfolio" data-premium-nav="true" title="Portfolio">
+            <button type="button" id="tabPortofolio" onclick="navigateTo('portofolio')" class="sidebar-item" data-sidebar-page="portofolio" data-label="Portfolio" data-premium-nav="true" title="Portfolio" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>
                 <span class="sidebar-label">Portfolio</span>
             </button>
-            <button type="button" id="tabTrackRecord" onclick="navigateTo('trackrecord')" class="sidebar-item" data-sidebar-page="trackrecord" data-label="Track Record" data-premium-nav="true" title="Track Record">
+            <button type="button" id="tabTrackRecord" onclick="navigateTo('trackrecord')" class="sidebar-item" data-sidebar-page="trackrecord" data-label="Track Record" data-premium-nav="true" title="Track Record" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>
                 <span class="sidebar-label">Track Record</span>
             </button>
-            <button type="button" id="nav-money-management" onclick="navigateTo('kelola-keuangan')" class="sidebar-item" data-sidebar-page="money-management" data-label="Kelola Keuangan" data-premium-nav="true" title="Kelola Keuangan">
+            <button type="button" id="nav-money-management" onclick="navigateTo('kelola-keuangan')" class="sidebar-item" data-sidebar-page="money-management" data-label="Kelola Keuangan" data-premium-nav="true" title="Kelola Keuangan" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>
                 <span class="sidebar-label">Kelola Keuangan</span>
             </button>
-            <button type="button" id="nav-subscription" onclick="if(window.openAccountSubscription)window.openAccountSubscription();else if(window.openAccountCenter)window.openAccountCenter('subscription');" class="sidebar-item" data-sidebar-page="subscription" data-label="Langganan VIP" title="Langganan VIP">
+            <button type="button" id="nav-subscription" onclick="if(window.openAccountSubscription)window.openAccountSubscription();else if(window.openAccountCenter)window.openAccountCenter('subscription');" class="sidebar-item" data-sidebar-page="subscription" data-label="Langganan VIP" title="Langganan VIP" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 15h10M7 11h10M7 7h4"/></svg>
                 <span class="sidebar-label">Langganan VIP</span>
                 <span class="cnt ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">VIP</span>
@@ -1348,11 +1350,11 @@ html.light #googleCompleteProfileModal input {
         <!-- Admin group (HANDOFF §4). Visible for admin. -->
         <section class="sidebar-nav-group sidebar-admin-group" aria-label="Admin">
             <p class="sidebar-group-label" aria-hidden="true">Admin</p>
-            <button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item hidden" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar">
+            <button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" data-v3f10-locked="true" title="Pattern Radar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
                 <span class="sidebar-label">Pattern Radar</span>
             </button>
-            <button id="tabAdminConsole" type="button" onclick="navigateTo('admin-console')" class="sidebar-item" data-sidebar-page="admin-console" data-label="Admin Console" title="Admin Console">
+            <button id="tabAdminConsole" type="button" onclick="navigateTo('admin-console')" class="sidebar-item" data-sidebar-page="admin-console" data-label="Admin Console" title="Admin Console" data-v3f10-locked="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
                 <span class="sidebar-label">Admin Console</span>
             </button>
@@ -1450,25 +1452,29 @@ html.light #googleCompleteProfileModal input {
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 <span>Analisis Saham</span>
             </button>
-            <button onclick="navigateTo('sektor')" class="nav-btn hidden" data-page="sektor" data-premium-nav="true">
+            <button onclick="navigateTo('sektor')" class="nav-btn" data-page="sektor" data-premium-nav="true" data-v3f10-locked="true">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 <span>Sektor Hot</span>
             </button>
-            <button onclick="navigateTo('screener')" class="nav-btn hidden" data-page="screener" data-premium-nav="true">
+            <button onclick="navigateTo('screener')" class="nav-btn" data-page="screener" data-premium-nav="true" data-v3f10-locked="true">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <span>Screener</span>
             </button>
-            <button onclick="navigateTo('portofolio')" class="nav-btn hidden" data-page="portofolio" data-premium-nav="true">
+            <button onclick="navigateTo('portofolio')" class="nav-btn" data-page="portofolio" data-premium-nav="true" data-v3f10-locked="true">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 <span>Portofolio</span>
             </button>
-            <button onclick="navigateTo('watchlist')" class="nav-btn hidden" data-page="watchlist" id="navBtnWatchlist" data-premium-nav="true">
+            <button onclick="navigateTo('watchlist')" class="nav-btn" data-page="watchlist" id="navBtnWatchlist" data-premium-nav="true" data-v3f10-locked="true">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                 <span>Watchlist</span>
             </button>
-            <button onclick="navigateTo('trackrecord')" class="nav-btn hidden" data-page="trackrecord" data-premium-nav="true">
+            <button onclick="navigateTo('trackrecord')" class="nav-btn" data-page="trackrecord" data-premium-nav="true" data-v3f10-locked="true">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 <span>Track Record</span>
+            </button>
+            <button onclick="navigateTo('kelola-keuangan')" class="nav-btn" data-page="kelola-keuangan" data-premium-nav="true" data-v3f10-locked="true">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>
+                <span>Kelola Keuangan</span>
             </button>
             </div>
     </nav>
@@ -1919,6 +1925,8 @@ html.light #googleCompleteProfileModal input {
                 <!-- One R/R floor for all three modes (canvas toolbar). Off by default:
                      rows without a computed R/R would otherwise disappear unasked. -->
                 <label class="scr-rr-min"><input type="checkbox" id="scrRrMin" onchange="onScreenerRrMinChange()"> R/R minimal 1 : 1,5 <span class="mut scr-rr-dt-note">(Day Trade 1 : 1,2)</span></label>
+                <!-- V3-F04: satu-satunya toggle eksplisit pembuka universe mentah (default filter ketat aktif). -->
+                <label class="scr-rr-min"><input type="checkbox" id="v3f04ShowRawKonglo" onchange="onV3F04ShowRawChange('konglo')"> Tampilkan seluruh universe mentah</label>
             </span>
             <div class="flex items-center gap-2 scr-head-act">
                 <button type="button" class="vbtn sm scr-view-btn" data-scr-sort onclick="AutoCuanScreenerV2.cycleSort()">Urutkan: Bawaan</button><button type="button" class="vbtn sm scr-view-btn" data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2.toggleCompact()">Kolom: Lengkap</button>
@@ -2091,7 +2099,7 @@ html.light #googleCompleteProfileModal input {
             <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
                 <input id="nkTickerSearch" aria-label="Cari ticker swing non-konglomerasi" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Cari ticker…" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
                 <select id="nkStatusFilter" aria-label="Filter status setup swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Semua status</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-                <span class="scr-rr-slot" id="nkRrSlot"></span>
+                <span class="scr-rr-slot" id="nkRrSlot"><label class="scr-rr-min"><input type="checkbox" id="v3f04ShowRawNonkonglo" onchange="onV3F04ShowRawChange('nonkonglo')"> Tampilkan seluruh universe mentah</label></span>
                 <div class="flex items-center gap-2 scr-head-act">
                     <button type="button" class="vbtn sm scr-view-btn" data-scr-sort onclick="AutoCuanScreenerV2.cycleSort()">Urutkan: Bawaan</button><button type="button" class="vbtn sm scr-view-btn" data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2.toggleCompact()">Kolom: Lengkap</button>
                     <button type="button" onclick="exportNonKongloScreenerPDF()" class="vbtn sm scr-view-btn">Cetak / PDF</button>
@@ -2235,7 +2243,7 @@ html.light #googleCompleteProfileModal input {
             <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
                 <input id="dtTickerSearch" aria-label="Cari ticker day trade" oninput="applyScreenerUiFilters('daytrade')" placeholder="Cari ticker…" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
                 <select id="dtStatusFilter" aria-label="Filter status setup day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Semua status</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-                <span class="scr-rr-slot" id="dtRrSlot"></span>
+                <span class="scr-rr-slot" id="dtRrSlot"><label class="scr-rr-min"><input type="checkbox" id="v3f04ShowRawDaytrade" onchange="onV3F04ShowRawChange('daytrade')"> Tampilkan seluruh universe mentah</label></span>
                 <div class="flex items-center gap-2 scr-head-act">
                     <button type="button" class="vbtn sm scr-view-btn" data-scr-sort onclick="AutoCuanScreenerV2.cycleSort()">Urutkan: Bawaan</button><button type="button" class="vbtn sm scr-view-btn" data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2.toggleCompact()">Kolom: Lengkap</button>
                     <button type="button" onclick="exportDayTradePDF()" class="vbtn sm scr-view-btn">Cetak / PDF</button>
@@ -2433,7 +2441,7 @@ html.light #googleCompleteProfileModal input {
             <button id="technicalChartTab" role="tab" aria-selected="true" onclick="showChartTab('technical')" class="px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-semibold">Technical Chart</button>
             <button id="patternChartTab" role="tab" aria-selected="false" onclick="showChartTab('pattern')" class="hidden px-4 py-2 rounded-lg bg-dark-700 text-gray-300 text-sm font-semibold">Pattern Preview</button>
         </div>
-        <div id="chartPageContainer" role="tabpanel" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden min-w-0">
+        <div id="v3f09-chart-toolbar-slot" data-v3f09-toolbar-slot="true" style="margin:8px 0"></div><style>.v3f09-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}.v3f09-mode,.v3f09-theme{padding:6px 10px;border-radius:8px;border:1px solid #334155;font-size:12px}.v3f09-mode.on,.v3f09-theme.on{background:#10b981;color:#000;font-weight:700}.v3f09-hint{font-size:11px;opacity:.7}</style><div id="chartPageContainer" role="tabpanel" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden min-w-0">
             <div class="flex items-center justify-center py-16 text-gray-400 text-sm">
                 <div class="text-center">
                     <svg class="w-10 h-10 mx-auto mb-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
@@ -3504,13 +3512,31 @@ html.light #googleCompleteProfileModal input {
                                 <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Konteks yang dipakai</h3>
                                 <p class="mut text-xs text-[var(--ac-2)] leading-normal">Candle harian s.d. sesi terakhir &middot; snapshot LPM &amp; flow broker. Interpretasi model adalah pendukung keputusan berbasis probabilitas, bukan data sumber tunggal atau anjuran transaksi keuangan.</p>
                             </div>
+                            <div class="ai-sec rise d4 v3f08-matrix" id="v3f08Matrix" aria-label="Matriks angka tegas dari data riil">
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Matriks angka &middot; data riil</h3>
+                                <div class="v3f08-grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px">
+                                    <div class="v3f08-cell" style="grid-column:span 6"><span class="lbl">Area Entry</span><b id="v3f08Entry" class="v3f08-mono num">Memuat&hellip;</b></div>
+                                    <div class="v3f08-cell" style="grid-column:span 6"><span class="lbl">SL + %risiko</span><b id="v3f08SL" class="v3f08-mono num">Memuat&hellip;</b><small id="v3f08Risk" class="v3f08-mono num mut"></small></div>
+                                    <div class="v3f08-cell" style="grid-column:span 4"><span class="lbl">TP1</span><b id="v3f08TP1" class="v3f08-mono num">Memuat&hellip;</b></div>
+                                    <div class="v3f08-cell" style="grid-column:span 4"><span class="lbl">TP2</span><b id="v3f08TP2" class="v3f08-mono num">Memuat&hellip;</b></div>
+                                    <div class="v3f08-cell" style="grid-column:span 4"><span class="lbl">R/R</span><b id="v3f08RR" class="v3f08-mono num">Memuat&hellip;</b></div>
+                                    <div class="v3f08-cell" style="grid-column:span 6"><span class="lbl">Support terdekat</span><b id="v3f08Support" class="v3f08-mono num">Memuat&hellip;</b></div>
+                                    <div class="v3f08-cell" style="grid-column:span 6"><span class="lbl">Resistance terdekat</span><b id="v3f08Resistance" class="v3f08-mono num">Memuat&hellip;</b></div>
+                                </div>
+                                <h4 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mt-3 mb-1">Tabel Fibonacci Retracement & Extension &middot; Swing High/Low riil</h4>
+                                <table id="v3f08FiboTable" class="v3f08-fibo" aria-label="Tabel Fibonacci dari swing high low riil">
+                                    <thead><tr><th>Level Fibonacci</th><th>Rasio</th><th>Harga (Rp)</th></tr></thead>
+                                    <tbody id="v3f08FiboBody"><tr><td colspan="3">Memuat level Fibonacci riil&hellip;</td></tr></tbody>
+                                </table>
+                                <p class="mut text-xs leading-normal">Retracement 0,0% / 23,6% / 38,2% / 50,0% / 61,8% / 78,6% / 100,0% &middot; Extension 127,2% / 161,8% &middot; Swing <span id="v3f08Swing" class="v3f08-mono num">riil</span> &middot; <span id="v3f08AsOf">sesi terakhir</span></p>
+                            </div>
                         </div>
                         <div style="border-top:1px solid var(--ac-hair);padding:16px 20px;display:grid;gap:12px">
                             <div id="unifiedChatMessages" class="unified-chat-messages" style="display:grid;gap:8px;max-height:240px;overflow-y:auto"></div>
                             <div id="anaAiThinking" class="think text-xs text-emerald-400 italic py-1" style="display:none">Menyusun jawaban dari konteks...</div>
                             <div style="display:flex;gap:6px;flex-wrap:wrap">
                                 <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Apa arti LPM sekarang?')">Apa arti LPM sekarang?</button>
-                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Di mana level cut loss setup ini?')">Level cut loss?</button>
+                                <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Di mana area beli dan stop loss?')">Area beli & SL?</button>
                                 <button type="button" class="vbtn sm qp" onclick="if(window.UnifiedCockpit)UnifiedCockpit.sendQuickPrompt('Bagaimana konfirmasi volume dan tren MA?')">Konfirmasi volume?</button>
                             </div>
                             <div id="analisisFollowUp" style="display:flex;gap:8px;align-items:center">
@@ -3533,6 +3559,16 @@ html.light #googleCompleteProfileModal input {
                             <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Flow Bandar</span><b id="factBandarFlow" class="num font-mono font-bold text-emerald-400">+18,4 M</b></div>
                             <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Support Kunci</span><b id="factSupport" class="num font-mono text-[var(--ac-ink)]">4.880</b></div>
                             <div class="fact flex justify-between py-1.5"><span>Status Tren</span><b id="factTrend" class="num font-semibold text-[var(--ac-ink)]">Netral &ndash; Uptrend</b></div>
+                        </div>
+                        <div id="v3f08Pillars" class="v3f08-panel" style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px;margin-top:12px" aria-label="Rincian Skor 4 Pilar">
+                            <div class="lbl text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider" style="grid-column:span 12">Rincian Skor 4 Pilar</div>
+                            <div id="v3f08PillarList" style="grid-column:span 12;display:grid;gap:6px"><div class="fact">Memuat rincian skor&hellip;</div></div>
+                        </div>
+                        <div id="v3f08Sizing" class="v3f08-panel" style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px;margin-top:12px" aria-label="Kalkulator Position Sizing">
+                            <div class="lbl text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider" style="grid-column:span 12">Kalkulator Position Sizing</div>
+                            <div style="grid-column:span 12" class="text-sm"><span>Position Sizing</span> &middot; <span id="v3f08SizeText" class="v3f08-mono num">Memuat&hellip;</span></div>
+                            <div style="grid-column:span 6"><span class="lbl">Lot</span><b id="v3f08Lots" class="v3f08-mono num">10</b></div>
+                            <div style="grid-column:span 6"><span class="lbl">Risiko (Rp)</span><b id="v3f08RiskRp" class="v3f08-mono num">Memuat&hellip;</b></div>
                         </div>
                     </aside>
                 </div>
@@ -3636,6 +3672,16 @@ html.light #googleCompleteProfileModal input {
                                     <input id="rankingTickerSearchInput" type="text" placeholder="Pilih ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-28 sm:w-32 uppercase font-mono px-2.5 py-1.5 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event))){handleIndependentTabSearch('ranking', this.value)}">
                                     <button type="button" onclick="handleIndependentTabSearch('ranking', document.getElementById('rankingTickerSearchInput').value)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 text-xs font-semibold transition shrink-0" aria-label="Cari ticker di ranking">Cari</button>
                                 </div>
+                                <div id="rankingPresetSeg" class="segx n7" role="group" aria-label="Preset ranking">
+                                    <span id="rankingPresetInd" class="ind k0"></span>
+                                    <button id="btnRankingPreset0" type="button" class="on" onclick="setRankingPreset(0)">Semua</button>
+                                    <button id="btnRankingPreset1" type="button" onclick="setRankingPreset(1)">Nilai Transaksi</button>
+                                    <button id="btnRankingPreset2" type="button" onclick="setRankingPreset(2)">Akumulasi Asing</button>
+                                    <button id="btnRankingPreset3" type="button" onclick="setRankingPreset(3)">Akumulasi Domestik</button>
+                                    <button id="btnRankingPreset4" type="button" onclick="setRankingPreset(4)">Momentum LPM</button>
+                                    <button id="btnRankingPreset5" type="button" onclick="setRankingPreset(5)">Kenaikan Harga</button>
+                                    <button id="btnRankingPreset6" type="button" onclick="setRankingPreset(6)">Rasio Valuasi</button>
+                                </div>
                                 <input id="rankingSearchInput" type="text" placeholder="Filter tabel..." aria-label="Filter tabel ranking" class="w-32 sm:w-44 px-2.5 py-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" oninput="onRankingSearchInput(this.value)">
                                 <button type="button" onclick="refreshRankingTable()" class="p-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition flex-shrink-0" title="Muat ulang ranking" aria-label="Muat ulang ranking">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -3645,6 +3691,7 @@ html.light #googleCompleteProfileModal input {
                         <div id="rankingTableWrap" class="overflow-x-auto scrollbar-thin">
                             <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
                         </div>
+                        <div id="rankingPinnedRow" class="pin swap" style="display:none"></div>
                     </div>
                 </div>
             </div>
@@ -3791,6 +3838,29 @@ html.light #googleCompleteProfileModal input {
                     </div>
                 </div>
             </div>
+
+            <!-- Riwayat PBV & pita deviasi (C6 live: Riwayat PBV + pita ±1σ/±2σ) -->
+            <section class="sheet rise d3" id="financialPbvSection" style="display:none" aria-label="Riwayat PBV dan pita deviasi">
+                <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--ac-hair)">
+                    <h2 style="font-size:16px;margin:0">Riwayat PBV & pita deviasi</h2>
+                    <span class="mut" style="font-size:12px">8 kuartal · ±1σ/±2σ</span>
+                </div>
+                <div style="padding:16px 20px">
+                    <div class="gw" id="financialPbvWrap">
+                        <svg viewBox="0 0 520 220" width="100%" role="img" aria-label="PBV per kuartal dengan rerata dan pita deviasi">
+                            <rect id="financialPbvBand" x="40" y="60" width="460" height="80" fill="rgba(49,95,154,.08)"></rect>
+                            <line id="financialPbvMean" x1="40" x2="500" y1="100" y2="100" stroke="#315F9A" stroke-dasharray="4 4"></line>
+                            <path id="financialPbvLine" d="M60 100 L490 100" fill="none" stroke="#17211E" stroke-width="2"></path>
+                            <g id="financialPbvPointsGroup"></g>
+                        </svg>
+                        <div class="gov" aria-hidden="true" id="financialPbvLabelsGroup"></div>
+                    </div>
+                    <div class="prov"><span id="financialPbvBandNote">PBV · rerata · SD · pita deviasi ±1σ/±2σ</span></div>
+                    <table class="tbl" style="width:100%;margin-top:12px">
+                        <tbody id="financialPbvPeerTbody"></tbody>
+                    </table>
+                </div>
+            </section>
 
             <!-- Peer Comparison / PBV Section -->
             <div class="sheet rise d3" id="financialPeerSection" style="display:none">
@@ -5217,7 +5287,7 @@ function isAutocuanLoggedIn() {
     }
 }
 // ===== LANDING SHOWCASE — fetch real review data snapshot =====
-// Loads a pre-built snapshot from /api/sector-hot?action=landing-snapshot (public, no auth).
+// Loads a pre-built snapshot from /api/landing-snapshot (public, no auth).
 // On success, replaces the placeholder mock-card content with real sector + DT signal data.
 // A failed or incomplete source is rendered honestly, with an actionable retry.
 var _landingShowcaseLoaded = false;
@@ -5238,7 +5308,7 @@ function loadLandingShowcase() {
         timer = setTimeout(function () { if (controller) controller.abort(); reject(new Error('Snapshot timeout')); }, 5000);
     });
 
-    var request = fetch('/api/sector-hot?action=landing-snapshot', {
+    var request = fetch('/api/landing-snapshot', {
         method: 'GET',
         signal: controller ? controller.signal : undefined,
         cache: 'no-cache'
@@ -6435,8 +6505,8 @@ function updateSiMataForAuth() {
         document.documentElement.classList.toggle('auth-dialog-open', hide);
     } catch (_) {}
 }
-function openLoginModal() { updateLandingCtas(); document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); updateSiMataForAuth(); }
-function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); updateSiMataForAuth(); }
+function openLoginModal() { updateLandingCtas(); document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); try{document.body.classList.add('modal-open');}catch(_){} try{if(window.acV3F07SetModal)window.acV3F07SetModal(true);}catch(_){} updateSiMataForAuth(); }
+function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); try{document.body.classList.remove('modal-open');}catch(_){} try{if(window.acV3F07SetModal)window.acV3F07SetModal(false);}catch(_){} updateSiMataForAuth(); }
 // ===== ADMIN TELEGRAM ACCESS (maintenance / serviceStatus admin entry) =====
 // Administrator entry from the maintenance and service-status screens.
 // Deliberately NOT the login modal: no username/password field here at all.
@@ -14832,6 +14902,19 @@ var SCREENER_MODE_DESC = {
 function onScreenerRrMinChange() {
     applyScreenerUiFilters(_currentScreenerType || 'konglo');
 }
+/* V3-F04: toggle eksplisit "Tampilkan seluruh universe mentah" (default filter ketat aktif). */
+function onV3F04ShowRawChange(mode) {
+    var m = mode || _currentScreenerType || 'konglo';
+    var id = m === 'daytrade' ? 'v3f04ShowRawDaytrade' : (m === 'nonkonglo' ? 'v3f04ShowRawNonkonglo' : 'v3f04ShowRawKonglo');
+    var el = document.getElementById(id);
+    var on = !!(el && el.checked);
+    try {
+        if (window.V3F04ShowRaw && typeof window.V3F04ShowRaw.setShowRaw === 'function') {
+            window.V3F04ShowRaw.setShowRaw(m, on);
+        }
+    } catch (_) {}
+    applyScreenerUiFilters(m);
+}
 /* C4: Hapus filter — kembalikan search/status/RR ke bawaan per mode (kanvas Screener.dc.html). */
 function resetScreenerFilters(type) {
     var t = type || _currentScreenerType || 'konglo';
@@ -16471,7 +16554,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
         renderDashboardTop5MonitorData(data);
     } catch (e) {
         try {
-            var snapRes = await fetchDashboardJson('/api/sector-hot?action=landing-snapshot', {}, 5000);
+            var snapRes = await fetchDashboardJson('/api/landing-snapshot', {}, 5000);
             if (snapRes && snapRes.data && snapRes.data.snapshot) {
                 var snap = snapRes.data.snapshot;
                 var fallbackData = {
@@ -17345,9 +17428,10 @@ function forceNormalizeTechnicalDOM(root) {
 // asserts on the produced HTML instead, and runs in CI.
 
 </script>
+<script src="/v3-f04-show-raw.js?v=20261103-v3f04"></script>
 <script src="/vendor/lightweight-charts.standalone.production.js"></script>
 <script src="/tab-keepalive-runtime.js?v=20260926-ka1"></script>
-<script src="/chart-workstation.js?v=20261023-v8"></script>
+<script src="/chart-workstation.js?v=20261104-v3f09"></script>
 <script src="/b3-liquidity-badge.js?v=20261031-b3"></script>
 <script src="/b3-liquidity-inject.js?v=20261031-b3"></script>
 <script src="/market-feature-runtime.js?v=20261023-v11"></script>

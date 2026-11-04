@@ -1,0 +1,10 @@
+{
+  "jobName": "quota-burn",
+  "lastStartWIB": "2026-10-30T23:41:09+07:00",
+  "lastEndWIB": "2026-10-30T23:41:09+07:00",
+  "durationMs": 0,
+  "exitCode": 0,
+  "requestsUsed": 10,
+  "status": "OK",
+  "lastErrorSnippet": "stopped=BUDGET_REACHED"
+}

@@ -1,0 +1,48 @@
+/* C10 — Hardening responsivitas & aksesibilitas: anti overflow, tabel scroll, padding aman mobile.
+   Bahasa Indonesia. Tidak mengubah fitur v1, tidak memakai MASK_CSS. */
+html, body { max-width: 100%; overflow-x: clip; }
+@supports not (overflow: clip) { html, body { overflow-x: hidden; } }
+img, svg, video, canvas, table { max-width: 100%; }
+pre, code { white-space: pre-wrap; word-break: break-word; }
+
+/* Semua tabel lebar wajib dalam kontainer scroll horizontal + indikator bayangan geser. */
+.c10-scroll, .table-wrap, .ac-table-wrap, .table-responsive, .overflow-x-auto {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  background:
+    linear-gradient(to right, var(--ac-surface, #fff) 30%, rgba(255,255,255,0)),
+    linear-gradient(to right, rgba(0,0,0,.08), rgba(255,255,255,0)) 0 0 / 14px 100% no-repeat,
+    linear-gradient(to left, var(--ac-surface, #fff) 30%, rgba(255,255,255,0)),
+    linear-gradient(to left, rgba(0,0,0,.08), rgba(255,255,255,0)) 100% 0 / 14px 100% no-repeat;
+  background-attachment: local, scroll, local, scroll;
+}
+.c10-scroll table, .table-wrap table, .ac-table-wrap table { min-width: 640px; width: 100%; border-collapse: collapse; }
+.c10-scroll:focus-visible, .table-wrap:focus-visible { outline: 2px solid var(--ac-brand, #13785D); outline-offset: 2px; }
+
+/* Skeleton anti layout-shift: tinggi sama dengan konten asli (CLS=0). */
+.ac-state-loading { min-height: 120px; }
+.ac-state-sk { display: grid; gap: 8px; margin-top: 12px; }
+.ac-state-sk i {
+  display: block; height: 14px; border-radius: 6px;
+  background: linear-gradient(90deg, rgba(0,0,0,.07) 25%, rgba(0,0,0,.13) 50%, rgba(0,0,0,.07) 75%);
+  background-size: 200% 100%;
+  animation: c10Shimmer 1.2s linear infinite;
+}
+@keyframes c10Shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .ac-state-sk i { animation: none; } }
+
+/* Konten paling bawah mobile (<=760px) punya padding aman agar tak tertutup #acBottomBar. */
+@media (max-width: 760px) {
+  #appMain, .app-main, main, .page-content, #workspaceViewHost {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #acBottomBar, .mobile-nav-row, .bottom-bar {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Fokus keyboard jelas untuk tombol Coba lagi / Reset filter / Muat ulang. */
+.ac-btn-state:focus-visible, [data-state-action]:focus-visible {
+  outline: 2px solid var(--ac-brand, #13785D); outline-offset: 2px;
+}

@@ -565,3 +565,41 @@ body:has([data-chart-single="1"]) .mm,body:has([data-chart-single="1"]) .mata-wr
 .c9-pulse{animation:none!important}
 *,*::before,*::after{transition-duration:0.01ms!important;animation-duration:0.01ms!important}
 }
+
+/* ===== V3-F07 LOGIN OVERLAY ANTI-TEMBUS (pekat + blur) ===== */
+#loginModal{background-color:rgba(6,10,18,0.92)!important;backdrop-filter:blur(18px) saturate(140%)!important;-webkit-backdrop-filter:blur(18px) saturate(140%)!important;z-index:9999!important;}
+body.modal-open main,body.modal-open .landing-hero{filter:blur(10px);opacity:0.2;pointer-events:none;}
+body.modal-open #landingMain,body.modal-open main#landingMain{filter:blur(10px);opacity:0.2;pointer-events:none;}
+
+/* ===== V3-F08 HALAMAN ANALISIS AI: matriks angka + gelembung chat proporsional ===== */
+#unifiedChatMessages .stock-ai-followup>div,#unifiedChatMessages .ai-content,#unifiedChatMessages .ai-followup,#unifiedChatMessages .ai-rich-text,#unifiedChatMessages .bg-dark-700\/60,#stockAiStreamBody{height:auto!important;min-height:unset!important;padding:8px 12px!important;}
+#unifiedChatMessages .stock-ai-followup p,#unifiedChatMessages .ai-content p,#unifiedChatMessages .ai-followup p{margin:0!important;padding:0!important;line-height:1.45!important;}
+#unifiedChatMessages .stock-ai-followup{margin-top:6px!important;}
+.v3f08-mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace!important;font-variant-numeric:tabular-nums!important;font-feature-settings:"tnum" 1!important;}
+.v3f08-fibo{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums;}
+.v3f08-fibo th,.v3f08-fibo td{border:1px solid var(--ac-hair);padding:6px 8px;text-align:right;font-size:12px;}
+.v3f08-fibo th:first-child,.v3f08-fibo td:first-child{text-align:left;}
+.v3f08-cell{background:var(--ac-raised);border:1px solid var(--ac-hair);border-radius:10px;padding:8px 10px;display:grid;gap:2px;}
+.v3f08-cell .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ac-2);}
+.v3f08-cell b{font-size:13px;}
+.v3f08-panel{background:var(--ac-raised);border:1px solid var(--ac-hair);border-radius:12px;padding:12px;}
+
+/* ===== V3-F10 HALLMARK FULL-SCREEN: grid 12 kolom nutlope, 19 menu terkunci, insider kontras =====
+   24 halaman standar: display grid 12 kolom gap 12px width 100% max-width none;
+   isi penuhi calc(100vw-208px), rasio >=88%, 0 ruang hitam. Anti-disembunyikan JS/CSS. */
+.v3f10-hallmark-grid,.page-content,.ac-page,#appContent,.app-content,.app-main{
+  display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;width:100%;max-width:none;
+}
+.v3f10-hallmark-grid>* ,.page-content>*,.ac-page>*,#appContent>*,.app-content>*,.app-main>*{grid-column:span 12;min-width:0;}
+#appContent,.app-content{width:calc(100vw - 208px);max-width:none;margin:0;padding-left:12px;padding-right:12px;background:transparent;}
+#appMain,.app-main{width:100%;max-width:none;}
+/* 19 menu sidebar permanen: SELALU visible, anti hidden/display-none/aria-hidden */
+#appSidebar .sidebar-item,[data-v3f10-locked="true"].sidebar-item,[data-v3f10-locked="true"].nav-btn{
+  display:inline-flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;
+}
+#appSidebar .sidebar-item.hidden,[data-v3f10-locked="true"].hidden{display:inline-flex!important;}
+#appSidebar[hidden],#appSidebar[aria-hidden="true"]{display:flex!important;visibility:visible!important;}
+/* Insider hallmark: DWI + Masyarakat/Publik #fbbf24/#020617 fw800 (kontras 12.08:1) */
+[data-v3f10-node="DWI"],[data-v3f10-node="PUB"]{background:#fbbf24!important;color:#020617!important;font-weight:800!important;border:1.5px solid #020617!important;}
+[data-v3f10-search="true"]{border:1.5px solid #334155!important;}
+[data-v3f10-ksei-table] th[data-v3f10-col="per-tanggal"],[data-v3f10-cell="per-tanggal"]{white-space:nowrap;}

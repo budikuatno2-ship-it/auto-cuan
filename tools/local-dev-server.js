@@ -835,6 +835,24 @@ const server = http.createServer(async (req, res) => {
       pathname = '/api/sector-hot';
     }
 
+    // V3-F06: POST /api/user/telegram/test -> reset-password?action=user-telegram-test
+    // (slot fungsi Vercel tetap 13; tidak ada api/user/telegram/test.js baru).
+    if (endpointName === 'user/telegram/test') {
+      parsedUrl.searchParams.set('action', 'user-telegram-test');
+      endpointName = 'reset-password';
+      pathname = '/api/reset-password';
+    }
+
+    // V3-F11: GET /api/fast-bundle/BBCA,BBRI,BRPT,BULL -> fast-bundle?tickers=...
+    if (endpointName === 'fast-bundle' || endpointName.startsWith('fast-bundle/')) {
+      const tail = endpointName.slice('fast-bundle'.length).replace(/^\//, '');
+      if (tail && !parsedUrl.searchParams.get('tickers') && !parsedUrl.searchParams.get('ticker')) {
+        parsedUrl.searchParams.set('tickers', tail);
+      }
+      endpointName = 'fast-bundle';
+      pathname = '/api/fast-bundle';
+    }
+
     // Route /api/auth/* -> lib/auth-service.js
     if (endpointName.startsWith('auth/') || endpointName === 'auth') {
       req._authSubPath = endpointName.startsWith('auth/') ? endpointName.slice('auth/'.length) : '';
@@ -864,6 +882,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Money management mock (development only - BUG-RT-03)
+    // V3-F13: get-sheet/save-sheet/portfolio-summary wajib mock agar uji browser
+    // nyata 19 menu x 4 viewport 0 request gagal (>=400). Data riil bentuk
+    // kontrak money-sheet-model (version+rows), bulan dinamis dari query.
     if (endpointName === 'money-management') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
@@ -880,6 +901,25 @@ const server = http.createServer(async (req, res) => {
         }
         if (action === 'save-cashflow' || action === 'save-journal' || action === 'delete-journal') {
           return res.status(200).json({ success: true, message: 'Saved in mock preview mode' });
+        }
+        if (action === 'get-sheet') {
+          const month = String(req.query.month || new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 7));
+          return res.status(200).json({
+            success: true, user_id: 'admin-budi-id',
+            data: { month, sheet: { version: 1, rows: [] }, notes: '', revision: null, updated_at: null }
+          });
+        }
+        if (action === 'save-sheet') {
+          return res.status(200).json({
+            success: true, user_id: 'admin-budi-id',
+            data: { revision: 1, updated_at: new Date().toISOString() }
+          });
+        }
+        if (action === 'portfolio-summary') {
+          return res.status(200).json({
+            success: true, user_id: 'admin-budi-id',
+            data: { source: 'mock', planCount: 1, totalExposureIdr: 59500000, totalPnlIdr: 0, missingPriceCount: 0, updated_at: new Date().toISOString(), price_updated_at: null }
+          });
         }
       }
       const mmHandler = require('../lib/money-management-handler');

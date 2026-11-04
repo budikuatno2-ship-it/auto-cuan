@@ -1,0 +1,65 @@
+{
+  "task": "V3-F03",
+  "updatedAt": "2026-11-03T15:05:43.978Z",
+  "konglo": {
+    "scoreMin": 60,
+    "bsMin": 1,
+    "volMin": 1,
+    "rrMin": 1.5
+  },
+  "nonkonglo": {
+    "scoreMin": 60,
+    "bsMin": 1,
+    "volMin": 1.5,
+    "rrMin": 1.8
+  },
+  "daytrade": {
+    "scoreMin": 60,
+    "bsMin": 1,
+    "volMin": 1,
+    "rrMin": 1.5
+  },
+  "horizons": {
+    "konglo": 7,
+    "nonkonglo": 5,
+    "daytrade": 2
+  },
+  "metrics": {
+    "konglo": {
+      "sampleSize": 1056,
+      "wins": 360,
+      "losses": 696,
+      "winRate": 34.09,
+      "profitFactor": 0.74,
+      "expectancyR": -0.16,
+      "wilsonLower95": 31.29,
+      "avgHoldingDays": 4.09,
+      "flag": "OK",
+      "signals": 1089
+    },
+    "nonkonglo": {
+      "sampleSize": 1837,
+      "wins": 722,
+      "losses": 1115,
+      "winRate": 39.3,
+      "profitFactor": 0.99,
+      "expectancyR": 0,
+      "wilsonLower95": 37.09,
+      "avgHoldingDays": 3.36,
+      "flag": "OK",
+      "signals": 1900
+    },
+    "daytrade": {
+      "sampleSize": 2179,
+      "wins": 759,
+      "losses": 1420,
+      "winRate": 34.83,
+      "profitFactor": 0.76,
+      "expectancyR": -0.1,
+      "wilsonLower95": 32.86,
+      "avgHoldingDays": 1.79,
+      "flag": "OK",
+      "signals": 2242
+    }
+  }
+}

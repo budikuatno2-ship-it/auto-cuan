@@ -181,7 +181,11 @@ function isHeavyComputeAction(action) {
 const TIMEOUT_GUARD_MS = 3500;
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'GET' && req.method !== 'POST') {
+  // V3-F05: admin-notes needs PATCH/PUT (edit) + DELETE (hapus) besides GET/POST.
+  const _earlyAction = (req.query && req.query.action) || (req.body && req.body.action) || null;
+  const _adminNotesWrite = _earlyAction === 'admin-notes'
+    && (req.method === 'PATCH' || req.method === 'PUT' || req.method === 'DELETE');
+  if (req.method !== 'GET' && req.method !== 'POST' && !_adminNotesWrite) {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
@@ -14738,11 +14742,12 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
         _dtTelegramLastRunReason = 'latest_table_empty_or_read_error_silent';
         return { sent: false, skipped: true, reason: 'empty_heartbeat_disabled', published_count: publishedCount, raw_candidate_count: 0, strict_signal_count: 0, radar_count: 0, hard_reject_count: 0 };
       }
+      // V3-F06: blokir spam empty heartbeat Day Trade ke Telegram publik (log lokal saja).
       var emptyMsg = formatDayTradeEmptyHeartbeatTelegramMessage(options.scanned_count, options.raw_batch_passed_count, 'latest_table_empty_or_read_error');
-      var emptySend = await telegramNotifier.sendTelegramMessage(emptyMsg);
+      try { console.log('[V3-F06-HEARTBEAT-BLOCKED] latest_table empty heartbeat suppressed (local-only)'); } catch (_) {}
       _dtTelegramLastRunId = runId;
-      _dtTelegramLastRunReason = emptySend.sent ? 'daytrade_empty_heartbeat_sent' : 'no_data_to_send';
-      return { sent: !!emptySend.sent, skipped: !emptySend.sent, reason: emptySend.sent ? 'daytrade_empty_heartbeat_sent' : 'no_data_to_send', published_count: publishedCount, raw_candidate_count: 0, raw_batch_passed_count: options.raw_batch_passed_count || 0, pre_publish_candidate_count: options.pre_publish_candidate_count || 0, strict_signal_count: 0, radar_count: 0, hard_reject_count: 0, radar_requested: !!sendRadarFallback, duplicate_guard_hit: duplicateRunHit, message: emptyMsg, diagnostics: { raw_batch_passed_count: options.raw_batch_passed_count || 0, pre_publish_candidate_count: options.pre_publish_candidate_count || 0, strict_signal_count: 0, radar_monitor_count: 0, hard_reject_count: 0, published_count: publishedCount, top_rejection_reasons: { latest_table_empty_or_read_error: 1 }, sample_rejected: [] } };
+      _dtTelegramLastRunReason = 'empty_heartbeat_disabled';
+      return { sent: false, skipped: true, reason: 'empty_heartbeat_disabled', published_count: publishedCount, raw_candidate_count: 0, raw_batch_passed_count: options.raw_batch_passed_count || 0, pre_publish_candidate_count: options.pre_publish_candidate_count || 0, strict_signal_count: 0, radar_count: 0, hard_reject_count: 0, radar_requested: !!sendRadarFallback, duplicate_guard_hit: duplicateRunHit, message: emptyMsg, diagnostics: { raw_batch_passed_count: options.raw_batch_passed_count || 0, pre_publish_candidate_count: options.pre_publish_candidate_count || 0, strict_signal_count: 0, radar_monitor_count: 0, hard_reject_count: 0, published_count: publishedCount, top_rejection_reasons: { latest_table_empty_or_read_error: 1 }, sample_rejected: [] } };
     }
 
     var rawCount = candidates.length;
@@ -14876,24 +14881,19 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
           radarCandidates.length === 0
         )
       ) {
+        // V3-F06: blokir spam empty heartbeat Day Trade ke Telegram publik (log lokal saja).
         var deferredHeartbeatMsg =
           formatDayTradeEmptyHeartbeatTelegramMessage(
             options.scanned_count || publishedCount,
             options.raw_batch_passed_count || rawCount,
             'deferred_to_fast_watcher'
           );
-
-        var deferredHeartbeat =
-          await telegramNotifier.sendTelegramMessage(
-            deferredHeartbeatMsg
-          );
+        try { console.log('[V3-F06-HEARTBEAT-BLOCKED] deferred_to_fast_watcher empty heartbeat suppressed (local-only): ' + deferredHeartbeatMsg.slice(0, 160)); } catch (_) {}
 
         return Object.assign(deferredResult, {
-          sent: deferredHeartbeat.sent === true,
-          skipped: deferredHeartbeat.sent !== true,
-          reason: deferredHeartbeat.sent === true
-            ? 'daytrade_empty_heartbeat_sent'
-            : 'telegram_send_failed',
+          sent: false,
+          skipped: true,
+          reason: 'empty_heartbeat_disabled',
           message: deferredHeartbeatMsg,
           deferred_to_fast_watcher: true,
           signal_delivery_deferred: true
@@ -14904,8 +14904,11 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     }
 
     // Step 6: If no candidate survives the public Telegram final gate, stay silent by default.
+    // V3-F04 RADAR HIDUP: pengunci no_final_signal_but_radar_disabled DIHAPUS.
+    // Saat sepi kandidat TRADE kelas A, kandidat RADAR/WATCH terbaik tetap
+    // diterbitkan via radarCandidates tanpa macet (reason jujur apa adanya).
     if (finalList.length === 0) {
-      var noRadarReason = sendRadarFallback ? (diagnostics.hard_reject_count > 0 && diagnostics.radar_count === 0 ? 'radar_candidates_all_hard_reject' : 'no_signal_no_radar_candidates') : 'no_final_signal_but_radar_disabled';
+      var noRadarReason = (diagnostics.hard_reject_count > 0 && diagnostics.radar_count === 0 ? 'radar_candidates_all_hard_reject' : 'no_signal_no_radar_candidates');
       _dtTelegramLastRunId = runId;
       _dtTelegramLastRunReason = noRadarReason;
       var silentResult = {
@@ -14968,13 +14971,12 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
         if (radarResult.sent) _dtTelegramLastRadarRunId = runId;
         return Object.assign(silentResult, radarResult, { skipped: !radarResult.sent, radar_sent: !!radarResult.sent, radar_count: radarCandidates.length, radar_monitor_count: radarCandidates.length, strict_signal_count: 0, hard_reject_count: diagnostics.hard_reject_count || 0, radar_candidates: radarCandidates.map(function(r) { return r.ticker; }) });
       }
+      // V3-F06: blokir spam empty heartbeat Day Trade ke Telegram publik (log lokal saja).
       if (sendEmptyNotice || rawCount === 0 || (rawCount > 0 && radarCandidates.length === 0)) {
         var heartbeatMsg = formatDayTradeEmptyHeartbeatTelegramMessage(options.scanned_count || publishedCount, options.raw_batch_passed_count || rawCount, noRadarReason);
-        var heartbeatResult = await telegramNotifier.sendTelegramMessage(heartbeatMsg);
-        heartbeatResult.reason = heartbeatResult.sent ? 'daytrade_empty_heartbeat_sent' : 'telegram_send_failed';
-        heartbeatResult.message = heartbeatMsg;
-        _dtTelegramLastRunReason = heartbeatResult.reason;
-        return Object.assign(silentResult, heartbeatResult, { skipped: !heartbeatResult.sent, strict_signal_count: 0, radar_monitor_count: 0, hard_reject_count: diagnostics.hard_reject_count || 0 });
+        try { console.log('[V3-F06-HEARTBEAT-BLOCKED] daytrade empty heartbeat suppressed (local-only): ' + String(noRadarReason || 'no_signal') + ' scanned=' + (options.scanned_count || publishedCount)); } catch (_) {}
+        _dtTelegramLastRunReason = 'empty_heartbeat_disabled';
+        return Object.assign(silentResult, { sent: false, skipped: true, reason: 'empty_heartbeat_disabled', message: heartbeatMsg, strict_signal_count: 0, radar_monitor_count: 0, hard_reject_count: diagnostics.hard_reject_count || 0 });
       }
       return silentResult;
     }

@@ -395,6 +395,16 @@ body {
 }
 .inp:focus { border-color: var(--ac-brand); }
 .flabel { display: block; font-size: 12px; font-weight: 600; color: var(--ac-2); margin-bottom: 6px; }
+/* V3-F02 Kontrol Fleksibel: switch + slider patuh token ac.css */
+.qf-card .sub { font-size: 12px; color: var(--ac-2); margin-top: 6px; }
+.qf-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ac-ink); cursor: pointer; padding: 6px 10px; border: 1px solid var(--ac-hair); border-radius: 999px; background: var(--ac-surface); }
+.qf-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.qf-switch .qf-track { position: relative; width: 38px; height: 22px; border-radius: 11px; background: var(--ac-ctl); transition: background 160ms ease; flex: none; }
+.qf-switch .qf-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--ac-surface); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform 200ms ease; }
+.qf-switch input:checked + .qf-track { background: var(--ac-brand); }
+.qf-switch input:checked + .qf-track::after { transform: translateX(16px); }
+.qf-switch input:focus-visible + .qf-track { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
+.qf-range { width: 100%; accent-color: var(--ac-brand); height: 28px; }
 
 #unauthorizedScreen {
   min-height: 80vh;
@@ -495,21 +505,74 @@ body {
         </div>
       </section>
 
-      <section class="sheet" style="margin-top:16px">
+      <section class="sheet qf-card" id="qf-card" style="margin-top:16px">
         <div class="sec-h">
-          <h2>Ubah Konfigurasi Kuota Bulanan</h2>
-          <span>Admin ubah batas & reserve sekali klik tanpa edit kode VPS</span>
+          <h2>Kontrol Fleksibel Kuota API</h2>
+          <span>Ubah batas tanpa koding · tanpa restart · cron tetap · antrean otomatis 00:00:01 WIB bila mepet reset / sisa≤0</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;padding:16px 20px">
-          <div><label class="flabel" for="quotaDailyLimit">Batas harian (override)</label><input id="quotaDailyLimit" type="number" class="inp" min="1" placeholder="cth 18080"></div>
-          <div><label class="flabel" for="quotaPlanExpiry">Tanggal berakhir paket</label><input id="quotaPlanExpiry" type="datetime-local" class="inp"></div>
-          <div><label class="flabel" for="quotaFloorDay">Reserve floor siang</label><input id="quotaFloorDay" type="number" class="inp" min="0"></div>
-          <div><label class="flabel" for="quotaFloorNight">Reserve floor malam</label><input id="quotaFloorNight" type="number" class="inp" min="0"></div>
-          <div><label class="flabel" for="quotaFloorWeekend">Reserve floor akhir pekan</label><input id="quotaFloorWeekend" type="number" class="inp" min="0"></div>
+          <div><label class="flabel" for="qf-maxQuota">Input1 · maxQuota (batas harian)</label><input id="qf-maxQuota" type="number" class="inp" min="1" max="1000000" value="18080"><div class="sub">Default 18080 · auto-proposi cerdas bila diubah ke 5000/1000.</div></div>
+          <div><label class="flabel" for="qf-weekdayBackfill">Input2 · weekdayBackfillLimit</label><input id="qf-weekdayBackfill" type="number" class="inp" min="0" max="1000000" value="13000"><div class="sub">Default 13000 · ikut proposi otomatis saat maxQuota diubah.</div></div>
+          <div><label class="flabel" for="qf-weekendBackfill">Input3 · weekendBackfillLimit</label><input id="qf-weekendBackfill" type="number" class="inp" min="0" max="1000000" value="18080"><div class="sub">Default 18080 · akhir pekan penuh.</div></div>
+          <div><label class="flabel" for="qf-reserveFloor">Input4 · reserveFloorWeekday</label><input id="qf-reserveFloor" type="number" class="inp" min="0" max="1000000" value="5000"><div class="sub">Default 5000 · rem cadangan weekday.</div></div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;padding:0 20px 18px;flex-wrap:wrap">
+        <div style="display:none">
+          <input id="quotaDailyLimit" type="number" class="inp" min="1" placeholder="cth batas">
+          <input id="quotaPlanExpiry" type="datetime-local" class="inp">
+          <input id="quotaFloorDay" type="number" class="inp" min="0">
+          <input id="quotaFloorNight" type="number" class="inp" min="0">
+          <input id="quotaFloorWeekend" type="number" class="inp" min="0">
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;padding:0 20px 6px">
+          <div><label class="flabel" for="qf-hardStop">Hard Stop (WIB) · default 23:50</label><input id="qf-hardStop" type="range" class="qf-range" min="0" max="2" step="1" value="2" list="qf-hardStopTicks"><div class="sub"><span id="qf-hardStopVal">23:50</span> · pilihan 23:40 / 23:45 / 23:50<datalist id="qf-hardStopTicks"><option value="0" label="23:40"></option><option value="1" label="23:45"></option><option value="2" label="23:50"></option></datalist></div></div>
+          <div><label class="flabel" for="qf-staleThreshold">Stale Threshold · default 120 mnt</label><input id="qf-staleThreshold" type="range" class="qf-range" min="0" max="3" step="1" value="1"><div class="sub"><span id="qf-staleVal">120 mnt</span> · pilihan 120 / 180 / mati (0) di luar bursa</div></div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;padding:10px 20px">
+          <label class="qf-switch"><input id="qf-toggle-lowQuota" type="checkbox" role="switch"><span class="qf-track"></span> Low-Quota Mode</label>
+          <label class="qf-switch"><input id="qf-toggle-muteDaily" type="checkbox" role="switch"><span class="qf-track"></span> Mute Telegram harian</label>
+          <label class="qf-switch"><input id="qf-toggle-muteEmergency" type="checkbox" role="switch"><span class="qf-track"></span> Mute Telegram darurat</label>
+          <label class="qf-switch"><input id="qf-toggle-muteNonCritical" type="checkbox" role="switch"><span class="qf-track"></span> Mute non-kritis</label>
+          <label class="qf-switch"><input id="qf-toggle-preflight" type="checkbox" role="switch" checked><span class="qf-track"></span> Dynamic Preflight Gate <span class="mut" style="font-weight:400">(candle+ALL saja, footnote asing)</span></label>
+          <label class="qf-switch"><input id="qf-toggle-backfillRemainder" type="checkbox" role="switch" checked><span class="qf-track"></span> Backfill sisa kuota saat libur</label>
+        </div>
+        <div style="padding:4px 20px 6px">
+          <div class="flabel">Saklar libur bursa manual · auto-reset Normal lewat 00:00 WIB</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="tbtn on" id="qf-holiday-normal" onclick="setHolidayMode('normal', this)">Normal / Buka</button>
+            <button class="tbtn" id="qf-holiday-buka" onclick="setHolidayMode('buka', this)">Buka paksa</button>
+            <button class="tbtn" id="qf-holiday-libur" onclick="setHolidayMode('libur', this)">Libur Bursa</button>
+            <button class="btn sm" id="qf-holiday-detect" onclick="detectHoliday()">Deteksi libur 3 lapis</button>
+            <span class="st m" id="qf-holiday-status">Normal</span>
+          </div>
+          <div class="sub" id="qf-holiday-detail">L1 weekend · L2 candle Yahoo 17:00 WIB 0 kuota (IHSG+mayoritas tanpa bar baru = LIBUR) · L3 batalkan Broksum ALL+Foreign (~1928 kuota).</div>
+        </div>
+        <div style="padding:4px 20px 6px">
+          <div class="flabel">Tombol darurat</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn sm" id="qf-btn-kill" onclick="killUpstreamJobs()">Kill All Active Upstream Jobs</button>
+            <button class="btn sm p" id="qf-btn-force" onclick="forceCatchup()">Paksa Eksekusi Susulan Hari Ini</button>
+          </div>
+          <div class="sub">Kill = SIGTERM worker upstream saja, web tidak dimatikan. Susulan = antrean prioritas (jalan bila kuota ada / 00:00:01 saat reset).</div>
+          <div class="flabel" style="margin-top:10px">Trigger satuan 0 kuota</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn sm" id="qf-btn-trig-candle" onclick="triggerZeroJob('candle-yahoo')">Tarik Candle Yahoo</button>
+            <button class="btn sm" id="qf-btn-trig-domestic" onclick="triggerZeroJob('domestic-compile')">Kompilasi Domestik</button>
+            <button class="btn sm" id="qf-btn-trig-accum" onclick="triggerZeroJob('accumulation')">Hitung Akumulasi</button>
+            <button class="btn sm" id="qf-btn-trig-screeners" onclick="triggerZeroJob('screeners-3x')">Jalankan 3 Screener</button>
+            <button class="btn sm" id="qf-btn-trig-cache" onclick="triggerZeroJob('reset-cache')">Reset Cache & Re-index Fast Bundle</button>
+          </div>
+        </div>
+        <div class="tw" style="padding:0 20px">
+          <table class="tbl">
+            <thead><tr><th>Parameter</th><th>Nilai aktif</th><th class="r">Status</th></tr></thead>
+            <tbody id="qf-status-tbody">
+              <tr><td colspan="3" class="mut" style="text-align:center;padding:16px">Memuat status kontrol fleksibel…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;padding:14px 20px 18px;flex-wrap:wrap">
           <button class="btn p" id="quotaSaveBtn" onclick="saveQuotaConfig()">Simpan Konfigurasi Kuota</button>
-          <span class="mut" id="quotaSaveStatus" style="font-size:12px">Perubahan dicatat di log audit.</span>
+          <span class="mut" id="quotaSaveStatus" style="font-size:12px">Perubahan tersimpan detik itu tanpa restart · dicatat di log audit.</span>
         </div>
       </section>
 
@@ -526,6 +589,7 @@ body {
             </tbody>
           </table>
         </div>
+        <div class="sub" style="padding:10px 20px 16px">Sensus keuangan: <span id="finCensusQ2Cell" class="num">Q2 2026</span> · <span id="finCensusLabelCell" class="mut">memuat sensus…</span></div>
       </section>
     </div>
 
@@ -856,6 +920,27 @@ body {
           <button class="btn" onclick="unblockIpAction()">Unblock IP</button>
         </div>
         <div class="prov"><span id="secBlockStatus">Setiap aksi Block/Unblock tercatat di log insiden.</span></div>
+      </section>
+      <section class="sheet" style="margin-top:16px" data-v3f12-vps-panel="true">
+        <div class="sec-h">
+          <h2>Pertahanan Siber VPS — ufw · fail2ban · Forensik Ghidra</h2>
+          <span id="secVpsUpdatedAt">Audit VPS 168.110.221.197 · data/security/vps-audit.json</span>
+        </div>
+        <div style="padding:16px 20px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="st g" id="secUfwBadge">UFW: —</span>
+            <span class="st g" id="secF2bBadge">fail2ban: —</span>
+            <span class="st g" id="secGhidraBadge">Ghidra: —</span>
+            <span class="mut" id="secVpsVerdict" style="font-size:13px">Menunggu audit VPS…</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px">
+            <div><div class="lbl">Aturan UFW</div><div class="big num" id="secUfwRules">—</div><div class="sub" id="secUfwDetail">default deny incoming</div></div>
+            <div><div class="lbl">Jail fail2ban</div><div class="big num" id="secF2bJails">—</div><div class="sub" id="secF2bDetail">sshd + nginx</div></div>
+            <div><div class="lbl">Proses asing (Ghidra)</div><div class="big num" id="secForeignProcs">—</div><div class="sub" id="secForeignDetail">target 0 asing</div></div>
+            <div><div class="lbl">Hash SHA-256 biner</div><div class="big num mono" id="secBinHash" style="font-size:12px;word-break:break-all">—</div><div class="sub">integritas node</div></div>
+          </div>
+          <div class="prov" style="margin-top:12px"><span>Alarm darurat serangan bot/scraper dikirim otomatis ke Telegram Admin + IP penyerang DIBLOKIR otomatis (HTTP 403 beruntun).</span></div>
+        </div>
       </section>
       <section class="sheet" style="margin-top:16px">
         <div class="sec-h">

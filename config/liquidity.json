@@ -1,0 +1,32 @@
+{
+  "defaultThreshold": 5e9,
+  "thresholds": {
+    "low": 3e9,
+    "default": 5e9,
+    "high": 10e9
+  },
+  "minLiquidityFloor": 1e8,
+  "minActiveDays20D": 10,
+  "lookbackDays": 20,
+  "jalurA": {
+    "maPeriod": 20,
+    "bsRatioMin": 1.2,
+    "foreignConsistencyMin": 3,
+    "foreignConsistencyDays": 5,
+    "entryAtrBuffer": 0.3,
+    "tp1AtrMult": 1.5,
+    "tp2AtrMult": 2.8,
+    "slAtrMult": 1.5,
+    "swingLowLookback": 5
+  },
+  "jalurB": {
+    "bsRatioDomesticMin": 1.35,
+    "priceToBandarMin": 0.97,
+    "priceToBandarMax": 1.06,
+    "rvolMin": 1.4,
+    "tp1AtrMult": 1.5,
+    "tp2AtrMult": 2.8,
+    "slAtrMult": 2.0
+  },
+  "notes": "Ambang Rp5M baseline produksi; uji sensitivitas Rp3M / Rp5M / Rp10M via thresholds.low/default/high. PF dijaga via TP2/SL: Jalur A 2.8/1.5=1.86, Jalur B 2.8/2.0=1.40 (keduanya di atas 1.0; TP1 1.5/1.5=1.0 dan 1.5/2.0=0.75 sehingga TP2 adalah penentu PF)."
+}

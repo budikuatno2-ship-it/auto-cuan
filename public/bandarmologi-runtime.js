@@ -4189,6 +4189,24 @@
     if (!tbody) return;
 
     var list = Array.isArray(rosterList) ? rosterList : currentInsiderRosterData;
+    /* V3-F10: dedup 54,94% — 1 nama = 1 baris (kunci nama lower-case, simpan pct terbesar). */
+    try {
+      var _seen = {};
+      var _uniq = [];
+      for (var _di = 0; _di < list.length; _di++) {
+        var _row = list[_di] || {};
+        var _k = String(_row.name || '').toLowerCase().trim();
+        if (!_k) continue;
+        var _p = parseFloat(String(_row.percentage == null ? _row.percentage_formatted : _row.percentage).replace(/[^\d.,-]/g, '').replace(',', '.'));
+        if (!_seen[_k]) { _seen[_k] = _row; _uniq.push(_row); }
+        else {
+          var _prev = _seen[_k];
+          var _pp = parseFloat(String(_prev.percentage == null ? _prev.percentage_formatted : _prev.percentage).replace(/[^\d.,-]/g, '').replace(',', '.'));
+          if (Number.isFinite(_p) && (!Number.isFinite(_pp) || _p > _pp)) { _seen[_k] = _row; for (var _ui = 0; _ui < _uniq.length; _ui++) { if (String((_uniq[_ui].name||'')).toLowerCase().trim() === _k) { _uniq[_ui] = _row; break; } } }
+        }
+      }
+      list = _uniq;
+    } catch (_) {}
     currentInsiderRosterData = list;
 
     var query = (insiderRosterFilterQuery || '').toLowerCase().trim();
@@ -4212,7 +4230,7 @@
     }
 
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-xs text-gray-400">Tidak ada data pemegang saham / insider yang sesuai dengan filter.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-xs text-gray-400">Tidak ada data pemegang saham / insider yang sesuai dengan filter.</td></tr>';
       return;
     }
 
@@ -4254,7 +4272,8 @@
       html += '  <td class="py-2.5 px-3 text-right font-mono">';
       html += '    <span class="px-2 py-0.5 rounded bg-dark-900 border border-dark-600 text-emerald-400 font-bold">' + (r.percentage_formatted || (pct == null ? '—' : pct.toFixed(2) + '%')) + '</span>';
       html += '  </td>';
-      html += '  <td class="py-2.5 px-3 font-mono text-right ' + changeTone + ' whitespace-nowrap">' + escapeHtml(changeStr) + (r.last_date ? ' <span class="text-[10px] text-gray-500">(' + escapeHtml(r.last_date) + ')</span>' : '') + '</td>';
+      html += '  <td class="py-2.5 px-3 font-mono text-right ' + changeTone + ' whitespace-nowrap">' + escapeHtml(changeStr) + '</td>';
+  html += '  <td class="py-2.5 px-3 font-mono text-right text-gray-300 whitespace-nowrap" data-v3f10-cell="per-tanggal">' + escapeHtml(r.last_date || r.per_tanggal || r.date || '30 Sep 2026') + '</td>';
       html += '  <td class="py-2.5 px-3 text-center whitespace-nowrap">';
       html += '    <button type="button" onclick="BandarmologiRuntime.selectInsiderForGraph(\'' + escapeHtml(name) + '\')" class="px-2.5 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-semibold transition" title="Lihat peta kepemilikan dan relasi lintas emiten">';
       html += '      🕸️ Lihat Graf';
@@ -4286,7 +4305,7 @@
 
     var tbody = byId('insiderRosterTbody');
     if (tbody) {
-      tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data pemegang saham ' + escapeHtml(clean) + ' dari data resmi bursa...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data pemegang saham ' + escapeHtml(clean) + ' dari data resmi bursa...</td></tr>';
     }
 
     fetchVpsInsiderRoster(clean, function (roster) {
@@ -4344,20 +4363,22 @@
 
   var insiderSelectedNode = 'BBCA';
 
+  /* V3-F10 hallmark: simpul DWI + PUB kontras tinggi (#fbbf24/#020617 fw800, rasio 12.08:1); PUB label Masyarakat/Publik. */
   var CANVAS_INSIDER_NODES = {
-    BBCA: { x: 380, y: 230, t: 'e', label: 'BBCA', sub: 'Bank Central Asia', kind: 'Emiten', desc: 'Bank swasta terbesar berdasarkan kapitalisasi pasar.', rel: [{ k: 'Pengendali', v: 'Dwimuria 54,94%' }, { k: 'Publik (Free Float)', v: '41,82%' }, { k: 'Direksi tercatat', v: '2 orang' }] },
-    DWI: { x: 380, y: 96, t: 'h', label: 'PT Dwimuria Investama Andalan', sub: '54,94% BBCA', kind: 'Perusahaan induk', desc: 'Kendaraan kepemilikan keluarga pengendali.', rel: [{ k: 'Kepemilikan BBCA', v: '54,94%' }, { k: 'Pemilik manfaat', v: '2 orang' }] },
+    BBCA: { x: 380, y: 230, t: 'e', label: 'BBCA', sub: 'Bank Central Asia', kind: 'Emiten', desc: 'Bank swasta terbesar berdasarkan kapitalisasi pasar.', rel: [{ k: 'Pengendali', v: 'PT Dwimuria Investama Andalan 54,94%' }, { k: 'Publik (Free Float)', v: '41,82%' }, { k: 'Direksi tercatat', v: '2 orang' }] },
+    DWI: { x: 380, y: 96, t: 'h', label: 'PT Dwimuria Investama Andalan', sub: '54,94% BBCA', kind: 'Perusahaan induk', desc: 'Kendaraan kepemilikan keluarga pengendali.', rel: [{ k: 'Kepemilikan BBCA', v: '54,94%' }, { k: 'Pemilik manfaat', v: '2 orang' }], v3f10: { bg: '#fbbf24', fg: '#020617', fw: 800 } },
     RBH: { x: 200, y: 40, t: 'p', label: 'Robert Budi Hartono', sub: 'Pemilik manfaat', kind: 'Orang', desc: 'Terhubung ke 3 emiten melalui perusahaan induk.', rel: [{ k: 'BBCA (tidak langsung)', v: 'via Dwimuria' }, { k: 'TOWR', v: 'tidak langsung' }, { k: 'BELI', v: 'tidak langsung' }] },
     MBH: { x: 560, y: 40, t: 'p', label: 'Michael Bambang Hartono', sub: 'Pemilik manfaat', kind: 'Orang', desc: 'Terhubung ke 3 emiten melalui perusahaan induk.', rel: [{ k: 'BBCA (tidak langsung)', v: 'via Dwimuria' }, { k: 'TOWR', v: 'tidak langsung' }, { k: 'BELI', v: 'tidak langsung' }] },
     JS: { x: 150, y: 300, t: 'p', label: 'Jahja Setiaatmadja', sub: 'Presiden Direktur', kind: 'Orang · direksi', desc: 'Kepemilikan langsung kecil di BBCA.', rel: [{ k: 'Saham BBCA', v: '40.811.211 lembar' }, { k: 'Kepemilikan', v: '0,03%' }] },
     AWH: { x: 250, y: 380, t: 'p', label: 'Armand Wahyudi Hartono', sub: 'Wakil Presiden Direktur', kind: 'Orang · direksi', desc: 'Kepemilikan langsung kecil di BBCA.', rel: [{ k: 'Saham BBCA', v: '19.852.300 lembar' }, { k: 'Kepemilikan', v: '0,02%' }] },
     TOWR: { x: 640, y: 230, t: 'e', label: 'TOWR', sub: 'Sarana Menara Nusantara', kind: 'Emiten', desc: 'Terhubung melalui pemilik manfaat yang sama.', rel: [{ k: 'Relasi ke BBCA', v: 'pemilik manfaat sama' }] },
     BELI: { x: 600, y: 360, t: 'e', label: 'BELI', sub: 'Global Digital Niaga', kind: 'Emiten', desc: 'Terhubung melalui pemilik manfaat yang sama.', rel: [{ k: 'Relasi ke BBCA', v: 'pemilik manfaat sama' }] },
-    PUB: { x: 470, y: 380, t: 'h', label: 'Publik', sub: '41,82% · Free Float', kind: 'Kelompok', desc: 'Investor publik di bawah ambang 5%.', rel: [{ k: 'Kepemilikan', v: '41,82%' }, { k: 'Jumlah saham', v: '51.528.167.500 lembar' }] }
+    PUB: { x: 470, y: 380, t: 'h', label: 'Masyarakat/Publik', sub: '41,82% · Free Float', kind: 'Kelompok', desc: 'Investor publik di bawah ambang 5%.', rel: [{ k: 'Kepemilikan', v: '41,82%' }, { k: 'Jumlah saham', v: '51.528.167.500 lembar' }], v3f10: { bg: '#fbbf24', fg: '#020617', fw: 800 } }
   };
 
+  /* V3-F10: label edge DWI-BBCA dikosongkan — angka 54,94% sudah di sub simpul DWI, 0 duplikasi. */
   var CANVAS_INSIDER_EDGES = [
-    ['DWI', 'BBCA', '54,94%'],
+    ['DWI', 'BBCA', ''],
     ['RBH', 'DWI', ''],
     ['MBH', 'DWI', ''],
     ['JS', 'BBCA', '0,03%'],
@@ -4415,8 +4436,10 @@
       var rr = (n.t === 'e') ? 8 : 2;
       var isLinked = linkedKeys.includes(key);
 
-      var fill = (n.t === 'e') ? (isSel ? '#315F9A' : '#E9EFF6') : ((n.t === 'h') ? (isSel ? '#94602B' : '#F4EDE4') : (isSel ? '#7357A6' : '#EFEBF6'));
-      var stroke = isSel ? '#0F7458' : C[n.t];
+      /* V3-F10: DWI + PUB/Masyarakat selalu #fbbf24/#020617 fw800 (kontras 12.08:1, anti-disembunyikan). */
+      var isV3F10Hi = (key === 'DWI' || key === 'PUB');
+      var fill = isV3F10Hi ? '#fbbf24' : ((n.t === 'e') ? (isSel ? '#315F9A' : '#E9EFF6') : ((n.t === 'h') ? (isSel ? '#94602B' : '#F4EDE4') : (isSel ? '#7357A6' : '#EFEBF6')));
+      var stroke = isV3F10Hi ? '#020617' : (isSel ? '#0F7458' : C[n.t]);
 
       svgNodes += '<g class="node' + (isLinked ? '' : ' dim') + '" tabindex="0" role="button" aria-label="Sorot relasi ' + escapeHtml(key) + '" onclick="BandarmologiRuntime.selectInsiderNode(\'' + escapeHtml(key) + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();BandarmologiRuntime.selectInsiderNode(\'' + escapeHtml(key) + '\')}">';
       if (isP) {
@@ -4436,9 +4459,10 @@
 
       var lcls = 'glb gl' + ((!isP && isSel) ? ' on' : '') + (isLinked ? '' : ' dim');
       var scls = 'glb gs ns2' + (isLinked ? '' : ' dim');
+      var hiStyle = isV3F10Hi ? 'background:#fbbf24;color:#020617;font-weight:800;border:1.5px solid #020617;' : '';
 
-      govNodeLabels += '<span class="' + lcls + '" style="' + lst + '">' + escapeHtml(lText) + '</span>';
-      govNodeLabels += '<span class="' + scls + '" style="' + sst + '">' + escapeHtml(sText) + '</span>';
+      govNodeLabels += '<span class="' + lcls + '" data-v3f10-node="' + escapeHtml(key) + '" style="' + lst + ';' + hiStyle + '">' + escapeHtml(lText) + '</span>';
+      govNodeLabels += '<span class="' + scls + '" style="' + sst + ';' + hiStyle + '">' + escapeHtml(sText) + '</span>';
     }
 
     var html = '';
@@ -4513,7 +4537,7 @@
     html += '<div class="ph rise d0">';
     html += '  <div><h1>Jejaring Insider</h1><p>Relasi pengendali, direksi, dan kepemilikan silang. Klik simpul untuk menyorot hubungannya.</p></div>';
     html += '  <div style="display:flex;gap:10px;align-items:center">';
-    html += '    <label class="search" style="width:280px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>';
+    html += '    <label class="search" data-v3f10-search="true" style="width:280px;border:1.5px solid #334155;border-radius:8px;padding:6px 10px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>';
     html += '      <input type="search" placeholder="Cari ticker, orang, atau entitas" oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" style="all:unset;width:100%;font-size:13px">';
     html += '    </label>';
     html += '  </div>';
@@ -4545,11 +4569,11 @@
     html += '</div>';
 
     // 3. BOTTOM SECTION: SHAREHOLDER ROSTER TABLE
-    html += '<section class="sheet rise d3" id="insiderRosterSection" style="margin-top:16px">';
+    html += '<section class="sheet rise d3" id="insiderRosterSection" data-v3f10-ksei="true" style="margin-top:16px">';
     html += '  <div class="sec-h"><h2 style="font-size:16px">Daftar Pemegang Saham &amp; Insider · <span id="rosterTickerDisplay">' + escapeHtml(ticker) + '</span></h2><span id="insiderRosterCountBadge">Sumber: KSEI · per 30 Sep 2026</span></div>';
     html += '  <input type="hidden" id="insiderRosterTickerInput" value="' + escapeHtml(ticker) + '">';
     html += '  <div class="tw" style="overflow-x:auto">';
-    html += '    <table class="tbl" style="min-width:760px">';
+    html += '    <table class="tbl" data-v3f10-ksei-table="true" style="min-width:860px">';
     html += '      <thead>';
     html += '        <tr>';
     html += '          <th style="width:44px">#</th>';
@@ -4558,11 +4582,12 @@
     html += '          <th class="r">Jumlah lembar</th>';
     html += '          <th class="r">Kepemilikan</th>';
     html += '          <th class="r">Perubahan</th>';
+    html += '          <th class="r" data-v3f10-col="per-tanggal">Per tanggal</th>';
     html += '          <th style="width:110px"></th>';
     html += '        </tr>';
     html += '      </thead>';
     html += '      <tbody id="insiderRosterTbody">';
-    html += '        <tr><td colspan="7" class="mut" style="text-align:center;padding:24px 12px;font-size:13px"><div class="spinner mb-2" style="margin:0 auto 8px"></div>Memuat data kepemilikan saham dari KSEI...</td></tr>';
+    html += '        <tr><td colspan="8" class="mut" style="text-align:center;padding:24px 12px;font-size:13px"><div class="spinner mb-2" style="margin:0 auto 8px"></div>Memuat data kepemilikan saham dari KSEI...</td></tr>';
     html += '      </tbody>';
     html += '    </table>';
     html += '  </div>';
@@ -4575,7 +4600,7 @@
     html += '      <h3>Visualisasi Jejaring Relasi Insider &amp; Pemegang Saham Multi-Emiten</h3>';
     html += '    </div>';
     html += '    <div id="insiderMobileTabs" class="insider-mobile-tabs">';
-    html += '      <button type="button" id="insiderTabRoster" class="ac-tab-btn ac-tab-active" onclick="BandarmologiRuntime.setInsiderMobileView(\'roster\')">Daftar Pemegang Saham</button>';
+    html += '      <button type="button" id="insiderTabRoster" class="ac-tab-btn ac-tab-active" onclick="BandarmologiRuntime.setInsiderMobileView(\'roster\')">Pemegang Saham KSEI</button>';
     html += '      <button type="button" id="insiderTabGraph" class="ac-tab-btn" onclick="BandarmologiRuntime.setInsiderMobileView(\'graph\')">Graf Jejaring</button>';
     html += '    </div>';
     html += '    <div style="margin-bottom:12px">';

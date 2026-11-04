@@ -1,0 +1,278 @@
+{
+  "version": "v3-f11-1",
+  "window_days": 30,
+  "archived_tickers": 30,
+  "generated_at": "2026-11-04T01:56:24.638Z",
+  "tickers": [
+    {
+      "ticker": "ADRO",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/ADRO.history.json.gz",
+      "archive_bytes": 1204915,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "AKRA",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/AKRA.history.json.gz",
+      "archive_bytes": 1108520,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "AMMN",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/AMMN.history.json.gz",
+      "archive_bytes": 1254156,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "ANTM",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/ANTM.history.json.gz",
+      "archive_bytes": 1297133,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "ARTO",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/ARTO.history.json.gz",
+      "archive_bytes": 991316,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "ASII",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/ASII.history.json.gz",
+      "archive_bytes": 1272189,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "BBCA",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/BBCA.history.json.gz",
+      "archive_bytes": 1359538,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "BBNI",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/BBNI.history.json.gz",
+      "archive_bytes": 1248831,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "BBRI",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/BBRI.history.json.gz",
+      "archive_bytes": 1346167,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "BMRI",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/BMRI.history.json.gz",
+      "archive_bytes": 1349665,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "BREN",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/BREN.history.json.gz",
+      "archive_bytes": 1148161,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "BRPT",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/BRPT.history.json.gz",
+      "archive_bytes": 1246388,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "CPIN",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/CPIN.history.json.gz",
+      "archive_bytes": 1116782,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "CUAN",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/CUAN.history.json.gz",
+      "archive_bytes": 1221020,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "DEWA",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/DEWA.history.json.gz",
+      "archive_bytes": 1232822,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "GOTO",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/GOTO.history.json.gz",
+      "archive_bytes": 938163,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "ICBP",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/ICBP.history.json.gz",
+      "archive_bytes": 1128928,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "INDF",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/INDF.history.json.gz",
+      "archive_bytes": 1143346,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "INKP",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/INKP.history.json.gz",
+      "archive_bytes": 1088005,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "KLBF",
+      "archived_days": 182,
+      "active_days": 23,
+      "archive_file": "archive/KLBF.history.json.gz",
+      "archive_bytes": 1192456,
+      "window_days": 30,
+      "end_date": "2026-10-28"
+    },
+    {
+      "ticker": "MDKA",
+      "archived_days": 182,
+      "active_days": 22,
+      "archive_file": "archive/MDKA.history.json.gz",
+      "archive_bytes": 1233211,
+      "window_days": 30,
+      "end_date": "2026-10-27"
+    },
+    {
+      "ticker": "MEDC",
+      "archived_days": 182,
+      "active_days": 22,
+      "archive_file": "archive/MEDC.history.json.gz",
+      "archive_bytes": 1206821,
+      "window_days": 30,
+      "end_date": "2026-10-27"
+    },
+    {
+      "ticker": "PGAS",
+      "archived_days": 182,
+      "active_days": 22,
+      "archive_file": "archive/PGAS.history.json.gz",
+      "archive_bytes": 1167207,
+      "window_days": 30,
+      "end_date": "2026-10-27"
+    },
+    {
+      "ticker": "PGEO",
+      "archived_days": 182,
+      "active_days": 22,
+      "archive_file": "archive/PGEO.history.json.gz",
+      "archive_bytes": 1057769,
+      "window_days": 30,
+      "end_date": "2026-10-27"
+    },
+    {
+      "ticker": "PTBA",
+      "archived_days": 182,
+      "active_days": 22,
+      "archive_file": "archive/PTBA.history.json.gz",
+      "archive_bytes": 1106355,
+      "window_days": 30,
+      "end_date": "2026-10-27"
+    },
+    {
+      "ticker": "PTRO",
+      "archived_days": 182,
+      "active_days": 22,
+      "archive_file": "archive/PTRO.history.json.gz",
+      "archive_bytes": 1201449,
+      "window_days": 30,
+      "end_date": "2026-10-27"
+    },
+    {
+      "ticker": "SMGR",
+      "archived_days": 182,
+      "active_days": 22,
+      "archive_file": "archive/SMGR.history.json.gz",
+      "archive_bytes": 1094169,
+      "window_days": 30,
+      "end_date": "2026-10-27"
+    },
+    {
+      "ticker": "TLKM",
+      "archived_days": 182,
+      "active_days": 22,
+      "archive_file": "archive/TLKM.history.json.gz",
+      "archive_bytes": 1305818,
+      "window_days": 30,
+      "end_date": "2026-10-27"
+    },
+    {
+      "ticker": "TPIA",
+      "archived_days": 182,
+      "active_days": 22,
+      "archive_file": "archive/TPIA.history.json.gz",
+      "archive_bytes": 1208635,
+      "window_days": 30,
+      "end_date": "2026-10-27"
+    },
+    {
+      "ticker": "UNTR",
+      "archived_days": 182,
+      "active_days": 22,
+      "archive_file": "archive/UNTR.history.json.gz",
+      "archive_bytes": 1203277,
+      "window_days": 30,
+      "end_date": "2026-10-27"
+    }
+  ]
+}

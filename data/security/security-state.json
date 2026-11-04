@@ -1,0 +1,253 @@
+{
+  "version": "S2-1.0.0",
+  "updatedAt": "2026-11-04T02:18:53.108Z",
+  "status": "WASPADA",
+  "statusLabel": "WASPADA - Serangan Bot Terdeteksi & Diblokir",
+  "sources": {
+    "ssh": {
+      "rejected": 0,
+      "banned": 0,
+      "newLogins": 0,
+      "detail": ""
+    },
+    "appBrute": {
+      "failed": 0,
+      "blocked": 0,
+      "detail": ""
+    },
+    "botFlood": {
+      "blocked": 0,
+      "probes": 0,
+      "detail": ""
+    },
+    "admin403": {
+      "attempts": 0,
+      "detail": ""
+    },
+    "integrity": {
+      "issues": 0,
+      "detail": ""
+    },
+    "sensitiveProbe": {
+      "count": 0,
+      "detail": ""
+    }
+  },
+  "metrics24h": {
+    "sshRejected": 0,
+    "botBlocked": 240,
+    "loginFailedBlocked": 24,
+    "activeBlocks": 4
+  },
+  "blockedIps": [
+    {
+      "ip": "198.51.100.10",
+      "reason": "brute-force login (otomatis 30 mnt)",
+      "until": "2026-11-01T10:17:42.805Z",
+      "by": "security-shield",
+      "at": "2026-11-01T09:47:42.808Z",
+      "attempts": 8
+    },
+    {
+      "ip": "198.51.100.12",
+      "reason": "flood bot (otomatis 5 mnt)",
+      "until": "2026-11-01T09:52:42.820Z",
+      "by": "security-shield",
+      "at": "2026-11-01T09:47:42.822Z",
+      "attempts": 50
+    },
+    {
+      "ip": "198.51.100.77",
+      "reason": "flood bot (otomatis 5 mnt)",
+      "until": "2026-11-01T09:52:52.034Z",
+      "by": "security-shield",
+      "at": "2026-11-01T09:47:52.036Z",
+      "attempts": 50
+    }
+  ],
+  "incidents": [
+    {
+      "id": "inc_1793758733108_26071",
+      "at": "2026-11-04T02:18:53.108Z",
+      "type": "IP_UNBLOCKED",
+      "ip": "203.0.113.99",
+      "attempts": 0,
+      "reason": "simulasi gate V3-F12 selesai, buka blokir IP uji"
+    },
+    {
+      "id": "inc_1793758733103_20502",
+      "at": "2026-11-04T02:18:53.103Z",
+      "type": "HTTP_403_AUTO_BLOCK",
+      "ip": "203.0.113.99",
+      "attempts": 5,
+      "reason": "HTTP 403 beruntun 5x — IP DIBLOKIR otomatis",
+      "until": "2026-11-04T03:18:53.102Z",
+      "source": "shield-v3f12"
+    },
+    {
+      "id": "inc_1793758733101_88316",
+      "at": "2026-11-04T02:18:53.101Z",
+      "type": "HTTP_403_WATCH",
+      "ip": "203.0.113.99",
+      "attempts": 3,
+      "reason": "HTTP 403 3x dipantau — simulasi serangan bot uji #3",
+      "source": "shield-v3f12"
+    },
+    {
+      "id": "inc_1793758733097_5955",
+      "at": "2026-11-04T02:18:53.097Z",
+      "type": "IP_UNBLOCKED",
+      "ip": "203.0.113.99",
+      "attempts": 0,
+      "reason": "bersihkan sebelum simulasi gate V3-F12"
+    },
+    {
+      "id": "inc_1793758137311_82095",
+      "at": "2026-11-04T02:08:57.311Z",
+      "type": "IP_UNBLOCKED",
+      "ip": "203.0.113.99",
+      "attempts": 0,
+      "reason": "bersihkan uji lokal V3-F12"
+    },
+    {
+      "id": "inc_1793758125352_28979",
+      "at": "2026-11-04T02:08:45.352Z",
+      "type": "HTTP_403_AUTO_BLOCK",
+      "ip": "203.0.113.99",
+      "attempts": 5,
+      "reason": "HTTP 403 beruntun 5x — IP DIBLOKIR otomatis",
+      "until": "2026-11-04T03:08:45.350Z",
+      "source": "shield-v3f12"
+    },
+    {
+      "id": "inc_1793758125348_7803",
+      "at": "2026-11-04T02:08:45.348Z",
+      "type": "HTTP_403_WATCH",
+      "ip": "203.0.113.99",
+      "attempts": 3,
+      "reason": "HTTP 403 3x dipantau — uji 403 beruntun #3",
+      "source": "shield-v3f12"
+    },
+    {
+      "id": "inc_1793758106571_94237",
+      "at": "2026-11-04T02:08:26.571Z",
+      "type": "IP_UNBLOCKED",
+      "ip": "203.0.113.99",
+      "attempts": 0,
+      "reason": "uji unblock gate"
+    },
+    {
+      "id": "inc_1793758106568_95361",
+      "at": "2026-11-04T02:08:26.568Z",
+      "type": "HTTP_403_AUTO_BLOCK",
+      "ip": "203.0.113.99",
+      "attempts": 5,
+      "reason": "HTTP 403 beruntun 5x — IP DIBLOKIR otomatis",
+      "until": "2026-11-04T03:08:26.566Z",
+      "source": "shield-v3f12"
+    },
+    {
+      "id": "inc_1793758106564_44368",
+      "at": "2026-11-04T02:08:26.564Z",
+      "type": "HTTP_403_WATCH",
+      "ip": "203.0.113.99",
+      "attempts": 3,
+      "reason": "HTTP 403 3x dipantau — uji 403 beruntun",
+      "source": "shield-v3f12"
+    },
+    {
+      "id": "inc_1793526472036_54130",
+      "at": "2026-11-01T09:47:52.034Z",
+      "type": "API_FLOOD_BOT",
+      "ip": "198.51.100.77",
+      "attempts": 50,
+      "reason": "ticker_sweep_no_session_no_browser_ua",
+      "until": "2026-11-01T09:52:52.034Z",
+      "source": "shield-realtime"
+    },
+    {
+      "id": "inc_1793526472033_19036",
+      "at": "2026-11-01T09:47:52.032Z",
+      "type": "API_FLOOD_BOT",
+      "ip": "198.51.100.77",
+      "attempts": 30,
+      "reason": "no_browser_ua_high_volume_watchlist",
+      "until": null,
+      "source": "shield-realtime"
+    },
+    {
+      "id": "inc_1793526472030_92772",
+      "at": "2026-11-01T09:47:52.027Z",
+      "type": "BRUTE_FORCE_AUTH",
+      "ip": "203.0.113.99",
+      "attempts": 8,
+      "reason": "login bertubi-tubi, diblokir 30 mnt",
+      "until": "2026-11-01T10:17:52.027Z",
+      "source": "shield-realtime"
+    },
+    {
+      "id": "inc_1793526462834_29117",
+      "at": "2026-11-01T09:47:42.832Z",
+      "type": "API_FLOOD_BOT",
+      "ip": "203.0.113.99",
+      "attempts": 50,
+      "reason": "ticker_sweep_no_session_no_browser_ua",
+      "until": "2026-11-01T09:52:42.832Z",
+      "source": "shield-realtime"
+    },
+    {
+      "id": "inc_1793526462831_86177",
+      "at": "2026-11-01T09:47:42.830Z",
+      "type": "API_FLOOD_BOT",
+      "ip": "203.0.113.99",
+      "attempts": 30,
+      "reason": "no_browser_ua_high_volume_watchlist",
+      "until": null,
+      "source": "shield-realtime"
+    },
+    {
+      "id": "inc_1793526462826_44448",
+      "at": "2026-11-01T09:47:42.825Z",
+      "type": "BRUTE_FORCE_AUTH",
+      "ip": "203.0.113.99",
+      "attempts": 8,
+      "reason": "login bertubi-tubi, diblokir 30 mnt",
+      "until": "2026-11-01T10:17:42.825Z",
+      "source": "shield-realtime"
+    },
+    {
+      "id": "inc_1793526462822_46783",
+      "at": "2026-11-01T09:47:42.820Z",
+      "type": "API_FLOOD_BOT",
+      "ip": "198.51.100.12",
+      "attempts": 50,
+      "reason": "ticker_sweep_no_session_no_browser_ua",
+      "until": "2026-11-01T09:52:42.820Z",
+      "source": "shield-realtime"
+    },
+    {
+      "id": "inc_1793526462818_23097",
+      "at": "2026-11-01T09:47:42.816Z",
+      "type": "API_FLOOD_BOT",
+      "ip": "198.51.100.12",
+      "attempts": 30,
+      "reason": "no_browser_ua_high_volume_watchlist",
+      "until": null,
+      "source": "shield-realtime"
+    },
+    {
+      "id": "inc_1793526462808_54711",
+      "at": "2026-11-01T09:47:42.806Z",
+      "type": "BRUTE_FORCE_AUTH",
+      "ip": "198.51.100.10",
+      "attempts": 8,
+      "reason": "login bertubi-tubi, diblokir 30 mnt",
+      "until": "2026-11-01T10:17:42.805Z",
+      "source": "shield-realtime"
+    }
+  ],
+  "telegram": {
+    "lastSentAt": null,
+    "cooldownMs": 1800000
+  }
+}

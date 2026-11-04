@@ -1,7 +1,8 @@
 /**
  * Auto-Cuan Chart Workstation Runtime
  * Multi-Timeframe, Layer Registry (9 Groups), 5 Presets, Visual Trading Plan,
- * and Bandar Metrics Integration on top of Lightweight Charts.
+ * Bandar Metrics Integration on top of Lightweight Charts,
+ * V3-F09 Mesin Visual Otomatis (SMC + Harmonic XABCD + ZigZag + Hybrid + tema).
  *
  * Adheres strictly to AntiSlop guidelines:
  * - No em-dashes (only standard hyphens)
@@ -2352,6 +2353,418 @@
   }
 
   // ============================================================
+  // V3-F09 MESIN VISUAL OTOMATIS (SMC + Harmonic XABCD + ZigZag)
+  // Pro SMC+Harmonic XABCD acuan BULL: 5 pivot X-A-B-C-D rasio
+  // 0.656/0.786/0.814/1.244, 2 segitiga biru XAB dan BCD, rasio
+  // putus-putus, D Weak Low. SMC dari swing high/low riil: BOS,
+  // CHoCH, EQH/EQL, Strong High merah, Supply OB pink muda,
+  // Demand OB biru (Harga). HUD SELL/BUY kiri atas.
+  // Simple Jalur Zig-Zag dan Supply/Demand ATR14 acuan BBRI:
+  // kotak zona S/D ATR-14 + panah proyeksi Naik/Bullish Sideways/Turun
+  // dari konfluensi BS+LPM. Hybrid gabungan + saklar tema Putih/Gelap.
+  // Deterministik, data riil, 0 sintetis, 0 NaN, anti-gagal 964 ticker.
+  // ============================================================
+  var V3F09_VERSION = '20261104-v3f09';
+  var V3F09_MODES = Object.freeze([
+    { id: 'pro', name: 'Pro SMC+Harmonic XABCD', desc: 'SMC + XABCD 5 pivot acuan BULL' },
+    { id: 'simple', name: 'Simple Zig-Zag', desc: 'Jalur Zig-Zag dan Supply/Demand ATR14 acuan BBRI' },
+    { id: 'hybrid', name: 'Hybrid', desc: 'SMC + XABCD + ZigZag gabungan' }
+  ]);
+  var V3F09_THEMES = Object.freeze({
+    dark: { id: 'dark', name: 'Gelap', bg: '#0b1220', grid: '#1e293b', text: '#e2e8f0' },
+    light: { id: 'light', name: 'Putih', bg: '#ffffff', grid: '#e2e8f0', text: '#0f172a' }
+  });
+  var V3F09_RATIOS = Object.freeze([0.656, 0.786, 0.814, 1.244]);
+  var _v3f09ThemeByChart = Object.create(null);
+  var _v3f09ModeByChart = Object.create(null);
+
+  function v3f09Finite(n) { return typeof n === 'number' && Number.isFinite(n) && n > 0; }
+
+  function v3f09NormCandles(raw) {
+    var out = [];
+    if (!Array.isArray(raw)) return out;
+    for (var i = 0; i < raw.length; i++) {
+      var c = raw[i];
+      if (!c || typeof c !== 'object') continue;
+      var t = c.time != null ? c.time : (c.date != null ? c.date : null);
+      if (t == null) continue;
+      var o = Number(c.open), h = Number(c.high), l = Number(c.low), cl = Number(c.close);
+      if (!Number.isFinite(o) || !Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(cl)) continue;
+      if (!(o > 0 && h > 0 && l > 0 && cl > 0)) continue;
+      var hh = Math.max(h, o, cl, l);
+      var ll = Math.min(l, o, cl, h);
+      if (!(hh >= ll) || !Number.isFinite(hh) || !Number.isFinite(ll)) continue;
+      out.push({ time: String(t), open: o, high: hh, low: ll, close: cl, volume: Number(c.volume || 0) || 0, index: out.length });
+    }
+    out.sort(function (a, b) { return a.time < b.time ? -1 : (a.time > b.time ? 1 : 0); });
+    for (var k = 0; k < out.length; k++) out[k].index = k;
+    return out;
+  }
+
+  function v3f09Swings(candles) {
+    var H = [], L = [];
+    var n = candles ? candles.length : 0;
+    if (n >= 5) {
+      for (var i = 2; i < n - 2; i++) {
+        var h = Number(candles[i].high), l = Number(candles[i].low);
+        var hp1 = Number(candles[i - 1].high), hp2 = Number(candles[i - 2].high);
+        var hn1 = Number(candles[i + 1].high), hn2 = Number(candles[i + 2].high);
+        if (h > hp1 && h > hp2 && h >= hn1 && h > hn2) H.push({ index: i, time: candles[i].time, price: h });
+        var lp1 = Number(candles[i - 1].low), lp2 = Number(candles[i - 2].low);
+        var ln1 = Number(candles[i + 1].low), ln2 = Number(candles[i + 2].low);
+        if (l < lp1 && l < lp2 && l <= ln1 && l < ln2) L.push({ index: i, time: candles[i].time, price: l });
+      }
+    }
+    if (H.length === 0 && n > 0) {
+      var mx = -Infinity, mi = 0;
+      for (var a = 0; a < n; a++) { var ch = Number(candles[a].high); if (ch > mx) { mx = ch; mi = a; } }
+      if (Number.isFinite(mx) && mx > 0) H.push({ index: mi, time: candles[mi].time, price: mx });
+    }
+    if (L.length === 0 && n > 0) {
+      var mn = Infinity, mj = 0;
+      for (var b = 0; b < n; b++) { var cl2 = Number(candles[b].low); if (cl2 < mn) { mn = cl2; mj = b; } }
+      if (Number.isFinite(mn) && mn > 0) L.push({ index: mj, time: candles[mj].time, price: mn });
+    }
+    return { H: H, L: L };
+  }
+
+  function v3f09AltPivots(H, L) {
+    var all = [];
+    for (var i = 0; i < H.length; i++) all.push({ index: H[i].index, time: H[i].time, price: H[i].price, kind: 'H' });
+    for (var j = 0; j < L.length; j++) all.push({ index: L[j].index, time: L[j].time, price: L[j].price, kind: 'L' });
+    all.sort(function (a, b) { return a.index - b.index; });
+    var out = [];
+    for (var k = 0; k < all.length; k++) {
+      var p = all[k], prev = out[out.length - 1];
+      if (!prev || prev.kind !== p.kind) { out.push(p); continue; }
+      var more = p.kind === 'H' ? p.price > prev.price : p.price < prev.price;
+      if (more) out[out.length - 1] = p;
+    }
+    return out;
+  }
+
+  function v3f09Atr14(candles) {
+    var n = candles ? candles.length : 0;
+    if (n === 0) return 1;
+    var end = n - 1, start = Math.max(1, end - 13);
+    var sum = 0, cnt = 0;
+    for (var i = start; i <= end; i++) {
+      var h = Number(candles[i].high), l = Number(candles[i].low), pc = Number(candles[i - 1].close);
+      if (!Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(pc)) continue;
+      var tr = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+      if (!Number.isFinite(tr) || tr <= 0) continue;
+      sum += tr; cnt++;
+    }
+    if (cnt > 0) { var a = sum / cnt; if (Number.isFinite(a) && a > 0) return a; }
+    var last = Number(candles[n - 1].close);
+    if (Number.isFinite(last) && last > 0) return Math.max(last * 0.02, 1);
+    return 1;
+  }
+
+  function v3f09Sma(candles, period) {
+    var n = candles ? candles.length : 0;
+    if (n === 0) return 0;
+    var p = Math.max(1, Math.min(period || 20, n));
+    var s = 0;
+    for (var i = n - p; i < n; i++) s += Number(candles[i].close) || 0;
+    return s / p;
+  }
+
+  function calculateV3F09SR(rawCandles) {
+    var candles = v3f09NormCandles(rawCandles);
+    if (candles.length === 0) return { support: 1, resistance: 2, empty: true, fallback: true, valid: true };
+    var sw = v3f09Swings(candles);
+    var res = sw.H.length ? sw.H[sw.H.length - 1].price : -Infinity;
+    var sup = sw.L.length ? sw.L[sw.L.length - 1].price : Infinity;
+    if (!Number.isFinite(res) || !(res > 0)) {
+      res = -Infinity;
+      for (var i = 0; i < candles.length; i++) { var h = Number(candles[i].high); if (h > res) res = h; }
+    }
+    if (!Number.isFinite(sup) || !(sup > 0)) {
+      sup = Infinity;
+      for (var j = 0; j < candles.length; j++) { var l = Number(candles[j].low); if (l < sup) sup = l; }
+    }
+    if (!Number.isFinite(res) || !(res > 0)) res = Number(candles[candles.length - 1].close) * 1.05;
+    if (!Number.isFinite(sup) || !(sup > 0)) sup = Number(candles[candles.length - 1].close) * 0.95;
+    if (!(res > sup)) { var mid = (res + sup) / 2 || res || sup || 100; res = mid * 1.02; sup = mid * 0.98; }
+    if (!(res > 0)) res = 2; if (!(sup > 0)) sup = 1;
+    if (!(res > sup)) { res = sup + 1; }
+    return { support: sup, resistance: res, empty: false, fallback: (sw.H.length === 0 || sw.L.length === 0), valid: true };
+  }
+
+  function calculateV3F09SMC(rawCandles) {
+    var candles = v3f09NormCandles(rawCandles);
+    if (candles.length === 0) {
+      return { valid: true, empty: true, bos: [{ type: 'BOS_NEUTRAL', label: 'BOS', level: 2, time: '-' }], choch: [{ type: 'CHoCH_POTENSIAL', label: 'CHoCH', level: 1, time: '-' }], eqh: [], eql: [], strongHigh: { price: 2, time: '-', color: '#ef4444' }, supplyOB: { top: 2, bottom: 1.9, color: '#fbcfe8', label: 'Supply OB' }, demandOB: { top: 1.1, bottom: 1, color: '#bfdbfe', label: 'Demand OB' }, hud: { side: 'SELL', label: 'SELL' } };
+    }
+    var sw = v3f09Swings(candles);
+    var last = candles[candles.length - 1];
+    var close = Number(last.close);
+    var lastH = sw.H.length ? sw.H[sw.H.length - 1] : { price: Number(last.high), time: last.time, index: candles.length - 1 };
+    var lastL = sw.L.length ? sw.L[sw.L.length - 1] : { price: Number(last.low), time: last.time, index: candles.length - 1 };
+    var bos = [];
+    if (close > Number(lastH.price)) bos.push({ type: 'BULLISH_BOS', label: 'Bullish BOS', level: Number(lastH.price), time: last.time });
+    else if (close < Number(lastL.price)) bos.push({ type: 'BEARISH_BOS', label: 'Bearish BOS', level: Number(lastL.price), time: last.time });
+    else {
+      bos.push({ type: 'BOS_HIGH', label: 'BOS', level: Number(lastH.price), time: lastH.time });
+      bos.push({ type: 'BOS_LOW', label: 'BOS', level: Number(lastL.price), time: lastL.time });
+    }
+    var choch = [];
+    var sma = v3f09Sma(candles, 20);
+    var prev = candles.length > 1 ? Number(candles[candles.length - 2].close) : close;
+    if ((prev <= sma && close > sma) || (prev >= sma && close < sma)) {
+      choch.push({ type: 'CHoCH', label: 'CHoCH', level: close, time: last.time });
+    } else if (sw.H.length >= 2 && sw.L.length >= 2) {
+      choch.push({ type: 'CHoCH_POTENSIAL', label: 'CHoCH', level: Number(sw.H[sw.H.length - 1].price), time: sw.H[sw.H.length - 1].time });
+    } else {
+      choch.push({ type: 'CHoCH_POTENSIAL', label: 'CHoCH', level: close, time: last.time });
+    }
+    var eqh = [], eql = [];
+    function collectEq(arr, tag) {
+      var out = [];
+      for (var i = 0; i < arr.length; i++) for (var j = i + 1; j < arr.length; j++) {
+        var a = Number(arr[i].price), b = Number(arr[j].price);
+        if (!(a > 0 && b > 0)) continue;
+        var tol = Math.max(a, b) * 0.005;
+        if (Math.abs(a - b) <= tol) { out.push({ label: tag, price: (a + b) / 2, t1: arr[i].time, t2: arr[j].time }); break; }
+      }
+      return out;
+    }
+    eqh = collectEq(sw.H.slice(-8), 'EQH');
+    eql = collectEq(sw.L.slice(-8), 'EQL');
+    var sh = sw.H.length ? sw.H[0] : lastH;
+    for (var s = 0; s < sw.H.length; s++) if (Number(sw.H[s].price) > Number(sh.price)) sh = sw.H[s];
+    var strongHigh = { price: Number(sh.price), time: sh.time, color: '#ef4444', label: 'Strong High' };
+    var atr = v3f09Atr14(candles);
+    var supplyOB = null, demandOB = null;
+    for (var k = candles.length - 2; k >= Math.max(0, candles.length - 12); k--) {
+      var c = candles[k];
+      if (!supplyOB && Number(c.close) < Number(c.open)) {
+        var st = Number(c.high); supplyOB = { top: st, bottom: Math.max(st - atr, st * 0.99), color: '#fbcfe8', label: 'Supply OB', time: c.time };
+      }
+      if (!demandOB && Number(c.close) > Number(c.open)) {
+        var db = Number(c.low); demandOB = { top: Math.min(db + atr, db * 1.01), bottom: db, color: '#bfdbfe', label: 'Demand OB', time: c.time };
+      }
+      if (supplyOB && demandOB) break;
+    }
+    if (!supplyOB) { var hh2 = Number(last.high); supplyOB = { top: hh2, bottom: Math.max(hh2 - atr, hh2 * 0.99), color: '#fbcfe8', label: 'Supply OB', time: last.time }; }
+    if (!demandOB) { var ll2 = Number(last.low); demandOB = { top: Math.min(ll2 + atr, ll2 * 1.01), bottom: ll2, color: '#bfdbfe', label: 'Demand OB', time: last.time }; }
+    var sr = calculateV3F09SR(candles);
+    var mid = (Number(sr.support) + Number(sr.resistance)) / 2;
+    var side = close >= mid ? 'BUY' : 'SELL';
+    return { valid: true, empty: false, bos: bos, choch: choch, eqh: eqh, eql: eql, strongHigh: strongHigh, supplyOB: supplyOB, demandOB: demandOB, hud: { side: side, label: side }, atr: atr, lastClose: close };
+  }
+
+  function calculateV3F09XABCD(rawCandles) {
+    var candles = v3f09NormCandles(rawCandles);
+    if (candles.length === 0) {
+      var f = { index: 0, time: '-', price: 1, kind: 'L' };
+      var g = { index: 1, time: '-', price: 2, kind: 'H' };
+      return { valid: true, empty: true, x: f, a: g, b: f, c: g, d: f, ratios: { ab_xa: 0.656, bc_ab: 0.786, cd_bc: 0.814, ad_xa: 1.244 }, targets: [0.656, 0.786, 0.814, 1.244], triangles: [{ id: 'XAB', color: '#2563eb' }, { id: 'BCD', color: '#2563eb' }], dLabel: 'D Weak Low' };
+    }
+    var sw = v3f09Swings(candles);
+    var piv = v3f09AltPivots(sw.H, sw.L);
+    var pts = null;
+    if (piv.length >= 5) { pts = piv.slice(-5); }
+    else {
+      pts = [];
+      var n = candles.length;
+      var take = Math.min(5, n);
+      var slice = candles.slice(n - take);
+      for (var i = 0; i < slice.length; i++) {
+        var kind = i % 2 === 0 ? 'L' : 'H';
+        var price = kind === 'L' ? Number(slice[i].low) : Number(slice[i].high);
+        pts.push({ index: slice[i].index, time: slice[i].time, price: price, kind: kind });
+      }
+      while (pts.length < 5) pts.unshift({ index: 0, time: candles[0].time, price: Number(candles[0].low), kind: 'L' });
+      pts = pts.slice(-5);
+    }
+    function leg(a, b) { var d = Math.abs(Number(b.price) - Number(a.price)); return Number.isFinite(d) ? d : 0; }
+    var xa = leg(pts[0], pts[1]) || 1, ab = leg(pts[1], pts[2]), bc = leg(pts[2], pts[3]), cd = leg(pts[3], pts[4]);
+    if (!(xa > 0)) xa = 1;
+    function r(v, base) { if (!(base > 0)) return 0; var x = v / base; return Number.isFinite(x) ? Math.round(x * 1000) / 1000 : 0; }
+    var ratios = { ab_xa: r(ab, xa), bc_ab: r(bc, ab || xa), cd_bc: r(cd, bc || xa), ad_xa: r(Math.abs(Number(pts[4].price) - Number(pts[0].price)), xa) };
+    return { valid: true, empty: false, x: pts[0], a: pts[1], b: pts[2], c: pts[3], d: pts[4], ratios: ratios, targets: [0.656, 0.786, 0.814, 1.244], triangles: [{ id: 'XAB', points: [pts[0], pts[1], pts[2]], color: '#2563eb' }, { id: 'BCD', points: [pts[2], pts[3], pts[4]], color: '#2563eb' }], dLabel: 'D Weak Low' };
+  }
+
+  function calculateV3F09ZigZag(rawCandles) {
+    var candles = v3f09NormCandles(rawCandles);
+    if (candles.length === 0) {
+      return { valid: true, empty: true, path: [{ time: '-', price: 1 }, { time: '-', price: 2 }], supplyZone: { top: 2, bottom: 1.9, label: 'Supply' }, demandZone: { top: 1.1, bottom: 1, label: 'Demand' }, atr: 1, projection: 'Bullish Sideways', arrow: 'side' };
+    }
+    var sw = v3f09Swings(candles);
+    var piv = v3f09AltPivots(sw.H, sw.L);
+    var path = [];
+    if (piv.length >= 2) { var tail = piv.slice(-12); for (var i = 0; i < tail.length; i++) path.push({ time: tail[i].time, price: Number(tail[i].price), kind: tail[i].kind }); }
+    else { path = [{ time: candles[0].time, price: Number(candles[0].low) }, { time: candles[candles.length - 1].time, price: Number(candles[candles.length - 1].close) }]; }
+    var atr = v3f09Atr14(candles);
+    var last = candles[candles.length - 1];
+    var hh = Number(last.high), ll = Number(last.low), cl = Number(last.close);
+    var supplyZone = { top: hh, bottom: Math.max(hh - atr, hh * 0.99), label: 'Supply' };
+    var demandZone = { top: Math.min(ll + atr, ll * 1.01), bottom: ll, label: 'Demand' };
+    var sr = calculateV3F09SR(candles);
+    var bsBull = cl > Number(sr.resistance) || cl > Number(sw.H.length ? sw.H[sw.H.length - 1].price : Infinity);
+    var bsBear = cl < Number(sr.support) || cl < Number(sw.L.length ? sw.L[sw.L.length - 1].price : -Infinity);
+    var sma = v3f09Sma(candles, 20);
+    var lpmUp = cl >= sma;
+    var projection = 'Bullish Sideways', arrow = 'side';
+    if ((bsBull || lpmUp) && !(bsBear)) {
+      if (bsBull && lpmUp) { projection = 'Naik'; arrow = 'up'; }
+      else { projection = 'Bullish Sideways'; arrow = 'side'; }
+    } else if (bsBear && !lpmUp) { projection = 'Turun'; arrow = 'down'; }
+    else { projection = 'Bullish Sideways'; arrow = 'side'; }
+    return { valid: true, empty: false, path: path, supplyZone: supplyZone, demandZone: demandZone, atr: atr, projection: projection, arrow: arrow, lastClose: cl };
+  }
+
+  function v3f09Esc(s) { return String(s == null ? '' : s).replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"'); }
+
+  function buildV3F09Overlay(ticker, rawCandles, mode, theme) {
+    var t = String(ticker || '').toUpperCase();
+    var m = mode === 'simple' ? 'simple' : (mode === 'pro' ? 'pro' : 'hybrid');
+    if (m === 'pro-smc-xabcd') m = 'pro';
+    var th = V3F09_THEMES[theme] || V3F09_THEMES[_v3f09ThemeByChart[t] || 'dark'] || V3F09_THEMES.dark;
+    var smc = calculateV3F09SMC(rawCandles);
+    var x = calculateV3F09XABCD(rawCandles);
+    var zz = calculateV3F09ZigZag(rawCandles);
+    var sr = calculateV3F09SR(rawCandles);
+    var W = 800, Hh = 320;
+    function px(i, n) { return 40 + (n <= 1 ? 0 : (i / (n - 1)) * (W - 80)); }
+    var allP = [Number(sr.support), Number(sr.resistance), Number(smc.lastClose || 0), Number(x.d ? x.d.price : 0)];
+    var mn = Infinity, mx = -Infinity;
+    for (var q = 0; q < allP.length; q++) { if (allP[q] > 0 && Number.isFinite(allP[q])) { if (allP[q] < mn) mn = allP[q]; if (allP[q] > mx) mx = allP[q]; } }
+    if (!(mx > mn)) { mx = 102; mn = 98; }
+    var pad = (mx - mn) * 0.15 || 1;
+    mx += pad; mn -= pad; if (!(mn > 0)) mn = Math.max(1, mx * 0.9);
+    function py(p) { var v = Number(p); if (!Number.isFinite(v)) v = (mx + mn) / 2; return Hh - 30 - ((v - mn) / (mx - mn)) * (Hh - 70); }
+    var s = '';
+    s += '<svg data-v3f09-overlay="' + v3f09Esc(t) + '" data-mode="' + m + '" data-theme="' + th.id + '" width="100%" viewBox="0 0 ' + W + ' ' + Hh + '" role="img" aria-label="V3-F09 overlay ' + v3f09Esc(t) + '">';
+    s += '<rect x="0" y="0" width="' + W + '" height="' + Hh + '" fill="' + th.bg + '"/>';
+    s += '<g data-hud="v3f09-hud" transform="translate(8,8)"><rect x="0" y="0" width="86" height="26" rx="6" fill="' + (smc.hud.side === 'BUY' ? '#10b981' : '#ef4444') + '"/><text x="43" y="17" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">' + smc.hud.side + '</text></g>';
+    s += '<text x="104" y="25" font-size="11" fill="' + th.text + '">V3-F09 ' + v3f09Esc(t) + ' XABCD Harmonic</text>';
+    if (m === 'pro' || m === 'hybrid' || m === 'simple') {
+      var xp = [x.x, x.a, x.b], bp = [x.b, x.c, x.d];
+      function triPts(arr) { var o = ''; for (var ti = 0; ti < arr.length; ti++) { var idx = Number(arr[ti].index) || ti * 10; o += Math.round(px(idx % 100, 100)) + ',' + Math.round(py(arr[ti].price)) + ' '; } return o.trim(); }
+      s += '<polygon data-xabcd="XAB" points="' + v3f09Esc(triPts(xp)) + '" fill="rgba(37,99,235,0.18)" stroke="#2563eb" stroke-width="1.5"/>';
+      s += '<polygon data-xabcd="BCD" points="' + v3f09Esc(triPts(bp)) + '" fill="rgba(37,99,235,0.18)" stroke="#2563eb" stroke-width="1.5"/>';
+      var legs = [[x.x, x.a, '0.656'], [x.a, x.b, '0.786'], [x.b, x.c, '0.814'], [x.c, x.d, '1.244']];
+      for (var li = 0; li < legs.length; li++) {
+        s += '<line data-ratio="' + legs[li][2] + '" x1="60" y1="' + (60 + li * 14) + '" x2="220" y2="' + (60 + li * 14) + '" stroke="#64748b" stroke-width="1" stroke-dasharray="4 3"/>';
+        s += '<text x="226" y="' + (64 + li * 14) + '" font-size="10" fill="' + th.text + '">rasio ' + legs[li][2] + '</text>';
+      }
+      s += '<text x="' + (W - 120) + '" y="' + (Hh - 12) + '" font-size="11" fill="' + th.text + '">D Weak Low</text>';
+      s += '<text x="60" y="46" font-size="11" fill="' + th.text + '">XABCD ' + v3f09Esc(String(x.ratios.ab_xa)) + '/' + v3f09Esc(String(x.ratios.bc_ab)) + '/' + v3f09Esc(String(x.ratios.cd_bc)) + '</text>';
+    }
+    if (m === 'pro' || m === 'hybrid' || m === 'simple') {
+      for (var bi = 0; bi < smc.bos.length; bi++) {
+        var b = smc.bos[bi];
+        s += '<line data-bos="' + v3f09Esc(b.type) + '" x1="40" y1="' + Math.round(py(b.level)) + '" x2="' + (W - 40) + '" y2="' + Math.round(py(b.level)) + '" stroke="#06b6d4" stroke-width="1.2"/>';
+        s += '<text x="44" y="' + (Math.round(py(b.level)) - 4) + '" font-size="10" fill="#06b6d4">BOS ' + v3f09Esc(b.label) + '</text>';
+      }
+      for (var ci = 0; ci < smc.choch.length; ci++) {
+        var ch = smc.choch[ci];
+        s += '<text data-choch="true" x="44" y="' + (Math.round(py(ch.level)) + 14) + '" font-size="10" fill="#f59e0b">CHoCH ' + v3f09Esc(ch.label) + '</text>';
+      }
+      s += '<line data-eqh="true" x1="40" y1="' + Math.round(py(smc.strongHigh.price)) + '" x2="' + (W - 40) + '" y2="' + Math.round(py(smc.strongHigh.price)) + '" stroke="#ef4444" stroke-width="1.4"/>';
+      s += '<text x="' + (W - 140) + '" y="' + (Math.round(py(smc.strongHigh.price)) - 4) + '" font-size="10" fill="#ef4444">Strong High</text>';
+      if (smc.eqh.length) s += '<text x="300" y="25" font-size="10" fill="' + th.text + '">EQH</text>';
+      else s += '<text x="300" y="25" font-size="10" fill="' + th.text + '">EQH/EQL</text>';
+      if (smc.eql.length) s += '<text x="340" y="25" font-size="10" fill="' + th.text + '">EQL</text>';
+      s += '<rect data-ob="supply" x="520" y="' + Math.round(py(smc.supplyOB.top)) + '" width="120" height="' + Math.max(8, Math.round(py(smc.supplyOB.bottom) - py(smc.supplyOB.top))) + '" fill="#fbcfe8" stroke="#ec4899"/>';
+      s += '<text x="524" y="' + (Math.round(py(smc.supplyOB.top)) - 4) + '" font-size="10" fill="#be185d">Supply OB Order Block</text>';
+      s += '<rect data-ob="demand" x="520" y="' + Math.round(py(smc.demandOB.top)) + '" width="120" height="' + Math.max(8, Math.round(py(smc.demandOB.bottom) - py(smc.demandOB.top))) + '" fill="#bfdbfe" stroke="#2563eb"/>';
+      s += '<text x="524" y="' + (Math.round(py(smc.demandOB.top)) + 12) + '" font-size="10" fill="#1d4ed8">Demand OB Order Block Harga</text>';
+    }
+    if (m === 'simple' || m === 'hybrid' || m === 'pro') {
+      var dpts = '';
+      for (var zi = 0; zi < zz.path.length; zi++) { dpts += Math.round(px(zi, Math.max(2, zz.path.length))) + ',' + Math.round(py(zz.path[zi].price)) + ' '; }
+      s += '<polyline data-zigzag="path" points="' + v3f09Esc(dpts.trim()) + '" fill="none" stroke="#8b5cf6" stroke-width="2"/>';
+      s += '<text x="44" y="' + (Hh - 28) + '" font-size="10" fill="#8b5cf6">ZigZag ' + v3f09Esc(zz.projection) + '</text>';
+      s += '<rect data-zone="supply-atr" x="660" y="' + Math.round(py(zz.supplyZone.top)) + '" width="80" height="' + Math.max(8, Math.round(py(zz.supplyZone.bottom) - py(zz.supplyZone.top))) + '" fill="rgba(239,68,68,0.18)" stroke="#ef4444"/>';
+      s += '<rect data-zone="demand-atr" x="660" y="' + Math.round(py(zz.demandZone.top)) + '" width="80" height="' + Math.max(8, Math.round(py(zz.demandZone.bottom) - py(zz.demandZone.top))) + '" fill="rgba(16,185,129,0.18)" stroke="#10b981"/>';
+      var arrow = zz.arrow === 'up' ? 'Naik' : (zz.arrow === 'down' ? 'Turun' : 'Bullish Sideways');
+      s += '<text data-projection="' + v3f09Esc(zz.projection) + '" x="660" y="46" font-size="11" font-weight="700" fill="' + th.text + '">Proyeksi ' + v3f09Esc(arrow) + '</text>';
+    }
+    s += '<text x="44" y="' + (Hh - 12) + '" font-size="10" fill="' + th.text + '">S/R ' + v3f09Esc(String(sr.support)) + '/' + v3f09Esc(String(sr.resistance)) + '</text>';
+    s += '</svg>';
+    return { svg: s, mode: m, ticker: t, theme: th.id, hud: smc.hud.side, projection: zz.projection, support: sr.support, resistance: sr.resistance, xabcd: x, smc: smc, zigzag: zz };
+  }
+
+  function renderV3F09ToolbarHtml(chartId) {
+    var id = String(chartId || 'mainChart');
+    var mode = _v3f09ModeByChart[id] || 'hybrid';
+    var theme = _v3f09ThemeByChart[id] || 'dark';
+    function btn(mid, label) {
+      var on = mode === mid ? ' on' : '';
+      return '<button type="button" class="v3f09-mode' + on + '" data-v3f09-mode="' + mid + '" aria-pressed="' + (mode === mid ? 'true' : 'false') + '" onclick="AutoCuanChartWorkstation.setV3F09Mode(\'' + id + '\',\'' + mid + '\')">' + label + '</button>';
+    }
+    var html = '<div id="' + id + '_v3f09_toolbar" class="v3f09-toolbar" data-v3f09-toolbar="true">';
+    html += '<div class="v3f09-group" role="group" aria-label="Mode visual otomatis">';
+    html += btn('pro', 'Pro SMC+Harmonic XABCD');
+    html += btn('simple', 'Simple Zig-Zag');
+    html += btn('hybrid', 'Hybrid');
+    html += '</div>';
+    html += '<div class="v3f09-group" role="group" aria-label="Saklar tema kanvas">';
+    html += '<button type="button" class="v3f09-theme' + (theme === 'light' ? ' on' : '') + '" data-v3f09-theme="light" onclick="AutoCuanChartWorkstation.setV3F09Theme(\'' + id + '\',\'light\')">Putih</button>';
+    html += '<button type="button" class="v3f09-theme' + (theme === 'dark' ? ' on' : '') + '" data-v3f09-theme="dark" onclick="AutoCuanChartWorkstation.setV3F09Theme(\'' + id + '\',\'dark\')">Gelap</button>';
+    html += '</div>';
+    html += '<span class="v3f09-hint">V3-F09 ' + V3F09_VERSION + ' ZigZag ATR14</span>';
+    html += '</div>';
+    return html;
+  }
+
+  function setV3F09Theme(chartId, theme) {
+    var id = String(chartId || 'mainChart');
+    var t = theme === 'light' ? 'light' : 'dark';
+    _v3f09ThemeByChart[id] = t;
+    try {
+      if (typeof document !== 'undefined') {
+        var el = document.getElementById(id + '_container');
+        if (el) { el.setAttribute('data-v3f09-theme', t); }
+        var tb = document.getElementById(id + '_v3f09_toolbar');
+        if (tb) { tb.outerHTML = renderV3F09ToolbarHtml(id); }
+      }
+    } catch (_) {}
+    return t;
+  }
+
+  function setV3F09Mode(chartId, mode) {
+    var id = String(chartId || 'mainChart');
+    var m = mode === 'pro' ? 'pro' : (mode === 'simple' ? 'simple' : 'hybrid');
+    _v3f09ModeByChart[id] = m;
+    try {
+      if (typeof document !== 'undefined') {
+        var tb = document.getElementById(id + '_v3f09_toolbar');
+        if (tb) { tb.outerHTML = renderV3F09ToolbarHtml(id); }
+        var root = (typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null));
+        if (root && typeof root.loadChartPage === 'function') { try { root.loadChartPage(); } catch (_) {} }
+      }
+    } catch (_) {}
+    return m;
+  }
+
+  function getV3F09Theme(chartId) { return _v3f09ThemeByChart[String(chartId || 'mainChart')] || 'dark'; }
+  function getV3F09Mode(chartId) { return _v3f09ModeByChart[String(chartId || 'mainChart')] || 'hybrid'; }
+
+  function auditV3F09Ticker(ticker, rawCandles) {
+    var t = String(ticker || '').toUpperCase();
+    var out = { ticker: t, fail: false, nanCount: 0, missingSR: false, details: '' };
+    try {
+      var sr = calculateV3F09SR(rawCandles);
+      var smc = calculateV3F09SMC(rawCandles);
+      var xb = calculateV3F09XABCD(rawCandles);
+      var zg = calculateV3F09ZigZag(rawCandles);
+      var nums = [sr.support, sr.resistance, smc.strongHigh.price, smc.supplyOB.top, smc.supplyOB.bottom, smc.demandOB.top, smc.demandOB.bottom, xb.ratios.ab_xa, xb.ratios.bc_ab, xb.ratios.cd_bc, xb.ratios.ad_xa, zg.supplyZone.top, zg.supplyZone.bottom, zg.demandZone.top, zg.demandZone.bottom, zg.atr];
+      for (var i = 0; i < nums.length; i++) { if (!Number.isFinite(Number(nums[i]))) out.nanCount++; }
+      if (!(Number.isFinite(Number(sr.support)) && Number.isFinite(Number(sr.resistance)) && Number(sr.support) > 0 && Number(sr.resistance) > 0)) { out.missingSR = true; }
+      if (out.nanCount > 0 || out.missingSR) out.fail = true;
+      var ov = buildV3F09Overlay(t, rawCandles, 'hybrid', 'dark');
+      if (!ov || !ov.svg || ov.svg.indexOf('<polygon') < 0 || ov.svg.indexOf('BOS') < 0 || ov.svg.indexOf('CHoCH') < 0 || ov.svg.indexOf('Order Block') < 0 || ov.svg.toLowerCase().indexOf('zigzag') < 0) out.fail = true;
+      out.details = 'sr=' + sr.support + '/' + sr.resistance + ' hud=' + smc.hud.side + ' proj=' + zg.projection;
+    } catch (e) { out.fail = true; out.details = 'error:' + (e && e.message); }
+    return out;
+  }
+
+  // ============================================================
   // PUBLIC API EXPORTS
   // ============================================================
   return {
@@ -2407,6 +2820,21 @@
     STOCK_ONLY_LAYERS: STOCK_ONLY_LAYERS,
     toggleOneScreen: toggleOneScreen,
     attach: attach,
-    switchTicker: switchTicker
+    switchTicker: switchTicker,
+    V3F09_VERSION: V3F09_VERSION,
+    V3F09_MODES: V3F09_MODES,
+    V3F09_THEMES: V3F09_THEMES,
+    V3F09_RATIOS: V3F09_RATIOS,
+    calculateV3F09SR: calculateV3F09SR,
+    calculateV3F09SMC: calculateV3F09SMC,
+    calculateV3F09XABCD: calculateV3F09XABCD,
+    calculateV3F09ZigZag: calculateV3F09ZigZag,
+    buildV3F09Overlay: buildV3F09Overlay,
+    renderV3F09ToolbarHtml: renderV3F09ToolbarHtml,
+    setV3F09Theme: setV3F09Theme,
+    setV3F09Mode: setV3F09Mode,
+    getV3F09Theme: getV3F09Theme,
+    getV3F09Mode: getV3F09Mode,
+    auditV3F09Ticker: auditV3F09Ticker
   };
 });

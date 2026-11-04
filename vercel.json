@@ -9,6 +9,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/user/telegram/test",
+      "destination": "/api/reset-password?action=user-telegram-test"
+    },
+    {
       "source": "/api/admin-notes",
       "destination": "/api/sector-hot?action=admin-notes"
     },

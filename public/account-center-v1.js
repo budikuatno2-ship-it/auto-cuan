@@ -398,7 +398,7 @@
       '<div class="space-y-4">',
       '<div style="margin-bottom:18px"><h2 style="font-size:18px;margin:0 0 4px;font-weight:700">Keamanan &amp; Koneksi</h2><p class="ac-muted" style="margin:0">Telegram dipakai untuk verifikasi, pemulihan password, dan alert.</p></div>',
       '<div class="ac-row"><span>Telegram</span><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="ac-st ' + (isTgLinked ? 'g' : 'm') + '">' + (isTgLinked ? 'Terhubung' : 'Tidak terhubung') + '</span><span class="ac-muted">' + (isTgLinked ? (tg.telegram_username ? '@' + esc(tg.telegram_username) + ' · ' : '') + 'ID ' + esc(tg.telegram_user_id || '—') + (tg.verified_at ? ' · sejak ' + esc(dateId(tg.verified_at, false)) : '') : 'Hubungkan lewat bot verifikasi Auto-Cuan.') + '</span></div></div>',
-      '<div class="ac-row"><span></span><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="ac-btn ac-btn-sm" id="acTgTestBtn" onclick="window.acTestTelegram()">Uji kirim pesan</button><button type="button" class="ac-btn ac-btn-sm" onclick="window.acToggleTelegram()">' + (isTgLinked ? 'Putus koneksi' : 'Hubungkan') + '</button></div></div>',
+      '<div class="ac-row"><span></span><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="ac-btn ac-btn-sm" id="btn-test-telegram" data-ac-alias="acTgTestBtn" onclick="window.acTestTelegram()">Uji kirim pesan</button><button type="button" class="ac-btn ac-btn-sm" onclick="window.acToggleTelegram()">' + (isTgLinked ? 'Putus koneksi' : 'Hubungkan') + '</button></div></div>',
 
       '<div style="margin-top:20px;border-top:1px solid var(--border-hairline);padding-top:16px"></div>',
       '<div class="ac-row"><span>Password saat ini</span><input type="password" id="acPwOld" class="ac-inp" placeholder="Password saat ini" autocomplete="current-password" style="max-width:340px"></div>',
@@ -433,14 +433,29 @@
       '<div class="ac-admin-cmd-list">' + rows + '</div></section>';
   }
 
-  window.acTestTelegram = function () {
-    var btn = byId('acTgTestBtn');
-    if (btn) btn.textContent = 'Mengirim…';
-    setTimeout(function () {
-      if (btn) btn.textContent = 'Terkirim ✓';
-      notify('Uji pesan Telegram berhasil dikirim.', 'success');
-      setTimeout(function () { if (btn) btn.textContent = 'Uji kirim pesan'; }, 2200);
-    }, 600);
+  // V3-F06: Uji kirim pesan Telegram nyata via POST /api/user/telegram/test.
+  // disabled+Mengirim... saat request, toast sukses/gagal deterministik, restore label.
+  window.acTestTelegram = async function () {
+    var btn = byId('acTgTestBtn') || byId('btn-test-telegram');
+    var origLabel = btn ? btn.textContent : 'Uji kirim pesan';
+    if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
+    try {
+      var res = await request('/api/user/telegram/test', {}, 12000);
+      if (res.ok && res.data && (res.data.ok === true || res.data.success === true)) {
+        notify('Uji pesan Telegram berhasil dikirim.', 'success');
+        if (btn) btn.textContent = 'Terkirim ✓';
+      } else {
+        var msg = (res.data && (res.data.error || res.data.message)) || ('Gagal mengirim uji pesan (HTTP ' + (res.status || 0) + ').');
+        notify(String(msg), 'error');
+        if (btn) btn.textContent = origLabel;
+      }
+    } catch (_) {
+      notify('Gagal mengirim uji pesan Telegram.', 'error');
+      if (btn) btn.textContent = origLabel;
+    } finally {
+      if (btn) btn.disabled = false;
+      setTimeout(function () { if (btn && !btn.disabled) btn.textContent = 'Uji kirim pesan'; }, 2200);
+    }
   };
 
   window.acToggleTelegram = function () {

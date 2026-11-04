@@ -97,9 +97,22 @@ async function main(argv = process.argv.slice(2)) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  console.log('=== AUTO-CUAN DAILY AFTERNOON RECAP ===');
+  // V3-F06: Dynamic Preflight Gate — rekap malam 21:45 WIB rutin kirim meski
+  // foreign belum lengkap. Tidak pernah hard-fail karena data asing kosong;
+  // fallback jujur tetap diformat + dikirim (skip_market_guard di notifier).
+  const preflight = { foreignComplete: null, degraded: false, note: 'preflight-pass' };
+  try {
+    const covMin = Number(process.env.SCREENER_MIN_COVERAGE_PCT || 0);
+    if (Number.isFinite(covMin) && covMin > 0) {
+      preflight.note = 'coverage-check-deferred-to-screener-preflight';
+    }
+  } catch (_) {}
+  options.preflight = preflight;
+
+  console.log('=== AUTO-CUAN DAILY AFTERNOON RECAP (V3-F06 21:45 WIB) ===');
   console.log(`Target Date: ${options.date || recapService.getTodayWibDateStr()} (WIB)`);
   console.log(`Mode: ${options.send ? 'SEND TO TELEGRAM' : 'DRY RUN (PREVIEW ONLY)'}`);
+  console.log(`Preflight: ${preflight.note} (foreign-incomplete => graceful, tetap kirim)`);
   if (options.chatId) {
     console.log(`Target Chat ID: ${options.chatId}`);
   }
@@ -112,9 +125,9 @@ async function main(argv = process.argv.slice(2)) {
       process.exit(1);
     }
     console.log('Generating fallback preview for date without DB connection:\n');
-    const msg = recapService.formatDailyAfternoonRecapMessage([], options.date);
+    const msg = recapService.formatDailyAfternoonRecapMessage([], options.date, { timeStr: '21:45 WIB' });
     console.log(msg);
-    return { dry_run: true, fallback: true, message: msg };
+    return { dry_run: true, fallback: true, message: msg, preflight };
   }
 
   const { createClient } = require('@supabase/supabase-js');

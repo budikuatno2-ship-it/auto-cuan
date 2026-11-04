@@ -106,15 +106,41 @@
         if (showDrift) drift.textContent = 'Peringatan drift: lokal ' + fmtId(q.localUsedToday) + ' vs upstream ' + fmtId(q.upstreamUsedToday) + ' — dipakai nilai konservatif.';
         else if (lowPkg) drift.textContent = 'Peringatan: paket turun ke ' + fmtId(q.limit) + ' req/hari — hemat kuota hingga perpanjangan.';
       }
-      // Prefill editor kuota dari config aktif
+      // Prefill editor kuota dari config aktif (placeholder netral tanpa literal paket; nilai dari config/quota.json)
+      // V3-F02: kartu Kontrol Fleksibel — 4 input + slider + 4 toggle + saklar libur.
       try {
         var cfg = q.config || {};
-        var setV = function(id, v) { var e = document.getElementById(id); if (e && (e.value === '' || e.value == null || e.value === 'cth 18080')) e.value = (v == null ? '' : v); };
+        var setV = function(id, v) { var e = document.getElementById(id); if (e && (e.value === '' || e.value == null || e.value === 'cth batas')) e.value = (v == null ? '' : v); };
         setV('quotaDailyLimit', cfg.dailyLimitOverride);
         if (cfg.planExpiresAt) { var pe = document.getElementById('quotaPlanExpiry'); if (pe && !pe.value) pe.value = String(cfg.planExpiresAt).slice(0, 16); }
         setV('quotaFloorDay', cfg.reserveFloorWeekdayDaytime);
         setV('quotaFloorNight', cfg.reserveFloorWeekdayNight);
         setV('quotaFloorWeekend', cfg.reserveFloorWeekend);
+        var setQF = function(id, v) { var e = document.getElementById(id); if (e) e.value = (v == null ? '' : v); };
+        setQF('qf-maxQuota', cfg.maxQuota != null ? cfg.maxQuota : (q.maxQuota != null ? q.maxQuota : q.limit));
+        setQF('qf-weekdayBackfill', cfg.weekdayBackfillLimit != null ? cfg.weekdayBackfillLimit : q.weekdayBackfillLimit);
+        setQF('qf-weekendBackfill', cfg.weekendBackfillLimit != null ? cfg.weekendBackfillLimit : q.weekendBackfillLimit);
+        setQF('qf-reserveFloor', cfg.reserveFloorWeekday != null ? cfg.reserveFloorWeekday : cfg.reserveFloorWeekdayDaytime);
+        var hsMap = { '23:40': 0, '23:45': 1, '23:50': 2 };
+        var hs = document.getElementById('qf-hardStop');
+        if (hs && cfg.hardStopWIB && hsMap[cfg.hardStopWIB] != null) { hs.value = hsMap[cfg.hardStopWIB]; }
+        var hsVal = document.getElementById('qf-hardStopVal');
+        if (hsVal && cfg.hardStopWIB) hsVal.textContent = cfg.hardStopWIB;
+        var staleMap = { 120: 1, 180: 2, 0: 0 };
+        var st2 = document.getElementById('qf-staleThreshold');
+        var stVal = document.getElementById('qf-staleVal');
+        var thr = (q.staleThresholdMinutes != null ? q.staleThresholdMinutes : cfg.staleThresholdMinutes);
+        if (st2 && staleMap[thr] != null) st2.value = staleMap[thr];
+        if (stVal) stVal.textContent = (!thr || thr === 0) ? 'mati (0)' : (thr + ' mnt');
+        var setT = function(id, v) { var e = document.getElementById(id); if (e) e.checked = (v === true); };
+        setT('qf-toggle-lowQuota', cfg.lowQuotaMode === true || q.lowQuotaMode === true);
+        var tm = q.telegramMute || {};
+        setT('qf-toggle-muteDaily', tm.daily === true || cfg.telegramMuteDaily === true);
+        setT('qf-toggle-muteEmergency', tm.emergency === true || cfg.telegramMuteEmergency === true);
+        setT('qf-toggle-muteNonCritical', tm.nonCritical === true || cfg.telegramMuteNonCritical === true);
+        setT('qf-toggle-preflight', (q.dynamicPreflightGate !== false) && (cfg.dynamicPreflightGate !== false));
+        setT('qf-toggle-backfillRemainder', cfg.holidayBackfillRemainder !== false);
+        renderQfStatus(q);
       } catch (_) {}
     }
     if (data.datasets) renderFinancialCensus(data.datasets);
@@ -644,15 +670,143 @@
       }
     } catch (_) {}
   }
+  // V3-F02: render tabel status kartu Kontrol Fleksibel (token .tbl/.st, tanpa hardcode angka).
+  function renderQfStatus(q) {
+    try {
+      var tb = document.getElementById('qf-status-tbody');
+      if (!tb || !q) return;
+      var cfg = q.config || {};
+      var rows = [
+        ['maxQuota / limit', (q.maxQuota != null ? q.maxQuota : q.limit), (q.limit > 0 ? 'g' : 'r')],
+        ['weekdayBackfillLimit', q.weekdayBackfillLimit, 'i'],
+        ['weekendBackfillLimit', q.weekendBackfillLimit, 'i'],
+        ['reserveFloorWeekday', (cfg.reserveFloorWeekday != null ? cfg.reserveFloorWeekday : ''), 'm'],
+        ['hardStopWIB', (cfg.hardStopWIB || ''), 'm'],
+        ['staleThreshold', (q.staleThresholdMinutes === 0 ? 'mati (0)' : (q.staleThresholdMinutes + ' mnt')), 'm'],
+        ['lowQuotaMode', (q.lowQuotaMode ? 'AKTIF' : 'mati'), (q.lowQuotaMode ? 'a' : 'g')],
+        ['libur', (q.holiday ? q.holiday.label : '—'), (q.holiday && q.holiday.isHoliday ? 'r' : 'g')],
+        ['preflight', (q.dynamicPreflightGate ? 'longgar (candle+ALL)' : 'ketat (candle+ALL+Foreign)'), 'i']
+      ];
+      tb.innerHTML = rows.map(function(r) {
+        return '<tr><td class="mono">' + escapeHtml(String(r[0])) + '</td><td class="num">' + escapeHtml(String(r[1])) + '</td><td class="r"><span class="st ' + r[2] + '">' + escapeHtml(String(r[1])) + '</span></td></tr>';
+      }).join('');
+      var hs = document.getElementById('qf-holiday-status');
+      if (hs && q.holiday) {
+        hs.textContent = q.holiday.label || 'Normal';
+        hs.className = 'st ' + (q.holiday.isHoliday ? 'r' : 'g');
+      }
+      var hd = document.getElementById('qf-holiday-detail');
+      if (hd && q.holiday) hd.textContent = q.holiday.label + (q.holiday.saveQuota ? ' · hemat ~' + q.holiday.saveQuota + ' kuota (Broksum dibatalkan)' : '') + ' · lapis: ' + (q.holiday.layer || 'none');
+    } catch (_) {}
+  }
+  root.renderQfStatus = renderQfStatus;
+  function qfPost(action, body) {
+    return fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ action: action }, body || {})) });
+  }
+  root.setHolidayMode = async function(mode, btn) {
+    var st = document.getElementById('quotaSaveStatus');
+    try {
+      var tabs = ['qf-holiday-normal', 'qf-holiday-buka', 'qf-holiday-libur'];
+      tabs.forEach(function(id) { var e = document.getElementById(id); if (e) e.classList.remove('on'); });
+      if (btn) btn.classList.add('on');
+      var backfill = document.getElementById('qf-toggle-backfillRemainder');
+      var res = await qfPost('quota_holiday_set', { mode: mode, backfillRemainder: backfill ? backfill.checked : true });
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && data.success) {
+        if (st) st.textContent = 'Saklar libur: ' + mode + ' tersimpan.';
+        applyStats({ quota: data.quota });
+      } else if (st) st.textContent = 'Gagal saklar libur: ' + ((data && data.error) || res.status);
+    } catch (_) { if (st) st.textContent = 'Gagal terhubung.'; }
+  };
+  root.detectHoliday = async function() {
+    var st = document.getElementById('quotaSaveStatus');
+    try {
+      var res = await qfPost('quota_holiday_detect', {});
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && data.success && data.holiday) {
+        var hs = document.getElementById('qf-holiday-status');
+        if (hs) { hs.textContent = data.holiday.label; hs.className = 'st ' + (data.holiday.isHoliday ? 'r' : 'g'); }
+        var hd = document.getElementById('qf-holiday-detail');
+        if (hd) hd.textContent = data.holiday.label + ' · lapis: ' + data.holiday.layer + (data.holiday.saveQuota ? ' · hemat ~' + data.holiday.saveQuota + ' kuota' : '');
+        if (st) st.textContent = 'Deteksi: ' + data.holiday.label;
+      } else if (st) st.textContent = 'Gagal deteksi: ' + ((data && data.error) || res.status);
+    } catch (_) { if (st) st.textContent = 'Gagal terhubung.'; }
+  };
+  root.killUpstreamJobs = async function() {
+    var st = document.getElementById('quotaSaveStatus');
+    var word = 'KILL';
+    var typed = window.prompt('Ketik ' + word + ' untuk kill semua upstream jobs (web tetap hidup):');
+    if ((typed || '').trim().toUpperCase() !== word) { if (st) st.textContent = 'Dibatalkan.'; return; }
+    try {
+      var res = await qfPost('quota_kill_jobs', {});
+      var data = await res.json().catch(function() { return {}; });
+      if (st) st.textContent = (res.ok && data && data.success) ? 'Kill diminta (SIGTERM upstream saja).' : ('Gagal: ' + ((data && data.error) || res.status));
+    } catch (_) { if (st) st.textContent = 'Gagal terhubung.'; }
+  };
+  root.forceCatchup = async function() {
+    var st = document.getElementById('quotaSaveStatus');
+    try {
+      var res = await qfPost('quota_force_catchup', {});
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && data.success) {
+        if (st) st.textContent = data.runNow ? 'Antrean dibuat · kuota tersedia, jalan sekarang.' : 'Antrean dibuat · jalan otomatis 00:00:01 WIB saat reset.';
+        if (data.quota) applyStats({ quota: data.quota });
+      } else if (st) st.textContent = 'Gagal: ' + ((data && data.error) || res.status);
+    } catch (_) { if (st) st.textContent = 'Gagal terhubung.'; }
+  };
+  root.triggerZeroJob = async function(name) {
+    var st = document.getElementById('quotaSaveStatus');
+    try {
+      var res = await qfPost('quota_trigger_job', { job: name });
+      var data = await res.json().catch(function() { return {}; });
+      if (st) st.textContent = (res.ok && data && data.success) ? ('Trigger ' + name + ' tercatat (0 kuota).') : ('Gagal: ' + ((data && data.error) || res.status));
+    } catch (_) { if (st) st.textContent = 'Gagal terhubung.'; }
+  };
+  // Slider live-label: hardStop 23:40/23:45/23:50 + stale 120/180/mati.
+  try {
+    document.addEventListener('input', function(ev) {
+      var t = ev && ev.target;
+      if (!t || !t.id) return;
+      if (t.id === 'qf-hardStop') {
+        var map = ['23:40', '23:45', '23:50'];
+        var el = document.getElementById('qf-hardStopVal');
+        if (el) el.textContent = map[Number(t.value)] || map[2];
+      }
+      if (t.id === 'qf-staleThreshold') {
+        var map2 = ['mati (0)', '120 mnt', '180 mnt', 'mati (0)'];
+        var el2 = document.getElementById('qf-staleVal');
+        if (el2) el2.textContent = map2[Number(t.value)] || '120 mnt';
+      }
+    });
+  } catch (_) {}
   root.saveQuotaConfig = async function() {
     var st = document.getElementById('quotaSaveStatus');
     var num = function(id) { var e = document.getElementById(id); if (!e || e.value === '') return null; var v = Number(e.value); return Number.isFinite(v) ? v : null; };
     var patch = {};
-    var dl = num('quotaDailyLimit'); if (dl != null) patch.dailyLimitOverride = dl;
-    var pe = document.getElementById('quotaPlanExpiry'); if (pe && pe.value) patch.planExpiresAt = new Date(pe.value).toISOString();
-    var fd = num('quotaFloorDay'); if (fd != null) patch.reserveFloorWeekdayDaytime = fd;
-    var fn = num('quotaFloorNight'); if (fn != null) patch.reserveFloorWeekdayNight = fn;
-    var fw = num('quotaFloorWeekend'); if (fw != null) patch.reserveFloorWeekend = fw;
+    // V3-F02 Input1-4 (kartu Kontrol Fleksibel) — prioritas atas legacy.
+    var m1 = num('qf-maxQuota'); if (m1 != null) patch.maxQuota = m1;
+    var m2 = num('qf-weekdayBackfill'); if (m2 != null) patch.weekdayBackfillLimit = m2;
+    var m3 = num('qf-weekendBackfill'); if (m3 != null) patch.weekendBackfillLimit = m3;
+    var m4 = num('qf-reserveFloor'); if (m4 != null) { patch.reserveFloorWeekday = m4; patch.reserveFloorWeekdayDaytime = m4; patch.reserveFloorWeekdayNight = m4; }
+    var hsIdx = (function() { var e = document.getElementById('qf-hardStop'); return e ? Number(e.value) : null; })();
+    if (hsIdx != null && Number.isFinite(hsIdx)) patch.hardStopWIB = ['23:40', '23:45', '23:50'][hsIdx] || '23:50';
+    var stIdx = (function() { var e = document.getElementById('qf-staleThreshold'); return e ? Number(e.value) : null; })();
+    if (stIdx != null && Number.isFinite(stIdx)) patch.staleThresholdMinutes = [0, 120, 180, 0][stIdx];
+    var tg = function(id) { var e = document.getElementById(id); return e ? e.checked : null; };
+    var lq = tg('qf-toggle-lowQuota'); if (lq != null) patch.lowQuotaMode = lq;
+    var md = tg('qf-toggle-muteDaily'); if (md != null) patch.telegramMuteDaily = md;
+    var me = tg('qf-toggle-muteEmergency'); if (me != null) patch.telegramMuteEmergency = me;
+    var mn = tg('qf-toggle-muteNonCritical'); if (mn != null) patch.telegramMuteNonCritical = mn;
+    var pf = tg('qf-toggle-preflight'); if (pf != null) patch.dynamicPreflightGate = pf;
+    var br = tg('qf-toggle-backfillRemainder'); if (br != null) patch.holidayBackfillRemainder = br;
+    // Legacy fallback bila kartu baru kosong.
+    if (!Object.keys(patch).length) {
+      var dl = num('quotaDailyLimit'); if (dl != null) patch.dailyLimitOverride = dl;
+      var pe = document.getElementById('quotaPlanExpiry'); if (pe && pe.value) patch.planExpiresAt = new Date(pe.value).toISOString();
+      var fd = num('quotaFloorDay'); if (fd != null) patch.reserveFloorWeekdayDaytime = fd;
+      var fn = num('quotaFloorNight'); if (fn != null) patch.reserveFloorWeekdayNight = fn;
+      var fw = num('quotaFloorWeekend'); if (fw != null) patch.reserveFloorWeekend = fw;
+    }
     if (!Object.keys(patch).length) { if (st) st.textContent = 'Tidak ada perubahan.'; return; }
     var word = 'KUOTA';
     var typed = window.prompt('Ketik ' + word + ' untuk menyimpan konfigurasi kuota:');
@@ -663,7 +817,7 @@
       var res = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'quota_update', patch: patch }) });
       var data = await res.json().catch(function() { return {}; });
       if (res.ok && data && data.success) {
-        if (st) st.textContent = 'Tersimpan · batas baru ' + (data.quota ? data.quota.limit : '') + '.';
+        if (st) st.textContent = 'Tersimpan · batas baru ' + (data.quota ? data.quota.limit : '') + (data.queued ? ' · antrean 00:00:01 WIB dibuat.' : '.');
         recordAuditLog('budi', 'Ubah konfigurasi kuota', reason.slice(0, 60));
         applyStats({ quota: data.quota });
       } else if (st) st.textContent = 'Gagal: ' + ((data && data.error) || res.status);
@@ -698,12 +852,40 @@
       }).join("") || "<tr><td colspan=\"5\" class=\"mut\" style=\"text-align:center;padding:24px\">Belum ada insiden.</td></tr>";
     }
   }
+  // V3-F12: render panel Pertahanan Siber VPS (ufw/fail2ban/Ghidra/hash) di Tab Keamanan.
+  function renderVpsPanel(vps) {
+    if (!vps) return;
+    var setT = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+    var setBadge = function(id, ok, on, off) { var e = document.getElementById(id); if (e) { e.textContent = (ok ? on : off); e.className = "st " + (ok ? "g" : "a"); } };
+    var ufw = vps.ufw || {};
+    var f2b = vps.fail2ban || {};
+    var procs = vps.processes || {};
+    var bins = vps.binaries || {};
+    var ghidra = vps.ghidra || {};
+    setBadge("secUfwBadge", ufw.active === true, "UFW: AKTIF", "UFW: MATI");
+    setBadge("secF2bBadge", f2b.active === true, "fail2ban: AKTIF", "fail2ban: MATI");
+    setBadge("secGhidraBadge", Number(procs.foreignCount || 0) === 0, "Ghidra: 0 ASING", "Ghidra: ASING!");
+    setT("secUfwRules", String(ufw.ruleCount == null ? "—" : ufw.ruleCount));
+    setT("secUfwDetail", ufw.defaultDeny ? "default deny incoming" : "cek default policy");
+    setT("secF2bJails", String((f2b.jails || []).length || "—"));
+    setT("secF2bDetail", (f2b.jails || []).slice(0, 3).join(", ") || "sshd + nginx");
+    setT("secForeignProcs", String(procs.foreignCount == null ? "—" : procs.foreignCount));
+    setT("secForeignDetail", "total " + (procs.total == null ? "—" : procs.total) + " proses · target 0 asing");
+    var h1 = ((bins.hashes || [])[0] || {}).sha256 || "";
+    setT("secBinHash", h1 ? h1.slice(0, 16) + "…" : "—");
+    setT("secVpsVerdict", (ghidra.verdict || (Number(procs.foreignCount || 0) === 0 ? "BERSIH-0-ASING" : "PERLU-TINDAK")) + " · " + fmtWib(vps.at));
+    var up = document.getElementById("secVpsUpdatedAt");
+    if (up) up.textContent = "Audit VPS 168.110.221.197 · " + fmtWib(vps.at) + " · data/security/vps-audit.json";
+  }
+  root.renderVpsPanel = renderVpsPanel;
   root.refreshSecurityPanel = async function() {
     try {
       var res = await fetch("/api/admin-users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "security_status" }) });
       if (!res.ok) return;
       var data = await res.json().catch(function() { return {}; });
       if (data && data.success && data.security) renderSecurityPanel(data.security);
+      if (data && data.vps) renderVpsPanel(data.vps);
+      else if (data && data.security && data.security.vps) renderVpsPanel(data.security.vps);
     } catch (_) {}
   };
   root.blockIpAction = function() {

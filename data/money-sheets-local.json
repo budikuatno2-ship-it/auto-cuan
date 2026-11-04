@@ -1,0 +1,350 @@
+{
+  "usr_admin_budi": {
+    "2026-10": {
+      "month": "2026-10",
+      "revision": 3,
+      "notes": "Refleksi keuangan bulan ini…",
+      "sheet": {
+        "version": 1,
+        "rows": [
+          {
+            "id": "r1",
+            "type": "income",
+            "category": "Gaji",
+            "label": "Gaji bulanan kantor",
+            "amount": 25000000,
+            "note": "Transfer tanggal 25"
+          },
+          {
+            "id": "r2",
+            "type": "income",
+            "category": "Bisnis",
+            "label": "Proyek konsultasi",
+            "amount": 7500000,
+            "note": "Klien freelance"
+          },
+          {
+            "id": "r3",
+            "type": "income",
+            "category": "Dividen",
+            "label": "Dividen interim saham",
+            "amount": 2000000,
+            "note": "Masuk RDN"
+          },
+          {
+            "id": "r4",
+            "type": "expense",
+            "category": "Kebutuhan",
+            "label": "Sewa tempat tinggal & listrik",
+            "amount": 6500000,
+            "note": "Rutin awal bulan"
+          },
+          {
+            "id": "r5",
+            "type": "expense",
+            "category": "Kebutuhan",
+            "label": "Belanja rumah tangga",
+            "amount": 5500000,
+            "note": "Supermarket & makan"
+          },
+          {
+            "id": "r6",
+            "type": "expense",
+            "category": "Hiburan",
+            "label": "Langganan & gym",
+            "amount": 4500000,
+            "note": "Streaming dan gym"
+          },
+          {
+            "id": "r7",
+            "type": "saving",
+            "category": "Dana darurat",
+            "label": "Setoran rekening khusus",
+            "amount": 5000000,
+            "note": "Target 6× pengeluaran"
+          },
+          {
+            "id": "r8",
+            "type": "transfer",
+            "category": "Investasi",
+            "label": "Tambahan modal RDN",
+            "amount": 13000000,
+            "note": "Transfer ke sekuritas"
+          },
+          {
+            "id": "fa9ef683-be64-46ff-8f6c-75e379da53df",
+            "type": "expense",
+            "category": "Investasi",
+            "label": "Saham BREN Test",
+            "amount": 8500000,
+            "note": "Uji persistensi fase 12"
+          },
+          {
+            "id": "01b55aef-6d8a-4d06-8c4c-a719c5a48613",
+            "type": "expense",
+            "category": "Investasi",
+            "label": "Saham BREN Test",
+            "amount": 8500000,
+            "note": "Uji persistensi fase 12"
+          }
+        ]
+      }
+    },
+    "2026-11": {
+      "month": "2026-11",
+      "revision": 4,
+      "notes": "Refleksi keuangan bulan ini…",
+      "sheet": {
+        "version": 1,
+        "rows": [
+          {
+            "id": "r1",
+            "type": "income",
+            "category": "Gaji",
+            "label": "Gaji bulanan kantor",
+            "amount": 25000000,
+            "note": "Transfer tanggal 25"
+          },
+          {
+            "id": "r2",
+            "type": "income",
+            "category": "Bisnis",
+            "label": "Proyek konsultasi",
+            "amount": 7500000,
+            "note": "Klien freelance"
+          },
+          {
+            "id": "r3",
+            "type": "income",
+            "category": "Dividen",
+            "label": "Dividen interim saham",
+            "amount": 2000000,
+            "note": "Masuk RDN"
+          },
+          {
+            "id": "r4",
+            "type": "expense",
+            "category": "Kebutuhan",
+            "label": "Sewa tempat tinggal & listrik",
+            "amount": 6500000,
+            "note": "Rutin awal bulan"
+          },
+          {
+            "id": "r5",
+            "type": "expense",
+            "category": "Kebutuhan",
+            "label": "Belanja rumah tangga",
+            "amount": 5500000,
+            "note": "Supermarket & makan"
+          },
+          {
+            "id": "r6",
+            "type": "expense",
+            "category": "Hiburan",
+            "label": "Langganan & gym",
+            "amount": 4500000,
+            "note": "Streaming dan gym"
+          },
+          {
+            "id": "r7",
+            "type": "saving",
+            "category": "Dana darurat",
+            "label": "Setoran rekening khusus",
+            "amount": 5000000,
+            "note": "Target 6× pengeluaran"
+          },
+          {
+            "id": "r8",
+            "type": "transfer",
+            "category": "Investasi",
+            "label": "Tambahan modal RDN",
+            "amount": 13000000,
+            "note": "Transfer ke sekuritas"
+          },
+          {
+            "id": "fa9ef683-be64-46ff-8f6c-75e379da53df",
+            "type": "expense",
+            "category": "Investasi",
+            "label": "Saham BREN Test",
+            "amount": 8500000,
+            "note": "Uji persistensi fase 12"
+          },
+          {
+            "id": "01b55aef-6d8a-4d06-8c4c-a719c5a48613",
+            "type": "expense",
+            "category": "Investasi",
+            "label": "Saham BREN Test",
+            "amount": 8500000,
+            "note": "Uji persistensi fase 12"
+          }
+        ]
+      }
+    }
+  },
+  "admin-budi-id": {
+    "2026-10": {
+      "month": "2026-10",
+      "revision": 1,
+      "notes": "Refleksi keuangan bulan ini…",
+      "sheet": {
+        "version": 1,
+        "rows": [
+          {
+            "id": "r1",
+            "type": "income",
+            "category": "Gaji",
+            "label": "Gaji bulanan kantor",
+            "amount": 25000000,
+            "note": "Transfer tanggal 25",
+            "formula": ""
+          },
+          {
+            "id": "r2",
+            "type": "income",
+            "category": "Bisnis",
+            "label": "Proyek konsultasi",
+            "amount": 7500000,
+            "note": "Klien freelance",
+            "formula": ""
+          },
+          {
+            "id": "r3",
+            "type": "income",
+            "category": "Dividen",
+            "label": "Dividen interim saham",
+            "amount": 2000000,
+            "note": "Masuk RDN",
+            "formula": ""
+          },
+          {
+            "id": "r4",
+            "type": "expense",
+            "category": "Kebutuhan",
+            "label": "Sewa tempat tinggal & listrik",
+            "amount": 6500000,
+            "note": "Rutin awal bulan",
+            "formula": ""
+          },
+          {
+            "id": "r5",
+            "type": "expense",
+            "category": "Kebutuhan",
+            "label": "Belanja rumah tangga",
+            "amount": 5500000,
+            "note": "Supermarket & makan",
+            "formula": ""
+          },
+          {
+            "id": "r6",
+            "type": "expense",
+            "category": "Hiburan",
+            "label": "Langganan & gym",
+            "amount": 4500000,
+            "note": "Streaming dan gym",
+            "formula": ""
+          },
+          {
+            "id": "r7",
+            "type": "saving",
+            "category": "Dana darurat",
+            "label": "Setoran rekening khusus",
+            "amount": 5000000,
+            "note": "Target 6× pengeluaran",
+            "formula": ""
+          },
+          {
+            "id": "r8",
+            "type": "transfer",
+            "category": "Investasi",
+            "label": "Tambahan modal RDN",
+            "amount": 13000000,
+            "note": "Transfer ke sekuritas",
+            "formula": ""
+          }
+        ]
+      }
+    },
+    "2026-11": {
+      "month": "2026-11",
+      "revision": 2,
+      "notes": "Refleksi keuangan bulan ini…",
+      "sheet": {
+        "version": 1,
+        "rows": [
+          {
+            "id": "r1",
+            "type": "income",
+            "category": "Gaji",
+            "label": "Gaji bulanan kantor",
+            "amount": 25000000,
+            "note": "Transfer tanggal 25",
+            "formula": ""
+          },
+          {
+            "id": "r2",
+            "type": "income",
+            "category": "Bisnis",
+            "label": "Proyek konsultasi",
+            "amount": 7500000,
+            "note": "Klien freelance",
+            "formula": ""
+          },
+          {
+            "id": "r3",
+            "type": "income",
+            "category": "Dividen",
+            "label": "Dividen interim saham",
+            "amount": 2000000,
+            "note": "Masuk RDN",
+            "formula": ""
+          },
+          {
+            "id": "r4",
+            "type": "expense",
+            "category": "Kebutuhan",
+            "label": "Sewa tempat tinggal & listrik",
+            "amount": 6500000,
+            "note": "Rutin awal bulan",
+            "formula": ""
+          },
+          {
+            "id": "r5",
+            "type": "expense",
+            "category": "Kebutuhan",
+            "label": "Belanja rumah tangga",
+            "amount": 5500000,
+            "note": "Supermarket & makan",
+            "formula": ""
+          },
+          {
+            "id": "r6",
+            "type": "expense",
+            "category": "Hiburan",
+            "label": "Langganan & gym",
+            "amount": 4500000,
+            "note": "Streaming dan gym",
+            "formula": ""
+          },
+          {
+            "id": "r7",
+            "type": "saving",
+            "category": "Dana darurat",
+            "label": "Setoran rekening khusus",
+            "amount": 5000000,
+            "note": "Target 6× pengeluaran",
+            "formula": ""
+          },
+          {
+            "id": "r8",
+            "type": "transfer",
+            "category": "Investasi",
+            "label": "Tambahan modal RDN",
+            "amount": 13000000,
+            "note": "Transfer ke sekuritas",
+            "formula": ""
+          }
+        ]
+      }
+    }
+  }
+}

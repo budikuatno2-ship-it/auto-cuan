@@ -1,0 +1,132 @@
+{
+  "landing": {
+    "external": [],
+    "externalCount": 0,
+    "failedCount": 0,
+    "failedSample": []
+  },
+  "dashboard": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "screener": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "sektor": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "catatanAdmin": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "analisisChart": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "bandarmologi": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 3
+  },
+  "intel": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 2
+  },
+  "hunter": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 2
+  },
+  "insider": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 2
+  },
+  "ranking": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 1
+  },
+  "financial": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 2
+  },
+  "marketStructure": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "watchlist": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "portofolio": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "trackrecord": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "moneyManagement": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "adminConsole": {
+    "error": "Navigation timeout of 30000 ms exceeded",
+    "external": [],
+    "failedCount": 0
+  },
+  "patternRadar": {
+    "external": [],
+    "externalCount": 0,
+    "failedCount": 1,
+    "failedSample": [
+      {
+        "url": "http://127.0.0.1:3000/assets/css/unified-design-tokens.css",
+        "err": "net::ERR_ABORTED"
+      }
+    ]
+  },
+  "ketentuan": {
+    "external": [],
+    "externalCount": 0,
+    "failedCount": 0,
+    "failedSample": []
+  },
+  "maintenance": {
+    "external": [],
+    "externalCount": 0,
+    "failedCount": 1,
+    "failedSample": [
+      {
+        "url": "http://127.0.0.1:3000/assets/css/unified-design-tokens.css",
+        "err": "net::ERR_ABORTED"
+      }
+    ]
+  },
+  "notFound": {
+    "external": [],
+    "externalCount": 0,
+    "failedCount": 1,
+    "failedSample": [
+      {
+        "url": "http://127.0.0.1:3000/assets/css/unified-design-tokens.css",
+        "err": "net::ERR_ABORTED"
+      }
+    ]
+  }
+}

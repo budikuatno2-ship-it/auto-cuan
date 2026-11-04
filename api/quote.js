@@ -587,14 +587,20 @@ async function handler(req, res) {
   }, 3500);
 
   var ticker = null;
+  var sHasQ = false;
   try {
     try { if (shield) shield.applyShieldHeaders(res, { api: true }); } catch (_) {}
     // S1: anti-bot berlapis (sliding-window + deteksi scraper) sebelum limiter lama.
+    // Sesi yang sah (cookie ac_sess valid) dikecualikan dari heuristik sapu ticker
+    // agar verifikasi live D1 tidak kena 429 saat memuat konteks multi-ticker.
+    // Limiter lama per-IP tetap berlaku untuk semua pemanggil (termasuk sesi sah)
+    // agar satu klien tidak bisa membanjiri upstream Yahoo tanpa batas.
     try {
       if (shield) {
         var sIpQ = shield.clientIpFromReq(req);
         var sUaQ = (req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '';
-        var sChkQ = shield.dataCheck(sIpQ, { hasSession: false, userAgent: String(sUaQ) });
+        try { sHasQ = adminSession.requireAuthenticatedSession(req).ok === true; } catch (_) { sHasQ = false; }
+        var sChkQ = shield.dataCheck(sIpQ, { hasSession: sHasQ, userAgent: String(sUaQ) });
         if (sChkQ.limited) {
           if (canSendResponse(res)) {
             try { res.setHeader('Retry-After', String(sChkQ.retryAfterSeconds || 60)); } catch (_) {}
@@ -604,7 +610,7 @@ async function handler(req, res) {
         }
       }
     } catch (_) {}
-    if (!quoteLimiter.check(clientAddress(req))) {
+    if (!sHasQ && !quoteLimiter.check(clientAddress(req))) {
       if (canSendResponse(res)) {
         return res.status(429).json({ error: 'Too many requests. Please slow down.' });
       }
