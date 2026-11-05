@@ -1,0 +1,16 @@
+{
+  "status": "active",
+  "session_status": "FINAL_EOD",
+  "is_eod_final": true,
+  "top5_locked": true,
+  "trade_date": "2026-11-04",
+  "market_date": "2026-11-04",
+  "run_date": "2026-11-04",
+  "calculated_at": "2026-11-04T16:16:07.935Z",
+  "updated_at": "2026-11-04T16:16:07.935Z",
+  "timestamp_wib": "4 Nov 2026, 15.45 WIB",
+  "freshness_label": "fresh",
+  "universe_count": 963,
+  "scanned_count": 963,
+  "published_count": 52
+}

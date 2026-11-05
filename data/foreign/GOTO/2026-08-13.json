@@ -1,0 +1,138 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-08-13",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 47005000,
+      "bvol": 940100,
+      "bfrq": 71,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 47005000,
+      "nvol": 940100
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 5000000,
+      "bvol": 100000,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5000000,
+      "nvol": 100000
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 2315000,
+      "bvol": 46300,
+      "bfrq": 10,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2315000,
+      "nvol": 46300
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 1000000,
+      "bvol": 20000,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1000000,
+      "nvol": 20000
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 580000,
+      "bvol": 11600,
+      "bfrq": 4,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 580000,
+      "nvol": 11600
+    }
+  ],
+  "broker_net": 55900000,
+  "net_flow": 55900000,
+  "total_buy_val": 55900000,
+  "total_sell_val": 0,
+  "total_turnover": 55900000,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 47005000,
+      "bvol": 940100,
+      "bfrq": 71,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 47005000,
+      "nvol": 940100
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 5000000,
+      "bvol": 100000,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5000000,
+      "nvol": 100000
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 2315000,
+      "bvol": 46300,
+      "bfrq": 10,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2315000,
+      "nvol": 46300
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 1000000,
+      "bvol": 20000,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1000000,
+      "nvol": 20000
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 580000,
+      "bvol": 11600,
+      "bfrq": 4,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 580000,
+      "nvol": 11600
+    }
+  ],
+  "top_sellers": []
+}

@@ -1,0 +1,572 @@
+{
+  "ticker": "ICBP",
+  "lastUpdatedWIB": "2026-11-04T13:38:44+07:00",
+  "totalBarsTested": 147,
+  "bestMethodId": "M2_HARMONIC_XABCD",
+  "bestMethodName": "Pola Harmonik XABCD — Gartley, Bat, Butterfly, Crab (PRZ + konfirmasi pantulan)",
+  "bestBrokerHorizon": "3H",
+  "dominantFlowDriver": "FOREIGN",
+  "winRatePct": 100,
+  "wilsonLowerBoundPct": 20.65,
+  "profitFactor": 99,
+  "expectancyPct": 3.46,
+  "maxDrawdownPct": 0,
+  "tradesCount": 1,
+  "methodsComparison": {
+    "M1_SMC_ORDER_BLOCK": {
+      "methodId": "M1_SMC_ORDER_BLOCK",
+      "methodName": "Smart Money Concepts — BOS/CHoCH + Demand Order Block",
+      "tradesCount": 3,
+      "winRatePct": 33.33,
+      "wilsonLowerBoundPct": 6.15,
+      "profitFactor": 0.61,
+      "expectancyPct": -1.21,
+      "maxDrawdownPct": 4.95,
+      "trades": [
+        {
+          "entryDate": "2026-07-06",
+          "exitDate": "2026-07-09",
+          "entryPrice": 6950,
+          "exitPrice": 6605.901149826089,
+          "returnPct": -4.95,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 3
+        },
+        {
+          "entryDate": "2026-08-04",
+          "exitDate": "2026-08-14",
+          "entryPrice": 7200,
+          "exitPrice": 7600,
+          "returnPct": 5.56,
+          "pnlR": 1.21,
+          "result": "WIN",
+          "barsHeld": 8
+        },
+        {
+          "entryDate": "2026-08-27",
+          "exitDate": "2026-08-31",
+          "entryPrice": 7825,
+          "exitPrice": 7494.080540749209,
+          "returnPct": -4.23,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 2
+        }
+      ]
+    },
+    "M2_HARMONIC_XABCD": {
+      "methodId": "M2_HARMONIC_XABCD",
+      "methodName": "Pola Harmonik XABCD — Gartley, Bat, Butterfly, Crab (PRZ + konfirmasi pantulan)",
+      "tradesCount": 1,
+      "winRatePct": 100,
+      "wilsonLowerBoundPct": 20.65,
+      "profitFactor": 99,
+      "expectancyPct": 3.46,
+      "maxDrawdownPct": 0,
+      "trades": [
+        {
+          "entryDate": "2026-06-25",
+          "exitDate": "2026-07-07",
+          "entryPrice": 6500,
+          "exitPrice": 6725,
+          "returnPct": 3.46,
+          "pnlR": 0.65,
+          "result": "WIN",
+          "barsHeld": 8
+        }
+      ]
+    },
+    "M3_FIBO_GOLDEN_POCKET": {
+      "methodId": "M3_FIBO_GOLDEN_POCKET",
+      "methodName": "Fibonacci Retracement 50% – 61,8% + Tren MA50",
+      "tradesCount": 4,
+      "winRatePct": 25,
+      "wilsonLowerBoundPct": 4.56,
+      "profitFactor": 0.12,
+      "expectancyPct": -2.6,
+      "maxDrawdownPct": 11.42,
+      "trades": [
+        {
+          "entryDate": "2026-05-08",
+          "exitDate": "2026-05-11",
+          "entryPrice": 7175,
+          "exitPrice": 6910.601224808869,
+          "returnPct": -3.69,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 1
+        },
+        {
+          "entryDate": "2026-05-12",
+          "exitDate": "2026-05-12",
+          "entryPrice": 7100,
+          "exitPrice": 6876.129117309688,
+          "returnPct": -3.15,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 0
+        },
+        {
+          "entryDate": "2026-05-26",
+          "exitDate": "2026-06-03",
+          "entryPrice": 7100,
+          "exitPrice": 6742.349081629775,
+          "returnPct": -5.04,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 5
+        },
+        {
+          "entryDate": "2026-07-20",
+          "exitDate": "2026-07-29",
+          "entryPrice": 6850,
+          "exitPrice": 6950,
+          "returnPct": 1.46,
+          "pnlR": 0.39,
+          "result": "WIN",
+          "barsHeld": 7
+        }
+      ]
+    },
+    "M4_ZIGZAG_MOMENTUM_LPM": {
+      "methodId": "M4_ZIGZAG_MOMENTUM_LPM",
+      "methodName": "Breakout Ayunan Zig-Zag + LPM + RSI Wilder RMA + CMF",
+      "tradesCount": 4,
+      "winRatePct": 25,
+      "wilsonLowerBoundPct": 4.56,
+      "profitFactor": 0.62,
+      "expectancyPct": -0.92,
+      "maxDrawdownPct": 6.48,
+      "trades": [
+        {
+          "entryDate": "2026-07-06",
+          "exitDate": "2026-07-09",
+          "entryPrice": 6950,
+          "exitPrice": 6592.7034494782665,
+          "returnPct": -5.14,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 3
+        },
+        {
+          "entryDate": "2026-07-23",
+          "exitDate": "2026-07-31",
+          "entryPrice": 7075,
+          "exitPrice": 6975,
+          "returnPct": -1.41,
+          "pnlR": -0.39,
+          "result": "LOSS",
+          "barsHeld": 6
+        },
+        {
+          "entryDate": "2026-08-04",
+          "exitDate": "2026-08-07",
+          "entryPrice": 7200,
+          "exitPrice": 7629.942172301098,
+          "returnPct": 5.97,
+          "pnlR": 1.8,
+          "result": "WIN",
+          "barsHeld": 3
+        },
+        {
+          "entryDate": "2026-08-27",
+          "exitDate": "2026-08-31",
+          "entryPrice": 7825,
+          "exitPrice": 7582.241622247628,
+          "returnPct": -3.1,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 2
+        }
+      ]
+    },
+    "M5_BANDAR_BS_RATIO": {
+      "methodId": "M5_BANDAR_BS_RATIO",
+      "methodName": "Konfluensi BS Ratio Bandar — Top 1, Top 3, & Top 5 Broker >= 1,35 + VWAP/MA20",
+      "tradesCount": 10,
+      "winRatePct": 30,
+      "wilsonLowerBoundPct": 10.78,
+      "profitFactor": 0.45,
+      "expectancyPct": -1.29,
+      "maxDrawdownPct": 12.62,
+      "trades": [
+        {
+          "entryDate": "2026-05-26",
+          "exitDate": "2026-05-29",
+          "entryPrice": 7100,
+          "exitPrice": 6828.497244889324,
+          "returnPct": -3.82,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 3
+        },
+        {
+          "entryDate": "2026-06-02",
+          "exitDate": "2026-06-02",
+          "entryPrice": 7100,
+          "exitPrice": 6844.023904396189,
+          "returnPct": -3.61,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 0
+        },
+        {
+          "entryDate": "2026-07-01",
+          "exitDate": "2026-07-10",
+          "entryPrice": 6800,
+          "exitPrice": 6650,
+          "returnPct": -2.21,
+          "pnlR": -0.39,
+          "result": "LOSS",
+          "barsHeld": 7
+        },
+        {
+          "entryDate": "2026-07-20",
+          "exitDate": "2026-07-29",
+          "entryPrice": 6850,
+          "exitPrice": 6950,
+          "returnPct": 1.46,
+          "pnlR": 0.38,
+          "result": "WIN",
+          "barsHeld": 7
+        },
+        {
+          "entryDate": "2026-08-03",
+          "exitDate": "2026-08-07",
+          "entryPrice": 7125,
+          "exitPrice": 7552.847318914463,
+          "returnPct": 6,
+          "pnlR": 1.85,
+          "result": "WIN",
+          "barsHeld": 4
+        },
+        {
+          "entryDate": "2026-08-10",
+          "exitDate": "2026-08-11",
+          "entryPrice": 7775,
+          "exitPrice": 7513.525276171218,
+          "returnPct": -3.36,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 1
+        },
+        {
+          "entryDate": "2026-08-12",
+          "exitDate": "2026-08-24",
+          "entryPrice": 7525,
+          "exitPrice": 7750,
+          "returnPct": 2.99,
+          "pnlR": 0.85,
+          "result": "WIN",
+          "barsHeld": 7
+        },
+        {
+          "entryDate": "2026-08-26",
+          "exitDate": "2026-08-31",
+          "entryPrice": 7750,
+          "exitPrice": 7517.414054728215,
+          "returnPct": -3,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 3
+        },
+        {
+          "entryDate": "2026-09-01",
+          "exitDate": "2026-09-02",
+          "entryPrice": 7650,
+          "exitPrice": 7357.74320119462,
+          "returnPct": -3.82,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 1
+        },
+        {
+          "entryDate": "2026-10-13",
+          "exitDate": "2026-10-16",
+          "entryPrice": 7050,
+          "exitPrice": 6804.291666008419,
+          "returnPct": -3.49,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 3
+        }
+      ]
+    },
+    "M6_AKUMULASI_BROKER_MULTIDAY": {
+      "methodId": "M6_AKUMULASI_BROKER_MULTIDAY",
+      "methodName": "Uji Horizon Akumulasi Broker 1H, 3H, 5H, 10H, dan 20H",
+      "tradesCount": 14,
+      "winRatePct": 35.71,
+      "wilsonLowerBoundPct": 16.34,
+      "profitFactor": 0.53,
+      "expectancyPct": -1.08,
+      "maxDrawdownPct": 18.02,
+      "trades": [
+        {
+          "entryDate": "2026-05-08",
+          "exitDate": "2026-05-11",
+          "entryPrice": 7175,
+          "exitPrice": 6942.043429464834,
+          "returnPct": -3.25,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 1
+        },
+        {
+          "entryDate": "2026-05-12",
+          "exitDate": "2026-05-12",
+          "entryPrice": 7100,
+          "exitPrice": 6850.741528467127,
+          "returnPct": -3.51,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 0
+        },
+        {
+          "entryDate": "2026-05-26",
+          "exitDate": "2026-05-29",
+          "entryPrice": 7100,
+          "exitPrice": 6846.597428563369,
+          "returnPct": -3.57,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 3
+        },
+        {
+          "entryDate": "2026-06-02",
+          "exitDate": "2026-06-02",
+          "entryPrice": 7100,
+          "exitPrice": 6861.088977436443,
+          "returnPct": -3.36,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 0
+        },
+        {
+          "entryDate": "2026-06-22",
+          "exitDate": "2026-06-22",
+          "entryPrice": 6875,
+          "exitPrice": 6530.083852872969,
+          "returnPct": -5.02,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 0
+        },
+        {
+          "entryDate": "2026-06-26",
+          "exitDate": "2026-07-06",
+          "entryPrice": 6725,
+          "exitPrice": 6925,
+          "returnPct": 2.97,
+          "pnlR": 0.56,
+          "result": "WIN",
+          "barsHeld": 6
+        },
+        {
+          "entryDate": "2026-07-07",
+          "exitDate": "2026-07-15",
+          "entryPrice": 6850,
+          "exitPrice": 6600,
+          "returnPct": -3.65,
+          "pnlR": -0.78,
+          "result": "LOSS",
+          "barsHeld": 6
+        },
+        {
+          "entryDate": "2026-07-17",
+          "exitDate": "2026-07-27",
+          "entryPrice": 6775,
+          "exitPrice": 6950,
+          "returnPct": 2.58,
+          "pnlR": 0.72,
+          "result": "WIN",
+          "barsHeld": 6
+        },
+        {
+          "entryDate": "2026-07-31",
+          "exitDate": "2026-08-06",
+          "entryPrice": 7050,
+          "exitPrice": 7437.949772384368,
+          "returnPct": 5.5,
+          "pnlR": 1.75,
+          "result": "WIN",
+          "barsHeld": 4
+        },
+        {
+          "entryDate": "2026-08-07",
+          "exitDate": "2026-08-18",
+          "entryPrice": 7475,
+          "exitPrice": 7625,
+          "returnPct": 2.01,
+          "pnlR": 0.65,
+          "result": "WIN",
+          "barsHeld": 6
+        },
+        {
+          "entryDate": "2026-08-19",
+          "exitDate": "2026-08-28",
+          "entryPrice": 7650,
+          "exitPrice": 7950,
+          "returnPct": 3.92,
+          "pnlR": 1.28,
+          "result": "WIN",
+          "barsHeld": 6
+        },
+        {
+          "entryDate": "2026-08-31",
+          "exitDate": "2026-08-31",
+          "entryPrice": 7950,
+          "exitPrice": 7726.244448380234,
+          "returnPct": -2.81,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 0
+        },
+        {
+          "entryDate": "2026-09-01",
+          "exitDate": "2026-09-01",
+          "entryPrice": 7650,
+          "exitPrice": 7377.226987781645,
+          "returnPct": -3.57,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 0
+        },
+        {
+          "entryDate": "2026-10-12",
+          "exitDate": "2026-10-16",
+          "entryPrice": 6950,
+          "exitPrice": 6716.493161731539,
+          "returnPct": -3.36,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 4
+        }
+      ],
+      "bestHorizon": "3H"
+    },
+    "M7_FOREIGN_VS_DOMESTIC_FUNDAMENTAL_Q2": {
+      "methodId": "M7_FOREIGN_VS_DOMESTIC_FUNDAMENTAL_Q2",
+      "methodName": "Aliran Asing vs Domestik + Filter Laporan Keuangan Q2",
+      "tradesCount": 11,
+      "winRatePct": 45.45,
+      "wilsonLowerBoundPct": 21.27,
+      "profitFactor": 0.96,
+      "expectancyPct": -0.06,
+      "maxDrawdownPct": 10.49,
+      "trades": [
+        {
+          "entryDate": "2026-06-22",
+          "exitDate": "2026-06-23",
+          "entryPrice": 6875,
+          "exitPrice": 6505.446985221038,
+          "returnPct": -5.38,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 1
+        },
+        {
+          "entryDate": "2026-06-26",
+          "exitDate": "2026-07-07",
+          "entryPrice": 6725,
+          "exitPrice": 6725,
+          "returnPct": 0,
+          "pnlR": 0,
+          "result": "LOSS",
+          "barsHeld": 7
+        },
+        {
+          "entryDate": "2026-07-08",
+          "exitDate": "2026-07-17",
+          "entryPrice": 6725,
+          "exitPrice": 6850,
+          "returnPct": 1.86,
+          "pnlR": 0.36,
+          "result": "WIN",
+          "barsHeld": 7
+        },
+        {
+          "entryDate": "2026-07-20",
+          "exitDate": "2026-07-29",
+          "entryPrice": 6850,
+          "exitPrice": 6950,
+          "returnPct": 1.46,
+          "pnlR": 0.38,
+          "result": "WIN",
+          "barsHeld": 7
+        },
+        {
+          "entryDate": "2026-07-30",
+          "exitDate": "2026-08-05",
+          "entryPrice": 6950,
+          "exitPrice": 7384.462367225404,
+          "returnPct": 6.25,
+          "pnlR": 1.8,
+          "result": "WIN",
+          "barsHeld": 4
+        },
+        {
+          "entryDate": "2026-08-06",
+          "exitDate": "2026-08-07",
+          "entryPrice": 7300,
+          "exitPrice": 7732.016464892273,
+          "returnPct": 5.92,
+          "pnlR": 1.8,
+          "result": "WIN",
+          "barsHeld": 1
+        },
+        {
+          "entryDate": "2026-08-10",
+          "exitDate": "2026-08-11",
+          "entryPrice": 7775,
+          "exitPrice": 7513.525276171218,
+          "returnPct": -3.36,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 1
+        },
+        {
+          "entryDate": "2026-08-12",
+          "exitDate": "2026-08-24",
+          "entryPrice": 7525,
+          "exitPrice": 7750,
+          "returnPct": 2.99,
+          "pnlR": 0.85,
+          "result": "WIN",
+          "barsHeld": 7
+        },
+        {
+          "entryDate": "2026-08-26",
+          "exitDate": "2026-08-31",
+          "entryPrice": 7750,
+          "exitPrice": 7517.414054728215,
+          "returnPct": -3,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 3
+        },
+        {
+          "entryDate": "2026-09-01",
+          "exitDate": "2026-09-02",
+          "entryPrice": 7650,
+          "exitPrice": 7357.74320119462,
+          "returnPct": -3.82,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 1
+        },
+        {
+          "entryDate": "2026-10-12",
+          "exitDate": "2026-10-16",
+          "entryPrice": 6950,
+          "exitPrice": 6699.8141018552205,
+          "returnPct": -3.6,
+          "pnlR": -1,
+          "result": "LOSS",
+          "barsHeld": 4
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-07-14",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 102680940000,
+      "bvol": 16702600,
+      "bfrq": 2134,
+      "sfrq": 166,
+      "sval": 8008797500,
+      "svol": 1302000,
+      "nval": 94672142500,
+      "nvol": 15400600
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 30959342500,
+      "bvol": 5013800,
+      "bfrq": 1595,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 30959342500,
+      "nvol": 5013800
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 30431837500,
+      "bvol": 4943100,
+      "bfrq": 359,
+      "sfrq": 28,
+      "sval": 443575000,
+      "svol": 71900,
+      "nval": 29988262500,
+      "nvol": 4871200
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 9111910000,
+      "bvol": 1484200,
+      "bfrq": 466,
+      "sfrq": 129,
+      "sval": 1236022500,
+      "svol": 200900,
+      "nval": 7875887500,
+      "nvol": 1283300
+    }
+  ],
+  "broker_net": 163495635000,
+  "net_flow": 163495635000,
+  "total_buy_val": 173184030000,
+  "total_sell_val": 9688395000,
+  "total_turnover": 173184030000,
+  "top_buyers": [
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 102680940000,
+      "bvol": 16702600,
+      "bfrq": 2134,
+      "sfrq": 166,
+      "sval": 8008797500,
+      "svol": 1302000,
+      "nval": 94672142500,
+      "nvol": 15400600
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 30959342500,
+      "bvol": 5013800,
+      "bfrq": 1595,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 30959342500,
+      "nvol": 5013800
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 30431837500,
+      "bvol": 4943100,
+      "bfrq": 359,
+      "sfrq": 28,
+      "sval": 443575000,
+      "svol": 71900,
+      "nval": 29988262500,
+      "nvol": 4871200
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 9111910000,
+      "bvol": 1484200,
+      "bfrq": 466,
+      "sfrq": 129,
+      "sval": 1236022500,
+      "svol": 200900,
+      "nval": 7875887500,
+      "nvol": 1283300
+    }
+  ],
+  "top_sellers": []
+}

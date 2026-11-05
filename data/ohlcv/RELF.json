@@ -1,0 +1,216 @@
+{
+  "ticker": "RELF",
+  "symbol": "RELF.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 25,
+  "latest": {
+    "date": "2026-10-30",
+    "open": 33,
+    "high": 33,
+    "low": 30,
+    "close": 30,
+    "volume": 13111600
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 42,
+      "high": 42,
+      "low": 37,
+      "close": 39,
+      "volume": 11464900
+    },
+    {
+      "date": "2026-09-29",
+      "open": 39,
+      "high": 40,
+      "low": 36,
+      "close": 36,
+      "volume": 15875000
+    },
+    {
+      "date": "2026-09-30",
+      "open": 36,
+      "high": 39,
+      "low": 34,
+      "close": 36,
+      "volume": 14682900
+    },
+    {
+      "date": "2026-10-01",
+      "open": 36,
+      "high": 37,
+      "low": 34,
+      "close": 34,
+      "volume": 11238400
+    },
+    {
+      "date": "2026-10-02",
+      "open": 35,
+      "high": 36,
+      "low": 34,
+      "close": 35,
+      "volume": 4820400
+    },
+    {
+      "date": "2026-10-05",
+      "open": 35,
+      "high": 37,
+      "low": 35,
+      "close": 36,
+      "volume": 4942500
+    },
+    {
+      "date": "2026-10-06",
+      "open": 36,
+      "high": 39,
+      "low": 35,
+      "close": 39,
+      "volume": 14802000
+    },
+    {
+      "date": "2026-10-07",
+      "open": 39,
+      "high": 41,
+      "low": 39,
+      "close": 41,
+      "volume": 4171000
+    },
+    {
+      "date": "2026-10-08",
+      "open": 40,
+      "high": 45,
+      "low": 39,
+      "close": 42,
+      "volume": 20885600
+    },
+    {
+      "date": "2026-10-09",
+      "open": 43,
+      "high": 46,
+      "low": 40,
+      "close": 45,
+      "volume": 30598100
+    },
+    {
+      "date": "2026-10-12",
+      "open": 45,
+      "high": 48,
+      "low": 43,
+      "close": 44,
+      "volume": 22360900
+    },
+    {
+      "date": "2026-10-13",
+      "open": 40,
+      "high": 44,
+      "low": 40,
+      "close": 42,
+      "volume": 9343700
+    },
+    {
+      "date": "2026-10-14",
+      "open": 42,
+      "high": 43,
+      "low": 40,
+      "close": 42,
+      "volume": 15007100
+    },
+    {
+      "date": "2026-10-15",
+      "open": 42,
+      "high": 42,
+      "low": 38,
+      "close": 38,
+      "volume": 36822600
+    },
+    {
+      "date": "2026-10-16",
+      "open": 35,
+      "high": 35,
+      "low": 35,
+      "close": 35,
+      "volume": 1722700
+    },
+    {
+      "date": "2026-10-19",
+      "open": 32,
+      "high": 32,
+      "low": 32,
+      "close": 32,
+      "volume": 1672400
+    },
+    {
+      "date": "2026-10-20",
+      "open": 29,
+      "high": 35,
+      "low": 29,
+      "close": 35,
+      "volume": 28632600
+    },
+    {
+      "date": "2026-10-21",
+      "open": 35,
+      "high": 38,
+      "low": 32,
+      "close": 34,
+      "volume": 39777900
+    },
+    {
+      "date": "2026-10-22",
+      "open": 35,
+      "high": 35,
+      "low": 32,
+      "close": 33,
+      "volume": 47944400
+    },
+    {
+      "date": "2026-10-23",
+      "open": 33,
+      "high": 35,
+      "low": 32,
+      "close": 34,
+      "volume": 41871900
+    },
+    {
+      "date": "2026-10-26",
+      "open": 34,
+      "high": 35,
+      "low": 33,
+      "close": 35,
+      "volume": 9870800
+    },
+    {
+      "date": "2026-10-27",
+      "open": 35,
+      "high": 36,
+      "low": 32,
+      "close": 32,
+      "volume": 24569600
+    },
+    {
+      "date": "2026-10-28",
+      "open": 34,
+      "high": 34,
+      "low": 30,
+      "close": 31,
+      "volume": 38648800
+    },
+    {
+      "date": "2026-10-29",
+      "open": 31,
+      "high": 34,
+      "low": 30,
+      "close": 33,
+      "volume": 42661600
+    },
+    {
+      "date": "2026-10-30",
+      "open": 33,
+      "high": 33,
+      "low": 30,
+      "close": 30,
+      "volume": 13111600
+    }
+  ]
+}

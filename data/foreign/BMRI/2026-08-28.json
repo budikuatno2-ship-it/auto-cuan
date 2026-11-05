@@ -1,0 +1,114 @@
+{
+  "stock_code": "BMRI",
+  "ticker": "BMRI",
+  "date": "2026-08-28",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 143097743000,
+      "bvol": 33750300,
+      "bfrq": 3246,
+      "sfrq": 460,
+      "sval": 17178319000,
+      "svol": 4051900,
+      "nval": 125919424000,
+      "nvol": 29698400
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 110768587000,
+      "bvol": 26112600,
+      "bfrq": 3037,
+      "sfrq": 91,
+      "sval": 6350832000,
+      "svol": 1495300,
+      "nval": 104417755000,
+      "nvol": 24617300
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 55404425000,
+      "bvol": 13075000,
+      "bfrq": 2724,
+      "sfrq": 594,
+      "sval": 14439612000,
+      "svol": 3414300,
+      "nval": 40964813000,
+      "nvol": 9660700
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 349535000,
+      "bvol": 82500,
+      "bfrq": 185,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 349535000,
+      "nvol": 82500
+    }
+  ],
+  "broker_net": 271651527000,
+  "net_flow": 271651527000,
+  "total_buy_val": 309620290000,
+  "total_sell_val": 37968763000,
+  "total_turnover": 309620290000,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 143097743000,
+      "bvol": 33750300,
+      "bfrq": 3246,
+      "sfrq": 460,
+      "sval": 17178319000,
+      "svol": 4051900,
+      "nval": 125919424000,
+      "nvol": 29698400
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 110768587000,
+      "bvol": 26112600,
+      "bfrq": 3037,
+      "sfrq": 91,
+      "sval": 6350832000,
+      "svol": 1495300,
+      "nval": 104417755000,
+      "nvol": 24617300
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 55404425000,
+      "bvol": 13075000,
+      "bfrq": 2724,
+      "sfrq": 594,
+      "sval": 14439612000,
+      "svol": 3414300,
+      "nval": 40964813000,
+      "nvol": 9660700
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 349535000,
+      "bvol": 82500,
+      "bfrq": 185,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 349535000,
+      "nvol": 82500
+    }
+  ],
+  "top_sellers": []
+}

@@ -1,0 +1,18 @@
+{
+  "stock_code": "GPRA",
+  "date": "2026-09-04",
+  "top_buyers": [
+    {
+      "broker": "XL",
+      "bval": 823600000,
+      "svol": 0
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker": "MG",
+      "sval": 1600000000,
+      "bval": 0
+    }
+  ]
+}

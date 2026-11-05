@@ -1,0 +1,216 @@
+{
+  "ticker": "DEAL",
+  "symbol": "DEAL.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 25,
+  "latest": {
+    "date": "2026-10-30",
+    "open": 6,
+    "high": 6,
+    "low": 6,
+    "close": 6,
+    "volume": 0
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-29",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-30",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-01",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-02",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-05",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-06",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-07",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-08",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-09",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-12",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-13",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-14",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-15",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-16",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-19",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-20",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-21",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-22",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-23",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-26",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-27",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-28",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-29",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-30",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 0
+    }
+  ]
+}

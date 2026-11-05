@@ -1,0 +1,90 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-08-21",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 10979270000,
+      "bvol": 23877900,
+      "bfrq": 627,
+      "sfrq": 126,
+      "sval": 2671981400,
+      "svol": 5787800,
+      "nval": 8307288600,
+      "nvol": 18090100
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 2154423200,
+      "bvol": 4684100,
+      "bfrq": 182,
+      "sfrq": 192,
+      "sval": 1560175400,
+      "svol": 3366400,
+      "nval": 594247800,
+      "nvol": 1317700
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 3621996200,
+      "bvol": 7872600,
+      "bfrq": 356,
+      "sfrq": 248,
+      "sval": 3481362600,
+      "svol": 7521600,
+      "nval": 140633600,
+      "nvol": 351000
+    }
+  ],
+  "broker_net": 9042170000,
+  "net_flow": 9042170000,
+  "total_buy_val": 16755689400,
+  "total_sell_val": 7713519400,
+  "total_turnover": 16755689400,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 10979270000,
+      "bvol": 23877900,
+      "bfrq": 627,
+      "sfrq": 126,
+      "sval": 2671981400,
+      "svol": 5787800,
+      "nval": 8307288600,
+      "nvol": 18090100
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 2154423200,
+      "bvol": 4684100,
+      "bfrq": 182,
+      "sfrq": 192,
+      "sval": 1560175400,
+      "svol": 3366400,
+      "nval": 594247800,
+      "nvol": 1317700
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 3621996200,
+      "bvol": 7872600,
+      "bfrq": 356,
+      "sfrq": 248,
+      "sval": 3481362600,
+      "svol": 7521600,
+      "nval": 140633600,
+      "nvol": 351000
+    }
+  ],
+  "top_sellers": []
+}

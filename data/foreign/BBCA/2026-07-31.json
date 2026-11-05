@@ -1,0 +1,138 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-07-31",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 286344185000,
+      "bvol": 45018700,
+      "bfrq": 2259,
+      "sfrq": 4903,
+      "sval": 251110562500,
+      "svol": 39411200,
+      "nval": 35233622500,
+      "nvol": 5607500
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 57826767500,
+      "bvol": 9118800,
+      "bfrq": 560,
+      "sfrq": 874,
+      "sval": 33572057500,
+      "svol": 5278100,
+      "nval": 24254710000,
+      "nvol": 3840700
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 5093227500,
+      "bvol": 797700,
+      "bfrq": 37,
+      "sfrq": 3,
+      "sval": 132410000,
+      "svol": 20800,
+      "nval": 4960817500,
+      "nvol": 776900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 4394760000,
+      "bvol": 690600,
+      "bfrq": 96,
+      "sfrq": 236,
+      "sval": 1359915000,
+      "svol": 214000,
+      "nval": 3034845000,
+      "nvol": 476600
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 7051372500,
+      "bvol": 1104600,
+      "bfrq": 155,
+      "sfrq": 133,
+      "sval": 4595765000,
+      "svol": 719200,
+      "nval": 2455607500,
+      "nvol": 385400
+    }
+  ],
+  "broker_net": 69939602500,
+  "net_flow": 69939602500,
+  "total_buy_val": 360710312500,
+  "total_sell_val": 290770710000,
+  "total_turnover": 360710312500,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 286344185000,
+      "bvol": 45018700,
+      "bfrq": 2259,
+      "sfrq": 4903,
+      "sval": 251110562500,
+      "svol": 39411200,
+      "nval": 35233622500,
+      "nvol": 5607500
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 57826767500,
+      "bvol": 9118800,
+      "bfrq": 560,
+      "sfrq": 874,
+      "sval": 33572057500,
+      "svol": 5278100,
+      "nval": 24254710000,
+      "nvol": 3840700
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 5093227500,
+      "bvol": 797700,
+      "bfrq": 37,
+      "sfrq": 3,
+      "sval": 132410000,
+      "svol": 20800,
+      "nval": 4960817500,
+      "nvol": 776900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 4394760000,
+      "bvol": 690600,
+      "bfrq": 96,
+      "sfrq": 236,
+      "sval": 1359915000,
+      "svol": 214000,
+      "nval": 3034845000,
+      "nvol": 476600
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 7051372500,
+      "bvol": 1104600,
+      "bfrq": 155,
+      "sfrq": 133,
+      "sval": 4595765000,
+      "svol": 719200,
+      "nval": 2455607500,
+      "nvol": 385400
+    }
+  ],
+  "top_sellers": []
+}

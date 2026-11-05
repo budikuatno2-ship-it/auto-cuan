@@ -1,0 +1,413 @@
+{
+  "stock_code": "INKP",
+  "ticker": "INKP",
+  "date": "2026-10-28",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 9510655000,
+      "bvol": 1416200,
+      "sval": 2217170000,
+      "svol": 328300,
+      "nval": 7293485000,
+      "nvol": 1087900,
+      "avg_buy": 6715.62
+    },
+    {
+      "broker": "DH",
+      "broker_code": "DH",
+      "broker_name": "SINARMAS SEKURITAS",
+      "bval": 5350035000,
+      "bvol": 795000,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5350035000,
+      "nvol": 795000,
+      "avg_buy": 6729.6
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 2669232500,
+      "bvol": 398000,
+      "sval": 1307597500,
+      "svol": 193600,
+      "nval": 1361635000,
+      "nvol": 204400,
+      "avg_buy": 6706.61
+    },
+    {
+      "broker": "TP",
+      "broker_code": "TP",
+      "broker_name": "OCBC SEKURITAS INDONESIA",
+      "bval": 1295750000,
+      "bvol": 192900,
+      "sval": 322345000,
+      "svol": 47700,
+      "nval": 973405000,
+      "nvol": 145200,
+      "avg_buy": 6717.21
+    },
+    {
+      "broker": "RX",
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 918447500,
+      "bvol": 136600,
+      "sval": 0,
+      "svol": 0,
+      "nval": 918447500,
+      "nvol": 136600,
+      "avg_buy": 6723.63
+    },
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 126540000,
+      "bvol": 19000,
+      "sval": 8005227500,
+      "svol": 1188700,
+      "nval": -7878687500,
+      "nvol": -1169700,
+      "avg_sell": 6734.44
+    },
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 133500000,
+      "bvol": 20000,
+      "sval": 3451855000,
+      "svol": 513900,
+      "nval": -3318355000,
+      "nvol": -493900,
+      "avg_sell": 6716.98
+    },
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 1136157500,
+      "bvol": 169400,
+      "sval": 1217435000,
+      "svol": 179600,
+      "nval": -81277500,
+      "nvol": -10200,
+      "avg_sell": 6778.59
+    }
+  ],
+  "broker_net": 7069602500,
+  "net_flow": 7069602500,
+  "foreign_net": 7069602500,
+  "foreign_net_val": 7069602500,
+  "total_buy_val": 19744120000,
+  "total_sell_val": 12674517500,
+  "total_turnover": 19744120000,
+  "top_buyers": [
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 9510655000,
+      "bvol": 1416200,
+      "sval": 2217170000,
+      "svol": 328300,
+      "nval": 7293485000,
+      "nvol": 1087900,
+      "avg_buy": 6715.62
+    },
+    {
+      "broker": "DH",
+      "broker_code": "DH",
+      "broker_name": "SINARMAS SEKURITAS",
+      "bval": 5350035000,
+      "bvol": 795000,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5350035000,
+      "nvol": 795000,
+      "avg_buy": 6729.6
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 2669232500,
+      "bvol": 398000,
+      "sval": 1307597500,
+      "svol": 193600,
+      "nval": 1361635000,
+      "nvol": 204400,
+      "avg_buy": 6706.61
+    },
+    {
+      "broker": "TP",
+      "broker_code": "TP",
+      "broker_name": "OCBC SEKURITAS INDONESIA",
+      "bval": 1295750000,
+      "bvol": 192900,
+      "sval": 322345000,
+      "svol": 47700,
+      "nval": 973405000,
+      "nvol": 145200,
+      "avg_buy": 6717.21
+    },
+    {
+      "broker": "RX",
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 918447500,
+      "bvol": 136600,
+      "sval": 0,
+      "svol": 0,
+      "nval": 918447500,
+      "nvol": 136600,
+      "avg_buy": 6723.63
+    }
+  ],
+  "gross_buyers": [
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 9510655000,
+      "bvol": 1416200,
+      "sval": 2217170000,
+      "svol": 328300,
+      "nval": 7293485000,
+      "nvol": 1087900,
+      "avg_buy": 6715.62
+    },
+    {
+      "broker": "DH",
+      "broker_code": "DH",
+      "broker_name": "SINARMAS SEKURITAS",
+      "bval": 5350035000,
+      "bvol": 795000,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5350035000,
+      "nvol": 795000,
+      "avg_buy": 6729.6
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 2669232500,
+      "bvol": 398000,
+      "sval": 1307597500,
+      "svol": 193600,
+      "nval": 1361635000,
+      "nvol": 204400,
+      "avg_buy": 6706.61
+    },
+    {
+      "broker": "TP",
+      "broker_code": "TP",
+      "broker_name": "OCBC SEKURITAS INDONESIA",
+      "bval": 1295750000,
+      "bvol": 192900,
+      "sval": 322345000,
+      "svol": 47700,
+      "nval": 973405000,
+      "nvol": 145200,
+      "avg_buy": 6717.21
+    },
+    {
+      "broker": "RX",
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 918447500,
+      "bvol": 136600,
+      "sval": 0,
+      "svol": 0,
+      "nval": 918447500,
+      "nvol": 136600,
+      "avg_buy": 6723.63
+    }
+  ],
+  "net_buyers": [
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 9510655000,
+      "bvol": 1416200,
+      "sval": 2217170000,
+      "svol": 328300,
+      "nval": 7293485000,
+      "nvol": 1087900,
+      "avg_buy": 6715.62
+    },
+    {
+      "broker": "DH",
+      "broker_code": "DH",
+      "broker_name": "SINARMAS SEKURITAS",
+      "bval": 5350035000,
+      "bvol": 795000,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5350035000,
+      "nvol": 795000,
+      "avg_buy": 6729.6
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 2669232500,
+      "bvol": 398000,
+      "sval": 1307597500,
+      "svol": 193600,
+      "nval": 1361635000,
+      "nvol": 204400,
+      "avg_buy": 6706.61
+    },
+    {
+      "broker": "TP",
+      "broker_code": "TP",
+      "broker_name": "OCBC SEKURITAS INDONESIA",
+      "bval": 1295750000,
+      "bvol": 192900,
+      "sval": 322345000,
+      "svol": 47700,
+      "nval": 973405000,
+      "nvol": 145200,
+      "avg_buy": 6717.21
+    },
+    {
+      "broker": "RX",
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 918447500,
+      "bvol": 136600,
+      "sval": 0,
+      "svol": 0,
+      "nval": 918447500,
+      "nvol": 136600,
+      "avg_buy": 6723.63
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 126540000,
+      "bvol": 19000,
+      "sval": 8005227500,
+      "svol": 1188700,
+      "nval": -7878687500,
+      "nvol": -1169700,
+      "avg_sell": 6734.44
+    },
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 133500000,
+      "bvol": 20000,
+      "sval": 3451855000,
+      "svol": 513900,
+      "nval": -3318355000,
+      "nvol": -493900,
+      "avg_sell": 6716.98
+    },
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 1136157500,
+      "bvol": 169400,
+      "sval": 1217435000,
+      "svol": 179600,
+      "nval": -81277500,
+      "nvol": -10200,
+      "avg_sell": 6778.59
+    }
+  ],
+  "gross_sellers": [
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 126540000,
+      "bvol": 19000,
+      "sval": 8005227500,
+      "svol": 1188700,
+      "nval": -7878687500,
+      "nvol": -1169700,
+      "avg_sell": 6734.44
+    },
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 133500000,
+      "bvol": 20000,
+      "sval": 3451855000,
+      "svol": 513900,
+      "nval": -3318355000,
+      "nvol": -493900,
+      "avg_sell": 6716.98
+    },
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 1136157500,
+      "bvol": 169400,
+      "sval": 1217435000,
+      "svol": 179600,
+      "nval": -81277500,
+      "nvol": -10200,
+      "avg_sell": 6778.59
+    }
+  ],
+  "net_sellers": [
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 126540000,
+      "bvol": 19000,
+      "sval": 8005227500,
+      "svol": 1188700,
+      "nval": -7878687500,
+      "nvol": -1169700,
+      "avg_sell": 6734.44
+    },
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 133500000,
+      "bvol": 20000,
+      "sval": 3451855000,
+      "svol": 513900,
+      "nval": -3318355000,
+      "nvol": -493900,
+      "avg_sell": 6716.98
+    },
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 1136157500,
+      "bvol": 169400,
+      "sval": 1217435000,
+      "svol": 179600,
+      "nval": -81277500,
+      "nvol": -10200,
+      "avg_sell": 6778.59
+    }
+  ]
+}

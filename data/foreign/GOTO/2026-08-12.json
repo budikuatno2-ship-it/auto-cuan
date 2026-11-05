@@ -1,0 +1,114 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-08-12",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 251230000,
+      "bvol": 5024600,
+      "bfrq": 10,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 251230000,
+      "nvol": 5024600
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 2860000,
+      "bvol": 57200,
+      "bfrq": 15,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2860000,
+      "nvol": 57200
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2135000,
+      "bvol": 42700,
+      "bfrq": 9,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2135000,
+      "nvol": 42700
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 910000,
+      "bvol": 18200,
+      "bfrq": 5,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 910000,
+      "nvol": 18200
+    }
+  ],
+  "broker_net": 257135000,
+  "net_flow": 257135000,
+  "total_buy_val": 257135000,
+  "total_sell_val": 0,
+  "total_turnover": 257135000,
+  "top_buyers": [
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 251230000,
+      "bvol": 5024600,
+      "bfrq": 10,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 251230000,
+      "nvol": 5024600
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 2860000,
+      "bvol": 57200,
+      "bfrq": 15,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2860000,
+      "nvol": 57200
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2135000,
+      "bvol": 42700,
+      "bfrq": 9,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2135000,
+      "nvol": 42700
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 910000,
+      "bvol": 18200,
+      "bfrq": 5,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 910000,
+      "nvol": 18200
+    }
+  ],
+  "top_sellers": []
+}

@@ -1,0 +1,114 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-08-11",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 31095000,
+      "bvol": 621900,
+      "bfrq": 34,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 31095000,
+      "nvol": 621900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 25660000,
+      "bvol": 513200,
+      "bfrq": 9,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 25660000,
+      "nvol": 513200
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 5135000,
+      "bvol": 102700,
+      "bfrq": 31,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5135000,
+      "nvol": 102700
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2685000,
+      "bvol": 53700,
+      "bfrq": 5,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2685000,
+      "nvol": 53700
+    }
+  ],
+  "broker_net": 64575000,
+  "net_flow": 64575000,
+  "total_buy_val": 64575000,
+  "total_sell_val": 0,
+  "total_turnover": 64575000,
+  "top_buyers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 31095000,
+      "bvol": 621900,
+      "bfrq": 34,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 31095000,
+      "nvol": 621900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 25660000,
+      "bvol": 513200,
+      "bfrq": 9,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 25660000,
+      "nvol": 513200
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 5135000,
+      "bvol": 102700,
+      "bfrq": 31,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5135000,
+      "nvol": 102700
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2685000,
+      "bvol": 53700,
+      "bfrq": 5,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2685000,
+      "nvol": 53700
+    }
+  ],
+  "top_sellers": []
+}

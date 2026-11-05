@@ -1,0 +1,66 @@
+{
+  "stock_code": "CUAN",
+  "ticker": "CUAN",
+  "date": "2026-09-07",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 5180538500,
+      "bvol": 5503300,
+      "bfrq": 824,
+      "sfrq": 378,
+      "sval": 2830246000,
+      "svol": 2982500,
+      "nval": 2350292500,
+      "nvol": 2520800
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 1823392500,
+      "bvol": 1931700,
+      "bfrq": 141,
+      "sfrq": 48,
+      "sval": 750006500,
+      "svol": 803300,
+      "nval": 1073386000,
+      "nvol": 1128400
+    }
+  ],
+  "broker_net": 3423678500,
+  "net_flow": 3423678500,
+  "total_buy_val": 7003931000,
+  "total_sell_val": 3580252500,
+  "total_turnover": 7003931000,
+  "top_buyers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 5180538500,
+      "bvol": 5503300,
+      "bfrq": 824,
+      "sfrq": 378,
+      "sval": 2830246000,
+      "svol": 2982500,
+      "nval": 2350292500,
+      "nvol": 2520800
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 1823392500,
+      "bvol": 1931700,
+      "bfrq": 141,
+      "sfrq": 48,
+      "sval": 750006500,
+      "svol": 803300,
+      "nval": 1073386000,
+      "nvol": 1128400
+    }
+  ],
+  "top_sellers": []
+}

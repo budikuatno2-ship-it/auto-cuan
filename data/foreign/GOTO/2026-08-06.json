@@ -1,0 +1,90 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-08-06",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 80015000,
+      "bvol": 1600300,
+      "bfrq": 11,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 80015000,
+      "nvol": 1600300
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 52340000,
+      "bvol": 1046800,
+      "bfrq": 9,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 52340000,
+      "nvol": 1046800
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 1030000,
+      "bvol": 20600,
+      "bfrq": 5,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1030000,
+      "nvol": 20600
+    }
+  ],
+  "broker_net": 133385000,
+  "net_flow": 133385000,
+  "total_buy_val": 133385000,
+  "total_sell_val": 0,
+  "total_turnover": 133385000,
+  "top_buyers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 80015000,
+      "bvol": 1600300,
+      "bfrq": 11,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 80015000,
+      "nvol": 1600300
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 52340000,
+      "bvol": 1046800,
+      "bfrq": 9,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 52340000,
+      "nvol": 1046800
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 1030000,
+      "bvol": 20600,
+      "bfrq": 5,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1030000,
+      "nvol": 20600
+    }
+  ],
+  "top_sellers": []
+}

@@ -1,0 +1,16 @@
+{
+  "ticker": "SUGI",
+  "lastUpdatedWIB": "2026-11-04T13:38:45+07:00",
+  "totalBarsTested": 13,
+  "bestMethodId": "M1_SMC_ORDER_BLOCK",
+  "bestMethodName": "Smart Money Concepts — BOS/CHoCH + Demand Order Block",
+  "bestBrokerHorizon": "5H",
+  "dominantFlowDriver": "DOMESTIC",
+  "winRatePct": 0,
+  "wilsonLowerBoundPct": 0,
+  "profitFactor": 0,
+  "expectancyPct": 0,
+  "maxDrawdownPct": 0,
+  "tradesCount": 0,
+  "methodsComparison": {}
+}

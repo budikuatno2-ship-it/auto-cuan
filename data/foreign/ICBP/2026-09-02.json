@@ -1,0 +1,162 @@
+{
+  "stock_code": "ICBP",
+  "ticker": "ICBP",
+  "date": "2026-09-02",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 7934150000,
+      "bvol": 1078000,
+      "bfrq": 273,
+      "sfrq": 718,
+      "sval": 4477550000,
+      "svol": 610300,
+      "nval": 3456600000,
+      "nvol": 467700
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2418845000,
+      "bvol": 331300,
+      "bfrq": 158,
+      "sfrq": 105,
+      "sval": 353587500,
+      "svol": 48400,
+      "nval": 2065257500,
+      "nvol": 282900
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 3003965000,
+      "bvol": 410600,
+      "bfrq": 176,
+      "sfrq": 38,
+      "sval": 1112407500,
+      "svol": 151700,
+      "nval": 1891557500,
+      "nvol": 258900
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 2318525000,
+      "bvol": 317400,
+      "bfrq": 290,
+      "sfrq": 62,
+      "sval": 571945000,
+      "svol": 77500,
+      "nval": 1746580000,
+      "nvol": 239900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 881272500,
+      "bvol": 120300,
+      "bfrq": 66,
+      "sfrq": 133,
+      "sval": 186657500,
+      "svol": 25600,
+      "nval": 694615000,
+      "nvol": 94700
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 243990000,
+      "bvol": 33500,
+      "bfrq": 72,
+      "sfrq": 2,
+      "sval": 1457500,
+      "svol": 200,
+      "nval": 242532500,
+      "nvol": 33300
+    }
+  ],
+  "broker_net": 10097142500,
+  "net_flow": 10097142500,
+  "total_buy_val": 16800747500,
+  "total_sell_val": 6703605000,
+  "total_turnover": 16800747500,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 7934150000,
+      "bvol": 1078000,
+      "bfrq": 273,
+      "sfrq": 718,
+      "sval": 4477550000,
+      "svol": 610300,
+      "nval": 3456600000,
+      "nvol": 467700
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2418845000,
+      "bvol": 331300,
+      "bfrq": 158,
+      "sfrq": 105,
+      "sval": 353587500,
+      "svol": 48400,
+      "nval": 2065257500,
+      "nvol": 282900
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 3003965000,
+      "bvol": 410600,
+      "bfrq": 176,
+      "sfrq": 38,
+      "sval": 1112407500,
+      "svol": 151700,
+      "nval": 1891557500,
+      "nvol": 258900
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 2318525000,
+      "bvol": 317400,
+      "bfrq": 290,
+      "sfrq": 62,
+      "sval": 571945000,
+      "svol": 77500,
+      "nval": 1746580000,
+      "nvol": 239900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 881272500,
+      "bvol": 120300,
+      "bfrq": 66,
+      "sfrq": 133,
+      "sval": 186657500,
+      "svol": 25600,
+      "nval": 694615000,
+      "nvol": 94700
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 243990000,
+      "bvol": 33500,
+      "bfrq": 72,
+      "sfrq": 2,
+      "sval": 1457500,
+      "svol": 200,
+      "nval": 242532500,
+      "nvol": 33300
+    }
+  ],
+  "top_sellers": []
+}

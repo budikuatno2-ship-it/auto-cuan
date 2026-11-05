@@ -1,0 +1,79 @@
+{
+  "date": "2026-08-03",
+  "net_status": "BIG_ACCUMULATION",
+  "net_label": "Big Accumulation",
+  "top_buyers": [
+    {
+      "broker": "YP",
+      "buy_vol": 125000,
+      "buy_val": 122500000000,
+      "avg_price": 9800,
+      "net_val": 45000000000
+    },
+    {
+      "broker": "CC",
+      "buy_vol": 98000,
+      "buy_val": 96040000000,
+      "avg_price": 9800,
+      "net_val": 32000000000
+    },
+    {
+      "broker": "BK",
+      "buy_vol": 75000,
+      "buy_val": 73500000000,
+      "avg_price": 9800,
+      "net_val": 28000000000
+    },
+    {
+      "broker": "AK",
+      "buy_vol": 62000,
+      "buy_val": 60760000000,
+      "avg_price": 9800,
+      "net_val": 19500000000
+    },
+    {
+      "broker": "PD",
+      "buy_vol": 45000,
+      "buy_val": 44100000000,
+      "avg_price": 9800,
+      "net_val": 12000000000
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker": "XC",
+      "sell_vol": 82000,
+      "sell_val": 80360000000,
+      "avg_price": 9800,
+      "net_val": -35000000000
+    },
+    {
+      "broker": "NI",
+      "sell_vol": 64000,
+      "sell_val": 62720000000,
+      "avg_price": 9800,
+      "net_val": -26000000000
+    },
+    {
+      "broker": "CP",
+      "sell_vol": 51000,
+      "sell_val": 49980000000,
+      "avg_price": 9800,
+      "net_val": -18000000000
+    },
+    {
+      "broker": "GR",
+      "sell_vol": 38000,
+      "sell_val": 37240000000,
+      "avg_price": 9800,
+      "net_val": -14000000000
+    },
+    {
+      "broker": "MG",
+      "sell_vol": 31000,
+      "sell_val": 30380000000,
+      "avg_price": 9800,
+      "net_val": -11000000000
+    }
+  ]
+}

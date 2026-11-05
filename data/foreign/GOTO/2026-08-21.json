@@ -1,0 +1,90 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-08-21",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 33955000,
+      "bvol": 679100,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 33955000,
+      "nvol": 679100
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 5615000,
+      "bvol": 112300,
+      "bfrq": 19,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5615000,
+      "nvol": 112300
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 145000,
+      "bvol": 2900,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 145000,
+      "nvol": 2900
+    }
+  ],
+  "broker_net": 39715000,
+  "net_flow": 39715000,
+  "total_buy_val": 39715000,
+  "total_sell_val": 0,
+  "total_turnover": 39715000,
+  "top_buyers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 33955000,
+      "bvol": 679100,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 33955000,
+      "nvol": 679100
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 5615000,
+      "bvol": 112300,
+      "bfrq": 19,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5615000,
+      "nvol": 112300
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 145000,
+      "bvol": 2900,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 145000,
+      "nvol": 2900
+    }
+  ],
+  "top_sellers": []
+}

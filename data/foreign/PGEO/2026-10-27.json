@@ -1,0 +1,317 @@
+{
+  "stock_code": "PGEO",
+  "ticker": "PGEO",
+  "date": "2026-10-27",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 261758000,
+      "bvol": 267100,
+      "sval": 0,
+      "svol": 0,
+      "nval": 261758000,
+      "nvol": 267100,
+      "avg_buy": 980
+    },
+    {
+      "broker": "HD",
+      "broker_code": "HD",
+      "broker_name": "KGI SEKURITAS INDONESIA",
+      "bval": 100974500,
+      "bvol": 103100,
+      "sval": 86622500,
+      "svol": 88300,
+      "nval": 14352000,
+      "nvol": 14800,
+      "avg_buy": 979.38
+    },
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 198403000,
+      "bvol": 202200,
+      "sval": 2111433000,
+      "svol": 2131700,
+      "nval": -1913030000,
+      "nvol": -1929500,
+      "avg_sell": 990.49
+    },
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 0,
+      "bvol": 0,
+      "sval": 506244000,
+      "svol": 515800,
+      "nval": -506244000,
+      "nvol": -515800,
+      "avg_sell": 981.47
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 843826000,
+      "bvol": 868900,
+      "sval": 1347607000,
+      "svol": 1368800,
+      "nval": -503781000,
+      "nvol": -499900,
+      "avg_sell": 984.52
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 156216500,
+      "bvol": 156800,
+      "sval": 520595000,
+      "svol": 532700,
+      "nval": -364378500,
+      "nvol": -375900,
+      "avg_sell": 977.28
+    }
+  ],
+  "broker_net": -4123146500,
+  "net_flow": -4123146500,
+  "foreign_net": -4123146500,
+  "foreign_net_val": -4123146500,
+  "total_buy_val": 362732500,
+  "total_sell_val": 4485879000,
+  "total_turnover": 4485879000,
+  "top_buyers": [
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 261758000,
+      "bvol": 267100,
+      "sval": 0,
+      "svol": 0,
+      "nval": 261758000,
+      "nvol": 267100,
+      "avg_buy": 980
+    },
+    {
+      "broker": "HD",
+      "broker_code": "HD",
+      "broker_name": "KGI SEKURITAS INDONESIA",
+      "bval": 100974500,
+      "bvol": 103100,
+      "sval": 86622500,
+      "svol": 88300,
+      "nval": 14352000,
+      "nvol": 14800,
+      "avg_buy": 979.38
+    }
+  ],
+  "gross_buyers": [
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 261758000,
+      "bvol": 267100,
+      "sval": 0,
+      "svol": 0,
+      "nval": 261758000,
+      "nvol": 267100,
+      "avg_buy": 980
+    },
+    {
+      "broker": "HD",
+      "broker_code": "HD",
+      "broker_name": "KGI SEKURITAS INDONESIA",
+      "bval": 100974500,
+      "bvol": 103100,
+      "sval": 86622500,
+      "svol": 88300,
+      "nval": 14352000,
+      "nvol": 14800,
+      "avg_buy": 979.38
+    }
+  ],
+  "net_buyers": [
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 261758000,
+      "bvol": 267100,
+      "sval": 0,
+      "svol": 0,
+      "nval": 261758000,
+      "nvol": 267100,
+      "avg_buy": 980
+    },
+    {
+      "broker": "HD",
+      "broker_code": "HD",
+      "broker_name": "KGI SEKURITAS INDONESIA",
+      "bval": 100974500,
+      "bvol": 103100,
+      "sval": 86622500,
+      "svol": 88300,
+      "nval": 14352000,
+      "nvol": 14800,
+      "avg_buy": 979.38
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 198403000,
+      "bvol": 202200,
+      "sval": 2111433000,
+      "svol": 2131700,
+      "nval": -1913030000,
+      "nvol": -1929500,
+      "avg_sell": 990.49
+    },
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 0,
+      "bvol": 0,
+      "sval": 506244000,
+      "svol": 515800,
+      "nval": -506244000,
+      "nvol": -515800,
+      "avg_sell": 981.47
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 843826000,
+      "bvol": 868900,
+      "sval": 1347607000,
+      "svol": 1368800,
+      "nval": -503781000,
+      "nvol": -499900,
+      "avg_sell": 984.52
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 156216500,
+      "bvol": 156800,
+      "sval": 520595000,
+      "svol": 532700,
+      "nval": -364378500,
+      "nvol": -375900,
+      "avg_sell": 977.28
+    }
+  ],
+  "gross_sellers": [
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 198403000,
+      "bvol": 202200,
+      "sval": 2111433000,
+      "svol": 2131700,
+      "nval": -1913030000,
+      "nvol": -1929500,
+      "avg_sell": 990.49
+    },
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 0,
+      "bvol": 0,
+      "sval": 506244000,
+      "svol": 515800,
+      "nval": -506244000,
+      "nvol": -515800,
+      "avg_sell": 981.47
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 843826000,
+      "bvol": 868900,
+      "sval": 1347607000,
+      "svol": 1368800,
+      "nval": -503781000,
+      "nvol": -499900,
+      "avg_sell": 984.52
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 156216500,
+      "bvol": 156800,
+      "sval": 520595000,
+      "svol": 532700,
+      "nval": -364378500,
+      "nvol": -375900,
+      "avg_sell": 977.28
+    }
+  ],
+  "net_sellers": [
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 198403000,
+      "bvol": 202200,
+      "sval": 2111433000,
+      "svol": 2131700,
+      "nval": -1913030000,
+      "nvol": -1929500,
+      "avg_sell": 990.49
+    },
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 0,
+      "bvol": 0,
+      "sval": 506244000,
+      "svol": 515800,
+      "nval": -506244000,
+      "nvol": -515800,
+      "avg_sell": 981.47
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 843826000,
+      "bvol": 868900,
+      "sval": 1347607000,
+      "svol": 1368800,
+      "nval": -503781000,
+      "nvol": -499900,
+      "avg_sell": 984.52
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 156216500,
+      "bvol": 156800,
+      "sval": 520595000,
+      "svol": 532700,
+      "nval": -364378500,
+      "nvol": -375900,
+      "avg_sell": 977.28
+    }
+  ]
+}

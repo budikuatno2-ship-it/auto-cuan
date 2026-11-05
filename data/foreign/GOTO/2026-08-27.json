@@ -1,0 +1,114 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-08-27",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 29820000,
+      "bvol": 596400,
+      "bfrq": 24,
+      "sfrq": 128,
+      "sval": 13845000,
+      "svol": 276900,
+      "nval": 15975000,
+      "nvol": 319500
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1575000,
+      "bvol": 31500,
+      "bfrq": 4,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1575000,
+      "nvol": 31500
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 530000,
+      "bvol": 10600,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 530000,
+      "nvol": 10600
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 350000,
+      "bvol": 7000,
+      "bfrq": 2,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 350000,
+      "nvol": 7000
+    }
+  ],
+  "broker_net": 18430000,
+  "net_flow": 18430000,
+  "total_buy_val": 32275000,
+  "total_sell_val": 13845000,
+  "total_turnover": 32275000,
+  "top_buyers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 29820000,
+      "bvol": 596400,
+      "bfrq": 24,
+      "sfrq": 128,
+      "sval": 13845000,
+      "svol": 276900,
+      "nval": 15975000,
+      "nvol": 319500
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1575000,
+      "bvol": 31500,
+      "bfrq": 4,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1575000,
+      "nvol": 31500
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 530000,
+      "bvol": 10600,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 530000,
+      "nvol": 10600
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 350000,
+      "bvol": 7000,
+      "bfrq": 2,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 350000,
+      "nvol": 7000
+    }
+  ],
+  "top_sellers": []
+}

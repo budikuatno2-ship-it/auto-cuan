@@ -1,0 +1,90 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-08-11",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 6526226600,
+      "bvol": 14384400,
+      "bfrq": 1007,
+      "sfrq": 358,
+      "sval": 2627649400,
+      "svol": 5798500,
+      "nval": 3898577200,
+      "nvol": 8585900
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 4215257200,
+      "bvol": 9158500,
+      "bfrq": 279,
+      "sfrq": 154,
+      "sval": 2266208000,
+      "svol": 4934900,
+      "nval": 1949049200,
+      "nvol": 4223600
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 27339480600,
+      "bvol": 59860500,
+      "bfrq": 2382,
+      "sfrq": 2353,
+      "sval": 25398535600,
+      "svol": 55103600,
+      "nval": 1940945000,
+      "nvol": 4756900
+    }
+  ],
+  "broker_net": 7788571400,
+  "net_flow": 7788571400,
+  "total_buy_val": 38080964400,
+  "total_sell_val": 30292393000,
+  "total_turnover": 38080964400,
+  "top_buyers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 6526226600,
+      "bvol": 14384400,
+      "bfrq": 1007,
+      "sfrq": 358,
+      "sval": 2627649400,
+      "svol": 5798500,
+      "nval": 3898577200,
+      "nvol": 8585900
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 4215257200,
+      "bvol": 9158500,
+      "bfrq": 279,
+      "sfrq": 154,
+      "sval": 2266208000,
+      "svol": 4934900,
+      "nval": 1949049200,
+      "nvol": 4223600
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 27339480600,
+      "bvol": 59860500,
+      "bfrq": 2382,
+      "sfrq": 2353,
+      "sval": 25398535600,
+      "svol": 55103600,
+      "nval": 1940945000,
+      "nvol": 4756900
+    }
+  ],
+  "top_sellers": []
+}

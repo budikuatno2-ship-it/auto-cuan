@@ -1,0 +1,411 @@
+{
+  "date": "2026-08-03",
+  "stock_code": "BMRI",
+  "net_status": "BIG_ACCUMULATION",
+  "net_label": "Big Accumulation",
+  "net_flow": 188109000,
+  "top_buyers": [
+    {
+      "broker": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "buy_vol": 13782600,
+      "buy_val": 57460342000,
+      "avg_price": 4169,
+      "net_val": 57460342000
+    },
+    {
+      "broker": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "buy_vol": 9856800,
+      "buy_val": 41084917000,
+      "avg_price": 4168,
+      "net_val": 41084917000
+    },
+    {
+      "broker": "PD",
+      "broker_name": "INDO PREMIER SEKURITAS",
+      "buy_vol": 7595800,
+      "buy_val": 31932578000,
+      "avg_price": 4204,
+      "net_val": 31932578000
+    },
+    {
+      "broker": "XL",
+      "broker_name": "STOCKBIT SEKURITAS DIGITAL",
+      "buy_vol": 6816700,
+      "buy_val": 28426897000,
+      "avg_price": 4170,
+      "net_val": 28426897000
+    },
+    {
+      "broker": "SQ",
+      "broker_name": "BCA SEKURITAS",
+      "buy_vol": 5081400,
+      "buy_val": 21172038000,
+      "avg_price": 4167,
+      "net_val": 21172038000
+    },
+    {
+      "broker": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "buy_vol": 3675800,
+      "buy_val": 15338388000,
+      "avg_price": 4173,
+      "net_val": 15338388000
+    },
+    {
+      "broker": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "buy_vol": 3674100,
+      "buy_val": 15312039000,
+      "avg_price": 4168,
+      "net_val": 15312039000
+    },
+    {
+      "broker": "YP",
+      "broker_name": "MIRAE ASSET SEKURITAS INDONESIA",
+      "buy_vol": 3415800,
+      "buy_val": 14243864000,
+      "avg_price": 4170,
+      "net_val": 14243864000
+    },
+    {
+      "broker": "XC",
+      "broker_name": "AJAIB SEKURITAS ASIA",
+      "buy_vol": 3362900,
+      "buy_val": 14019902000,
+      "avg_price": 4169,
+      "net_val": 14019902000
+    },
+    {
+      "broker": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "buy_vol": 3269000,
+      "buy_val": 13630533000,
+      "avg_price": 4170,
+      "net_val": 13630533000
+    },
+    {
+      "broker": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "buy_vol": 3049600,
+      "buy_val": 12722997000,
+      "avg_price": 4172,
+      "net_val": 12722997000
+    },
+    {
+      "broker": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "buy_vol": 2516200,
+      "buy_val": 10501176000,
+      "avg_price": 4173,
+      "net_val": 10501176000
+    },
+    {
+      "broker": "CP",
+      "broker_name": "KB VALBURY SEKURITAS",
+      "buy_vol": 1294700,
+      "buy_val": 5392147000,
+      "avg_price": 4165,
+      "net_val": 5392147000
+    },
+    {
+      "broker": "NI",
+      "broker_name": "BNI SEKURITAS",
+      "buy_vol": 1175400,
+      "buy_val": 4895787000,
+      "avg_price": 4165,
+      "net_val": 4895787000
+    },
+    {
+      "broker": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "buy_vol": 1130400,
+      "buy_val": 4729461000,
+      "avg_price": 4184,
+      "net_val": 4729461000
+    },
+    {
+      "broker": "IN",
+      "broker_name": "INVESTINDO NUSANTARA SEKURITAS",
+      "buy_vol": 1000000,
+      "buy_val": 4170000000,
+      "avg_price": 4170,
+      "net_val": 4170000000
+    },
+    {
+      "broker": "XA",
+      "broker_name": "NH KORINDO SEKURITAS INDONESIA",
+      "buy_vol": 858100,
+      "buy_val": 3586111000,
+      "avg_price": 4179,
+      "net_val": 3586111000
+    },
+    {
+      "broker": "DH",
+      "broker_name": "SINARMAS SEKURITAS",
+      "buy_vol": 760100,
+      "buy_val": 3179884000,
+      "avg_price": 4184,
+      "net_val": 3179884000
+    },
+    {
+      "broker": "AZ",
+      "broker_name": "SUCOR SEKURITAS",
+      "buy_vol": 652900,
+      "buy_val": 2719574000,
+      "avg_price": 4165,
+      "net_val": 2719574000
+    },
+    {
+      "broker": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "buy_vol": 591100,
+      "buy_val": 2464873000,
+      "avg_price": 4170,
+      "net_val": 2464873000
+    },
+    {
+      "broker": "KK",
+      "broker_name": "PHILLIP SEKURITAS INDONESIA",
+      "buy_vol": 543800,
+      "buy_val": 2265678000,
+      "avg_price": 4166,
+      "net_val": 2265678000
+    },
+    {
+      "broker": "GR",
+      "broker_name": "PANIN SEKURITAS TBK.",
+      "buy_vol": 351600,
+      "buy_val": 1464926000,
+      "avg_price": 4166,
+      "net_val": 1464926000
+    },
+    {
+      "broker": "DR",
+      "broker_name": "RHB SEKURITAS INDONESIA",
+      "buy_vol": 348300,
+      "buy_val": 1449833000,
+      "avg_price": 4163,
+      "net_val": 1449833000
+    },
+    {
+      "broker": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "buy_vol": 262800,
+      "buy_val": 1094888000,
+      "avg_price": 4166,
+      "net_val": 1094888000
+    },
+    {
+      "broker": "TP",
+      "broker_name": "OCBC SEKURITAS INDONESIA",
+      "buy_vol": 233800,
+      "buy_val": 974376000,
+      "avg_price": 4168,
+      "net_val": 974376000
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "sell_vol": 18856300,
+      "sell_val": 78640579000,
+      "avg_price": 4171,
+      "net_val": -78640579000
+    },
+    {
+      "broker": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "sell_vol": 9525900,
+      "sell_val": 39721901000,
+      "avg_price": 4170,
+      "net_val": -39721901000
+    },
+    {
+      "broker": "AG",
+      "broker_name": "KIWOOM SEKURITAS INDONESIA",
+      "sell_vol": 9237100,
+      "sell_val": 38526054000,
+      "avg_price": 4171,
+      "net_val": -38526054000
+    },
+    {
+      "broker": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "sell_vol": 6648600,
+      "sell_val": 27697178000,
+      "avg_price": 4166,
+      "net_val": -27697178000
+    },
+    {
+      "broker": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "sell_vol": 4140100,
+      "sell_val": 17301848000,
+      "avg_price": 4179,
+      "net_val": -17301848000
+    },
+    {
+      "broker": "XL",
+      "broker_name": "STOCKBIT SEKURITAS DIGITAL",
+      "sell_vol": 4087200,
+      "sell_val": 17045283000,
+      "avg_price": 4170,
+      "net_val": -17045283000
+    },
+    {
+      "broker": "SQ",
+      "broker_name": "BCA SEKURITAS",
+      "sell_vol": 3622900,
+      "sell_val": 15159003000,
+      "avg_price": 4184,
+      "net_val": -15159003000
+    },
+    {
+      "broker": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "sell_vol": 2988300,
+      "sell_val": 12485218000,
+      "avg_price": 4178,
+      "net_val": -12485218000
+    },
+    {
+      "broker": "YP",
+      "broker_name": "MIRAE ASSET SEKURITAS INDONESIA",
+      "sell_vol": 2510700,
+      "sell_val": 10490419000,
+      "avg_price": 4178,
+      "net_val": -10490419000
+    },
+    {
+      "broker": "XC",
+      "broker_name": "AJAIB SEKURITAS ASIA",
+      "sell_vol": 2505400,
+      "sell_val": 10433981000,
+      "avg_price": 4165,
+      "net_val": -10433981000
+    },
+    {
+      "broker": "CP",
+      "broker_name": "KB VALBURY SEKURITAS",
+      "sell_vol": 2433500,
+      "sell_val": 10165872000,
+      "avg_price": 4177,
+      "net_val": -10165872000
+    },
+    {
+      "broker": "NI",
+      "broker_name": "BNI SEKURITAS",
+      "sell_vol": 2132900,
+      "sell_val": 8882107000,
+      "avg_price": 4164,
+      "net_val": -8882107000
+    },
+    {
+      "broker": "PD",
+      "broker_name": "INDO PREMIER SEKURITAS",
+      "sell_vol": 1575500,
+      "sell_val": 6600366000,
+      "avg_price": 4189,
+      "net_val": -6600366000
+    },
+    {
+      "broker": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "sell_vol": 820800,
+      "sell_val": 3427800000,
+      "avg_price": 4176,
+      "net_val": -3427800000
+    },
+    {
+      "broker": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "sell_vol": 570100,
+      "sell_val": 2377262000,
+      "avg_price": 4170,
+      "net_val": -2377262000
+    },
+    {
+      "broker": "KK",
+      "broker_name": "PHILLIP SEKURITAS INDONESIA",
+      "sell_vol": 523800,
+      "sell_val": 2186959000,
+      "avg_price": 4175,
+      "net_val": -2186959000
+    },
+    {
+      "broker": "DH",
+      "broker_name": "SINARMAS SEKURITAS",
+      "sell_vol": 423400,
+      "sell_val": 1787710000,
+      "avg_price": 4222,
+      "net_val": -1787710000
+    },
+    {
+      "broker": "XA",
+      "broker_name": "NH KORINDO SEKURITAS INDONESIA",
+      "sell_vol": 422000,
+      "sell_val": 1772239000,
+      "avg_price": 4200,
+      "net_val": -1772239000
+    },
+    {
+      "broker": "GR",
+      "broker_name": "PANIN SEKURITAS TBK.",
+      "sell_vol": 395900,
+      "sell_val": 1657276000,
+      "avg_price": 4186,
+      "net_val": -1657276000
+    },
+    {
+      "broker": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "sell_vol": 321600,
+      "sell_val": 1353992000,
+      "avg_price": 4210,
+      "net_val": -1353992000
+    },
+    {
+      "broker": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "sell_vol": 314900,
+      "sell_val": 1313439000,
+      "avg_price": 4171,
+      "net_val": -1313439000
+    },
+    {
+      "broker": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "sell_vol": 307300,
+      "sell_val": 1289160000,
+      "avg_price": 4195,
+      "net_val": -1289160000
+    },
+    {
+      "broker": "AZ",
+      "broker_name": "SUCOR SEKURITAS",
+      "sell_vol": 302200,
+      "sell_val": 1260615000,
+      "avg_price": 4171,
+      "net_val": -1260615000
+    },
+    {
+      "broker": "BB",
+      "broker_name": "VERDHANA SEKURITAS INDONESIA",
+      "sell_vol": 300000,
+      "sell_val": 1251885000,
+      "avg_price": 4173,
+      "net_val": -1251885000
+    },
+    {
+      "broker": "DR",
+      "broker_name": "RHB SEKURITAS INDONESIA",
+      "sell_vol": 291800,
+      "sell_val": 1216954000,
+      "avg_price": 4171,
+      "net_val": -1216954000
+    }
+  ]
+}

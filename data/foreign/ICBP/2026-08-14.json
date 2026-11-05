@@ -1,0 +1,114 @@
+{
+  "stock_code": "ICBP",
+  "ticker": "ICBP",
+  "date": "2026-08-14",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 14813487500,
+      "bvol": 1948000,
+      "bfrq": 703,
+      "sfrq": 367,
+      "sval": 6013355000,
+      "svol": 790800,
+      "nval": 8800132500,
+      "nvol": 1157200
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 738430000,
+      "bvol": 96800,
+      "bfrq": 95,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 738430000,
+      "nvol": 96800
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 27447500,
+      "bvol": 3600,
+      "bfrq": 2,
+      "sfrq": 1,
+      "sval": 5337500,
+      "svol": 700,
+      "nval": 22110000,
+      "nvol": 2900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 59310000,
+      "bvol": 7800,
+      "bfrq": 6,
+      "sfrq": 7,
+      "sval": 42705000,
+      "svol": 5600,
+      "nval": 16605000,
+      "nvol": 2200
+    }
+  ],
+  "broker_net": 9577277500,
+  "net_flow": 9577277500,
+  "total_buy_val": 15638675000,
+  "total_sell_val": 6061397500,
+  "total_turnover": 15638675000,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 14813487500,
+      "bvol": 1948000,
+      "bfrq": 703,
+      "sfrq": 367,
+      "sval": 6013355000,
+      "svol": 790800,
+      "nval": 8800132500,
+      "nvol": 1157200
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 738430000,
+      "bvol": 96800,
+      "bfrq": 95,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 738430000,
+      "nvol": 96800
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 27447500,
+      "bvol": 3600,
+      "bfrq": 2,
+      "sfrq": 1,
+      "sval": 5337500,
+      "svol": 700,
+      "nval": 22110000,
+      "nvol": 2900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 59310000,
+      "bvol": 7800,
+      "bfrq": 6,
+      "sfrq": 7,
+      "sval": 42705000,
+      "svol": 5600,
+      "nval": 16605000,
+      "nvol": 2200
+    }
+  ],
+  "top_sellers": []
+}

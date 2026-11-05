@@ -1,0 +1,114 @@
+{
+  "stock_code": "ICBP",
+  "ticker": "ICBP",
+  "date": "2026-08-31",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 5015952500,
+      "bvol": 674700,
+      "bfrq": 173,
+      "sfrq": 134,
+      "sval": 2724230000,
+      "svol": 354700,
+      "nval": 2291722500,
+      "nvol": 320000
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1168880000,
+      "bvol": 153400,
+      "bfrq": 121,
+      "sfrq": 70,
+      "sval": 576615000,
+      "svol": 74700,
+      "nval": 592265000,
+      "nvol": 78700
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 460560000,
+      "bvol": 60600,
+      "bfrq": 6,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 460560000,
+      "nvol": 60600
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 306815000,
+      "bvol": 41400,
+      "bfrq": 20,
+      "sfrq": 5,
+      "sval": 74300000,
+      "svol": 10000,
+      "nval": 232515000,
+      "nvol": 31400
+    }
+  ],
+  "broker_net": 3577062500,
+  "net_flow": 3577062500,
+  "total_buy_val": 6952207500,
+  "total_sell_val": 3375145000,
+  "total_turnover": 6952207500,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 5015952500,
+      "bvol": 674700,
+      "bfrq": 173,
+      "sfrq": 134,
+      "sval": 2724230000,
+      "svol": 354700,
+      "nval": 2291722500,
+      "nvol": 320000
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1168880000,
+      "bvol": 153400,
+      "bfrq": 121,
+      "sfrq": 70,
+      "sval": 576615000,
+      "svol": 74700,
+      "nval": 592265000,
+      "nvol": 78700
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 460560000,
+      "bvol": 60600,
+      "bfrq": 6,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 460560000,
+      "nvol": 60600
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 306815000,
+      "bvol": 41400,
+      "bfrq": 20,
+      "sfrq": 5,
+      "sval": 74300000,
+      "svol": 10000,
+      "nval": 232515000,
+      "nvol": 31400
+    }
+  ],
+  "top_sellers": []
+}

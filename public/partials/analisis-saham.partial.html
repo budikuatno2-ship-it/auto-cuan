@@ -21,11 +21,15 @@
             </div>
             <div class="ana-ctx-row ana-ctx-row2">
                 <div id="analisisChartSubtabWrap" class="segx ana-sub" role="group" aria-label="Tampilan analisis">
-                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisSubTab('ai')">Analisis AI</button>
+                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('ai');">Analisis AI</button>
                     <!-- FIX-22: Chart Workstation is a first-class lens, directly
                          reachable as /analisis?tab=chart and from the sidebar. -->
-                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisSubTab('chart')" title="Chart Workstation">Chart Workstation</button>
-                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">Chart &amp; AI Vision</button>
+                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('chart');" title="Chart Workstation">Chart Workstation</button>
+                    <button id="tabBandarmologiSub" type="button" class="analisis-subtab" data-subtab="bandarmologi" onclick="switchAnalisisTab('bandarmologi')">Bandarmologi</button>
+                    <button id="tabSinyalIntelijenSub" type="button" class="analisis-subtab" data-subtab="intel" onclick="switchAnalisisTab('intel')">Sinyal Intelijen</button>
+                    <button id="tabBrokerHunterSub" type="button" class="analisis-subtab" data-subtab="hunter" onclick="switchAnalisisTab('hunter')">Broker Hunter</button>
+                    <button id="tabJejaringInsiderSub" type="button" class="analisis-subtab" data-subtab="insider" onclick="switchAnalisisTab('insider')">Jejaring Insider</button>
+                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">Chart & AI Vision</button>
                 </div>
                 <span class="chip b ana-stamp">Candle harian EOD</span>
                 <span class="ana-links" id="anaHeaderLinks"></span>
@@ -66,28 +70,110 @@
                             <div id="panelAnalisisText" style="display:none" aria-hidden="true">
                                 <div id="analisisResult"></div>
                             </div>
+                            <!-- Kartu Lencana Metode Terbaik Hasil Backtest Saham Ini (V4-F09) -->
+                            <div id="v4f09BacktestBadge" class="v4f09-badge-card mb-4 p-4 rounded-xl border border-emerald-500/25 bg-emerald-500/5" aria-label="Kartu Lencana Metode Terbaik Hasil Backtest Saham Ini">
+                                <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Kartu Lencana Metode Terbaik Hasil Backtest Saham Ini</span>
+                                    </div>
+                                    <span id="v4f09HorizonBadge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Horizon 5H</span>
+                                </div>
+                                <div class="text-sm sm:text-base font-bold text-[var(--ac-ink)] mb-3 flex items-center gap-2" id="v4f09BestMethodContainer">
+                                    <span class="text-xs text-[var(--ac-2)] font-normal">Metode Pemenang:</span>
+                                    <span id="v4f09BestMethodName" class="text-emerald-300 font-semibold">Aliran Asing vs Domestik + Filter Laporan Keuangan Q2</span>
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                    <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
+                                        <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Win Rate</span>
+                                        <b id="v4f09WinRate" class="text-sm font-mono font-bold text-emerald-400">38,5%</b>
+                                    </div>
+                                    <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
+                                        <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Profit Factor</span>
+                                        <b id="v4f09ProfitFactor" class="text-sm font-mono font-bold text-[var(--ac-ink)]">1,68</b>
+                                    </div>
+                                    <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
+                                        <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Expectancy</span>
+                                        <b id="v4f09Expectancy" class="text-sm font-mono font-bold text-emerald-400">+1,35%</b>
+                                    </div>
+                                    <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
+                                        <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Sampel Trade</span>
+                                        <b id="v4f09TradesCount" class="text-sm font-mono font-bold text-[var(--ac-ink)]">26 trade</b>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="ai-sec rise d0 mb-4">
-                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Rangkuman</h3>
-                                <p id="anaAiSummary" class="text-sm leading-relaxed text-[var(--ac-ink)]">Saham berkonsolidasi kuat di atas moving average jangka menengah dengan volume konfirmasi yang stabil. Arus dana pintar menunjukkan pola akumulasi terarah pada rentang support kunci.</p>
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Rangkuman Kuantitatif</h3>
+                                <p id="anaAiSummary" class="text-sm leading-relaxed text-[var(--ac-ink)]">Memuat data teknikal riil...</p>
                             </div>
                             <div class="ai-sec rise d1 mb-4">
-                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Bukti dari data</h3>
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Bukti dari data riil</h3>
                                 <ul id="anaAiEvidence" class="text-sm space-y-1.5 text-[var(--ac-ink)] pl-4 list-disc">
-                                    <li>Level support utama terjaga dengan formasi higher low pada candle harian.</li>
-                                    <li>Broker akumulasi institusi mencatatkan net buy konsisten dalam rentang 3–5 hari terakhir.</li>
-                                    <li>Rasio Risk/Reward terukur dengan potensi kenaikan menguji resistensi terdekat.</li>
+                                    <li>Memuat matriks bukti teknikal...</li>
                                 </ul>
                             </div>
                             <div class="ai-sec rise d2 mb-4">
-                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Risiko &amp; ketidakpastian</h3>
-                                <p id="anaAiRisk" class="text-sm leading-relaxed text-[var(--ac-warn-t)]">Waspadai tekanan jual jika indeks IHSG terkoreksi di bawah level pivot atau terjadi pembalikan arus modal asing secara mendadak.</p>
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Risiko & Batas Invalidasi</h3>
+                                <p id="anaAiRisk" class="text-sm leading-relaxed text-[var(--ac-warn-t)]">Memuat level invalidasi stop loss...</p>
                             </div>
                             <div class="ai-sec rise d3">
                                 <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Konteks yang dipakai</h3>
-                                <p class="mut text-xs text-[var(--ac-2)] leading-normal">Candle harian s.d. sesi terakhir &middot; snapshot LPM &amp; flow broker. Interpretasi model adalah pendukung keputusan berbasis probabilitas, bukan data sumber tunggal atau anjuran transaksi keuangan.</p>
+                                <p class="mut text-xs text-[var(--ac-2)] leading-normal">Candle harian s.d. sesi terakhir &middot; snapshot LPM & data pasar lokal riil. Analisis matematis deterministik tanpa asumsi spekulatif.</p>
+                            </div>
+                            <div class="ai-sec rise d4 v3f08-matrix" id="v3f08Matrix" aria-label="Matriks angka tegas dari data riil">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-0">4 Kartu Rencana Eksekusi Presisi &middot; Matriks Angka Data Riil</h3>
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-[var(--ac-raised)] text-emerald-400 border border-[var(--ac-hair)] font-bold">Rasio R:R (R/R): <span id="v3f08RR">Memuat&hellip;</span></span>
+                                </div>
+                                <div class="v3f08-grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px">
+                                    <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Area Entry Ideal (Area Entry)</span>
+                                        <b id="v3f08Entry" class="v3f08-mono num text-sm text-[var(--ac-ink)]">Memuat&hellip;</b>
+                                    </div>
+                                    <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Stop Loss (SL) &middot; SL + %risiko</span>
+                                        <b id="v3f08SL" class="v3f08-mono num text-sm text-rose-400">Memuat&hellip;</b>
+                                        <small id="v3f08Risk" class="v3f08-mono num mut text-xs text-rose-300 ml-1"></small>
+                                    </div>
+                                    <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Target Profit 1 (TP1)</span>
+                                        <b id="v3f08TP1" class="v3f08-mono num text-sm text-emerald-400">Memuat&hellip;</b>
+                                    </div>
+                                    <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Target Profit 2 (TP2)</span>
+                                        <b id="v3f08TP2" class="v3f08-mono num text-sm text-emerald-400">Memuat&hellip;</b>
+                                    </div>
+                                    <div class="v3f08-cell p-2.5 rounded-lg bg-[var(--ac-surface)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] text-[var(--ac-2)]">Support terdekat</span>
+                                        <b id="v3f08Support" class="v3f08-mono num text-xs">Memuat&hellip;</b>
+                                    </div>
+                                    <div class="v3f08-cell p-2.5 rounded-lg bg-[var(--ac-surface)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] text-[var(--ac-2)]">Resistance terdekat</span>
+                                        <b id="v3f08Resistance" class="v3f08-mono num text-xs">Memuat&hellip;</b>
+                                    </div>
+                                </div>
+                                <h4 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mt-4 mb-2">Tabel Matriks Angka Fibonacci Retracement & Extension (9 Baris Wajib) &middot; Swing High/Low Riil</h4>
+                                <div class="overflow-x-auto rounded-xl border border-[var(--ac-hair)]">
+                                    <table id="v3f08FiboTable" class="v3f08-fibo w-full text-xs" aria-label="Tabel Fibonacci dari swing high low riil">
+                                        <thead>
+                                            <tr class="border-b border-[var(--ac-hair)] bg-[var(--ac-raised)] text-[var(--ac-2)]">
+                                                <th class="py-2 px-3 text-left">Level % (Level Fibonacci)</th>
+                                                <th class="py-2 px-3 text-left">Rasio</th>
+                                                <th class="py-2 px-3 text-left">Harga (Rp)</th>
+                                                <th class="py-2 px-3 text-left">Jarak %</th>
+                                                <th class="py-2 px-3 text-left">Keterangan Tindakan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="v3f08FiboBody" class="divide-y divide-[var(--ac-hair)]">
+                                            <tr><td colspan="5" class="py-3 px-3 text-center text-gray-500">Memuat level Fibonacci riil&hellip;</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="mut text-xs leading-normal mt-2">Retracement 0,0% / 23,6% / 38,2% / 50,0% / 61,8% / 78,6% / 100,0% &middot; Extension 127,2% / 161,8% &middot; Swing <span id="v3f08Swing" class="v3f08-mono num">riil</span> &middot; <span id="v3f08AsOf">sesi terakhir</span></p>
                             </div>
                         </div>
-                        <div style="border-top:1px solid var(--ac-hair);padding:16px 20px;display:grid;gap:12px">
+<div style="border-top:1px solid var(--ac-hair);padding:16px 20px;display:grid;gap:12px">
                             <div id="unifiedChatMessages" class="unified-chat-messages" style="display:grid;gap:8px;max-height:240px;overflow-y:auto"></div>
                             <div id="anaAiThinking" class="think text-xs text-emerald-400 italic py-1" style="display:none">Menyusun jawaban dari konteks...</div>
                             <div style="display:flex;gap:6px;flex-wrap:wrap">

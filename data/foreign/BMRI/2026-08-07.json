@@ -1,0 +1,90 @@
+{
+  "stock_code": "BMRI",
+  "ticker": "BMRI",
+  "date": "2026-08-07",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 13380011000,
+      "bvol": 3160500,
+      "bfrq": 588,
+      "sfrq": 179,
+      "sval": 6638717000,
+      "svol": 1564700,
+      "nval": 6741294000,
+      "nvol": 1595800
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 38599123000,
+      "bvol": 9100800,
+      "bfrq": 1653,
+      "sfrq": 2656,
+      "sval": 34092647000,
+      "svol": 8054100,
+      "nval": 4506476000,
+      "nvol": 1046700
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 2933429000,
+      "bvol": 692400,
+      "bfrq": 270,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2933429000,
+      "nvol": 692400
+    }
+  ],
+  "broker_net": 14181199000,
+  "net_flow": 14181199000,
+  "total_buy_val": 54912563000,
+  "total_sell_val": 40731364000,
+  "total_turnover": 54912563000,
+  "top_buyers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 13380011000,
+      "bvol": 3160500,
+      "bfrq": 588,
+      "sfrq": 179,
+      "sval": 6638717000,
+      "svol": 1564700,
+      "nval": 6741294000,
+      "nvol": 1595800
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 38599123000,
+      "bvol": 9100800,
+      "bfrq": 1653,
+      "sfrq": 2656,
+      "sval": 34092647000,
+      "svol": 8054100,
+      "nval": 4506476000,
+      "nvol": 1046700
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 2933429000,
+      "bvol": 692400,
+      "bfrq": 270,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2933429000,
+      "nvol": 692400
+    }
+  ],
+  "top_sellers": []
+}

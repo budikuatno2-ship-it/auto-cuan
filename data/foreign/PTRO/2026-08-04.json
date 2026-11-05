@@ -1,0 +1,114 @@
+{
+  "stock_code": "PTRO",
+  "ticker": "PTRO",
+  "date": "2026-08-04",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 16709523000,
+      "bvol": 3639800,
+      "bfrq": 119,
+      "sfrq": 244,
+      "sval": 3274426000,
+      "svol": 711100,
+      "nval": 13435097000,
+      "nvol": 2928700
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 5345377000,
+      "bvol": 1159000,
+      "bfrq": 476,
+      "sfrq": 90,
+      "sval": 1956032000,
+      "svol": 425000,
+      "nval": 3389345000,
+      "nvol": 734000
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 7081625000,
+      "bvol": 1536000,
+      "bfrq": 241,
+      "sfrq": 295,
+      "sval": 4126053000,
+      "svol": 894400,
+      "nval": 2955572000,
+      "nvol": 641600
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 2817724000,
+      "bvol": 609500,
+      "bfrq": 133,
+      "sfrq": 49,
+      "sval": 437796000,
+      "svol": 94900,
+      "nval": 2379928000,
+      "nvol": 514600
+    }
+  ],
+  "broker_net": 22159942000,
+  "net_flow": 22159942000,
+  "total_buy_val": 31954249000,
+  "total_sell_val": 9794307000,
+  "total_turnover": 31954249000,
+  "top_buyers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 16709523000,
+      "bvol": 3639800,
+      "bfrq": 119,
+      "sfrq": 244,
+      "sval": 3274426000,
+      "svol": 711100,
+      "nval": 13435097000,
+      "nvol": 2928700
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 5345377000,
+      "bvol": 1159000,
+      "bfrq": 476,
+      "sfrq": 90,
+      "sval": 1956032000,
+      "svol": 425000,
+      "nval": 3389345000,
+      "nvol": 734000
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 7081625000,
+      "bvol": 1536000,
+      "bfrq": 241,
+      "sfrq": 295,
+      "sval": 4126053000,
+      "svol": 894400,
+      "nval": 2955572000,
+      "nvol": 641600
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 2817724000,
+      "bvol": 609500,
+      "bfrq": 133,
+      "sfrq": 49,
+      "sval": 437796000,
+      "svol": 94900,
+      "nval": 2379928000,
+      "nvol": 514600
+    }
+  ],
+  "top_sellers": []
+}

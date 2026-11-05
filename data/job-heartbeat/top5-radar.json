@@ -1,0 +1,18 @@
+{
+  "job": "top5-radar",
+  "jobName": "top5-radar",
+  "lastRun": "2026-11-04T16:16:07.936Z",
+  "lastStartWIB": "2026-11-04T16:16:07.936Z",
+  "lastEndWIB": "2026-11-04T16:16:07.936Z",
+  "status": "OK",
+  "exitCode": 0,
+  "durationMs": 42,
+  "requestsUsed": 0,
+  "updatedAt": "2026-11-04T16:16:07.936Z",
+  "locked_count": 5,
+  "categories_locked": {
+    "konglo": 5,
+    "nonkonglo": 5,
+    "daytrade": 5
+  }
+}

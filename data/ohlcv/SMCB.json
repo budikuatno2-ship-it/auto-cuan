@@ -1,0 +1,224 @@
+{
+  "ticker": "SMCB",
+  "symbol": "SMCB.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 26,
+  "latest": {
+    "date": "2026-11-02",
+    "open": 775,
+    "high": 775,
+    "low": 775,
+    "close": 775,
+    "volume": 0
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-29",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-30",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-01",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-02",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-05",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-06",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-07",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-08",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-09",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-12",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-13",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-14",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-15",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-16",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-19",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-20",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-21",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-22",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-23",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-26",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-27",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-28",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-29",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-30",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    },
+    {
+      "date": "2026-11-02",
+      "open": 775,
+      "high": 775,
+      "low": 775,
+      "close": 775,
+      "volume": 0
+    }
+  ]
+}

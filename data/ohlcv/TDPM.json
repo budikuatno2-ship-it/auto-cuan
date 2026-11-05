@@ -1,0 +1,120 @@
+{
+  "ticker": "TDPM",
+  "symbol": "TDPM.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 13,
+  "latest": {
+    "date": "2026-10-14",
+    "open": 119,
+    "high": 119,
+    "low": 119,
+    "close": 119,
+    "volume": 0
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-29",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-30",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-01",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-02",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-05",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-06",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-07",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-08",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-09",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-12",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-13",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-14",
+      "open": 119,
+      "high": 119,
+      "low": 119,
+      "close": 119,
+      "volume": 0
+    }
+  ]
+}

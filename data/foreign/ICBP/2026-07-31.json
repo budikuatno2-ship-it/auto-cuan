@@ -1,0 +1,138 @@
+{
+  "stock_code": "ICBP",
+  "ticker": "ICBP",
+  "date": "2026-07-31",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 3778040000,
+      "bvol": 539400,
+      "bfrq": 325,
+      "sfrq": 106,
+      "sval": 687175000,
+      "svol": 98100,
+      "nval": 3090865000,
+      "nvol": 441300
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 839910000,
+      "bvol": 119600,
+      "bfrq": 113,
+      "sfrq": 2,
+      "sval": 2107500,
+      "svol": 300,
+      "nval": 837802500,
+      "nvol": 119300
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 140427500,
+      "bvol": 20000,
+      "bfrq": 39,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 140427500,
+      "nvol": 20000
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 132067500,
+      "bvol": 18900,
+      "bfrq": 20,
+      "sfrq": 14,
+      "sval": 42890000,
+      "svol": 6100,
+      "nval": 89177500,
+      "nvol": 12800
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 3500000,
+      "bvol": 500,
+      "bfrq": 1,
+      "sfrq": 1,
+      "sval": 702500,
+      "svol": 100,
+      "nval": 2797500,
+      "nvol": 400
+    }
+  ],
+  "broker_net": 4161070000,
+  "net_flow": 4161070000,
+  "total_buy_val": 4893945000,
+  "total_sell_val": 732875000,
+  "total_turnover": 4893945000,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 3778040000,
+      "bvol": 539400,
+      "bfrq": 325,
+      "sfrq": 106,
+      "sval": 687175000,
+      "svol": 98100,
+      "nval": 3090865000,
+      "nvol": 441300
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 839910000,
+      "bvol": 119600,
+      "bfrq": 113,
+      "sfrq": 2,
+      "sval": 2107500,
+      "svol": 300,
+      "nval": 837802500,
+      "nvol": 119300
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 140427500,
+      "bvol": 20000,
+      "bfrq": 39,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 140427500,
+      "nvol": 20000
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 132067500,
+      "bvol": 18900,
+      "bfrq": 20,
+      "sfrq": 14,
+      "sval": 42890000,
+      "svol": 6100,
+      "nval": 89177500,
+      "nvol": 12800
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 3500000,
+      "bvol": 500,
+      "bfrq": 1,
+      "sfrq": 1,
+      "sval": 702500,
+      "svol": 100,
+      "nval": 2797500,
+      "nvol": 400
+    }
+  ],
+  "top_sellers": []
+}

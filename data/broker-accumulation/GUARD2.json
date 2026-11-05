@@ -1,0 +1,887 @@
+{
+  "ticker": "GUARD2",
+  "updated_at": "2026-11-04T13:13:49.510Z",
+  "start_date": "2026-09-04",
+  "end_date": "2026-09-04",
+  "total_sessions": 1,
+  "latest": {
+    "date": "2026-09-04",
+    "has_foreign": true,
+    "foreign_status": "RELEASED",
+    "bandar_vwap": null,
+    "tekanan_broker": 0,
+    "top3_buyers": [],
+    "windows": {
+      "1H": {
+        "all": {
+          "window_days": 1,
+          "target_window": 1,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        },
+        "foreign": {
+          "window_days": 0,
+          "target_window": 1,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        },
+        "domestic": {
+          "window_days": 0,
+          "target_window": 1,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        }
+      },
+      "3H": {
+        "all": {
+          "window_days": 1,
+          "target_window": 3,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        },
+        "foreign": {
+          "window_days": 0,
+          "target_window": 3,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        },
+        "domestic": {
+          "window_days": 0,
+          "target_window": 3,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        }
+      },
+      "5H": {
+        "all": {
+          "window_days": 1,
+          "target_window": 5,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        },
+        "foreign": {
+          "window_days": 0,
+          "target_window": 5,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        },
+        "domestic": {
+          "window_days": 0,
+          "target_window": 5,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        }
+      },
+      "10H": {
+        "all": {
+          "window_days": 1,
+          "target_window": 10,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        },
+        "foreign": {
+          "window_days": 0,
+          "target_window": 10,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        },
+        "domestic": {
+          "window_days": 0,
+          "target_window": 10,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        }
+      },
+      "20H": {
+        "all": {
+          "window_days": 1,
+          "target_window": 20,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        },
+        "foreign": {
+          "window_days": 0,
+          "target_window": 20,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        },
+        "domestic": {
+          "window_days": 0,
+          "target_window": 20,
+          "total_buy_lot": 0,
+          "total_sell_lot": 0,
+          "net_lot": 0,
+          "total_buy_val": 0,
+          "total_sell_val": 0,
+          "net_val": 0,
+          "avg_buy_price": 0,
+          "avg_sell_price": 0,
+          "top_buyers": [],
+          "top_sellers": [],
+          "top_buyer_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "top_seller_val": {
+            "k1": 0,
+            "k3": 0,
+            "k5": 0
+          },
+          "bs_ratio_3": 1,
+          "arah": "Netral"
+        }
+      }
+    },
+    "consistency": {
+      "all": {
+        "top_broker_20h": null,
+        "top_broker_name": null,
+        "net_buy_freq_10h": "0/1",
+        "net_buy_days_10h": 0,
+        "of_days": 1,
+        "streak": 0,
+        "total_net_val_20h": 0
+      },
+      "foreign": {
+        "top_broker_20h": null,
+        "top_broker_name": null,
+        "net_buy_freq_10h": "0/0",
+        "net_buy_days_10h": 0,
+        "of_days": 0,
+        "streak": 0,
+        "total_net_val_20h": 0
+      },
+      "domestic": {
+        "top_broker_20h": null,
+        "top_broker_name": null,
+        "net_buy_freq_10h": "0/0",
+        "net_buy_days_10h": 0,
+        "of_days": 0,
+        "streak": 0,
+        "total_net_val_20h": 0
+      }
+    }
+  },
+  "history": {
+    "2026-09-04": {
+      "date": "2026-09-04",
+      "has_foreign": true,
+      "foreign_status": "RELEASED",
+      "bandar_vwap": null,
+      "tekanan_broker": 0,
+      "top3_buyers": [],
+      "windows": {
+        "1H": {
+          "all": {
+            "window_days": 1,
+            "target_window": 1,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          },
+          "foreign": {
+            "window_days": 0,
+            "target_window": 1,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          },
+          "domestic": {
+            "window_days": 0,
+            "target_window": 1,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          }
+        },
+        "3H": {
+          "all": {
+            "window_days": 1,
+            "target_window": 3,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          },
+          "foreign": {
+            "window_days": 0,
+            "target_window": 3,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          },
+          "domestic": {
+            "window_days": 0,
+            "target_window": 3,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          }
+        },
+        "5H": {
+          "all": {
+            "window_days": 1,
+            "target_window": 5,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          },
+          "foreign": {
+            "window_days": 0,
+            "target_window": 5,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          },
+          "domestic": {
+            "window_days": 0,
+            "target_window": 5,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          }
+        },
+        "10H": {
+          "all": {
+            "window_days": 1,
+            "target_window": 10,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          },
+          "foreign": {
+            "window_days": 0,
+            "target_window": 10,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          },
+          "domestic": {
+            "window_days": 0,
+            "target_window": 10,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          }
+        },
+        "20H": {
+          "all": {
+            "window_days": 1,
+            "target_window": 20,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          },
+          "foreign": {
+            "window_days": 0,
+            "target_window": 20,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          },
+          "domestic": {
+            "window_days": 0,
+            "target_window": 20,
+            "total_buy_lot": 0,
+            "total_sell_lot": 0,
+            "net_lot": 0,
+            "total_buy_val": 0,
+            "total_sell_val": 0,
+            "net_val": 0,
+            "avg_buy_price": 0,
+            "avg_sell_price": 0,
+            "top_buyers": [],
+            "top_sellers": [],
+            "top_buyer_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "top_seller_val": {
+              "k1": 0,
+              "k3": 0,
+              "k5": 0
+            },
+            "bs_ratio_3": 1,
+            "arah": "Netral"
+          }
+        }
+      },
+      "consistency": {
+        "all": {
+          "top_broker_20h": null,
+          "top_broker_name": null,
+          "net_buy_freq_10h": "0/1",
+          "net_buy_days_10h": 0,
+          "of_days": 1,
+          "streak": 0,
+          "total_net_val_20h": 0
+        },
+        "foreign": {
+          "top_broker_20h": null,
+          "top_broker_name": null,
+          "net_buy_freq_10h": "0/0",
+          "net_buy_days_10h": 0,
+          "of_days": 0,
+          "streak": 0,
+          "total_net_val_20h": 0
+        },
+        "domestic": {
+          "top_broker_20h": null,
+          "top_broker_name": null,
+          "net_buy_freq_10h": "0/0",
+          "net_buy_days_10h": 0,
+          "of_days": 0,
+          "streak": 0,
+          "total_net_val_20h": 0
+        }
+      }
+    }
+  }
+}

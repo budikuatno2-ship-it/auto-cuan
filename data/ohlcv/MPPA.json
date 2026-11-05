@@ -1,0 +1,232 @@
+{
+  "ticker": "MPPA",
+  "symbol": "MPPA.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 27,
+  "latest": {
+    "date": "2026-11-03",
+    "open": 31,
+    "high": 31,
+    "low": 30,
+    "close": 30,
+    "volume": 17927400
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 35,
+      "high": 35,
+      "low": 35,
+      "close": 35,
+      "volume": 18795800
+    },
+    {
+      "date": "2026-09-29",
+      "open": 33,
+      "high": 34,
+      "low": 33,
+      "close": 34,
+      "volume": 47666400
+    },
+    {
+      "date": "2026-09-30",
+      "open": 35,
+      "high": 36,
+      "low": 35,
+      "close": 36,
+      "volume": 5820600
+    },
+    {
+      "date": "2026-10-01",
+      "open": 37,
+      "high": 37,
+      "low": 36,
+      "close": 36,
+      "volume": 5184600
+    },
+    {
+      "date": "2026-10-02",
+      "open": 36,
+      "high": 36,
+      "low": 36,
+      "close": 36,
+      "volume": 2265800
+    },
+    {
+      "date": "2026-10-05",
+      "open": 36,
+      "high": 36,
+      "low": 36,
+      "close": 36,
+      "volume": 3762000
+    },
+    {
+      "date": "2026-10-06",
+      "open": 37,
+      "high": 38,
+      "low": 37,
+      "close": 38,
+      "volume": 6354100
+    },
+    {
+      "date": "2026-10-07",
+      "open": 39,
+      "high": 39,
+      "low": 38,
+      "close": 38,
+      "volume": 10719200
+    },
+    {
+      "date": "2026-10-08",
+      "open": 41,
+      "high": 41,
+      "low": 41,
+      "close": 41,
+      "volume": 15950200
+    },
+    {
+      "date": "2026-10-09",
+      "open": 43,
+      "high": 43,
+      "low": 40,
+      "close": 40,
+      "volume": 13488500
+    },
+    {
+      "date": "2026-10-12",
+      "open": 39,
+      "high": 40,
+      "low": 39,
+      "close": 39,
+      "volume": 8720500
+    },
+    {
+      "date": "2026-10-13",
+      "open": 39,
+      "high": 39,
+      "low": 39,
+      "close": 39,
+      "volume": 1696900
+    },
+    {
+      "date": "2026-10-14",
+      "open": 39,
+      "high": 39,
+      "low": 38,
+      "close": 39,
+      "volume": 10653800
+    },
+    {
+      "date": "2026-10-15",
+      "open": 38,
+      "high": 39,
+      "low": 38,
+      "close": 39,
+      "volume": 6864600
+    },
+    {
+      "date": "2026-10-16",
+      "open": 36,
+      "high": 36,
+      "low": 36,
+      "close": 36,
+      "volume": 943300
+    },
+    {
+      "date": "2026-10-19",
+      "open": 33,
+      "high": 33,
+      "low": 33,
+      "close": 33,
+      "volume": 2321400
+    },
+    {
+      "date": "2026-10-20",
+      "open": 33,
+      "high": 35,
+      "low": 33,
+      "close": 34,
+      "volume": 50892100
+    },
+    {
+      "date": "2026-10-21",
+      "open": 34,
+      "high": 34,
+      "low": 33,
+      "close": 33,
+      "volume": 20922600
+    },
+    {
+      "date": "2026-10-22",
+      "open": 33,
+      "high": 35,
+      "low": 33,
+      "close": 35,
+      "volume": 21274700
+    },
+    {
+      "date": "2026-10-23",
+      "open": 36,
+      "high": 38,
+      "low": 36,
+      "close": 37,
+      "volume": 25244600
+    },
+    {
+      "date": "2026-10-26",
+      "open": 38,
+      "high": 39,
+      "low": 38,
+      "close": 39,
+      "volume": 14101000
+    },
+    {
+      "date": "2026-10-27",
+      "open": 40,
+      "high": 40,
+      "low": 39,
+      "close": 39,
+      "volume": 20059400
+    },
+    {
+      "date": "2026-10-28",
+      "open": 38,
+      "high": 39,
+      "low": 37,
+      "close": 39,
+      "volume": 8713300
+    },
+    {
+      "date": "2026-10-29",
+      "open": 38,
+      "high": 38,
+      "low": 36,
+      "close": 36,
+      "volume": 17366600
+    },
+    {
+      "date": "2026-10-30",
+      "open": 36,
+      "high": 36,
+      "low": 34,
+      "close": 34,
+      "volume": 55510500
+    },
+    {
+      "date": "2026-11-02",
+      "open": 32,
+      "high": 34,
+      "low": 32,
+      "close": 32,
+      "volume": 72003800
+    },
+    {
+      "date": "2026-11-03",
+      "open": 31,
+      "high": 31,
+      "low": 30,
+      "close": 30,
+      "volume": 17927400
+    }
+  ]
+}

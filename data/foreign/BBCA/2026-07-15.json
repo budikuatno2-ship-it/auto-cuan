@@ -1,0 +1,138 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-07-15",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 187096130000,
+      "bvol": 30533900,
+      "bfrq": 2437,
+      "sfrq": 14,
+      "sval": 7358575000,
+      "svol": 1201400,
+      "nval": 179737555000,
+      "nvol": 29332500
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 13797902500,
+      "bvol": 2250300,
+      "bfrq": 444,
+      "sfrq": 41,
+      "sval": 407972500,
+      "svol": 66200,
+      "nval": 13389930000,
+      "nvol": 2184100
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 53104857500,
+      "bvol": 8636700,
+      "bfrq": 753,
+      "sfrq": 1109,
+      "sval": 42622120000,
+      "svol": 6958700,
+      "nval": 10482737500,
+      "nvol": 1678000
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 14540110000,
+      "bvol": 2370500,
+      "bfrq": 455,
+      "sfrq": 198,
+      "sval": 7131565000,
+      "svol": 1166600,
+      "nval": 7408545000,
+      "nvol": 1203900
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2363245000,
+      "bvol": 385000,
+      "bfrq": 119,
+      "sfrq": 22,
+      "sval": 954972500,
+      "svol": 155900,
+      "nval": 1408272500,
+      "nvol": 229100
+    }
+  ],
+  "broker_net": 212427040000,
+  "net_flow": 212427040000,
+  "total_buy_val": 270902245000,
+  "total_sell_val": 58475205000,
+  "total_turnover": 270902245000,
+  "top_buyers": [
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 187096130000,
+      "bvol": 30533900,
+      "bfrq": 2437,
+      "sfrq": 14,
+      "sval": 7358575000,
+      "svol": 1201400,
+      "nval": 179737555000,
+      "nvol": 29332500
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 13797902500,
+      "bvol": 2250300,
+      "bfrq": 444,
+      "sfrq": 41,
+      "sval": 407972500,
+      "svol": 66200,
+      "nval": 13389930000,
+      "nvol": 2184100
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 53104857500,
+      "bvol": 8636700,
+      "bfrq": 753,
+      "sfrq": 1109,
+      "sval": 42622120000,
+      "svol": 6958700,
+      "nval": 10482737500,
+      "nvol": 1678000
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 14540110000,
+      "bvol": 2370500,
+      "bfrq": 455,
+      "sfrq": 198,
+      "sval": 7131565000,
+      "svol": 1166600,
+      "nval": 7408545000,
+      "nvol": 1203900
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2363245000,
+      "bvol": 385000,
+      "bfrq": 119,
+      "sfrq": 22,
+      "sval": 954972500,
+      "svol": 155900,
+      "nval": 1408272500,
+      "nvol": 229100
+    }
+  ],
+  "top_sellers": []
+}

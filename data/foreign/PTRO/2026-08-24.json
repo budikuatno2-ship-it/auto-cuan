@@ -1,0 +1,90 @@
+{
+  "stock_code": "PTRO",
+  "ticker": "PTRO",
+  "date": "2026-08-24",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 6931245000,
+      "bvol": 1333900,
+      "bfrq": 166,
+      "sfrq": 135,
+      "sval": 1721580000,
+      "svol": 331000,
+      "nval": 5209665000,
+      "nvol": 1002900
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 4847712500,
+      "bvol": 932600,
+      "bfrq": 298,
+      "sfrq": 180,
+      "sval": 1631805000,
+      "svol": 314600,
+      "nval": 3215907500,
+      "nvol": 618000
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1640090000,
+      "bvol": 317000,
+      "bfrq": 144,
+      "sfrq": 26,
+      "sval": 184960000,
+      "svol": 35600,
+      "nval": 1455130000,
+      "nvol": 281400
+    }
+  ],
+  "broker_net": 9880702500,
+  "net_flow": 9880702500,
+  "total_buy_val": 13419047500,
+  "total_sell_val": 3538345000,
+  "total_turnover": 13419047500,
+  "top_buyers": [
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 6931245000,
+      "bvol": 1333900,
+      "bfrq": 166,
+      "sfrq": 135,
+      "sval": 1721580000,
+      "svol": 331000,
+      "nval": 5209665000,
+      "nvol": 1002900
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 4847712500,
+      "bvol": 932600,
+      "bfrq": 298,
+      "sfrq": 180,
+      "sval": 1631805000,
+      "svol": 314600,
+      "nval": 3215907500,
+      "nvol": 618000
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1640090000,
+      "bvol": 317000,
+      "bfrq": 144,
+      "sfrq": 26,
+      "sval": 184960000,
+      "svol": 35600,
+      "nval": 1455130000,
+      "nvol": 281400
+    }
+  ],
+  "top_sellers": []
+}

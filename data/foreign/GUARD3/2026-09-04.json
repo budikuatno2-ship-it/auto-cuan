@@ -1,0 +1,18 @@
+{
+  "stock_code": "GUARD3",
+  "ticker": "GUARD3",
+  "date": "2026-09-04",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [],
+  "broker_net": 0,
+  "net_flow": 0,
+  "total_buy_val": 0,
+  "total_sell_val": 0,
+  "total_buy_vol": 0,
+  "total_volume": 0,
+  "total_turnover": 0,
+  "top_buyers": [],
+  "top_sellers": []
+}

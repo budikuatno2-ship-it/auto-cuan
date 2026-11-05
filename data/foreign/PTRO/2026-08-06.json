@@ -1,0 +1,90 @@
+{
+  "stock_code": "PTRO",
+  "ticker": "PTRO",
+  "date": "2026-08-06",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 64883002000,
+      "bvol": 13091800,
+      "bfrq": 4574,
+      "sfrq": 1848,
+      "sval": 31231311000,
+      "svol": 6351700,
+      "nval": 33651691000,
+      "nvol": 6740100
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 25781171500,
+      "bvol": 5243600,
+      "bfrq": 1279,
+      "sfrq": 102,
+      "sval": 3855976500,
+      "svol": 769200,
+      "nval": 21925195000,
+      "nvol": 4474400
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 3654274000,
+      "bvol": 738500,
+      "bfrq": 263,
+      "sfrq": 332,
+      "sval": 3167295000,
+      "svol": 633600,
+      "nval": 486979000,
+      "nvol": 104900
+    }
+  ],
+  "broker_net": 56063865000,
+  "net_flow": 56063865000,
+  "total_buy_val": 94318447500,
+  "total_sell_val": 38254582500,
+  "total_turnover": 94318447500,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 64883002000,
+      "bvol": 13091800,
+      "bfrq": 4574,
+      "sfrq": 1848,
+      "sval": 31231311000,
+      "svol": 6351700,
+      "nval": 33651691000,
+      "nvol": 6740100
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 25781171500,
+      "bvol": 5243600,
+      "bfrq": 1279,
+      "sfrq": 102,
+      "sval": 3855976500,
+      "svol": 769200,
+      "nval": 21925195000,
+      "nvol": 4474400
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 3654274000,
+      "bvol": 738500,
+      "bfrq": 263,
+      "sfrq": 332,
+      "sval": 3167295000,
+      "svol": 633600,
+      "nval": 486979000,
+      "nvol": 104900
+    }
+  ],
+  "top_sellers": []
+}

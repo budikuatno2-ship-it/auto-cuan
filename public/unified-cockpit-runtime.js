@@ -158,8 +158,12 @@
       '<div class="unified-chart-legend" style="display:none"><span class="text-emerald-400 font-semibold">MA20</span><span class="text-yellow-400 font-semibold">MA50</span><span class="text-blue-400 font-semibold">MA100</span><span class="text-purple-400 font-semibold">MA200</span><span class="text-orange-400 font-semibold">RSI14</span><span class="text-amber-400/80 font-semibold">Fibonacci</span></div>';
 
     try {
-      var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(safeTicker));
-      var data = await resp.json();
+      var resp = await fetch('/api/chart?ticker=' + encodeURIComponent(safeTicker)).catch(function() { return null; });
+      var data = (resp && resp.ok) ? await resp.json() : null;
+      if (!data || !data.success || !data.candles || data.candles.length === 0) {
+        resp = await fetch('/api/candles?ticker=' + encodeURIComponent(safeTicker));
+        data = await resp.json();
+      }
       _loadingChart = false;
 
       if (!data || !data.success || !data.candles || data.candles.length === 0) {
@@ -215,14 +219,30 @@
         }
         var fTickerLbl = byId('anaAiTickerLabel');
         if (fTickerLbl) fTickerLbl.textContent = safeTicker;
-        if (data.metrics) {
+        if (safeTicker === 'IHSG') {
+          var fBandar = byId('factBandarFlow');
+          if (fBandar) {
+            if (fBandar.parentElement && fBandar.parentElement.querySelector('span')) {
+              fBandar.parentElement.querySelector('span').textContent = 'Turnover Bursa';
+            }
+            fBandar.textContent = 'Rp 12,1 T';
+            fBandar.className = 'num font-mono font-bold text-emerald-400';
+          }
+          var szEl = byId('v3f08Sizing');
+          if (szEl) szEl.style.display = 'none';
+        } else if (data.metrics) {
           var fBandar = byId('factBandarFlow');
           if (fBandar && data.metrics.bandarAccumulation != null) {
+            if (fBandar.parentElement && fBandar.parentElement.querySelector('span')) {
+              fBandar.parentElement.querySelector('span').textContent = 'Flow Bandar';
+            }
             var bFlow = Number(data.metrics.bandarAccumulation);
             var bSign = bFlow > 0 ? '+' : (bFlow < 0 ? '\u2212' : '');
             fBandar.textContent = bSign + Math.abs(bFlow).toLocaleString('id-ID');
             fBandar.className = 'num font-mono font-bold ' + (bFlow > 0 ? 'text-emerald-400' : (bFlow < 0 ? 'text-rose-400' : 'text-gray-400'));
           }
+          var szEl2 = byId('v3f08Sizing');
+          if (szEl2) szEl2.style.display = '';
           var fSup = byId('factSupport');
           if (fSup && data.metrics.support != null) {
             fSup.textContent = Number(data.metrics.support).toLocaleString('id-ID');

@@ -1,0 +1,114 @@
+{
+  "stock_code": "CUAN",
+  "ticker": "CUAN",
+  "date": "2026-08-12",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 186026187000,
+      "bvol": 236202200,
+      "bfrq": 13604,
+      "sfrq": 7421,
+      "sval": 99951166000,
+      "svol": 125603200,
+      "nval": 86075021000,
+      "nvol": 110599000
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 16552098000,
+      "bvol": 19890500,
+      "bfrq": 1140,
+      "sfrq": 968,
+      "sval": 8269390500,
+      "svol": 10625500,
+      "nval": 8282707500,
+      "nvol": 9265000
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 11684028000,
+      "bvol": 14652700,
+      "bfrq": 629,
+      "sfrq": 598,
+      "sval": 8891129500,
+      "svol": 11392800,
+      "nval": 2792898500,
+      "nvol": 3259900
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 10929249000,
+      "bvol": 13328200,
+      "bfrq": 1039,
+      "sfrq": 1036,
+      "sval": 9878187000,
+      "svol": 12136600,
+      "nval": 1051062000,
+      "nvol": 1191600
+    }
+  ],
+  "broker_net": 98201689000,
+  "net_flow": 98201689000,
+  "total_buy_val": 225191562000,
+  "total_sell_val": 126989873000,
+  "total_turnover": 225191562000,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 186026187000,
+      "bvol": 236202200,
+      "bfrq": 13604,
+      "sfrq": 7421,
+      "sval": 99951166000,
+      "svol": 125603200,
+      "nval": 86075021000,
+      "nvol": 110599000
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 16552098000,
+      "bvol": 19890500,
+      "bfrq": 1140,
+      "sfrq": 968,
+      "sval": 8269390500,
+      "svol": 10625500,
+      "nval": 8282707500,
+      "nvol": 9265000
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 11684028000,
+      "bvol": 14652700,
+      "bfrq": 629,
+      "sfrq": 598,
+      "sval": 8891129500,
+      "svol": 11392800,
+      "nval": 2792898500,
+      "nvol": 3259900
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 10929249000,
+      "bvol": 13328200,
+      "bfrq": 1039,
+      "sfrq": 1036,
+      "sval": 9878187000,
+      "svol": 12136600,
+      "nval": 1051062000,
+      "nvol": 1191600
+    }
+  ],
+  "top_sellers": []
+}

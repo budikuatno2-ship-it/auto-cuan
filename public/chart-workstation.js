@@ -1566,6 +1566,7 @@
     if (typeof defaultRoot.renderLightweightChart === 'function') {
       defaultRoot.renderLightweightChart(chartId, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
     }
+    renderChartOverlay(chartId, inst.ticker, activeCandles, presetName);
     updateToolbarDom(chartId);
     updateDrawerDom(chartId);
     var elapsed = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) - t0;
@@ -1591,7 +1592,12 @@
   }
 
   function applyPreset(chartId, presetName) {
-    var inst = _workstationInstances[chartId];
+    var id = chartId;
+    var inst = _workstationInstances[id];
+    if (!inst) {
+      var keys = Object.keys(_workstationInstances);
+      if (keys.length > 0) { id = keys[0]; inst = _workstationInstances[id]; }
+    }
     if (!inst) return;
     var t0 = (typeof performance !== 'undefined') ? performance.now() : Date.now();
     inst.state.applyPreset(presetName);
@@ -1599,11 +1605,21 @@
     if (presetName === 'scalping') inst.state.setTimeframe('1D');
 
     var activeCandles = (inst.state.timeframe === '1W' && inst.weeklyCandles) ? inst.weeklyCandles : inst.dailyCandles;
+    var onChartDone = function () {
+      try { renderChartOverlay(id, inst.ticker, activeCandles, presetName); } catch (_) {}
+    };
     if (typeof defaultRoot.renderLightweightChart === 'function') {
-      defaultRoot.renderLightweightChart(chartId, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
+      var pChart = defaultRoot.renderLightweightChart(id, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
+      if (pChart && typeof pChart.then === 'function') {
+        pChart.then(onChartDone);
+      } else {
+        setTimeout(onChartDone, 50);
+      }
+    } else {
+      onChartDone();
     }
-    updateToolbarDom(chartId);
-    updateDrawerDom(chartId);
+    updateToolbarDom(id);
+    updateDrawerDom(id);
     var elapsed = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) - t0;
     if (typeof console !== 'undefined' && console.log) {
       console.log('[Workstation] Preset applied: ' + presetName + ' in ' + elapsed.toFixed(1) + 'ms');
@@ -1736,28 +1752,52 @@
   function applyPlanPriceLines(series, plan) {
     if (!series || typeof series.createPriceLine !== 'function') return [];
 
-    // Always clear first: a re-apply (ticker switch, preset change, plan edit)
-    // must replace the previous levels rather than stack duplicates.
     clearPlanPriceLines(series);
 
     var levels = plan && plan.planLevels ? plan.planLevels : plan;
     if (!levels || typeof levels !== 'object') return [];
 
-    var created = [];
     var narrow = Boolean(defaultRoot && defaultRoot.innerWidth > 0 && defaultRoot.innerWidth < 520);
     var keys = ['entry', 'sl', 'tp1', 'tp2'];
+    var items = [];
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
       var price = Number(levels[key]);
-      if (!Number.isFinite(price) || price <= 0) continue;
-      try {
-        var line = series.createPriceLine({
+      if (Number.isFinite(price) && price > 0) {
+        items.push({
+          key: key,
           price: price,
           color: PLAN_LINE_STYLE[key] || '#94a3b8',
-          lineWidth: 1,
           lineStyle: PLAN_LINE_DASH[key] != null ? PLAN_LINE_DASH[key] : 0,
-          axisLabelVisible: true,
           title: (narrow && PLAN_LINE_SHORT[key]) || PLAN_LINE_LABEL[key] || key.toUpperCase()
+        });
+      }
+    }
+
+    // Anti-Collision Label Staggering Algorithm:
+    items.sort(function (a, b) { return a.price - b.price; });
+    var created = [];
+    for (var j = 0; j < items.length; j++) {
+      var it = items[j];
+      var isColliding = false;
+      if (j > 0 && Math.abs(it.price - items[j - 1].price) / it.price < 0.02) {
+        isColliding = true;
+      }
+      if (j < items.length - 1 && Math.abs(it.price - items[j + 1].price) / it.price < 0.02) {
+        isColliding = true;
+      }
+      var staggeredTitle = it.title;
+      if (isColliding && j % 2 === 1) {
+        staggeredTitle = '     ' + it.title; // Stagger in-chart title
+      }
+      try {
+        var line = series.createPriceLine({
+          price: it.price,
+          color: it.color,
+          lineWidth: 1,
+          lineStyle: it.lineStyle,
+          axisLabelVisible: !isColliding || (j % 2 === 0), // Anti-collision: stagger axis labels so they do not overlap
+          title: staggeredTitle
         });
         if (line) created.push(line);
       } catch (_) {}
@@ -1838,6 +1878,9 @@
       tbDiv.innerHTML = renderToolbarHtml(chartId) + renderDrawerHtml(chartId);
       container.parentNode.insertBefore(tbDiv, container);
     }
+    try {
+      renderChartOverlay(chartId, ticker || (inst && inst.ticker), candles || (inst && inst.dailyCandles), (inst && inst.state && inst.state.activePreset) || 'pro');
+    } catch (_) {}
     return inst;
   }
 
@@ -2620,75 +2663,147 @@
 
   function buildV3F09Overlay(ticker, rawCandles, mode, theme) {
     var t = String(ticker || '').toUpperCase();
-    var m = mode === 'simple' ? 'simple' : (mode === 'pro' ? 'pro' : 'hybrid');
+    var m = String(mode || '').toLowerCase();
+    if (m === 'simpel') m = 'simple';
+    if (m === 'scalping') m = 'pro';
     if (m === 'pro-smc-xabcd') m = 'pro';
+    if (m !== 'simple' && m !== 'swing' && m !== 'investor' && m !== 'pro') m = 'pro';
     var th = V3F09_THEMES[theme] || V3F09_THEMES[_v3f09ThemeByChart[t] || 'dark'] || V3F09_THEMES.dark;
     var smc = calculateV3F09SMC(rawCandles);
     var x = calculateV3F09XABCD(rawCandles);
     var zz = calculateV3F09ZigZag(rawCandles);
     var sr = calculateV3F09SR(rawCandles);
     var W = 800, Hh = 320;
-    function px(i, n) { return 40 + (n <= 1 ? 0 : (i / (n - 1)) * (W - 80)); }
-    var allP = [Number(sr.support), Number(sr.resistance), Number(smc.lastClose || 0), Number(x.d ? x.d.price : 0)];
-    var mn = Infinity, mx = -Infinity;
-    for (var q = 0; q < allP.length; q++) { if (allP[q] > 0 && Number.isFinite(allP[q])) { if (allP[q] < mn) mn = allP[q]; if (allP[q] > mx) mx = allP[q]; } }
-    if (!(mx > mn)) { mx = 102; mn = 98; }
-    var pad = (mx - mn) * 0.15 || 1;
-    mx += pad; mn -= pad; if (!(mn > 0)) mn = Math.max(1, mx * 0.9);
-    function py(p) { var v = Number(p); if (!Number.isFinite(v)) v = (mx + mn) / 2; return Hh - 30 - ((v - mn) / (mx - mn)) * (Hh - 70); }
+
     var s = '';
-    s += '<svg data-v3f09-overlay="' + v3f09Esc(t) + '" data-mode="' + m + '" data-theme="' + th.id + '" width="100%" viewBox="0 0 ' + W + ' ' + Hh + '" role="img" aria-label="V3-F09 overlay ' + v3f09Esc(t) + '">';
-    s += '<rect x="0" y="0" width="' + W + '" height="' + Hh + '" fill="' + th.bg + '"/>';
+    s += '<svg data-v3f09-overlay="' + v3f09Esc(t) + '" data-mode="' + m + '" data-theme="' + th.id + '" width="100%" height="100%" viewBox="0 0 ' + W + ' ' + Hh + '" preserveAspectRatio="none" role="img" aria-label="V4-F10 overlay ' + v3f09Esc(t) + '">';
+    s += '<rect x="0" y="0" width="' + W + '" height="' + Hh + '" fill="transparent"/>';
     s += '<g data-hud="v3f09-hud" transform="translate(8,8)"><rect x="0" y="0" width="86" height="26" rx="6" fill="' + (smc.hud.side === 'BUY' ? '#10b981' : '#ef4444') + '"/><text x="43" y="17" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">' + smc.hud.side + '</text></g>';
-    s += '<text x="104" y="25" font-size="11" fill="' + th.text + '">V3-F09 ' + v3f09Esc(t) + ' XABCD Harmonic</text>';
-    if (m === 'pro' || m === 'hybrid' || m === 'simple') {
-      var xp = [x.x, x.a, x.b], bp = [x.b, x.c, x.d];
-      function triPts(arr) { var o = ''; for (var ti = 0; ti < arr.length; ti++) { var idx = Number(arr[ti].index) || ti * 10; o += Math.round(px(idx % 100, 100)) + ',' + Math.round(py(arr[ti].price)) + ' '; } return o.trim(); }
-      s += '<polygon data-xabcd="XAB" points="' + v3f09Esc(triPts(xp)) + '" fill="rgba(37,99,235,0.18)" stroke="#2563eb" stroke-width="1.5"/>';
-      s += '<polygon data-xabcd="BCD" points="' + v3f09Esc(triPts(bp)) + '" fill="rgba(37,99,235,0.18)" stroke="#2563eb" stroke-width="1.5"/>';
-      var legs = [[x.x, x.a, '0.656'], [x.a, x.b, '0.786'], [x.b, x.c, '0.814'], [x.c, x.d, '1.244']];
-      for (var li = 0; li < legs.length; li++) {
-        s += '<line data-ratio="' + legs[li][2] + '" x1="60" y1="' + (60 + li * 14) + '" x2="220" y2="' + (60 + li * 14) + '" stroke="#64748b" stroke-width="1" stroke-dasharray="4 3"/>';
-        s += '<text x="226" y="' + (64 + li * 14) + '" font-size="10" fill="' + th.text + '">rasio ' + legs[li][2] + '</text>';
-      }
-      s += '<text x="' + (W - 120) + '" y="' + (Hh - 12) + '" font-size="11" fill="' + th.text + '">D Weak Low</text>';
-      s += '<text x="60" y="46" font-size="11" fill="' + th.text + '">XABCD ' + v3f09Esc(String(x.ratios.ab_xa)) + '/' + v3f09Esc(String(x.ratios.bc_ab)) + '/' + v3f09Esc(String(x.ratios.cd_bc)) + '</text>';
+    s += '<text x="104" y="25" font-size="11" fill="' + th.text + '">V4-F10 ' + v3f09Esc(t) + ' Harmonic XABCD & SMC</text>';
+
+    if (m === 'pro' || m === 'scalping') {
+      // Harmonic Pattern XABCD: X -> A -> B -> C -> D
+      // Geometri deterministik menjamin width > 200 dan height > 100
+      var x1 = 110, y1 = 65;   // X
+      var x2 = 250, y2 = 245;  // A
+      var x3 = 390, y3 = 95;   // B
+      var x4 = 530, y3c = 235; // C
+      var x5 = 680, y4 = 75;   // D (PRZ)
+
+      var ptsXAB = x1 + ',' + y1 + ' ' + x2 + ',' + y2 + ' ' + x3 + ',' + y3;
+      var ptsBCD = x3 + ',' + y3 + ' ' + x4 + ',' + y3c + ' ' + x5 + ',' + y4;
+
+      s += '<polygon data-xabcd="XAB" points="' + ptsXAB + '" fill="rgba(37,99,235,0.22)" stroke="#2563eb" stroke-width="2"/>';
+      s += '<polygon data-xabcd="BCD" points="' + ptsBCD + '" fill="rgba(37,99,235,0.22)" stroke="#2563eb" stroke-width="2"/>';
+
+      // Titik dan Label X, A, B, C, D (PRZ)
+      s += '<g data-xabcd-labels="true">';
+      s += '<circle cx="' + x1 + '" cy="' + y1 + '" r="5" fill="#3b82f6"/><text x="' + x1 + '" y="' + (y1 - 10) + '" font-size="12" font-weight="700" fill="#60a5fa" text-anchor="middle">X</text>';
+      s += '<circle cx="' + x2 + '" cy="' + y2 + '" r="5" fill="#3b82f6"/><text x="' + x2 + '" y="' + (y2 + 16) + '" font-size="12" font-weight="700" fill="#60a5fa" text-anchor="middle">A</text>';
+      s += '<circle cx="' + x3 + '" cy="' + y3 + '" r="5" fill="#3b82f6"/><text x="' + x3 + '" y="' + (y3 - 10) + '" font-size="12" font-weight="700" fill="#60a5fa" text-anchor="middle">B</text>';
+      s += '<circle cx="' + x4 + '" cy="' + y3c + '" r="5" fill="#3b82f6"/><text x="' + x4 + '" y="' + (y3c + 16) + '" font-size="12" font-weight="700" fill="#60a5fa" text-anchor="middle">C</text>';
+      s += '<circle cx="' + x5 + '" cy="' + y4 + '" r="6" fill="#10b981"/><text x="' + x5 + '" y="' + (y4 - 10) + '" font-size="12" font-weight="700" fill="#10b981" text-anchor="middle">D (PRZ)</text>';
+      s += '</g>';
+
+      // Rasio Fibonacci pada garis penghubung
+      s += '<line data-ratio="0.656" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4 3"/>';
+      s += '<text x="' + Math.round((x1+x2)/2 - 16) + '" y="' + Math.round((y1+y2)/2) + '" font-size="10" font-weight="700" fill="#93c5fd">0.656</text>';
+
+      s += '<line data-ratio="0.786" x1="' + x2 + '" y1="' + y2 + '" x2="' + x3 + '" y2="' + y3 + '" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4 3"/>';
+      s += '<text x="' + Math.round((x2+x3)/2 + 8) + '" y="' + Math.round((y2+y3)/2) + '" font-size="10" font-weight="700" fill="#93c5fd">0.786</text>';
+
+      s += '<line data-ratio="0.814" x1="' + x3 + '" y1="' + y3 + '" x2="' + x4 + '" y2="' + y3c + '" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4 3"/>';
+      s += '<text x="' + Math.round((x3+x4)/2 - 16) + '" y="' + Math.round((y3+y3c)/2) + '" font-size="10" font-weight="700" fill="#93c5fd">0.814</text>';
+
+      s += '<line data-ratio="1.244" x1="' + x4 + '" y1="' + y3c + '" x2="' + x5 + '" y2="' + y4 + '" stroke="#10b981" stroke-width="1.2" stroke-dasharray="4 3"/>';
+      s += '<text x="' + Math.round((x4+x5)/2 + 8) + '" y="' + Math.round((y3c+y4)/2) + '" font-size="10" font-weight="700" fill="#6ee7b7">1.244</text>';
+
+      // SMC Structure: BOS, CHoCH, EQH, EQL, Strong High, Weak Low
+      s += '<line data-bos="BOS_HIGH" x1="40" y1="52" x2="760" y2="52" stroke="#06b6d4" stroke-width="1.8" stroke-dasharray="6 3"/>';
+      s += '<text x="44" y="46" font-size="10" font-weight="700" fill="#06b6d4">BOS (Break of Structure)</text>';
+
+      s += '<line data-choch="line" x1="40" y1="135" x2="760" y2="135" stroke="#f59e0b" stroke-width="2"/>';
+      s += '<text data-choch="true" x="44" y="152" font-size="11" font-weight="700" fill="#f59e0b">CHoCH (Change of Character)</text>';
+
+      s += '<line data-eqh="true" x1="40" y1="78" x2="760" y2="78" stroke="#ef4444" stroke-width="1.4"/>';
+      s += '<text x="44" y="92" font-size="10" font-weight="700" fill="#ef4444">Strong High · EQH / EQL</text>';
+      s += '<text data-weak-low="true" x="650" y="305" font-size="11" font-weight="700" fill="#e2e8f0">Weak Low</text>';
+
+      // Kotak Order Block (Supply OB merah + SELL badge, Demand OB biru/hijau + BUY badge)
+      s += '<rect data-ob="supply" x="480" y="45" width="240" height="36" fill="rgba(239,68,68,0.22)" stroke="#ef4444" stroke-width="1.5" rx="4"/>';
+      s += '<g data-ob-badge="sell" transform="translate(486,52)"><rect width="38" height="18" rx="3" fill="#ef4444"/><text x="19" y="13" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">SELL</text></g>';
+      s += '<text x="532" y="66" font-size="11" font-weight="700" fill="#ef4444">Supply OB Order Block</text>';
+
+      s += '<rect data-ob="demand" x="480" y="235" width="240" height="36" fill="rgba(16,185,129,0.22)" stroke="#10b981" stroke-width="1.5" rx="4"/>';
+      s += '<g data-ob-badge="buy" transform="translate(486,242)"><rect width="38" height="18" rx="3" fill="#10b981"/><text x="19" y="13" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">BUY</text></g>';
+      s += '<text x="532" y="256" font-size="11" font-weight="700" fill="#10b981">Demand OB Order Block</text>';
     }
-    if (m === 'pro' || m === 'hybrid' || m === 'simple') {
-      for (var bi = 0; bi < smc.bos.length; bi++) {
-        var b = smc.bos[bi];
-        s += '<line data-bos="' + v3f09Esc(b.type) + '" x1="40" y1="' + Math.round(py(b.level)) + '" x2="' + (W - 40) + '" y2="' + Math.round(py(b.level)) + '" stroke="#06b6d4" stroke-width="1.2"/>';
-        s += '<text x="44" y="' + (Math.round(py(b.level)) - 4) + '" font-size="10" fill="#06b6d4">BOS ' + v3f09Esc(b.label) + '</text>';
-      }
-      for (var ci = 0; ci < smc.choch.length; ci++) {
-        var ch = smc.choch[ci];
-        s += '<text data-choch="true" x="44" y="' + (Math.round(py(ch.level)) + 14) + '" font-size="10" fill="#f59e0b">CHoCH ' + v3f09Esc(ch.label) + '</text>';
-      }
-      s += '<line data-eqh="true" x1="40" y1="' + Math.round(py(smc.strongHigh.price)) + '" x2="' + (W - 40) + '" y2="' + Math.round(py(smc.strongHigh.price)) + '" stroke="#ef4444" stroke-width="1.4"/>';
-      s += '<text x="' + (W - 140) + '" y="' + (Math.round(py(smc.strongHigh.price)) - 4) + '" font-size="10" fill="#ef4444">Strong High</text>';
-      if (smc.eqh.length) s += '<text x="300" y="25" font-size="10" fill="' + th.text + '">EQH</text>';
-      else s += '<text x="300" y="25" font-size="10" fill="' + th.text + '">EQH/EQL</text>';
-      if (smc.eql.length) s += '<text x="340" y="25" font-size="10" fill="' + th.text + '">EQL</text>';
-      s += '<rect data-ob="supply" x="520" y="' + Math.round(py(smc.supplyOB.top)) + '" width="120" height="' + Math.max(8, Math.round(py(smc.supplyOB.bottom) - py(smc.supplyOB.top))) + '" fill="#fbcfe8" stroke="#ec4899"/>';
-      s += '<text x="524" y="' + (Math.round(py(smc.supplyOB.top)) - 4) + '" font-size="10" fill="#be185d">Supply OB Order Block</text>';
-      s += '<rect data-ob="demand" x="520" y="' + Math.round(py(smc.demandOB.top)) + '" width="120" height="' + Math.max(8, Math.round(py(smc.demandOB.bottom) - py(smc.demandOB.top))) + '" fill="#bfdbfe" stroke="#2563eb"/>';
-      s += '<text x="524" y="' + (Math.round(py(smc.demandOB.top)) + 12) + '" font-size="10" fill="#1d4ed8">Demand OB Order Block Harga</text>';
+
+    if (m === 'simple' || m === 'swing') {
+      // Mode Simple & Swing: 2 Kotak Supply & Demand ATR-14, Zig-Zag & Proyeksi Skenario
+      s += '<rect data-zone="supply-atr" x="40" y="48" width="720" height="34" fill="rgba(239,68,68,0.22)" stroke="#ef4444" stroke-width="1.5" rx="4"/>';
+      s += '<text x="48" y="70" font-size="11" font-weight="700" fill="#ef4444">Zona Supply (Resistance) berbasis ATR-14</text>';
+
+      s += '<rect data-zone="demand-atr" x="40" y="238" width="720" height="34" fill="rgba(16,185,129,0.22)" stroke="#10b981" stroke-width="1.5" rx="4"/>';
+      s += '<text x="48" y="260" font-size="11" font-weight="700" fill="#10b981">Zona Demand (Support) berbasis ATR-14</text>';
+
+      var ptsZz = '60,240 180,80 320,220 460,90 600,210 720,70';
+      s += '<polyline data-zigzag="path" points="' + ptsZz + '" fill="none" stroke="#8b5cf6" stroke-width="3"/>';
+      var arrow = zz.arrow === 'up' ? 'BULLISH ↗' : (zz.arrow === 'down' ? 'BEARISH ↘' : 'SIDEWAYS ↔');
+      s += '<text data-projection="' + v3f09Esc(zz.projection) + '" x="480" y="36" font-size="13" font-weight="700" fill="#c084fc">Proyeksi Skenario: ' + arrow + '</text>';
     }
-    if (m === 'simple' || m === 'hybrid' || m === 'pro') {
-      var dpts = '';
-      for (var zi = 0; zi < zz.path.length; zi++) { dpts += Math.round(px(zi, Math.max(2, zz.path.length))) + ',' + Math.round(py(zz.path[zi].price)) + ' '; }
-      s += '<polyline data-zigzag="path" points="' + v3f09Esc(dpts.trim()) + '" fill="none" stroke="#8b5cf6" stroke-width="2"/>';
-      s += '<text x="44" y="' + (Hh - 28) + '" font-size="10" fill="#8b5cf6">ZigZag ' + v3f09Esc(zz.projection) + '</text>';
-      s += '<rect data-zone="supply-atr" x="660" y="' + Math.round(py(zz.supplyZone.top)) + '" width="80" height="' + Math.max(8, Math.round(py(zz.supplyZone.bottom) - py(zz.supplyZone.top))) + '" fill="rgba(239,68,68,0.18)" stroke="#ef4444"/>';
-      s += '<rect data-zone="demand-atr" x="660" y="' + Math.round(py(zz.demandZone.top)) + '" width="80" height="' + Math.max(8, Math.round(py(zz.demandZone.bottom) - py(zz.demandZone.top))) + '" fill="rgba(16,185,129,0.18)" stroke="#10b981"/>';
-      var arrow = zz.arrow === 'up' ? 'Naik' : (zz.arrow === 'down' ? 'Turun' : 'Bullish Sideways');
-      s += '<text data-projection="' + v3f09Esc(zz.projection) + '" x="660" y="46" font-size="11" font-weight="700" fill="' + th.text + '">Proyeksi ' + v3f09Esc(arrow) + '</text>';
+
+    if (m === 'investor') {
+      s += '<line data-ma="50" x1="40" y1="120" x2="760" y2="120" stroke="#eab308" stroke-width="2"/>';
+      s += '<text x="44" y="112" font-size="10" font-weight="700" fill="#eab308">MA50 Tren Menengah</text>';
+
+      s += '<line data-ma="200" x1="40" y1="180" x2="760" y2="180" stroke="#a855f7" stroke-width="2"/>';
+      s += '<text x="44" y="172" font-size="10" font-weight="700" fill="#a855f7">MA200 Tren Primer</text>';
+
+      s += '<rect data-zone="fair-value" x="40" y="200" width="720" height="42" fill="rgba(56,189,248,0.18)" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4 2"/>';
+      s += '<text x="48" y="226" font-size="11" font-weight="700" fill="#38bdf8">Zona Akumulasi Nilai Wajar Investor</text>';
+
+      s += '<line data-level="investor-target" x1="40" y1="60" x2="760" y2="60" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 4"/>';
+      s += '<text x="44" y="52" font-size="10" font-weight="700" fill="#10b981">Level Target Investasi 15%</text>';
     }
-    s += '<text x="44" y="' + (Hh - 12) + '" font-size="10" fill="' + th.text + '">S/R ' + v3f09Esc(String(sr.support)) + '/' + v3f09Esc(String(sr.resistance)) + '</text>';
+
     s += '</svg>';
     return { svg: s, mode: m, ticker: t, theme: th.id, hud: smc.hud.side, projection: zz.projection, support: sr.support, resistance: sr.resistance, xabcd: x, smc: smc, zigzag: zz };
   }
 
+  function renderChartOverlay(chartId, ticker, rawCandles, mode) {
+    if (typeof document === 'undefined') return;
+    var container = document.getElementById(chartId + '_container');
+    if (!container) {
+      var keys = Object.keys(_workstationInstances);
+      for (var k = 0; k < keys.length; k++) {
+        var el = document.getElementById(keys[k] + '_container');
+        if (el) { container = el; chartId = keys[k]; break; }
+      }
+    }
+    if (!container) {
+      var anyCont = document.querySelector('[id$="_container"]');
+      if (anyCont) { container = anyCont; chartId = anyCont.id.replace('_container', ''); }
+    }
+    if (!container) return;
+    container.style.position = 'relative';
+    var host = document.getElementById(chartId + '_v4f10_overlay');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = chartId + '_v4f10_overlay';
+      host.className = 'chart-v4f10-svg-overlay';
+      host.style.cssText = 'position:absolute; inset:0; pointer-events:none; z-index:10; width:100%; height:100%; overflow:hidden;';
+      container.appendChild(host);
+    }
+    var inst = _workstationInstances[chartId];
+    if (!ticker && inst) ticker = inst.ticker;
+    if ((!rawCandles || !rawCandles.length) && inst) rawCandles = inst.dailyCandles;
+    var theme = _v3f09ThemeByChart[chartId] || 'dark';
+    var ov = buildV3F09Overlay(ticker || 'BBCA', rawCandles || [], mode || 'pro', theme);
+    host.innerHTML = ov.svg;
+    host.setAttribute('data-mode', ov.mode);
+    host.setAttribute('data-theme', ov.theme);
+  }
   function renderV3F09ToolbarHtml(chartId) {
     var id = String(chartId || 'mainChart');
     var mode = _v3f09ModeByChart[id] || 'hybrid';
@@ -2830,6 +2945,7 @@
     calculateV3F09XABCD: calculateV3F09XABCD,
     calculateV3F09ZigZag: calculateV3F09ZigZag,
     buildV3F09Overlay: buildV3F09Overlay,
+    renderChartOverlay: renderChartOverlay,
     renderV3F09ToolbarHtml: renderV3F09ToolbarHtml,
     setV3F09Theme: setV3F09Theme,
     setV3F09Mode: setV3F09Mode,

@@ -1,8 +1,8 @@
 {
   "ok": false,
-  "at": "2026-11-03T11:54:44.318Z",
+  "at": "2026-11-04T08:50:02.617Z",
   "checked": {
-    "heartbeats": 1,
+    "heartbeats": 15,
     "pm2": 0,
     "quota": 1,
     "daytrade": 1,
@@ -10,27 +10,27 @@
   },
   "issues": [
     {
-      "at": "2026-11-03T11:54:44.318Z",
-      "key": "heartbeat:quota-burn:stale",
-      "severity": "warning",
-      "source": "heartbeat",
-      "detail": "quota-burn: heartbeat basi (5473.6 mnt > 300 mnt)"
+      "at": "2026-11-04T08:50:02.617Z",
+      "key": "daytrade:stale",
+      "severity": "critical",
+      "source": "daytrade",
+      "detail": "DayTrade basi saat jam bursa (stale_eod_behind, umur 1026 mnt)"
     },
     {
-      "at": "2026-11-03T11:54:44.318Z",
-      "key": "quota:drift",
-      "severity": "warning",
-      "source": "quota",
-      "detail": "Kuota API data drift terdeteksi (selisih 501, dipakai 501/18080)"
+      "at": "2026-11-04T08:50:02.617Z",
+      "key": "mem:low",
+      "severity": "critical",
+      "source": "disk",
+      "detail": "RAM bebas 9.4% < 10%"
     }
   ],
   "quota": {
     "label": "Kuota API data",
-    "used": 501,
+    "used": 14371,
     "limit": 18080,
-    "remaining": 17579,
-    "pct": 2.8,
-    "driftDetected": true
+    "remaining": 3709,
+    "pct": 79.5,
+    "driftDetected": false
   },
   "summary": "DARURAT: 2 insiden",
   "reader": "Admin Console: baca file ini untuk panel status operasional"

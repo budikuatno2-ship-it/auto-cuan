@@ -1,0 +1,120 @@
+{
+  "ticker": "LCGP",
+  "symbol": "LCGP.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 13,
+  "latest": {
+    "date": "2026-10-14",
+    "open": 114,
+    "high": 114,
+    "low": 114,
+    "close": 114,
+    "volume": 0
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-29",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-30",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-01",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-02",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-05",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-06",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-07",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-08",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-09",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-12",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-13",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-14",
+      "open": 114,
+      "high": 114,
+      "low": 114,
+      "close": 114,
+      "volume": 0
+    }
+  ]
+}

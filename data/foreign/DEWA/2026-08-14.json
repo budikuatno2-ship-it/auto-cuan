@@ -1,0 +1,138 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-08-14",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 7718316400,
+      "bvol": 17209900,
+      "bfrq": 615,
+      "sfrq": 204,
+      "sval": 2249012400,
+      "svol": 5008200,
+      "nval": 5469304000,
+      "nvol": 12201700
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 4837978600,
+      "bvol": 10707500,
+      "bfrq": 404,
+      "sfrq": 32,
+      "sval": 454672600,
+      "svol": 1008000,
+      "nval": 4383306000,
+      "nvol": 9699500
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 5421387400,
+      "bvol": 11990700,
+      "bfrq": 452,
+      "sfrq": 359,
+      "sval": 4560530000,
+      "svol": 10096400,
+      "nval": 860857400,
+      "nvol": 1894300
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1593523600,
+      "bvol": 3539200,
+      "bfrq": 102,
+      "sfrq": 60,
+      "sval": 1030628200,
+      "svol": 2298100,
+      "nval": 562895400,
+      "nvol": 1241100
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2248805000,
+      "bvol": 5013400,
+      "bfrq": 307,
+      "sfrq": 274,
+      "sval": 1797981200,
+      "svol": 4001200,
+      "nval": 450823800,
+      "nvol": 1012200
+    }
+  ],
+  "broker_net": 11727186600,
+  "net_flow": 11727186600,
+  "total_buy_val": 21820011000,
+  "total_sell_val": 10092824400,
+  "total_turnover": 21820011000,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 7718316400,
+      "bvol": 17209900,
+      "bfrq": 615,
+      "sfrq": 204,
+      "sval": 2249012400,
+      "svol": 5008200,
+      "nval": 5469304000,
+      "nvol": 12201700
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 4837978600,
+      "bvol": 10707500,
+      "bfrq": 404,
+      "sfrq": 32,
+      "sval": 454672600,
+      "svol": 1008000,
+      "nval": 4383306000,
+      "nvol": 9699500
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 5421387400,
+      "bvol": 11990700,
+      "bfrq": 452,
+      "sfrq": 359,
+      "sval": 4560530000,
+      "svol": 10096400,
+      "nval": 860857400,
+      "nvol": 1894300
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1593523600,
+      "bvol": 3539200,
+      "bfrq": 102,
+      "sfrq": 60,
+      "sval": 1030628200,
+      "svol": 2298100,
+      "nval": 562895400,
+      "nvol": 1241100
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2248805000,
+      "bvol": 5013400,
+      "bfrq": 307,
+      "sfrq": 274,
+      "sval": 1797981200,
+      "svol": 4001200,
+      "nval": 450823800,
+      "nvol": 1012200
+    }
+  ],
+  "top_sellers": []
+}

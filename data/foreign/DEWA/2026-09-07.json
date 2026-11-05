@@ -1,0 +1,138 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-09-07",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 23952793200,
+      "bvol": 53039800,
+      "bfrq": 816,
+      "sfrq": 823,
+      "sval": 17859900200,
+      "svol": 39363100,
+      "nval": 6092893000,
+      "nvol": 13676700
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 6657898600,
+      "bvol": 14858600,
+      "bfrq": 328,
+      "sfrq": 322,
+      "sval": 4991775000,
+      "svol": 11017200,
+      "nval": 1666123600,
+      "nvol": 3841400
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 6055727200,
+      "bvol": 13282100,
+      "bfrq": 300,
+      "sfrq": 362,
+      "sval": 5142848000,
+      "svol": 11406100,
+      "nval": 912879200,
+      "nvol": 1876000
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 1326611800,
+      "bvol": 2913000,
+      "bfrq": 61,
+      "sfrq": 84,
+      "sval": 1029736600,
+      "svol": 2286100,
+      "nval": 296875200,
+      "nvol": 626900
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 630424600,
+      "bvol": 1395000,
+      "bfrq": 76,
+      "sfrq": 89,
+      "sval": 391019600,
+      "svol": 860900,
+      "nval": 239405000,
+      "nvol": 534100
+    }
+  ],
+  "broker_net": 9208176000,
+  "net_flow": 9208176000,
+  "total_buy_val": 38623455400,
+  "total_sell_val": 29415279400,
+  "total_turnover": 38623455400,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 23952793200,
+      "bvol": 53039800,
+      "bfrq": 816,
+      "sfrq": 823,
+      "sval": 17859900200,
+      "svol": 39363100,
+      "nval": 6092893000,
+      "nvol": 13676700
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 6657898600,
+      "bvol": 14858600,
+      "bfrq": 328,
+      "sfrq": 322,
+      "sval": 4991775000,
+      "svol": 11017200,
+      "nval": 1666123600,
+      "nvol": 3841400
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 6055727200,
+      "bvol": 13282100,
+      "bfrq": 300,
+      "sfrq": 362,
+      "sval": 5142848000,
+      "svol": 11406100,
+      "nval": 912879200,
+      "nvol": 1876000
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 1326611800,
+      "bvol": 2913000,
+      "bfrq": 61,
+      "sfrq": 84,
+      "sval": 1029736600,
+      "svol": 2286100,
+      "nval": 296875200,
+      "nvol": 626900
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 630424600,
+      "bvol": 1395000,
+      "bfrq": 76,
+      "sfrq": 89,
+      "sval": 391019600,
+      "svol": 860900,
+      "nval": 239405000,
+      "nvol": 534100
+    }
+  ],
+  "top_sellers": []
+}

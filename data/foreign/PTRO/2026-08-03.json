@@ -1,0 +1,114 @@
+{
+  "stock_code": "PTRO",
+  "ticker": "PTRO",
+  "date": "2026-08-03",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 6491434000,
+      "bvol": 1381500,
+      "bfrq": 414,
+      "sfrq": 17,
+      "sval": 392959000,
+      "svol": 82100,
+      "nval": 6098475000,
+      "nvol": 1299400
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2988300000,
+      "bvol": 638400,
+      "bfrq": 304,
+      "sfrq": 78,
+      "sval": 384125000,
+      "svol": 81000,
+      "nval": 2604175000,
+      "nvol": 557400
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 2169230000,
+      "bvol": 465500,
+      "bfrq": 136,
+      "sfrq": 78,
+      "sval": 804292000,
+      "svol": 169500,
+      "nval": 1364938000,
+      "nvol": 296000
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 1364247000,
+      "bvol": 293900,
+      "bfrq": 72,
+      "sfrq": 176,
+      "sval": 462778000,
+      "svol": 98200,
+      "nval": 901469000,
+      "nvol": 195700
+    }
+  ],
+  "broker_net": 10969057000,
+  "net_flow": 10969057000,
+  "total_buy_val": 13013211000,
+  "total_sell_val": 2044154000,
+  "total_turnover": 13013211000,
+  "top_buyers": [
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 6491434000,
+      "bvol": 1381500,
+      "bfrq": 414,
+      "sfrq": 17,
+      "sval": 392959000,
+      "svol": 82100,
+      "nval": 6098475000,
+      "nvol": 1299400
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2988300000,
+      "bvol": 638400,
+      "bfrq": 304,
+      "sfrq": 78,
+      "sval": 384125000,
+      "svol": 81000,
+      "nval": 2604175000,
+      "nvol": 557400
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 2169230000,
+      "bvol": 465500,
+      "bfrq": 136,
+      "sfrq": 78,
+      "sval": 804292000,
+      "svol": 169500,
+      "nval": 1364938000,
+      "nvol": 296000
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 1364247000,
+      "bvol": 293900,
+      "bfrq": 72,
+      "sfrq": 176,
+      "sval": 462778000,
+      "svol": 98200,
+      "nval": 901469000,
+      "nvol": 195700
+    }
+  ],
+  "top_sellers": []
+}

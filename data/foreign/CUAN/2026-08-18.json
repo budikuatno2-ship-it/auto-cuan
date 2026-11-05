@@ -1,0 +1,114 @@
+{
+  "stock_code": "CUAN",
+  "ticker": "CUAN",
+  "date": "2026-08-18",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 64846944000,
+      "bvol": 76242000,
+      "bfrq": 5728,
+      "sfrq": 3978,
+      "sval": 56767664000,
+      "svol": 66761500,
+      "nval": 8079280000,
+      "nvol": 9480500
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 9153418500,
+      "bvol": 10838800,
+      "bfrq": 681,
+      "sfrq": 663,
+      "sval": 8309950500,
+      "svol": 9816900,
+      "nval": 843468000,
+      "nvol": 1021900
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1660947000,
+      "bvol": 1960300,
+      "bfrq": 208,
+      "sfrq": 195,
+      "sval": 1250768000,
+      "svol": 1480400,
+      "nval": 410179000,
+      "nvol": 479900
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 572311000,
+      "bvol": 679500,
+      "bfrq": 26,
+      "sfrq": 35,
+      "sval": 300287000,
+      "svol": 354300,
+      "nval": 272024000,
+      "nvol": 325200
+    }
+  ],
+  "broker_net": 9604951000,
+  "net_flow": 9604951000,
+  "total_buy_val": 76233620500,
+  "total_sell_val": 66628669500,
+  "total_turnover": 76233620500,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 64846944000,
+      "bvol": 76242000,
+      "bfrq": 5728,
+      "sfrq": 3978,
+      "sval": 56767664000,
+      "svol": 66761500,
+      "nval": 8079280000,
+      "nvol": 9480500
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 9153418500,
+      "bvol": 10838800,
+      "bfrq": 681,
+      "sfrq": 663,
+      "sval": 8309950500,
+      "svol": 9816900,
+      "nval": 843468000,
+      "nvol": 1021900
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1660947000,
+      "bvol": 1960300,
+      "bfrq": 208,
+      "sfrq": 195,
+      "sval": 1250768000,
+      "svol": 1480400,
+      "nval": 410179000,
+      "nvol": 479900
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 572311000,
+      "bvol": 679500,
+      "bfrq": 26,
+      "sfrq": 35,
+      "sval": 300287000,
+      "svol": 354300,
+      "nval": 272024000,
+      "nvol": 325200
+    }
+  ],
+  "top_sellers": []
+}

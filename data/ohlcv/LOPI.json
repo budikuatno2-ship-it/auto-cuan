@@ -1,0 +1,216 @@
+{
+  "ticker": "LOPI",
+  "symbol": "LOPI.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 25,
+  "latest": {
+    "date": "2026-10-30",
+    "open": 45,
+    "high": 46,
+    "low": 41,
+    "close": 41,
+    "volume": 10563100
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 58,
+      "high": 63,
+      "low": 54,
+      "close": 61,
+      "volume": 22826900
+    },
+    {
+      "date": "2026-09-29",
+      "open": 61,
+      "high": 62,
+      "low": 58,
+      "close": 61,
+      "volume": 10434900
+    },
+    {
+      "date": "2026-09-30",
+      "open": 61,
+      "high": 61,
+      "low": 59,
+      "close": 61,
+      "volume": 5937400
+    },
+    {
+      "date": "2026-10-01",
+      "open": 61,
+      "high": 61,
+      "low": 58,
+      "close": 61,
+      "volume": 6385600
+    },
+    {
+      "date": "2026-10-02",
+      "open": 61,
+      "high": 61,
+      "low": 58,
+      "close": 60,
+      "volume": 2850500
+    },
+    {
+      "date": "2026-10-05",
+      "open": 60,
+      "high": 62,
+      "low": 55,
+      "close": 57,
+      "volume": 29290400
+    },
+    {
+      "date": "2026-10-06",
+      "open": 57,
+      "high": 57,
+      "low": 54,
+      "close": 56,
+      "volume": 10400400
+    },
+    {
+      "date": "2026-10-07",
+      "open": 56,
+      "high": 60,
+      "low": 54,
+      "close": 55,
+      "volume": 20859200
+    },
+    {
+      "date": "2026-10-08",
+      "open": 59,
+      "high": 59,
+      "low": 54,
+      "close": 56,
+      "volume": 7956200
+    },
+    {
+      "date": "2026-10-09",
+      "open": 57,
+      "high": 61,
+      "low": 55,
+      "close": 61,
+      "volume": 19499400
+    },
+    {
+      "date": "2026-10-12",
+      "open": 65,
+      "high": 67,
+      "low": 65,
+      "close": 67,
+      "volume": 24375100
+    },
+    {
+      "date": "2026-10-13",
+      "open": 73,
+      "high": 73,
+      "low": 62,
+      "close": 66,
+      "volume": 98318000
+    },
+    {
+      "date": "2026-10-14",
+      "open": 67,
+      "high": 71,
+      "low": 63,
+      "close": 64,
+      "volume": 54632800
+    },
+    {
+      "date": "2026-10-15",
+      "open": 64,
+      "high": 70,
+      "low": 63,
+      "close": 68,
+      "volume": 24620400
+    },
+    {
+      "date": "2026-10-16",
+      "open": 62,
+      "high": 66,
+      "low": 62,
+      "close": 62,
+      "volume": 24755500
+    },
+    {
+      "date": "2026-10-19",
+      "open": 62,
+      "high": 62,
+      "low": 56,
+      "close": 56,
+      "volume": 4199800
+    },
+    {
+      "date": "2026-10-20",
+      "open": 56,
+      "high": 61,
+      "low": 53,
+      "close": 57,
+      "volume": 74501700
+    },
+    {
+      "date": "2026-10-21",
+      "open": 57,
+      "high": 58,
+      "low": 53,
+      "close": 54,
+      "volume": 24519700
+    },
+    {
+      "date": "2026-10-22",
+      "open": 53,
+      "high": 55,
+      "low": 49,
+      "close": 52,
+      "volume": 70410700
+    },
+    {
+      "date": "2026-10-23",
+      "open": 52,
+      "high": 57,
+      "low": 51,
+      "close": 54,
+      "volume": 39697500
+    },
+    {
+      "date": "2026-10-26",
+      "open": 54,
+      "high": 54,
+      "low": 52,
+      "close": 52,
+      "volume": 7709800
+    },
+    {
+      "date": "2026-10-27",
+      "open": 52,
+      "high": 53,
+      "low": 47,
+      "close": 47,
+      "volume": 31898900
+    },
+    {
+      "date": "2026-10-28",
+      "open": 43,
+      "high": 46,
+      "low": 43,
+      "close": 45,
+      "volume": 26049100
+    },
+    {
+      "date": "2026-10-29",
+      "open": 42,
+      "high": 46,
+      "low": 42,
+      "close": 45,
+      "volume": 6532200
+    },
+    {
+      "date": "2026-10-30",
+      "open": 45,
+      "high": 46,
+      "low": 41,
+      "close": 41,
+      "volume": 10563100
+    }
+  ]
+}

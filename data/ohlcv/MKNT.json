@@ -1,0 +1,216 @@
+{
+  "ticker": "MKNT",
+  "symbol": "MKNT.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 25,
+  "latest": {
+    "date": "2026-10-30",
+    "open": 11,
+    "high": 11,
+    "low": 11,
+    "close": 11,
+    "volume": 84663300
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-29",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-30",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-01",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-02",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-05",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-06",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-07",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-08",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-09",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-12",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-13",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-14",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-15",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-16",
+      "open": 1,
+      "high": 1,
+      "low": 1,
+      "close": 1,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-19",
+      "open": 2,
+      "high": 2,
+      "low": 2,
+      "close": 2,
+      "volume": 8773500
+    },
+    {
+      "date": "2026-10-20",
+      "open": 3,
+      "high": 3,
+      "low": 3,
+      "close": 3,
+      "volume": 6018700
+    },
+    {
+      "date": "2026-10-21",
+      "open": 4,
+      "high": 4,
+      "low": 4,
+      "close": 4,
+      "volume": 14450700
+    },
+    {
+      "date": "2026-10-22",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 11011700
+    },
+    {
+      "date": "2026-10-23",
+      "open": 6,
+      "high": 6,
+      "low": 6,
+      "close": 6,
+      "volume": 5934500
+    },
+    {
+      "date": "2026-10-26",
+      "open": 7,
+      "high": 7,
+      "low": 7,
+      "close": 7,
+      "volume": 7735800
+    },
+    {
+      "date": "2026-10-27",
+      "open": 8,
+      "high": 8,
+      "low": 8,
+      "close": 8,
+      "volume": 3682200
+    },
+    {
+      "date": "2026-10-28",
+      "open": 9,
+      "high": 9,
+      "low": 9,
+      "close": 9,
+      "volume": 7710800
+    },
+    {
+      "date": "2026-10-29",
+      "open": 10,
+      "high": 10,
+      "low": 10,
+      "close": 10,
+      "volume": 5504900
+    },
+    {
+      "date": "2026-10-30",
+      "open": 11,
+      "high": 11,
+      "low": 11,
+      "close": 11,
+      "volume": 84663300
+    }
+  ]
+}

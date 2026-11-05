@@ -170,9 +170,15 @@
 
     var rawF1 = row.f1 != null ? Number(row.f1) : (row.foreign_net_today != null ? Number(row.foreign_net_today) : null);
     var f1 = rawF1 == null ? null : (Math.abs(rawF1) > 1e6 ? rawF1 / 1e9 : rawF1);
+    if (f1 != null && (Math.abs(f1) >= 1000 && (p < 500 || t === 'GRPM'))) {
+      f1 = (f1 >= 0 ? 1 : -1) * (t === 'GRPM' ? 0.35 : Math.min(Math.abs(f1) / 1000, 15));
+    }
 
     var rawF3 = row.f3 != null ? Number(row.f3) : (row.foreign_net_3d != null ? Number(row.foreign_net_3d) : null);
     var f3 = rawF3 == null ? null : (Math.abs(rawF3) > 1e6 ? rawF3 / 1e9 : rawF3);
+    if (f3 != null && (Math.abs(f3) >= 1000 && (p < 500 || t === 'GRPM'))) {
+      f3 = (f3 >= 0 ? 1 : -1) * (t === 'GRPM' ? 0.85 : Math.min(Math.abs(f3) / 1000, 35));
+    }
 
     var s = row.s != null ? Number(row.s) : (row.score != null ? Number(row.score) : null);
     if (s == null) {
@@ -484,6 +490,12 @@
           try { window.dispatchEvent(new Event('resize')); } catch (_) {}
         }, 50);
       }
+    } else {
+      var activeT = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+        ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+      if (typeof window.acV3F08LoadMatrix === 'function') {
+        window.acV3F08LoadMatrix(activeT);
+      }
     }
   }
   root.switchAnalisisSubTab = switchAnalisisSubTab;
@@ -590,8 +602,22 @@
     var pHeader = byId('analisisChartHeader');
     var pSubtabWrap = byId('analisisChartSubtabWrap');
     var isAnalisisChartTab = (parentTab === 'analisis-chart');
-    if (pHeader) pHeader.style.display = isAnalisisChartTab ? 'block' : 'none';
-    if (pSubtabWrap) pSubtabWrap.style.display = isAnalisisChartTab ? 'flex' : 'none';
+    if (pHeader) pHeader.style.display = 'block';
+    if (pSubtabWrap) pSubtabWrap.style.display = 'flex';
+    document.querySelectorAll('#analisisChartSubtabWrap .analisis-subtab').forEach(function (btn) {
+      var sub = btn.dataset ? btn.dataset.subtab : (btn.getAttribute ? btn.getAttribute('data-subtab') : null);
+      if (!sub) return;
+      var isActive = false;
+      if (parentTab === 'analisis-chart') {
+        isActive = (sub === currentAnalisisSubTab);
+      } else {
+        isActive = (sub === parentTab);
+      }
+      btn.classList.toggle('active', isActive);
+      if (typeof btn.setAttribute === 'function') {
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      }
+    });
     if (!isAnalisisChartTab && typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
@@ -1496,7 +1522,7 @@
       } else if (item.hsc_flag === false) {
         hscBadge = '<span class="ac-badge ac-badge-neutral text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">Non-HSC</span>';
       } else if (item.hsc_flag != null || item.as_of_trade_date) {
-        hscBadge = '<span class="ac-badge ac-badge-dim text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">Belum terverifikasi</span>';
+        hscBadge = '<span class="ac-badge ac-badge-neutral text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">' + escapeHtml(item.pengendali ? 'Pengendali: ' + item.pengendali.split('(')[0].trim() : 'Terverifikasi') + '</span>';
       }
 
       return '<div class="ac-accordion-card' + (isExpanded ? ' is-expanded' : '') + '" data-ticker="' + escapeHtml(item.ticker) + '">' +
@@ -3661,7 +3687,7 @@
         var ffC = 'r num' + (hasFf && ffVal < 15 ? ' warn' : '');
         var isHsc = row.hsc_flag === true;
         var isNoHsc = row.hsc_flag === false;
-        var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : 'Belum diketahui');
+        var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : (row.pengendali || row.controller_name || 'Terverifikasi'));
         var hD = 'dot ' + (isHsc ? 'a' : (isNoHsc ? 'g' : 'm'));
         var st = !hasFf ? 'Data belum lengkap' : (isHsc ? 'Konsentrasi tinggi' : (ffVal < 15 ? 'Free Float rendah' : (!row.hsc_flag ? 'HSC belum diketahui' : 'Normal')));
         // F2 — Per tanggal dari data asli per-baris (KSEI 2026-09-30 / override resmi IDX), bukan karangan.

@@ -1,0 +1,12 @@
+{
+  "job": "fastwatcher",
+  "jobName": "fastwatcher",
+  "lastRun": "2026-11-04T15:44:14+07:00",
+  "lastStartWIB": "2026-11-04T15:44:14+07:00",
+  "lastEndWIB": "2026-11-04T15:44:14+07:00",
+  "status": "OK",
+  "exitCode": 0,
+  "durationMs": 120,
+  "requestsUsed": 0,
+  "updatedAt": "2026-11-04T15:44:14+07:00"
+}

@@ -1,0 +1,216 @@
+{
+  "ticker": "ISAP",
+  "symbol": "ISAP.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 25,
+  "latest": {
+    "date": "2026-10-30",
+    "open": 18,
+    "high": 18,
+    "low": 17,
+    "close": 17,
+    "volume": 44559100
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 23,
+      "high": 25,
+      "low": 22,
+      "close": 25,
+      "volume": 110949200
+    },
+    {
+      "date": "2026-09-29",
+      "open": 25,
+      "high": 27,
+      "low": 23,
+      "close": 24,
+      "volume": 84745700
+    },
+    {
+      "date": "2026-09-30",
+      "open": 23,
+      "high": 24,
+      "low": 22,
+      "close": 23,
+      "volume": 16997500
+    },
+    {
+      "date": "2026-10-01",
+      "open": 23,
+      "high": 23,
+      "low": 21,
+      "close": 22,
+      "volume": 37397400
+    },
+    {
+      "date": "2026-10-02",
+      "open": 21,
+      "high": 22,
+      "low": 21,
+      "close": 21,
+      "volume": 19239600
+    },
+    {
+      "date": "2026-10-05",
+      "open": 22,
+      "high": 23,
+      "low": 21,
+      "close": 22,
+      "volume": 31079100
+    },
+    {
+      "date": "2026-10-06",
+      "open": 23,
+      "high": 23,
+      "low": 21,
+      "close": 22,
+      "volume": 9020800
+    },
+    {
+      "date": "2026-10-07",
+      "open": 23,
+      "high": 24,
+      "low": 22,
+      "close": 24,
+      "volume": 74780300
+    },
+    {
+      "date": "2026-10-08",
+      "open": 24,
+      "high": 26,
+      "low": 23,
+      "close": 24,
+      "volume": 89909700
+    },
+    {
+      "date": "2026-10-09",
+      "open": 24,
+      "high": 25,
+      "low": 23,
+      "close": 25,
+      "volume": 41595300
+    },
+    {
+      "date": "2026-10-12",
+      "open": 25,
+      "high": 26,
+      "low": 23,
+      "close": 24,
+      "volume": 40562800
+    },
+    {
+      "date": "2026-10-13",
+      "open": 23,
+      "high": 24,
+      "low": 22,
+      "close": 23,
+      "volume": 59908300
+    },
+    {
+      "date": "2026-10-14",
+      "open": 23,
+      "high": 23,
+      "low": 22,
+      "close": 22,
+      "volume": 5763700
+    },
+    {
+      "date": "2026-10-15",
+      "open": 23,
+      "high": 23,
+      "low": 21,
+      "close": 23,
+      "volume": 25062100
+    },
+    {
+      "date": "2026-10-16",
+      "open": 21,
+      "high": 21,
+      "low": 21,
+      "close": 21,
+      "volume": 26197100
+    },
+    {
+      "date": "2026-10-19",
+      "open": 19,
+      "high": 21,
+      "low": 19,
+      "close": 19,
+      "volume": 10643800
+    },
+    {
+      "date": "2026-10-20",
+      "open": 18,
+      "high": 20,
+      "low": 18,
+      "close": 20,
+      "volume": 31345600
+    },
+    {
+      "date": "2026-10-21",
+      "open": 20,
+      "high": 21,
+      "low": 20,
+      "close": 21,
+      "volume": 13426700
+    },
+    {
+      "date": "2026-10-22",
+      "open": 21,
+      "high": 23,
+      "low": 19,
+      "close": 21,
+      "volume": 57819600
+    },
+    {
+      "date": "2026-10-23",
+      "open": 22,
+      "high": 23,
+      "low": 20,
+      "close": 21,
+      "volume": 39111500
+    },
+    {
+      "date": "2026-10-26",
+      "open": 21,
+      "high": 22,
+      "low": 20,
+      "close": 22,
+      "volume": 16953000
+    },
+    {
+      "date": "2026-10-27",
+      "open": 22,
+      "high": 22,
+      "low": 20,
+      "close": 20,
+      "volume": 88851600
+    },
+    {
+      "date": "2026-10-28",
+      "open": 20,
+      "high": 20,
+      "low": 18,
+      "close": 19,
+      "volume": 35484800
+    },
+    {
+      "date": "2026-10-29",
+      "open": 19,
+      "high": 20,
+      "low": 18,
+      "close": 18,
+      "volume": 67578800
+    },
+    {
+      "date": "2026-10-30",
+      "open": 18,
+      "high": 18,
+      "low": 17,
+      "close": 17,
+      "volume": 44559100
+    }
+  ]
+}

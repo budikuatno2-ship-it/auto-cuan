@@ -1,0 +1,66 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-09-01",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 46697014600,
+      "bvol": 102791900,
+      "bfrq": 2657,
+      "sfrq": 1132,
+      "sval": 22049209600,
+      "svol": 48564300,
+      "nval": 24647805000,
+      "nvol": 54227600
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 6458691600,
+      "bvol": 14205400,
+      "bfrq": 598,
+      "sfrq": 145,
+      "sval": 2665674400,
+      "svol": 5845700,
+      "nval": 3793017200,
+      "nvol": 8359700
+    }
+  ],
+  "broker_net": 28440822200,
+  "net_flow": 28440822200,
+  "total_buy_val": 53155706200,
+  "total_sell_val": 24714884000,
+  "total_turnover": 53155706200,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 46697014600,
+      "bvol": 102791900,
+      "bfrq": 2657,
+      "sfrq": 1132,
+      "sval": 22049209600,
+      "svol": 48564300,
+      "nval": 24647805000,
+      "nvol": 54227600
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 6458691600,
+      "bvol": 14205400,
+      "bfrq": 598,
+      "sfrq": 145,
+      "sval": 2665674400,
+      "svol": 5845700,
+      "nval": 3793017200,
+      "nvol": 8359700
+    }
+  ],
+  "top_sellers": []
+}
