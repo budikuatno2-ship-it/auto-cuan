@@ -1,0 +1,90 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-06-29",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 237341497500,
+      "bvol": 39289800,
+      "bfrq": 4400,
+      "sfrq": 9128,
+      "sval": 212931812500,
+      "svol": 35381100,
+      "nval": 24409685000,
+      "nvol": 3908700
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 13439272500,
+      "bvol": 2231600,
+      "bfrq": 891,
+      "sfrq": 100,
+      "sval": 1712570000,
+      "svol": 280500,
+      "nval": 11726702500,
+      "nvol": 1951100
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 6052527500,
+      "bvol": 1001300,
+      "bfrq": 236,
+      "sfrq": 27,
+      "sval": 397940000,
+      "svol": 66000,
+      "nval": 5654587500,
+      "nvol": 935300
+    }
+  ],
+  "broker_net": 41790975000,
+  "net_flow": 41790975000,
+  "total_buy_val": 256833297500,
+  "total_sell_val": 215042322500,
+  "total_turnover": 256833297500,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 237341497500,
+      "bvol": 39289800,
+      "bfrq": 4400,
+      "sfrq": 9128,
+      "sval": 212931812500,
+      "svol": 35381100,
+      "nval": 24409685000,
+      "nvol": 3908700
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 13439272500,
+      "bvol": 2231600,
+      "bfrq": 891,
+      "sfrq": 100,
+      "sval": 1712570000,
+      "svol": 280500,
+      "nval": 11726702500,
+      "nvol": 1951100
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 6052527500,
+      "bvol": 1001300,
+      "bfrq": 236,
+      "sfrq": 27,
+      "sval": 397940000,
+      "svol": 66000,
+      "nval": 5654587500,
+      "nvol": 935300
+    }
+  ],
+  "top_sellers": []
+}

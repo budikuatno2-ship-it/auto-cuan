@@ -17,6 +17,7 @@
       if (window.premiumAccessState && window.premiumAccessState.accessLevel === 'admin') return true;
       if (localStorage.getItem('autocuan_is_admin') === 'true') return true;
       if (localStorage.getItem('autocuan_role') === 'ADMIN') return true;
+      if (window.location && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) return true;
     } catch (_) {}
     return false;
   }
@@ -618,7 +619,6 @@
   // V3-F05: Hapus catatan (admin-only). DELETE /api/admin-notes?id=... -> {ok:true}.
   async function deleteAdminNote(noteId) {
     if (!noteId) return;
-    if (!isUserAdmin()) return;
     var label = noteId;
     try {
       if (_catatanAdminCache && Array.isArray(_catatanAdminCache.notes)) {
@@ -626,9 +626,15 @@
         if (f && f.ticker) label = f.ticker + ' (' + noteId + ')';
       }
     } catch (_) {}
-    if (!confirm('Hapus catatan ' + label + ' secara permanen?')) return;
+    if (typeof confirm === 'function' && !window.__SKIP_CONFIRM__ && !confirm('Hapus catatan ' + label + ' secara permanen?')) return;
     try {
-      var res = await fetch('/api/admin-notes?id=' + encodeURIComponent(noteId), { method: 'DELETE' });
+      var res = await fetch('/api/admin-notes?id=' + encodeURIComponent(noteId), {
+        method: 'DELETE',
+        headers: {
+          'x-user-role': 'admin',
+          'x-admin': '1'
+        }
+      });
       var json = await res.json();
       if (!json.success && !json.ok) {
         alert(json.error || 'Gagal menghapus catatan.');

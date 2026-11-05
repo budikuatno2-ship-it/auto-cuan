@@ -1,0 +1,241 @@
+{
+  "stock_code": "ARTO",
+  "ticker": "ARTO",
+  "date": "2026-10-28",
+  "flow": "all",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "CP",
+      "broker_name": "KB VALBURY SEKURITAS",
+      "bval": 1580366000,
+      "bvol": 2847000,
+      "sval": 15962500,
+      "svol": 28500,
+      "nval": 1564403500,
+      "nvol": 2818500,
+      "avg_price": 555.1
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 1425932500,
+      "bvol": 2529000,
+      "sval": 589348000,
+      "svol": 1045700,
+      "nval": 836584500,
+      "nvol": 1483300,
+      "avg_price": 563.83
+    },
+    {
+      "broker_code": "YP",
+      "broker_name": "MIRAE ASSET SEKURITAS INDONESIA",
+      "bval": 937967500,
+      "bvol": 1662500,
+      "sval": 262582500,
+      "svol": 465700,
+      "nval": 675385000,
+      "nvol": 1196800,
+      "avg_price": 564.19
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 421480000,
+      "bvol": 755400,
+      "sval": 3390000,
+      "svol": 6000,
+      "nval": 418090000,
+      "nvol": 749400,
+      "avg_price": 557.96
+    },
+    {
+      "broker_code": "XL",
+      "broker_name": "STOCKBIT SEKURITAS DIGITAL",
+      "bval": 1033444000,
+      "bvol": 1839700,
+      "sval": 650045500,
+      "svol": 1158300,
+      "nval": 383398500,
+      "nvol": 681400,
+      "avg_price": 561.75
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 182157000,
+      "bvol": 320400,
+      "sval": 2626041500,
+      "svol": 4668900,
+      "nval": -2443884500,
+      "nvol": -4348500,
+      "avg_price": 562.45
+    },
+    {
+      "broker_code": "PD",
+      "broker_name": "INDO PREMIER SEKURITAS",
+      "bval": 183343500,
+      "bvol": 327200,
+      "sval": 1250924000,
+      "svol": 2251700,
+      "nval": -1067580500,
+      "nvol": -1924500,
+      "avg_price": 555.55
+    },
+    {
+      "broker_code": "AZ",
+      "broker_name": "SUCOR SEKURITAS",
+      "bval": 77304000,
+      "bvol": 138500,
+      "sval": 1075370000,
+      "svol": 1895000,
+      "nval": -998066000,
+      "nvol": -1756500,
+      "avg_price": 567.48
+    },
+    {
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 1079801000,
+      "bvol": 1906500,
+      "sval": 1586115000,
+      "svol": 2828800,
+      "nval": -506314000,
+      "nvol": -922300,
+      "avg_price": 560.7
+    },
+    {
+      "broker_code": "XA",
+      "broker_name": "NH KORINDO SEKURITAS INDONESIA",
+      "bval": 1582000,
+      "bvol": 2800,
+      "sval": 136965000,
+      "svol": 244000,
+      "nval": -135383000,
+      "nvol": -241200,
+      "avg_price": 561.33
+    }
+  ],
+  "broker_net": 0,
+  "net_flow": 0,
+  "total_buy_val": 9713118000,
+  "total_sell_val": 9713118000,
+  "total_buy_vol": 17281000,
+  "total_volume": 17281000,
+  "total_turnover": 9713118000,
+  "top_buyers": [
+    {
+      "broker_code": "CP",
+      "broker_name": "KB VALBURY SEKURITAS",
+      "bval": 1580366000,
+      "bvol": 2847000,
+      "sval": 15962500,
+      "svol": 28500,
+      "nval": 1564403500,
+      "nvol": 2818500,
+      "avg_price": 555.1
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 1425932500,
+      "bvol": 2529000,
+      "sval": 589348000,
+      "svol": 1045700,
+      "nval": 836584500,
+      "nvol": 1483300,
+      "avg_price": 563.83
+    },
+    {
+      "broker_code": "YP",
+      "broker_name": "MIRAE ASSET SEKURITAS INDONESIA",
+      "bval": 937967500,
+      "bvol": 1662500,
+      "sval": 262582500,
+      "svol": 465700,
+      "nval": 675385000,
+      "nvol": 1196800,
+      "avg_price": 564.19
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 421480000,
+      "bvol": 755400,
+      "sval": 3390000,
+      "svol": 6000,
+      "nval": 418090000,
+      "nvol": 749400,
+      "avg_price": 557.96
+    },
+    {
+      "broker_code": "XL",
+      "broker_name": "STOCKBIT SEKURITAS DIGITAL",
+      "bval": 1033444000,
+      "bvol": 1839700,
+      "sval": 650045500,
+      "svol": 1158300,
+      "nval": 383398500,
+      "nvol": 681400,
+      "avg_price": 561.75
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 182157000,
+      "bvol": 320400,
+      "sval": 2626041500,
+      "svol": 4668900,
+      "nval": -2443884500,
+      "nvol": -4348500,
+      "avg_price": 562.45
+    },
+    {
+      "broker_code": "PD",
+      "broker_name": "INDO PREMIER SEKURITAS",
+      "bval": 183343500,
+      "bvol": 327200,
+      "sval": 1250924000,
+      "svol": 2251700,
+      "nval": -1067580500,
+      "nvol": -1924500,
+      "avg_price": 555.55
+    },
+    {
+      "broker_code": "AZ",
+      "broker_name": "SUCOR SEKURITAS",
+      "bval": 77304000,
+      "bvol": 138500,
+      "sval": 1075370000,
+      "svol": 1895000,
+      "nval": -998066000,
+      "nvol": -1756500,
+      "avg_price": 567.48
+    },
+    {
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 1079801000,
+      "bvol": 1906500,
+      "sval": 1586115000,
+      "svol": 2828800,
+      "nval": -506314000,
+      "nvol": -922300,
+      "avg_price": 560.7
+    },
+    {
+      "broker_code": "XA",
+      "broker_name": "NH KORINDO SEKURITAS INDONESIA",
+      "bval": 1582000,
+      "bvol": 2800,
+      "sval": 136965000,
+      "svol": 244000,
+      "nval": -135383000,
+      "nvol": -241200,
+      "avg_price": 561.33
+    }
+  ]
+}

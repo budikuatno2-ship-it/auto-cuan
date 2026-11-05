@@ -1,0 +1,317 @@
+{
+  "stock_code": "KLBF",
+  "ticker": "KLBF",
+  "date": "2026-10-28",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker": "NI",
+      "broker_code": "NI",
+      "broker_name": "BNI SEKURITAS",
+      "bval": 9610980000,
+      "bvol": 13226400,
+      "sval": 437105000,
+      "svol": 599800,
+      "nval": 9173875000,
+      "nvol": 12626600,
+      "avg_buy": 726.65
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 10345966500,
+      "bvol": 14338500,
+      "sval": 3639867000,
+      "svol": 5022400,
+      "nval": 6706099500,
+      "nvol": 9316100,
+      "avg_buy": 721.55
+    },
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 7144401000,
+      "bvol": 9853800,
+      "sval": 803068000,
+      "svol": 1115300,
+      "nval": 6341333000,
+      "nvol": 8738500,
+      "avg_buy": 725.04
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 4281187500,
+      "bvol": 5904600,
+      "sval": 2118965000,
+      "svol": 2923200,
+      "nval": 2162222500,
+      "nvol": 2981400,
+      "avg_buy": 725.06
+    },
+    {
+      "broker": "AF",
+      "broker_code": "AF",
+      "broker_name": "HARITA KENCANA SEKURITAS",
+      "bval": 71500000,
+      "bvol": 100000,
+      "sval": 0,
+      "svol": 0,
+      "nval": 71500000,
+      "nvol": 100000,
+      "avg_buy": 715
+    },
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 373097000,
+      "bvol": 511300,
+      "sval": 1489979500,
+      "svol": 2056300,
+      "nval": -1116882500,
+      "nvol": -1545000,
+      "avg_sell": 724.59
+    }
+  ],
+  "broker_net": 29964055500,
+  "net_flow": 29964055500,
+  "foreign_net": 29964055500,
+  "foreign_net_val": 29964055500,
+  "total_buy_val": 31454035000,
+  "total_sell_val": 1489979500,
+  "total_turnover": 31454035000,
+  "top_buyers": [
+    {
+      "broker": "NI",
+      "broker_code": "NI",
+      "broker_name": "BNI SEKURITAS",
+      "bval": 9610980000,
+      "bvol": 13226400,
+      "sval": 437105000,
+      "svol": 599800,
+      "nval": 9173875000,
+      "nvol": 12626600,
+      "avg_buy": 726.65
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 10345966500,
+      "bvol": 14338500,
+      "sval": 3639867000,
+      "svol": 5022400,
+      "nval": 6706099500,
+      "nvol": 9316100,
+      "avg_buy": 721.55
+    },
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 7144401000,
+      "bvol": 9853800,
+      "sval": 803068000,
+      "svol": 1115300,
+      "nval": 6341333000,
+      "nvol": 8738500,
+      "avg_buy": 725.04
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 4281187500,
+      "bvol": 5904600,
+      "sval": 2118965000,
+      "svol": 2923200,
+      "nval": 2162222500,
+      "nvol": 2981400,
+      "avg_buy": 725.06
+    },
+    {
+      "broker": "AF",
+      "broker_code": "AF",
+      "broker_name": "HARITA KENCANA SEKURITAS",
+      "bval": 71500000,
+      "bvol": 100000,
+      "sval": 0,
+      "svol": 0,
+      "nval": 71500000,
+      "nvol": 100000,
+      "avg_buy": 715
+    }
+  ],
+  "gross_buyers": [
+    {
+      "broker": "NI",
+      "broker_code": "NI",
+      "broker_name": "BNI SEKURITAS",
+      "bval": 9610980000,
+      "bvol": 13226400,
+      "sval": 437105000,
+      "svol": 599800,
+      "nval": 9173875000,
+      "nvol": 12626600,
+      "avg_buy": 726.65
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 10345966500,
+      "bvol": 14338500,
+      "sval": 3639867000,
+      "svol": 5022400,
+      "nval": 6706099500,
+      "nvol": 9316100,
+      "avg_buy": 721.55
+    },
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 7144401000,
+      "bvol": 9853800,
+      "sval": 803068000,
+      "svol": 1115300,
+      "nval": 6341333000,
+      "nvol": 8738500,
+      "avg_buy": 725.04
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 4281187500,
+      "bvol": 5904600,
+      "sval": 2118965000,
+      "svol": 2923200,
+      "nval": 2162222500,
+      "nvol": 2981400,
+      "avg_buy": 725.06
+    },
+    {
+      "broker": "AF",
+      "broker_code": "AF",
+      "broker_name": "HARITA KENCANA SEKURITAS",
+      "bval": 71500000,
+      "bvol": 100000,
+      "sval": 0,
+      "svol": 0,
+      "nval": 71500000,
+      "nvol": 100000,
+      "avg_buy": 715
+    }
+  ],
+  "net_buyers": [
+    {
+      "broker": "NI",
+      "broker_code": "NI",
+      "broker_name": "BNI SEKURITAS",
+      "bval": 9610980000,
+      "bvol": 13226400,
+      "sval": 437105000,
+      "svol": 599800,
+      "nval": 9173875000,
+      "nvol": 12626600,
+      "avg_buy": 726.65
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 10345966500,
+      "bvol": 14338500,
+      "sval": 3639867000,
+      "svol": 5022400,
+      "nval": 6706099500,
+      "nvol": 9316100,
+      "avg_buy": 721.55
+    },
+    {
+      "broker": "CC",
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 7144401000,
+      "bvol": 9853800,
+      "sval": 803068000,
+      "svol": 1115300,
+      "nval": 6341333000,
+      "nvol": 8738500,
+      "avg_buy": 725.04
+    },
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 4281187500,
+      "bvol": 5904600,
+      "sval": 2118965000,
+      "svol": 2923200,
+      "nval": 2162222500,
+      "nvol": 2981400,
+      "avg_buy": 725.06
+    },
+    {
+      "broker": "AF",
+      "broker_code": "AF",
+      "broker_name": "HARITA KENCANA SEKURITAS",
+      "bval": 71500000,
+      "bvol": 100000,
+      "sval": 0,
+      "svol": 0,
+      "nval": 71500000,
+      "nvol": 100000,
+      "avg_buy": 715
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 373097000,
+      "bvol": 511300,
+      "sval": 1489979500,
+      "svol": 2056300,
+      "nval": -1116882500,
+      "nvol": -1545000,
+      "avg_sell": 724.59
+    }
+  ],
+  "gross_sellers": [
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 373097000,
+      "bvol": 511300,
+      "sval": 1489979500,
+      "svol": 2056300,
+      "nval": -1116882500,
+      "nvol": -1545000,
+      "avg_sell": 724.59
+    }
+  ],
+  "net_sellers": [
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 373097000,
+      "bvol": 511300,
+      "sval": 1489979500,
+      "svol": 2056300,
+      "nval": -1116882500,
+      "nvol": -1545000,
+      "avg_sell": 724.59
+    }
+  ]
+}

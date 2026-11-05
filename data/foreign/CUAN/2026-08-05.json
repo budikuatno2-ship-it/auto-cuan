@@ -1,0 +1,162 @@
+{
+  "stock_code": "CUAN",
+  "ticker": "CUAN",
+  "date": "2026-08-05",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 4027492500,
+      "bvol": 5956700,
+      "bfrq": 393,
+      "sfrq": 211,
+      "sval": 1685670500,
+      "svol": 2481500,
+      "nval": 2341822000,
+      "nvol": 3475200
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 12624111500,
+      "bvol": 18692800,
+      "bfrq": 515,
+      "sfrq": 906,
+      "sval": 11588435500,
+      "svol": 17055600,
+      "nval": 1035676000,
+      "nvol": 1637200
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1096458000,
+      "bvol": 1622600,
+      "bfrq": 107,
+      "sfrq": 53,
+      "sval": 360506000,
+      "svol": 536200,
+      "nval": 735952000,
+      "nvol": 1086400
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2381617000,
+      "bvol": 3533900,
+      "bfrq": 304,
+      "sfrq": 144,
+      "sval": 1806268000,
+      "svol": 2663400,
+      "nval": 575349000,
+      "nvol": 870500
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 592364000,
+      "bvol": 878400,
+      "bfrq": 54,
+      "sfrq": 8,
+      "sval": 199920000,
+      "svol": 296500,
+      "nval": 392444000,
+      "nvol": 581900
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 567811500,
+      "bvol": 840200,
+      "bfrq": 112,
+      "sfrq": 46,
+      "sval": 240096500,
+      "svol": 353600,
+      "nval": 327715000,
+      "nvol": 486600
+    }
+  ],
+  "broker_net": 5408958000,
+  "net_flow": 5408958000,
+  "total_buy_val": 21289854500,
+  "total_sell_val": 15880896500,
+  "total_turnover": 21289854500,
+  "top_buyers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 4027492500,
+      "bvol": 5956700,
+      "bfrq": 393,
+      "sfrq": 211,
+      "sval": 1685670500,
+      "svol": 2481500,
+      "nval": 2341822000,
+      "nvol": 3475200
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 12624111500,
+      "bvol": 18692800,
+      "bfrq": 515,
+      "sfrq": 906,
+      "sval": 11588435500,
+      "svol": 17055600,
+      "nval": 1035676000,
+      "nvol": 1637200
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1096458000,
+      "bvol": 1622600,
+      "bfrq": 107,
+      "sfrq": 53,
+      "sval": 360506000,
+      "svol": 536200,
+      "nval": 735952000,
+      "nvol": 1086400
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2381617000,
+      "bvol": 3533900,
+      "bfrq": 304,
+      "sfrq": 144,
+      "sval": 1806268000,
+      "svol": 2663400,
+      "nval": 575349000,
+      "nvol": 870500
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 592364000,
+      "bvol": 878400,
+      "bfrq": 54,
+      "sfrq": 8,
+      "sval": 199920000,
+      "svol": 296500,
+      "nval": 392444000,
+      "nvol": 581900
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 567811500,
+      "bvol": 840200,
+      "bfrq": 112,
+      "sfrq": 46,
+      "sval": 240096500,
+      "svol": 353600,
+      "nval": 327715000,
+      "nvol": 486600
+    }
+  ],
+  "top_sellers": []
+}

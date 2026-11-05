@@ -1,0 +1,114 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-07-08",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 307940107500,
+      "bvol": 49130800,
+      "bfrq": 6083,
+      "sfrq": 581,
+      "sval": 39539697500,
+      "svol": 6326700,
+      "nval": 268400410000,
+      "nvol": 42804100
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 71995330000,
+      "bvol": 11495900,
+      "bfrq": 1448,
+      "sfrq": 1142,
+      "sval": 55190827500,
+      "svol": 8826600,
+      "nval": 16804502500,
+      "nvol": 2669300
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 21768727500,
+      "bvol": 3525300,
+      "bfrq": 31,
+      "sfrq": 158,
+      "sval": 5388425000,
+      "svol": 856700,
+      "nval": 16380302500,
+      "nvol": 2668600
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 11955312500,
+      "bvol": 1922600,
+      "bfrq": 565,
+      "sfrq": 401,
+      "sval": 6649562500,
+      "svol": 1059300,
+      "nval": 5305750000,
+      "nvol": 863300
+    }
+  ],
+  "broker_net": 306890965000,
+  "net_flow": 306890965000,
+  "total_buy_val": 413659477500,
+  "total_sell_val": 106768512500,
+  "total_turnover": 413659477500,
+  "top_buyers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 307940107500,
+      "bvol": 49130800,
+      "bfrq": 6083,
+      "sfrq": 581,
+      "sval": 39539697500,
+      "svol": 6326700,
+      "nval": 268400410000,
+      "nvol": 42804100
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 71995330000,
+      "bvol": 11495900,
+      "bfrq": 1448,
+      "sfrq": 1142,
+      "sval": 55190827500,
+      "svol": 8826600,
+      "nval": 16804502500,
+      "nvol": 2669300
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 21768727500,
+      "bvol": 3525300,
+      "bfrq": 31,
+      "sfrq": 158,
+      "sval": 5388425000,
+      "svol": 856700,
+      "nval": 16380302500,
+      "nvol": 2668600
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 11955312500,
+      "bvol": 1922600,
+      "bfrq": 565,
+      "sfrq": 401,
+      "sval": 6649562500,
+      "svol": 1059300,
+      "nval": 5305750000,
+      "nvol": 863300
+    }
+  ],
+  "top_sellers": []
+}

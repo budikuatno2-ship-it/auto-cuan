@@ -1,0 +1,162 @@
+{
+  "stock_code": "BMRI",
+  "ticker": "BMRI",
+  "date": "2026-08-21",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 93920597000,
+      "bvol": 22259700,
+      "bfrq": 2175,
+      "sfrq": 1549,
+      "sval": 22145684000,
+      "svol": 5254100,
+      "nval": 71774913000,
+      "nvol": 17005600
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 58450730000,
+      "bvol": 13867300,
+      "bfrq": 1733,
+      "sfrq": 139,
+      "sval": 9097364000,
+      "svol": 2158100,
+      "nval": 49353366000,
+      "nvol": 11709200
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 52675297000,
+      "bvol": 12522100,
+      "bfrq": 2258,
+      "sfrq": 273,
+      "sval": 5674709000,
+      "svol": 1346300,
+      "nval": 47000588000,
+      "nvol": 11175800
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 2144250000,
+      "bvol": 508200,
+      "bfrq": 142,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2144250000,
+      "nvol": 508200
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 6442098000,
+      "bvol": 1536200,
+      "bfrq": 447,
+      "sfrq": 3,
+      "sval": 4841184000,
+      "svol": 1147200,
+      "nval": 1600914000,
+      "nvol": 389000
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2283301000,
+      "bvol": 543300,
+      "bfrq": 88,
+      "sfrq": 63,
+      "sval": 1395449000,
+      "svol": 331500,
+      "nval": 887852000,
+      "nvol": 211800
+    }
+  ],
+  "broker_net": 172761883000,
+  "net_flow": 172761883000,
+  "total_buy_val": 215916273000,
+  "total_sell_val": 43154390000,
+  "total_turnover": 215916273000,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 93920597000,
+      "bvol": 22259700,
+      "bfrq": 2175,
+      "sfrq": 1549,
+      "sval": 22145684000,
+      "svol": 5254100,
+      "nval": 71774913000,
+      "nvol": 17005600
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 58450730000,
+      "bvol": 13867300,
+      "bfrq": 1733,
+      "sfrq": 139,
+      "sval": 9097364000,
+      "svol": 2158100,
+      "nval": 49353366000,
+      "nvol": 11709200
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 52675297000,
+      "bvol": 12522100,
+      "bfrq": 2258,
+      "sfrq": 273,
+      "sval": 5674709000,
+      "svol": 1346300,
+      "nval": 47000588000,
+      "nvol": 11175800
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 2144250000,
+      "bvol": 508200,
+      "bfrq": 142,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2144250000,
+      "nvol": 508200
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 6442098000,
+      "bvol": 1536200,
+      "bfrq": 447,
+      "sfrq": 3,
+      "sval": 4841184000,
+      "svol": 1147200,
+      "nval": 1600914000,
+      "nvol": 389000
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2283301000,
+      "bvol": 543300,
+      "bfrq": 88,
+      "sfrq": 63,
+      "sval": 1395449000,
+      "svol": 331500,
+      "nval": 887852000,
+      "nvol": 211800
+    }
+  ],
+  "top_sellers": []
+}

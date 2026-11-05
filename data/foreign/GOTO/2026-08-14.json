@@ -1,0 +1,114 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-08-14",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 11510000,
+      "bvol": 230200,
+      "bfrq": 7,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 11510000,
+      "nvol": 230200
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1815000,
+      "bvol": 36300,
+      "bfrq": 9,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1815000,
+      "nvol": 36300
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 1785000,
+      "bvol": 35700,
+      "bfrq": 13,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1785000,
+      "nvol": 35700
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 565000,
+      "bvol": 11300,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 565000,
+      "nvol": 11300
+    }
+  ],
+  "broker_net": 15675000,
+  "net_flow": 15675000,
+  "total_buy_val": 15675000,
+  "total_sell_val": 0,
+  "total_turnover": 15675000,
+  "top_buyers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 11510000,
+      "bvol": 230200,
+      "bfrq": 7,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 11510000,
+      "nvol": 230200
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1815000,
+      "bvol": 36300,
+      "bfrq": 9,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1815000,
+      "nvol": 36300
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 1785000,
+      "bvol": 35700,
+      "bfrq": 13,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1785000,
+      "nvol": 35700
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 565000,
+      "bvol": 11300,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 565000,
+      "nvol": 11300
+    }
+  ],
+  "top_sellers": []
+}

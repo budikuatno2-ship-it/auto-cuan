@@ -1,0 +1,114 @@
+{
+  "stock_code": "PTRO",
+  "ticker": "PTRO",
+  "date": "2026-08-18",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 10333927500,
+      "bvol": 1896700,
+      "bfrq": 207,
+      "sfrq": 13,
+      "sval": 549665000,
+      "svol": 102000,
+      "nval": 9784262500,
+      "nvol": 1794700
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 6598202500,
+      "bvol": 1208400,
+      "bfrq": 498,
+      "sfrq": 231,
+      "sval": 3707697500,
+      "svol": 684400,
+      "nval": 2890505000,
+      "nvol": 524000
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 15241187500,
+      "bvol": 2807700,
+      "bfrq": 903,
+      "sfrq": 821,
+      "sval": 12850237500,
+      "svol": 2374100,
+      "nval": 2390950000,
+      "nvol": 433600
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 1671670000,
+      "bvol": 313200,
+      "bfrq": 81,
+      "sfrq": 105,
+      "sval": 1304375000,
+      "svol": 243900,
+      "nval": 367295000,
+      "nvol": 69300
+    }
+  ],
+  "broker_net": 15433012500,
+  "net_flow": 15433012500,
+  "total_buy_val": 33844987500,
+  "total_sell_val": 18411975000,
+  "total_turnover": 33844987500,
+  "top_buyers": [
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 10333927500,
+      "bvol": 1896700,
+      "bfrq": 207,
+      "sfrq": 13,
+      "sval": 549665000,
+      "svol": 102000,
+      "nval": 9784262500,
+      "nvol": 1794700
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 6598202500,
+      "bvol": 1208400,
+      "bfrq": 498,
+      "sfrq": 231,
+      "sval": 3707697500,
+      "svol": 684400,
+      "nval": 2890505000,
+      "nvol": 524000
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 15241187500,
+      "bvol": 2807700,
+      "bfrq": 903,
+      "sfrq": 821,
+      "sval": 12850237500,
+      "svol": 2374100,
+      "nval": 2390950000,
+      "nvol": 433600
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 1671670000,
+      "bvol": 313200,
+      "bfrq": 81,
+      "sfrq": 105,
+      "sval": 1304375000,
+      "svol": 243900,
+      "nval": 367295000,
+      "nvol": 69300
+    }
+  ],
+  "top_sellers": []
+}

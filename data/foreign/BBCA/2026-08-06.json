@@ -1,0 +1,66 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-08-06",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 130641415000,
+      "bvol": 20469100,
+      "bfrq": 2418,
+      "sfrq": 2191,
+      "sval": 67698737500,
+      "svol": 10615700,
+      "nval": 62942677500,
+      "nvol": 9853400
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1987325000,
+      "bvol": 310800,
+      "bfrq": 157,
+      "sfrq": 41,
+      "sval": 471445000,
+      "svol": 73600,
+      "nval": 1515880000,
+      "nvol": 237200
+    }
+  ],
+  "broker_net": 64458557500,
+  "net_flow": 64458557500,
+  "total_buy_val": 132628740000,
+  "total_sell_val": 68170182500,
+  "total_turnover": 132628740000,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 130641415000,
+      "bvol": 20469100,
+      "bfrq": 2418,
+      "sfrq": 2191,
+      "sval": 67698737500,
+      "svol": 10615700,
+      "nval": 62942677500,
+      "nvol": 9853400
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1987325000,
+      "bvol": 310800,
+      "bfrq": 157,
+      "sfrq": 41,
+      "sval": 471445000,
+      "svol": 73600,
+      "nval": 1515880000,
+      "nvol": 237200
+    }
+  ],
+  "top_sellers": []
+}

@@ -1,0 +1,90 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-08-03",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 195893245000,
+      "bvol": 31095100,
+      "bfrq": 3250,
+      "sfrq": 2091,
+      "sval": 30981812500,
+      "svol": 4920500,
+      "nval": 164911432500,
+      "nvol": 26174600
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 5115885000,
+      "bvol": 811900,
+      "bfrq": 196,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5115885000,
+      "nvol": 811900
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 4502967500,
+      "bvol": 715100,
+      "bfrq": 243,
+      "sfrq": 146,
+      "sval": 1246485000,
+      "svol": 198000,
+      "nval": 3256482500,
+      "nvol": 517100
+    }
+  ],
+  "broker_net": 173283800000,
+  "net_flow": 173283800000,
+  "total_buy_val": 205512097500,
+  "total_sell_val": 32228297500,
+  "total_turnover": 205512097500,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 195893245000,
+      "bvol": 31095100,
+      "bfrq": 3250,
+      "sfrq": 2091,
+      "sval": 30981812500,
+      "svol": 4920500,
+      "nval": 164911432500,
+      "nvol": 26174600
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 5115885000,
+      "bvol": 811900,
+      "bfrq": 196,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5115885000,
+      "nvol": 811900
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 4502967500,
+      "bvol": 715100,
+      "bfrq": 243,
+      "sfrq": 146,
+      "sval": 1246485000,
+      "svol": 198000,
+      "nval": 3256482500,
+      "nvol": 517100
+    }
+  ],
+  "top_sellers": []
+}

@@ -1,0 +1,114 @@
+{
+  "stock_code": "PTRO",
+  "ticker": "PTRO",
+  "date": "2026-08-05",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 20624319000,
+      "bvol": 4348700,
+      "bfrq": 718,
+      "sfrq": 36,
+      "sval": 494060000,
+      "svol": 104100,
+      "nval": 20130259000,
+      "nvol": 4244600
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 2515546000,
+      "bvol": 532300,
+      "bfrq": 169,
+      "sfrq": 104,
+      "sval": 789108000,
+      "svol": 166900,
+      "nval": 1726438000,
+      "nvol": 365400
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 947411000,
+      "bvol": 200400,
+      "bfrq": 112,
+      "sfrq": 30,
+      "sval": 288086000,
+      "svol": 60700,
+      "nval": 659325000,
+      "nvol": 139700
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1473220000,
+      "bvol": 311400,
+      "bfrq": 67,
+      "sfrq": 80,
+      "sval": 1101576000,
+      "svol": 231900,
+      "nval": 371644000,
+      "nvol": 79500
+    }
+  ],
+  "broker_net": 22887666000,
+  "net_flow": 22887666000,
+  "total_buy_val": 25560496000,
+  "total_sell_val": 2672830000,
+  "total_turnover": 25560496000,
+  "top_buyers": [
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 20624319000,
+      "bvol": 4348700,
+      "bfrq": 718,
+      "sfrq": 36,
+      "sval": 494060000,
+      "svol": 104100,
+      "nval": 20130259000,
+      "nvol": 4244600
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 2515546000,
+      "bvol": 532300,
+      "bfrq": 169,
+      "sfrq": 104,
+      "sval": 789108000,
+      "svol": 166900,
+      "nval": 1726438000,
+      "nvol": 365400
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 947411000,
+      "bvol": 200400,
+      "bfrq": 112,
+      "sfrq": 30,
+      "sval": 288086000,
+      "svol": 60700,
+      "nval": 659325000,
+      "nvol": 139700
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1473220000,
+      "bvol": 311400,
+      "bfrq": 67,
+      "sfrq": 80,
+      "sval": 1101576000,
+      "svol": 231900,
+      "nval": 371644000,
+      "nvol": 79500
+    }
+  ],
+  "top_sellers": []
+}

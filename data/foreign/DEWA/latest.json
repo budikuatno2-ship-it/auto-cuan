@@ -1,0 +1,365 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-09-25",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 13971682200,
+      "bvol": 39997300,
+      "sval": 4068323000,
+      "svol": 11360900,
+      "nval": 9903359200,
+      "nvol": 28636400,
+      "avg_buy": 349.32
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 27343553600,
+      "bvol": 78009800,
+      "sval": 18112431000,
+      "svol": 50995900,
+      "nval": 9231122600,
+      "nvol": 27013900,
+      "avg_buy": 350.51
+    },
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 6237783000,
+      "bvol": 17847500,
+      "sval": 1493350000,
+      "svol": 4269200,
+      "nval": 4744433000,
+      "nvol": 13578300,
+      "avg_buy": 349.5
+    },
+    {
+      "broker": "OD",
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 4135900400,
+      "bvol": 11763800,
+      "sval": 3426923400,
+      "svol": 9791700,
+      "nval": 708977000,
+      "nvol": 1972100,
+      "avg_buy": 351.58
+    },
+    {
+      "broker": "AI",
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 537387200,
+      "bvol": 1537900,
+      "sval": 104820000,
+      "svol": 300000,
+      "nval": 432567200,
+      "nvol": 1237900,
+      "avg_buy": 349.43
+    },
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 1292395000,
+      "bvol": 3602000,
+      "sval": 20522612400,
+      "svol": 58681500,
+      "nval": -19230217400,
+      "nvol": -55079500,
+      "avg_sell": 349.73
+    },
+    {
+      "broker": "LG",
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1229033400,
+      "bvol": 3492600,
+      "sval": 3769917800,
+      "svol": 10809700,
+      "nval": -2540884400,
+      "nvol": -7317100,
+      "avg_sell": 348.75
+    }
+  ],
+  "broker_net": 27933776200,
+  "net_flow": 27933776200,
+  "foreign_net": 27933776200,
+  "foreign_net_val": 27933776200,
+  "total_buy_val": 52226306400,
+  "total_sell_val": 24292530200,
+  "total_turnover": 52226306400,
+  "top_buyers": [
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 13971682200,
+      "bvol": 39997300,
+      "sval": 4068323000,
+      "svol": 11360900,
+      "nval": 9903359200,
+      "nvol": 28636400,
+      "avg_buy": 349.32
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 27343553600,
+      "bvol": 78009800,
+      "sval": 18112431000,
+      "svol": 50995900,
+      "nval": 9231122600,
+      "nvol": 27013900,
+      "avg_buy": 350.51
+    },
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 6237783000,
+      "bvol": 17847500,
+      "sval": 1493350000,
+      "svol": 4269200,
+      "nval": 4744433000,
+      "nvol": 13578300,
+      "avg_buy": 349.5
+    },
+    {
+      "broker": "OD",
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 4135900400,
+      "bvol": 11763800,
+      "sval": 3426923400,
+      "svol": 9791700,
+      "nval": 708977000,
+      "nvol": 1972100,
+      "avg_buy": 351.58
+    },
+    {
+      "broker": "AI",
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 537387200,
+      "bvol": 1537900,
+      "sval": 104820000,
+      "svol": 300000,
+      "nval": 432567200,
+      "nvol": 1237900,
+      "avg_buy": 349.43
+    }
+  ],
+  "gross_buyers": [
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 13971682200,
+      "bvol": 39997300,
+      "sval": 4068323000,
+      "svol": 11360900,
+      "nval": 9903359200,
+      "nvol": 28636400,
+      "avg_buy": 349.32
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 27343553600,
+      "bvol": 78009800,
+      "sval": 18112431000,
+      "svol": 50995900,
+      "nval": 9231122600,
+      "nvol": 27013900,
+      "avg_buy": 350.51
+    },
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 6237783000,
+      "bvol": 17847500,
+      "sval": 1493350000,
+      "svol": 4269200,
+      "nval": 4744433000,
+      "nvol": 13578300,
+      "avg_buy": 349.5
+    },
+    {
+      "broker": "OD",
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 4135900400,
+      "bvol": 11763800,
+      "sval": 3426923400,
+      "svol": 9791700,
+      "nval": 708977000,
+      "nvol": 1972100,
+      "avg_buy": 351.58
+    },
+    {
+      "broker": "AI",
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 537387200,
+      "bvol": 1537900,
+      "sval": 104820000,
+      "svol": 300000,
+      "nval": 432567200,
+      "nvol": 1237900,
+      "avg_buy": 349.43
+    }
+  ],
+  "net_buyers": [
+    {
+      "broker": "BK",
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 13971682200,
+      "bvol": 39997300,
+      "sval": 4068323000,
+      "svol": 11360900,
+      "nval": 9903359200,
+      "nvol": 28636400,
+      "avg_buy": 349.32
+    },
+    {
+      "broker": "AK",
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 27343553600,
+      "bvol": 78009800,
+      "sval": 18112431000,
+      "svol": 50995900,
+      "nval": 9231122600,
+      "nvol": 27013900,
+      "avg_buy": 350.51
+    },
+    {
+      "broker": "ZP",
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 6237783000,
+      "bvol": 17847500,
+      "sval": 1493350000,
+      "svol": 4269200,
+      "nval": 4744433000,
+      "nvol": 13578300,
+      "avg_buy": 349.5
+    },
+    {
+      "broker": "OD",
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 4135900400,
+      "bvol": 11763800,
+      "sval": 3426923400,
+      "svol": 9791700,
+      "nval": 708977000,
+      "nvol": 1972100,
+      "avg_buy": 351.58
+    },
+    {
+      "broker": "AI",
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 537387200,
+      "bvol": 1537900,
+      "sval": 104820000,
+      "svol": 300000,
+      "nval": 432567200,
+      "nvol": 1237900,
+      "avg_buy": 349.43
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 1292395000,
+      "bvol": 3602000,
+      "sval": 20522612400,
+      "svol": 58681500,
+      "nval": -19230217400,
+      "nvol": -55079500,
+      "avg_sell": 349.73
+    },
+    {
+      "broker": "LG",
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1229033400,
+      "bvol": 3492600,
+      "sval": 3769917800,
+      "svol": 10809700,
+      "nval": -2540884400,
+      "nvol": -7317100,
+      "avg_sell": 348.75
+    }
+  ],
+  "gross_sellers": [
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 1292395000,
+      "bvol": 3602000,
+      "sval": 20522612400,
+      "svol": 58681500,
+      "nval": -19230217400,
+      "nvol": -55079500,
+      "avg_sell": 349.73
+    },
+    {
+      "broker": "LG",
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1229033400,
+      "bvol": 3492600,
+      "sval": 3769917800,
+      "svol": 10809700,
+      "nval": -2540884400,
+      "nvol": -7317100,
+      "avg_sell": 348.75
+    }
+  ],
+  "net_sellers": [
+    {
+      "broker": "YU",
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 1292395000,
+      "bvol": 3602000,
+      "sval": 20522612400,
+      "svol": 58681500,
+      "nval": -19230217400,
+      "nvol": -55079500,
+      "avg_sell": 349.73
+    },
+    {
+      "broker": "LG",
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1229033400,
+      "bvol": 3492600,
+      "sval": 3769917800,
+      "svol": 10809700,
+      "nval": -2540884400,
+      "nvol": -7317100,
+      "avg_sell": 348.75
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-08-18",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 1100000000,
+      "bvol": 22000000,
+      "bfrq": 9,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1100000000,
+      "nvol": 22000000
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 102515000,
+      "bvol": 2050300,
+      "bfrq": 5,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 102515000,
+      "nvol": 2050300
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 38405000,
+      "bvol": 768100,
+      "bfrq": 4,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 38405000,
+      "nvol": 768100
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 5570000,
+      "bvol": 111400,
+      "bfrq": 4,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5570000,
+      "nvol": 111400
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2720000,
+      "bvol": 54400,
+      "bfrq": 26,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2720000,
+      "nvol": 54400
+    }
+  ],
+  "broker_net": 1249210000,
+  "net_flow": 1249210000,
+  "total_buy_val": 1249210000,
+  "total_sell_val": 0,
+  "total_turnover": 1249210000,
+  "top_buyers": [
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 1100000000,
+      "bvol": 22000000,
+      "bfrq": 9,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1100000000,
+      "nvol": 22000000
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 102515000,
+      "bvol": 2050300,
+      "bfrq": 5,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 102515000,
+      "nvol": 2050300
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 38405000,
+      "bvol": 768100,
+      "bfrq": 4,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 38405000,
+      "nvol": 768100
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 5570000,
+      "bvol": 111400,
+      "bfrq": 4,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5570000,
+      "nvol": 111400
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2720000,
+      "bvol": 54400,
+      "bfrq": 26,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2720000,
+      "nvol": 54400
+    }
+  ],
+  "top_sellers": []
+}

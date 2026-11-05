@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "trade_date": "2026-11-04",
+  "session_status": "FINAL_EOD",
+  "is_eod_final": true,
+  "top5_locked": true,
+  "generated_at": "2026-11-04T15:45:00.000Z",
+  "updated_at": "2026-11-04T15:45:00.000Z",
+  "snapshot": {
+    "trade_date": "2026-11-04",
+    "generated_at": "2026-11-04T15:45:00.000Z",
+    "updated_at": "2026-11-04T15:45:00.000Z",
+    "sectors": [],
+    "dt_signals": []
+  }
+}

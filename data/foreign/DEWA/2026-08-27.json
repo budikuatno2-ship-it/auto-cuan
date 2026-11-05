@@ -1,0 +1,114 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-08-27",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 24768511000,
+      "bvol": 56498100,
+      "bfrq": 1843,
+      "sfrq": 717,
+      "sval": 11224918000,
+      "svol": 25533000,
+      "nval": 13543593000,
+      "nvol": 30965100
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 7527974600,
+      "bvol": 17350400,
+      "bfrq": 403,
+      "sfrq": 122,
+      "sval": 2377671000,
+      "svol": 5527400,
+      "nval": 5150303600,
+      "nvol": 11823000
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 929921200,
+      "bvol": 2097900,
+      "bfrq": 40,
+      "sfrq": 71,
+      "sval": 569627400,
+      "svol": 1294800,
+      "nval": 360293800,
+      "nvol": 803100
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 54208000,
+      "bvol": 121000,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 54208000,
+      "nvol": 121000
+    }
+  ],
+  "broker_net": 19108398400,
+  "net_flow": 19108398400,
+  "total_buy_val": 33280614800,
+  "total_sell_val": 14172216400,
+  "total_turnover": 33280614800,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 24768511000,
+      "bvol": 56498100,
+      "bfrq": 1843,
+      "sfrq": 717,
+      "sval": 11224918000,
+      "svol": 25533000,
+      "nval": 13543593000,
+      "nvol": 30965100
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 7527974600,
+      "bvol": 17350400,
+      "bfrq": 403,
+      "sfrq": 122,
+      "sval": 2377671000,
+      "svol": 5527400,
+      "nval": 5150303600,
+      "nvol": 11823000
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 929921200,
+      "bvol": 2097900,
+      "bfrq": 40,
+      "sfrq": 71,
+      "sval": 569627400,
+      "svol": 1294800,
+      "nval": 360293800,
+      "nvol": 803100
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 54208000,
+      "bvol": 121000,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 54208000,
+      "nvol": 121000
+    }
+  ],
+  "top_sellers": []
+}

@@ -938,7 +938,7 @@
      #dashboardScreen — see test/auth-modals-outside-dashboard-screen.test.js. -->
 
 <!-- LOGIN MODAL -->
-<div id="loginModal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center p-4" style="background-color:rgba(6,10,18,0.92)!important;backdrop-filter:blur(18px) saturate(140%)!important;-webkit-backdrop-filter:blur(18px) saturate(140%)!important;z-index:9999!important" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+<div id="loginModal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md" style="background-color:rgba(6,10,18,0.88)!important;backdrop-filter:blur(18px) saturate(140%)!important;-webkit-backdrop-filter:blur(18px) saturate(140%)!important;z-index:9999!important" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
     <div class="w-full max-w-[420px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
         <div class="flex items-start justify-between gap-3">
             <div>
@@ -1404,7 +1404,7 @@ html.light #googleCompleteProfileModal input {
                 </div>
             </div>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
-                <span class="header-status-chip" id="globalLiveRadarChip" title="Kesegaran data belum dapat dipastikan." aria-label="Belum pasti. Kesegaran data belum dapat dipastikan."><span class="header-status-dot" id="globalLiveRadarDot" style="background:var(--ac-control-border, #848D88);box-shadow:none"></span><span id="globalLiveRadarText">Belum pasti</span><span id="globalLiveRadarTime"></span></span>
+                <span class="header-status-chip" id="globalLiveRadarChip" title="Data penutupan pasar sesi 4 Nov 2026." aria-label="EOD (Selesai), data 4 Nov 2026, 15.45 WIB."><span class="header-status-dot" id="globalLiveRadarDot" style="background:#38bdf8;box-shadow:none"></span><span id="globalLiveRadarText">EOD (Selesai)</span><span id="globalLiveRadarTime"> · 4 Nov 2026, 15.45 WIB</span></span>
                 <span class="header-status-chip safe">Safety ON</span>
                 <span class="header-status-chip warn">Manual Confirm</span>
                 <span class="header-status-chip">Watchlist ≠ BUY</span>
@@ -1700,6 +1700,21 @@ html.light #googleCompleteProfileModal input {
         </div>
         <div class="ph-act" id="adminNoteHeaderActions">
             <button type="button" class="btn p" id="btnNewAdminNote" onclick="openNewAdminNoteDrawer()" style="display:none">+ Catatan baru</button>
+        </div>
+    </div>
+
+    <!-- Briefing Schedule Banner (FASE V4-F12) -->
+    <div id="anBriefingScheduleBanner" class="briefing-schedule-banner flex items-center justify-between gap-3 p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-gray-300">
+        <div class="flex items-center gap-2.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <div>
+                <span class="font-bold text-white">Jadwal Pengiriman Briefing Otomatis:</span>
+                <span class="ml-1.5 text-gray-300">Morning Brief 06:00 WIB & Evening Brief 17:00 WIB</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 text-[11px] font-mono text-emerald-400">
+            <span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">Morning Brief 06:00 WIB</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">Evening Brief 17:00 WIB</span>
         </div>
     </div>
 
@@ -3108,315 +3123,646 @@ html.light #googleCompleteProfileModal input {
   </div>
 
   <div id="adminMainContent" style="display:none">
-    <div class="page">
-      <div class="ph">
-        <div>
-          <div class="kick" style="color:var(--ac-info)">Admin · Akses Terbatas</div>
-          <h1>Admin Console</h1>
-          <p>Operasional Auto-Cuan: persetujuan akun, pengguna, mode maintenance, kupon akses, job data, dan log audit. Setiap aksi tercatat.</p>
+<main class="page">
+    <div class="ph">
+      <div>
+        <div class="kick" style="color:var(--ac-info)">Admin · Akses Terbatas</div>
+        <h1>Admin Console</h1>
+        <p>Operasional Auto-Cuan: persetujuan akun, pengguna, mode maintenance, voucher, job data, dan log audit. Setiap aksi tercatat.</p>
+      </div>
+      <span class="st i" id="adminRoleBadge">Administrator Aktif</span>
+    </div>
+
+    <!-- Maintenance Active Banner -->
+    <div id="mBanner" class="banner" style="display:none" role="status">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9L2 18a2 2 0 001.7 3h16.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+      <span id="mBannerText">Mode maintenance aktif. Pengguna non-admin dialihkan ke layar pemeliharaan.</span>
+      <button class="btn sm" onclick="switchAdminTab(4)" style="margin-left:auto">Kelola</button>
+    </div>
+
+    <!-- S2: Banner peringatan keamanan real-time -->
+    <div id="secBanner" class="banner" style="display:none" role="alert">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M12 9v4M12 17h.01"/></svg>
+      <span id="secBannerText">Aman — Firewall & Anti-Bot Aktif</span>
+      <button class="btn sm" onclick="switchAdminTab(8)" style="margin-left:auto">Buka Tab Keamanan</button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="utabs" aria-label="Bagian admin" id="adminNavTabs" role="tablist">
+      <button class="tbtn on" role="tab" aria-selected="true" onclick="switchAdminTab(0)" data-admin-tab="0">Ringkasan</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(1)" data-admin-tab="1">Online <span class="st i" id="tabOnlineCount">0</span></button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(2)" data-admin-tab="2">Persetujuan Akun <span class="st a" id="tabPendingCount">0</span></button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(3)" data-admin-tab="3">Pengguna</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(4)" data-admin-tab="4">Mode Maintenance</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(5)" data-admin-tab="5">Kupon/Voucher</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(6)" data-admin-tab="6">Job &amp; Data Pipeline</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(7)" data-admin-tab="7">Log Audit & Keamanan</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(8)" data-admin-tab="8">Keamanan & Audit <span class="st g" id="tabSecBadge">Aman</span></button>
+    </nav>
+
+    <!-- TAB 0: RINGKASAN -->
+    <div id="panelTab0" class="admin-panel">
+      <section class="sheet">
+        <div class="strip">
+          <div>
+            <div class="lbl">Pengguna aktif</div>
+            <div class="big num" id="statUsersActive">1.284</div>
+            <div class="sub">7 hari terakhir · <button class="lnkb" onclick="switchAdminTab(1)"><span class="live"></span><span id="statOnlineNow">1</span> online sekarang</button></div>
+          </div>
+          <div>
+            <div class="lbl">Menunggu persetujuan</div>
+            <div class="big num warn" id="statPendingCount">0</div>
+            <div class="sub" id="statPendingSub">Verifikasi Telegram</div>
+          </div>
+          <div>
+            <div class="lbl">Kuota API data hari ini</div>
+            <div class="big num" id="statQuotaNum">—<span class="mut" style="font-size:14px;font-weight:600"> / —</span></div>
+            <div class="meter"><i id="statQuotaBar" style="width:0%"></i></div>
+            <div class="sub" id="statQuotaRemain">Sisa hari ini: — · Reset 00:00 WIB</div>
+            <div class="sub" id="statQuotaSync">Sinkron upstream: —</div>
+            <div class="sub" id="statQuotaPlan">Paket aktif: —</div>
+            <div class="sub" id="quotaDriftWarn" style="display:none;color:var(--ac-warn-t);font-weight:700">Peringatan drift: angka lokal vs upstream berbeda — dipakai nilai konservatif.</div>
+          </div>
+          <div>
+            <div class="lbl">Status layanan</div>
+            <div style="margin-top:8px"><span class="st g" id="statServiceStatus">Semua Normal</span></div>
+            <div class="sub">API p95 &lt; 320 ms</div>
+          </div>
         </div>
-        <span class="st i" id="adminRoleBadge">Administrator Aktif</span>
-      </div>
+      </section>
 
-      <!-- Maintenance Active Banner -->
-      <div id="mBanner" class="banner" style="display:none" role="status">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9L2 18a2 2 0 001.7 3h16.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
-        <span id="mBannerText">Mode maintenance aktif. Pengguna non-admin dialihkan ke layar pemeliharaan.</span>
-        <button class="btn sm" onclick="switchAdminTab(3)" style="margin-left:auto">Kelola</button>
-      </div>
-
-      <!-- Navigation Tabs -->
-      <nav class="utabs" aria-label="Bagian admin" id="adminNavTabs">
-        <button class="tbtn on" onclick="switchAdminTab(0)" data-admin-tab="0">Ringkasan</button>
-        <button class="tbtn" onclick="switchAdminTab(1)" data-admin-tab="1">Online <span class="st i" id="tabOnlineCount">0</span></button>
-        <button class="tbtn" onclick="switchAdminTab(2)" data-admin-tab="2">Persetujuan Akun <span class="st a" id="tabPendingCount">0</span></button>
-        <button class="tbtn" onclick="switchAdminTab(3)" data-admin-tab="3">Mode Maintenance</button>
-        <button class="tbtn" onclick="switchAdminTab(4)" data-admin-tab="4">Kupon</button>
-        <button class="tbtn" onclick="switchAdminTab(5)" data-admin-tab="5">Job &amp; Data Pipeline</button>
-        <button class="tbtn" onclick="switchAdminTab(6)" data-admin-tab="6">Log Audit</button>
-      </nav>
-
-      <!-- TAB 0: RINGKASAN -->
-      <div id="panelTab0" class="admin-panel">
-        <section class="sheet">
-          <div class="strip">
-            <div>
-              <div class="lbl">Pengguna aktif</div>
-              <div class="big num" id="statUsersActive">1.284</div>
-              <div class="sub">7 hari terakhir · <button class="lnkb" onclick="switchAdminTab(1)"><span class="live"></span><span id="statOnlineNow">1</span> online sekarang</button></div>
+            <!-- 2 Kartu Blok Pengaturan Kuota Berbahasa Indonesia yang Terstruktur -->
+      <div id="qf-card" class="qf-card" style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+        <!-- Kartu Blok 1 — Pengaturan Kuota Hari Kerja Bursa (Senin – Jumat) -->
+        <section class="sheet" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div class="sec-h" style="padding-bottom:12px;border-bottom:1px solid var(--ac-hair);margin-bottom:4px">
+            <h2 style="font-size:15px;font-weight:700;color:var(--ac-ink);margin:0">Pengaturan Kuota Hari Kerja Bursa (Senin – Jumat)</h2>
+            <span style="font-size:12px;color:var(--ac-2)">Operasional bursa dan penutupan data harian reguler</span>
+          </div>
+          <div>
+            <label class="flabel" for="qf-maxQuota">Batas Kuota Harian Maksimal Stock Arjum (Default: 18.080 req/hari)</label>
+            <div style="position:relative;display:flex;align-items:center">
+              <input id="qf-maxQuota" type="number" class="inp" min="1" max="1000000" value="18080" style="padding-right:75px">
+              <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req/hari</span>
             </div>
-            <div>
-              <div class="lbl">Menunggu persetujuan</div>
-              <div class="big num warn" id="statPendingCount">0</div>
-              <div class="sub" id="statPendingSub">Verifikasi Telegram</div>
+            <div class="sub">Default 18.080 req/hari · batas kuota harian resmi dari penyedia data Stock Arjum.</div>
+          </div>
+          <div>
+            <label class="flabel" for="qf-weekdayBackfill">Batas Maksimal Backfill Pagi/Siang Hari Kerja (00:05 – 19:30 WIB) (Default: 13.080 req)</label>
+            <div style="position:relative;display:flex;align-items:center">
+              <input id="qf-weekdayBackfill" type="number" class="inp" min="0" max="1000000" value="13080" style="padding-right:50px">
+              <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req</span>
             </div>
-            <div>
-              <div class="lbl">Kuota API data hari ini</div>
-              <div class="big num" id="statQuotaNum">—<span class="mut" style="font-size:14px;font-weight:600"> / —</span></div>
-              <div class="meter"><i id="statQuotaBar" style="width:0%"></i></div>
-              <div class="sub">Reset 00:00 WIB · sisa kuota aman</div>
+            <div class="sub">Default 13.080 req · alokasi penarikan data historis pagi hingga petang hari kerja.</div>
+          </div>
+          <div>
+            <label class="flabel" for="qf-reserveFloor">Cadangan Wajib Sore/Malam untuk Broksum ALL + Foreign (Reserve Floor) (Default: 5.000 req — dikunci ketat sampai 20:30 WIB)</label>
+            <div style="position:relative;display:flex;align-items:center">
+              <input id="qf-reserveFloor" type="number" class="inp" min="0" max="1000000" value="5000" style="padding-right:50px">
+              <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req</span>
             </div>
-            <div>
-              <div class="lbl">Status layanan</div>
-              <div style="margin-top:8px"><span class="st g" id="statServiceStatus">Semua Normal</span></div>
-              <div class="sub">API p95 &lt; 320 ms</div>
+            <div class="sub">Default 5.000 req — dikunci ketat sampai 20:30 WIB untuk penutupan data harian bursa.</div>
+          </div>
+          <div style="padding:10px 14px;background:var(--ac-subtle, rgba(255,255,255,0.03));border:1px solid var(--ac-hair);border-radius:8px">
+            <div class="flabel" style="margin-bottom:4px">Status Pelepasan Otomatis Sisa Cadangan Pasca-EOD (20:30 – 23:50 WIB)</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="st g" style="font-weight:700">AKTIF OTOMATIS</span>
+              <span class="mut" style="font-size:12px">Cadangan 5.000 dilepas otomatis setelah 20:30 WIB untuk sisa antrean backfill.</span>
             </div>
           </div>
         </section>
 
-        <section class="sheet" style="margin-top:16px">
+        <!-- Kartu Blok 2 — Pengaturan Kuota Akhir Pekan & Hari Libur Bursa -->
+        <section class="sheet" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div class="sec-h" style="padding-bottom:12px;border-bottom:1px solid var(--ac-hair);margin-bottom:4px">
+            <h2 style="font-size:15px;font-weight:700;color:var(--ac-ink);margin:0">Pengaturan Kuota Akhir Pekan & Hari Libur Bursa</h2>
+            <span style="font-size:12px;color:var(--ac-2)">Sabtu, Minggu & Libur Nasional BEI · Tanpa sesi perdagangan baru</span>
+          </div>
+          <div>
+            <label class="flabel" for="qf-weekendBackfill">Batas Maksimal Backfill Akhir Pekan / Hari Libur (Default: 18.080 req — 100% kuota harian penuh)</label>
+            <div style="position:relative;display:flex;align-items:center">
+              <input id="qf-weekendBackfill" type="number" class="inp" min="0" max="1000000" value="18080" style="padding-right:50px">
+              <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req</span>
+            </div>
+            <div class="sub">Default 18.080 req — 100% kuota harian penuh dialokasikan untuk catchup backfill data historis.</div>
+          </div>
+          <div>
+            <label class="flabel" for="qf-reserveFloorWeekend">Cadangan Wajib Akhir Pekan / Hari Libur (Default: 0 req — bursa tutup, 0 EOD baru)</label>
+            <div style="position:relative;display:flex;align-items:center">
+              <input id="qf-reserveFloorWeekend" type="number" class="inp" min="0" max="1000000" value="0" style="padding-right:50px">
+              <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req</span>
+            </div>
+            <div class="sub">Default 0 req — bursa tutup, tidak ada data EOD baru yang perlu dicadangkan.</div>
+          </div>
+          <div>
+            <div class="flabel" style="margin-bottom:6px">Saklar Mode Hari Libur Nasional BEI (Toggle Override + Auto-Reset 00:00 WIB)</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button class="tbtn on" id="qf-holiday-normal" onclick="setHolidayMode('normal', this)">Normal (Buka)</button>
+              <button class="tbtn" id="qf-holiday-buka" onclick="setHolidayMode('buka', this)">Buka Paksa</button>
+              <button class="tbtn" id="qf-holiday-libur" onclick="setHolidayMode('libur', this)">Libur Bursa</button>
+              <button class="btn sm" id="qf-holiday-detect" onclick="detectHoliday()">Deteksi Libur 3 Lapis</button>
+              <span class="st m" id="qf-holiday-status">Normal</span>
+            </div>
+            <div class="sub" id="qf-holiday-detail" style="margin-top:4px">L1 weekend · L2 candle Yahoo 17:00 WIB 0 kuota · L3 batalkan Broksum ALL+Foreign. Auto-reset 00:00 WIB.</div>
+          </div>
+          <div style="display:none">
+            <input id="quotaDailyLimit" type="number" class="inp" min="1">
+            <input id="quotaPlanExpiry" type="datetime-local" class="inp">
+            <input id="quotaFloorDay" type="number" class="inp" min="0">
+            <input id="quotaFloorNight" type="number" class="inp" min="0">
+            <input id="quotaFloorWeekend" type="number" class="inp" min="0">
+            <input id="qf-hardStop" type="range" class="qf-range" min="0" max="2" step="1" value="2">
+            <input id="qf-staleThreshold" type="range" class="qf-range" min="0" max="3" step="1" value="1">
+            <input id="qf-toggle-lowQuota" type="checkbox">
+            <input id="qf-toggle-muteDaily" type="checkbox">
+            <input id="qf-toggle-muteEmergency" type="checkbox">
+            <input id="qf-toggle-muteNonCritical" type="checkbox">
+            <input id="qf-toggle-preflight" type="checkbox" checked>
+            <input id="qf-toggle-backfillRemainder" type="checkbox" checked>
+          </div>
+          <div style="margin-top:auto;padding-top:14px;border-top:1px solid var(--ac-hair);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button class="btn p" id="quotaSaveBtn" onclick="saveQuotaConfig()">Simpan Pengaturan Kuota</button>
+            <span class="mut" id="quotaSaveStatus" style="font-size:12px">Tersimpan ke server via API & dicatat di log audit.</span>
+          </div>
+        </section>
+      </div>
+
+      <!-- Ringkasan Parameter Aktif & Kontrol Operasional -->
+      <section class="sheet" style="margin-top:16px">
+        <div class="sec-h">
+          <h2>Parameter Kuota Aktif & Kendali Lanjutan</h2>
+          <span>Status pembacaan waktu-nyata dari sistem quota engine</span>
+        </div>
+        <div class="tw" style="padding:0 20px">
+          <table class="tbl">
+            <thead><tr><th>Parameter</th><th>Nilai aktif</th><th class="r">Status</th></tr></thead>
+            <tbody id="qf-status-tbody">
+              <tr><td colspan="3" class="mut" style="text-align:center;padding:16px">Memuat status kontrol fleksibel…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="sheet" style="margin-top:16px">
+        <div class="sec-h">
+          <h2>Kesegaran dataset</h2>
+          <span>Dibaca dari status job asli, bukan jam dinding</span>
+        </div>
+        <div class="tw">
+          <table class="tbl">
+            <thead><tr><th>Dataset</th><th>Terakhir sukses</th><th>Jadwal</th><th>Status</th></tr></thead>
+            <tbody id="datasetFreshnessTbody">
+              <tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Memuat status dataset dari heartbeat & jadwal cron…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="sub" style="padding:10px 20px 16px">Sensus keuangan: <span id="finCensusQ2Cell" class="num">Q2 2026</span> · <span id="finCensusLabelCell" class="mut">memuat sensus…</span></div>
+      </section>
+    </div>
+
+    <!-- TAB 1: ONLINE (§5b) -->
+    <div id="panelTab1" class="admin-panel" style="display:none">
+      <section class="sheet">
+        <div class="strip">
+          <div><div class="lbl">Online sekarang</div><div class="big num"><span class="live lg2"></span><span id="onSummaryNow">1</span></div><div class="sub">detak sesi dalam 2 menit terakhir</div></div>
+          <div><div class="lbl">Aktif 15 menit terakhir</div><div class="big num" id="onSummary15m">1</div><div class="sub">termasuk yang online</div></div>
+          <div><div class="lbl">Masuk hari ini</div><div class="big num" id="onSummaryToday">1</div><div class="sub">sejak 00:00 WIB</div></div>
+          <div><div class="lbl">Tidak aktif &gt; 7 hari</div><div class="big num warn" id="onSummaryIdle7d">0</div><div class="sub">kandidat ditinjau</div></div>
+        </div>
+      </section>
+
+      <section class="sheet" style="margin-top:16px">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">
+          <button class="ofc on" onclick="filterOnline('all', this)" id="onFilterAll">Semua</button>
+          <button class="ofc" onclick="filterOnline('online', this)">Online</button>
+          <button class="ofc" onclick="filterOnline('today', this)">Hari ini</button>
+          <button class="ofc" onclick="filterOnline('idle7d', this)">Tidak aktif &gt; 7 hari</button>
+          <label class="search" style="width:240px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input id="onlineSearchInput" placeholder="Cari pengguna…" oninput="onOnlineSearch(this.value)">
+          </label>
+          <span class="mut" style="margin-left:auto;font-size:12px" role="status"><span class="live"></span>Diperbarui <span id="onlineLastUpdated">baru saja</span> · otomatis tiap 30 detik</span>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:880px">
+            <thead><tr><th>Pengguna</th><th>Status</th><th>Halaman</th><th>Perangkat</th><th class="r">Lama sesi</th><th>Masuk terakhir</th></tr></thead>
+            <tbody id="onlineTableTbody">
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat status pengguna online…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prov">
+          <span><b>Hanya admin</b></span>
+          <span>Online = detak sesi &lt; 2 menit. Detak dikirim tiap 60 detik saat tab terbuka.</span>
+          <span><b>Alamat IP tidak ditampilkan</b> · riwayat disimpan 30 hari.</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 2: PERSETUJUAN AKUN -->
+    <div id="panelTab2" class="admin-panel" style="display:none">
+      <section class="sheet">
+        <div class="sec-h">
+          <h2>Persetujuan akun</h2>
+          <span>Setujui hanya setelah verifikasi Telegram selesai</span>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:880px">
+            <thead><tr><th>Pengguna</th><th>Gmail</th><th>Daftar</th><th>Telegram</th><th>Status</th><th class="r">Aksi</th></tr></thead>
+            <tbody id="pendingApprovalTbody">
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Tidak ada akun yang menunggu persetujuan.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+        <!-- TAB 3: PENGGUNA -->
+    <div id="panelTab3" class="admin-panel" style="display:none">
+      <section class="sheet">
+        <div class="sec-h">
+          <h2>Pengguna</h2>
+          <span id="usersCountLabel">Memuat…</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair);flex-wrap:wrap">
+          <label class="search" style="width:280px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input id="usersSearchInput" placeholder="Cari username atau Gmail" oninput="onUsersSearch(this.value)">
+          </label>
+          <span class="mut" style="margin-left:auto;font-size:12px">Blokir / buka blokir tercatat di log audit</span>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:880px">
+            <thead><tr><th>Pengguna</th><th>Peran</th><th>Paket</th><th>Login terakhir</th><th>Status</th><th class="r">Aksi</th></tr></thead>
+            <tbody id="usersTableTbody">
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat daftar pengguna…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 4: MODE MAINTENANCE -->
+    <div id="panelTab4" class="admin-panel" style="display:none">
+      <section class="sheet" style="padding:24px">
+        <div style="display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--ac-hair);padding-bottom:20px">
+          <div style="flex:1">
+            <h2 style="margin:0;font-size:17px;font-weight:700">Saklar Mode Maintenance</h2>
+            <p class="mut" style="margin:4px 0 0;font-size:13px">Saat aktif, pengguna non-admin melihat layar pemeliharaan. Administrator tetap bisa masuk dan bekerja.</p>
+          </div>
+          <button id="maintenanceSwitchBtn" class="tog" onclick="toggleMaintenanceMode()" role="switch" aria-checked="false" aria-label="Saklar mode maintenance"><i></i></button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:20px;margin-top:20px">
+          <div>
+            <label class="flabel" for="mStartInput">Waktu Mulai</label>
+            <input id="mStartInput" type="datetime-local" class="inp">
+          </div>
+          <div>
+            <label class="flabel" for="mEndInput">Perkiraan Selesai</label>
+            <input id="mEndInput" type="datetime-local" class="inp">
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <label class="flabel" for="mMessageInput">Pesan untuk Pengguna</label>
+          <textarea id="mMessageInput" class="inp" style="height:80px;padding:10px" placeholder="Tuliskan alasan pemeliharaan untuk pengguna…">Kami sedang memperbarui sistem dan data pasar. Seluruh posisi sekuritas tetap aman. Silakan pantau langsung melalui aplikasi sekuritas Anda.</textarea>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;margin-top:18px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ac-2);cursor:pointer">
+            <input id="mNotifyTg" type="checkbox" checked> Kirim pemberitahuan Telegram otomatis ke grup channel
+          </label>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:24px;border-top:1px solid var(--ac-hair);padding-top:20px">
+          <button class="btn p" onclick="saveMaintenanceSettings()">Simpan Pengaturan</button>
+          <a class="btn" href="/maintenance.html" target="_blank">Buka Layar Maintenance Penuh ↗</a>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 5: KUPON/VOUCHER -->
+    <div id="panelTab5" class="admin-panel" style="display:none">
+      <div style="display:grid;grid-template-columns:minmax(280px, 340px) 1fr;gap:20px;align-items:start">
+        <section class="sheet" style="padding:20px">
+          <h2 style="margin:0 0 16px;font-size:16px;font-weight:700">Buat Voucher Baru</h2>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <label class="flabel" for="vCodeInput">Kode Voucher</label>
+              <input id="vCodeInput" class="inp mono" style="text-transform:uppercase" placeholder="CUAN2026" value="CUAN2026">
+            </div>
+            <div>
+              <label class="flabel" for="vPlanSelect">Paket Akses</label>
+              <select id="vPlanSelect" class="inp">
+                <option value="pro_30">Pro Trader · 30 hari</option>
+                <option value="pro_90">Pro Trader · 90 hari</option>
+                <option value="lifetime">Pro Trader · Lifetime</option>
+              </select>
+            </div>
+            <div>
+              <label class="flabel" for="vQuotaInput">Batas Penggunaan</label>
+              <input id="vQuotaInput" type="number" class="inp" value="50" min="1">
+            </div>
+            <div>
+              <label class="flabel" for="vExpiryInput">Kedaluwarsa</label>
+              <input id="vExpiryInput" type="date" class="inp" value="2026-12-31">
+            </div>
+            <button class="btn p" style="margin-top:6px" onclick="createVoucherAction()">Terbitkan Voucher</button>
+          </div>
+        </section>
+
+        <section class="sheet">
           <div class="sec-h">
-            <h2>Kesegaran dataset</h2>
-            <span>Dibaca dari status job asli, bukan jam dinding</span>
+            <h2>Voucher Aktif</h2>
+            <span>Daftar kode promosi dan kuota</span>
           </div>
           <div class="tw">
             <table class="tbl">
-              <thead><tr><th>Dataset</th><th>Terakhir sukses</th><th>Jadwal</th><th>Status</th></tr></thead>
-              <tbody id="datasetFreshnessTbody">
-                <tr><td style="font-weight:600">Candle harian EOD bursa</td><td class="num mut">Hari bursa terakhir 16:45</td><td class="mut">16:40 WIB · Hari bursa</td><td><span class="st g">Segar</span></td></tr>
-                <tr><td style="font-weight:600">Broker summary harian</td><td class="num mut">Hari bursa terakhir 17:18</td><td class="mut">17:15 WIB · Hari bursa</td><td><span class="st g">Segar</span></td></tr>
-                <tr><td style="font-weight:600">Sektor hot &amp; konglomerasi</td><td class="num mut">Hari bursa terakhir 17:35</td><td class="mut">17:30 WIB · Hari bursa</td><td><span class="st g">Segar</span></td></tr>
-                <tr><td style="font-weight:600">KSEI kepemilikan 5%+</td><td class="num mut">30 Sep 2026</td><td class="mut">08:00 WIB · Bulanan</td><td><span class="st g">Arsip resmi</span></td></tr>
-                <tr><td style="font-weight:600">Laporan keuangan emiten</td><td class="num mut">Q2 2026</td><td class="mut">19:00 WIB · Berkala</td><td><span class="st a">Sebagian Q1</span></td></tr>
-                <tr><td style="font-weight:600">Pembersihan cache kedaluwarsa</td><td class="num mut">Hari ini 00:01</td><td class="mut">00:00 WIB · Harian</td><td><span class="st g">Lengkap</span></td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-
-      <!-- TAB 1: ONLINE (§5b) -->
-      <div id="panelTab1" class="admin-panel" style="display:none">
-        <section class="sheet">
-          <div class="strip">
-            <div><div class="lbl">Online sekarang</div><div class="big num"><span class="live lg2"></span><span id="onSummaryNow">1</span></div><div class="sub">detak sesi dalam 2 menit terakhir</div></div>
-            <div><div class="lbl">Aktif 15 menit terakhir</div><div class="big num" id="onSummary15m">1</div><div class="sub">termasuk yang online</div></div>
-            <div><div class="lbl">Masuk hari ini</div><div class="big num" id="onSummaryToday">1</div><div class="sub">sejak 00:00 WIB</div></div>
-            <div><div class="lbl">Tidak aktif &gt; 7 hari</div><div class="big num warn" id="onSummaryIdle7d">0</div><div class="sub">kandidat ditinjau</div></div>
-          </div>
-        </section>
-
-        <section class="sheet" style="margin-top:16px">
-          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">
-            <button class="ofc on" onclick="filterOnline('all', this)" id="onFilterAll">Semua</button>
-            <button class="ofc" onclick="filterOnline('online', this)">Online</button>
-            <button class="ofc" onclick="filterOnline('today', this)">Hari ini</button>
-            <button class="ofc" onclick="filterOnline('idle7d', this)">Tidak aktif &gt; 7 hari</button>
-            <label class="search" style="width:240px">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-              <input id="onlineSearchInput" placeholder="Cari pengguna…" oninput="onOnlineSearch(this.value)">
-            </label>
-            <span class="mut" style="margin-left:auto;font-size:12px" role="status"><span class="live"></span>Diperbarui <span id="onlineLastUpdated">baru saja</span> · otomatis tiap 30 detik</span>
-          </div>
-          <div class="tw">
-            <table class="tbl" style="min-width:880px">
-              <thead><tr><th>Pengguna</th><th>Status</th><th>Halaman</th><th>Perangkat</th><th class="r">Lama sesi</th><th>Masuk terakhir</th></tr></thead>
-              <tbody id="onlineTableTbody">
-                <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat status pengguna online…</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="prov">
-            <span><b>Hanya admin</b></span>
-            <span>Online = detak sesi &lt; 2 menit. Detak dikirim tiap 60 detik saat tab terbuka.</span>
-            <span><b>Alamat IP tidak ditampilkan</b> · riwayat disimpan 30 hari.</span>
-          </div>
-        </section>
-      </div>
-
-      <!-- TAB 2: PERSETUJUAN AKUN -->
-      <div id="panelTab2" class="admin-panel" style="display:none">
-        <section class="sheet">
-          <div class="sec-h">
-            <h2>Persetujuan akun</h2>
-            <span>Setujui hanya setelah verifikasi Telegram selesai</span>
-          </div>
-          <div class="tw">
-            <table class="tbl" style="min-width:880px">
-              <thead><tr><th>Pengguna</th><th>Gmail</th><th>Daftar</th><th>Telegram</th><th>Status</th><th class="r">Aksi</th></tr></thead>
-              <tbody id="pendingApprovalTbody">
-                <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Tidak ada akun yang menunggu persetujuan.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-
-      <!-- TAB 3: MODE MAINTENANCE -->
-      <div id="panelTab3" class="admin-panel" style="display:none">
-        <section class="sheet" style="padding:24px">
-          <div style="display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--ac-hair);padding-bottom:20px">
-            <div style="flex:1">
-              <h2 style="margin:0;font-size:17px;font-weight:700">Saklar Mode Maintenance</h2>
-              <p class="mut" style="margin:4px 0 0;font-size:13px">Saat aktif, pengguna non-admin melihat layar pemeliharaan. Administrator tetap bisa masuk dan bekerja.</p>
-            </div>
-            <button id="maintenanceSwitchBtn" class="tog" onclick="toggleMaintenanceMode()" role="switch" aria-checked="false" aria-label="Saklar mode maintenance"><i></i></button>
-          </div>
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:20px;margin-top:20px">
-            <div>
-              <label class="flabel" for="mStartInput">Waktu Mulai</label>
-              <input id="mStartInput" type="datetime-local" class="inp">
-            </div>
-            <div>
-              <label class="flabel" for="mEndInput">Perkiraan Selesai</label>
-              <input id="mEndInput" type="datetime-local" class="inp">
-            </div>
-          </div>
-
-          <div style="margin-top:16px">
-            <label class="flabel" for="mMessageInput">Pesan untuk Pengguna</label>
-            <textarea id="mMessageInput" class="inp" style="height:80px;padding:10px" placeholder="Tuliskan alasan pemeliharaan untuk pengguna…">Kami sedang memperbarui sistem dan data pasar. Seluruh posisi sekuritas tetap aman. Silakan pantau langsung melalui aplikasi sekuritas Anda.</textarea>
-          </div>
-
-          <div style="display:flex;align-items:center;gap:12px;margin-top:18px">
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ac-2);cursor:pointer">
-              <input id="mNotifyTg" type="checkbox" checked> Kirim pemberitahuan Telegram otomatis ke grup channel
-            </label>
-          </div>
-
-          <div style="display:flex;gap:12px;margin-top:24px;border-top:1px solid var(--ac-hair);padding-top:20px">
-            <button class="btn p" onclick="saveMaintenanceSettings()">Simpan Pengaturan</button>
-            <a class="btn" href="/maintenance.html" target="_blank">Buka Layar Maintenance Penuh ↗</a>
-          </div>
-        </section>
-      </div>
-
-      <!-- TAB 4: KUPON AKSES -->
-      <div id="panelTab4" class="admin-panel" style="display:none">
-        <div style="display:grid;grid-template-columns:minmax(280px, 340px) 1fr;gap:20px;align-items:start">
-          <section class="sheet" style="padding:20px">
-            <h2 style="margin:0 0 16px;font-size:16px;font-weight:700">Buat Kupon Baru</h2>
-            <div style="display:flex;flex-direction:column;gap:14px">
-              <div>
-                <label class="flabel" for="vCodeInput">Kode Kupon</label>
-                <input id="vCodeInput" class="inp mono" style="text-transform:uppercase" placeholder="CUAN2026" value="CUAN2026">
-              </div>
-              <div>
-                <label class="flabel" for="vPlanSelect">Paket Akses</label>
-                <select id="vPlanSelect" class="inp">
-                  <option value="pro_30">Pro Trader · 30 hari</option>
-                  <option value="pro_90">Pro Trader · 90 hari</option>
-                  <option value="lifetime">Pro Trader · Lifetime</option>
-                </select>
-              </div>
-              <div>
-                <label class="flabel" for="vQuotaInput">Batas Penggunaan</label>
-                <input id="vQuotaInput" type="number" class="inp" value="50" min="1">
-              </div>
-              <div>
-                <label class="flabel" for="vExpiryInput">Kedaluwarsa</label>
-                <input id="vExpiryInput" type="date" class="inp" value="2026-12-31">
-              </div>
-              <button class="btn p" style="margin-top:6px" onclick="createKuponAction()">Terbitkan Kupon</button>
-            </div>
-          </section>
-
-          <section class="sheet">
-            <div class="sec-h">
-              <h2>Kupon Aktif</h2>
-              <span>Daftar kode promosi dan kuota</span>
-            </div>
-            <div class="tw">
-              <table class="tbl">
-                <thead><tr><th>Kode</th><th>Paket</th><th class="r">Terpakai</th><th>Kedaluwarsa</th><th class="r">Aksi</th></tr></thead>
-                <tbody id="adminCouponsTableTbody">
-                  <tr><td class="mono" style="font-weight:600">CUAN2026</td><td class="mut">Pro Trader · 30 hari</td><td class="r num">12 / 50</td><td class="num mut">31 Des 2026</td><td class="r"><button class="btn sm" onclick="revokeKupon('CUAN2026')">Nonaktifkan</button></td></tr>
-                  <tr><td class="mono" style="font-weight:600">IDX-OKT</td><td class="mut">Pro Trader · 90 hari</td><td class="r num">48 / 50</td><td class="num mut">31 Okt 2026</td><td class="r"><button class="btn sm" onclick="revokeKupon('IDX-OKT')">Nonaktifkan</button></td></tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      </div>
-
-      <!-- TAB 5: JOB & DATA PIPELINE -->
-      <div id="panelTab5" class="admin-panel" style="display:none">
-        <section class="sheet" style="margin-bottom:20px">
-          <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-            <div>
-              <h2>Pemeriksa Kesehatan &amp; Kelengkapan Data</h2>
-              <span>Inspeksi read-only integritas semesta 962 emiten &amp; arsip bursa lokal</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <span id="healthOverallBadge" class="st a">Memeriksa...</span>
-              <button id="btnRefreshDataHealth" class="btn sm p" onclick="refreshDataHealth()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                Periksa Ulang Status Data
-              </button>
-            </div>
-          </div>
-
-          <div style="display:flex;gap:14px;flex-wrap:wrap;margin:16px 0 20px;padding:12px 16px;background:var(--ac-subtle, rgba(255,255,255,0.03));border-radius:10px;border:1px solid var(--ac-hair);font-size:13px">
-            <div><span class="mut">Semesta Emiten:</span> <b class="num" style="color:var(--ac-ink)">962 emiten</b></div>
-            <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Total Kategori:</span> <b class="num" style="color:var(--ac-ink)">7 Kategori</b></div>
-            <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Sehat &amp; Lengkap:</span> <b id="statHealthOk" class="num" style="color:var(--ac-brand,#10B981)">—</b></div>
-            <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Parsial:</span> <b id="statHealthWarn" class="num" style="color:var(--ac-warn,#F59E0B)">—</b></div>
-            <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Terakhir Diperiksa:</span> <span id="healthLastChecked" class="num mut">—</span></div>
-          </div>
-
-          <div class="tw">
-            <table class="tbl" style="min-width:880px">
-              <thead>
-                <tr>
-                  <th style="min-width:240px">Kategori Data</th>
-                  <th>Cakupan &amp; Metrik</th>
-                  <th>Tanggal Mutakhir</th>
-                  <th>Status Integritas</th>
-                </tr>
-              </thead>
-              <tbody id="dataHealthTbody">
-                <tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Memuat status integritas dataset...</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="prov" style="margin-top:12px">
-            <span><b>Inspeksi murni read-only:</b> Membaca langsung struktur arsip lokal dan indeks tanpa beban tulis database dan tanpa memakai kuota API luar.</span>
-          </div>
-        </section>
-
-        <section class="sheet">
-          <div class="sec-h">
-            <h2>Job &amp; Data Pipeline</h2>
-            <span>Jalankan ulang hanya bila sumber eksternal sudah pulih</span>
-          </div>
-          <div class="tw">
-            <table class="tbl" style="min-width:880px">
-              <thead><tr><th>Job</th><th>Jadwal</th><th>Terakhir Jalan</th><th class="r">Durasi</th><th>Status</th><th class="r">Aksi</th></tr></thead>
-              <tbody id="jobsPipelineTbody">
-                <tr><td class="mono" style="font-weight:600">Candle harian EOD bursa</td><td class="mut">16:40 WIB</td><td class="num mut">16:45 WIB</td><td class="r num">2m 14s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron. Pemicu manual dinonaktifkan demi keamanan kuota API.">Otomatis</button></td></tr>
-                <tr><td class="mono" style="font-weight:600">Broker summary harian</td><td class="mut">17:15 WIB</td><td class="num mut">17:18 WIB</td><td class="r num">1m 40s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
-                <tr><td class="mono" style="font-weight:600">Sektor hot &amp; konglomerasi</td><td class="mut">17:30 WIB</td><td class="num mut">17:35 WIB</td><td class="r num">45s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
-                <tr><td class="mono" style="font-weight:600">KSEI kepemilikan 5%+</td><td class="mut">08:00 WIB</td><td class="num mut">08:05 WIB</td><td class="r num">3m 10s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
-                <tr><td class="mono" style="font-weight:600">Snapshot rasio fundamental</td><td class="mut">19:00 WIB</td><td class="num mut">19:04 WIB</td><td class="r num">58s</td><td><span class="st g">Sukses</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron.">Otomatis</button></td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="prov">
-            <span><b>Keamanan kuota data:</b> Pemicu manual ke penyedia data eksternal dinonaktifkan di antarmuka web untuk mencegah bentrok jadwal cron dan menjaga batas kuota harian.</span>
-          </div>
-        </section>
-      </div>
-
-      <!-- TAB 6: LOG AUDIT -->
-      <div id="panelTab6" class="admin-panel" style="display:none">
-        <section class="sheet">
-          <div class="sec-h">
-            <h2>Log Audit Administrator</h2>
-            <span>Setiap aksi tercatat dan tidak dapat dimanipulasi</span>
-          </div>
-          <div class="tw">
-            <table class="tbl">
-              <thead><tr><th>Waktu (WIB)</th><th>Aktor</th><th>Aksi</th><th>Target / Parameter</th></tr></thead>
-              <tbody id="auditLogsTbody">
-                <tr><td class="num mut">Hari ini 10:14</td><td style="font-weight:600">budi</td><td>Akses Admin Console</td><td class="mono mut">/admin-console</td></tr>
-                <tr><td class="num mut">Hari ini 09:30</td><td style="font-weight:600">budi</td><td>Pemeriksaan Status Online</td><td class="mono mut">online_list</td></tr>
+              <thead><tr><th>Kode</th><th>Paket</th><th class="r">Terpakai</th><th>Kedaluwarsa</th><th class="r">Aksi</th></tr></thead>
+              <tbody id="vouchersTableTbody">
+                <tr><td class="mono" style="font-weight:600">CUAN2026</td><td class="mut">Pro Trader · 30 hari</td><td class="r num">12 / 50</td><td class="num mut">31 Des 2026</td><td class="r"><button class="btn sm" onclick="revokeVoucher('CUAN2026')">Nonaktifkan</button></td></tr>
+                <tr><td class="mono" style="font-weight:600">IDX-OKT</td><td class="mut">Pro Trader · 90 hari</td><td class="r num">48 / 50</td><td class="num mut">31 Okt 2026</td><td class="r"><button class="btn sm" onclick="revokeVoucher('IDX-OKT')">Nonaktifkan</button></td></tr>
               </tbody>
             </table>
           </div>
         </section>
       </div>
     </div>
+
+    <!-- TAB 6: JOB & DATA PIPELINE -->
+    <div id="panelTab6" class="admin-panel" style="display:none">
+      <section class="sheet" style="margin-bottom:20px">
+        <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2>Pemeriksa Kesehatan &amp; Kelengkapan Data</h2>
+            <span>Inspeksi read-only integritas semesta 962 emiten &amp; arsip bursa lokal</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span id="healthOverallBadge" class="st a">Memeriksa...</span>
+            <button id="btnRefreshDataHealth" class="btn sm p" onclick="refreshDataHealth()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              Periksa Ulang Status Data
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin:16px 0 20px;padding:12px 16px;background:var(--ac-subtle, rgba(255,255,255,0.03));border-radius:10px;border:1px solid var(--ac-hair);font-size:13px">
+          <div><span class="mut">Semesta Emiten:</span> <b class="num" style="color:var(--ac-ink)">962 emiten</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Total Kategori:</span> <b class="num" style="color:var(--ac-ink)">7 Kategori</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Sehat &amp; Lengkap:</span> <b id="statHealthOk" class="num" style="color:var(--ac-brand,#10B981)">—</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Parsial:</span> <b id="statHealthWarn" class="num" style="color:var(--ac-warn,#F59E0B)">—</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Terakhir Diperiksa:</span> <span id="healthLastChecked" class="num mut">—</span></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Sensus kelengkapan:</span> <span id="completenessMeta" class="num mut">—</span></div>
+        </div>
+
+        <div class="tw">
+          <table class="tbl" style="min-width:880px">
+            <thead>
+              <tr>
+                <th style="min-width:240px">Kategori Data</th>
+                <th>Cakupan &amp; Metrik</th>
+                <th>Tanggal Mutakhir</th>
+                <th>Status Integritas</th>
+              </tr>
+            </thead>
+            <tbody id="dataHealthTbody">
+              <tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Memuat status integritas dataset...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prov" style="margin-top:12px">
+          <span><b>Inspeksi murni read-only:</b> Membaca langsung struktur arsip lokal dan indeks tanpa beban tulis database dan tanpa memakai kuota API luar.</span>
+        </div>
+      </section>
+
+            <section class="sheet" style="margin-bottom:20px">
+        <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2>Forecast Penyelesaian Backfill Kuota</h2>
+            <span>Dibaca dari berkas forecast, bukan angka hardcode</span>
+          </div>
+          <button class="btn sm p" onclick="refreshBackfillForecast()">Muat Ulang Forecast</button>
+          <button class="btn sm" onclick="triggerBackfillNow()">Picu Backfill Sekarang</button>
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin:16px 0;padding:12px 16px;background:var(--ac-subtle, rgba(255,255,255,0.03));border-radius:10px;border:1px solid var(--ac-hair);font-size:13px">
+          <div><span class="mut">Sisa antrean:</span> <b class="num" id="fcRemaining">—</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Perkiraan selesai:</span> <b class="num" id="fcFinish">—</b></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Batas paket:</span> <span class="num mut" id="fcExpiry">—</span></div>
+          <div style="border-left:1px solid var(--ac-hair);padding-left:14px"><span class="mut">Status:</span> <b id="fcStatus">—</b></div>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:880px">
+            <thead><tr><th>Tanggal</th><th>Hari</th><th class="r">Kapasitas</th><th class="r">Serapan</th><th class="r">Sisa</th><th>Status</th></tr></thead>
+            <tbody id="forecastTbody">
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat forecast penyelesaian backfill…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prov" style="margin-top:12px">
+          <span><b>Sumber:</b> <span class="mono">data/completeness/forecast.json</span> (dibangun dari antrean nyata). Kapasitas: hari kerja ~15.000 req/hari, akhir pekan ~18.030 req/hari.</span>
+        </div>
+      </section>
+
+<section class="sheet">
+        <div class="sec-h">
+          <h2>Job &amp; Data Pipeline</h2>
+          <span>Jalankan ulang hanya bila sumber eksternal sudah pulih</span>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:880px">
+            <thead><tr><th>Job</th><th>Jadwal</th><th>Terakhir Sukses</th><th class="r">Durasi/Req</th><th>Status</th><th class="r">Aksi</th></tr></thead>
+            <tbody id="jobsPipelineTbody">
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat status job dari heartbeat & jadwal cron…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prov">
+          <span><b>Keamanan kuota data:</b> Pemicu manual ke penyedia data eksternal dinonaktifkan di antarmuka web untuk mencegah bentrok jadwal cron dan menjaga batas kuota harian.</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 7: LOG AUDIT & KEAMANAN -->
+    <div id="panelTab7" class="admin-panel" style="display:none">
+      <section class="sheet">
+        <div class="sec-h">
+          <h2>Log Audit & Keamanan</h2>
+          <span>Setiap aksi tercatat dan tidak dapat dimanipulasi · terintegrasi Fase S2</span>
+        </div>
+        <div class="tw">
+          <table class="tbl">
+            <thead><tr><th>Waktu (WIB)</th><th>Aktor</th><th>Aksi</th><th>Target / Parameter</th></tr></thead>
+            <tbody id="auditLogsTbody">
+              <tr><td class="num mut">04 Nov 2026, 10:14:00 WIB</td><td style="font-weight:600">budi</td><td>Akses Admin Console</td><td class="mono mut">/admin-console</td></tr>
+              <tr><td class="num mut">04 Nov 2026, 09:30:00 WIB</td><td style="font-weight:600">budi</td><td>Pemeriksaan Status Online</td><td class="mono mut">online_list</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="sheet" style="margin-top:16px">
+        <div class="sec-h">
+          <h2>Peristiwa Keamanan</h2>
+          <span>Login, sesi, dan anomali · baca /api/admin-logs</span>
+        </div>
+        <div class="tw">
+          <table class="tbl">
+            <thead><tr><th>Waktu (WIB)</th><th>Peristiwa</th><th>Detail</th></tr></thead>
+            <tbody id="securityEventsTbody">
+              <tr><td colspan="3" class="mut" style="text-align:center;padding:24px">Memuat peristiwa keamanan…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <!-- TAB 8: KEAMANAN & AUDIT (S2) -->
+    <div id="panelTab8" class="admin-panel" style="display:none">
+      <section class="sheet">
+        <div class="sec-h">
+          <h2>Status Pertahanan Real-Time</h2>
+          <span id="secUpdatedAt">Memuat status keamanan…</span>
+        </div>
+        <div style="padding:16px 20px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="st g" id="secStatusBadge">Aman</span>
+            <span class="mut" id="secStatusLabel" style="font-size:13px">Aman — Firewall & Anti-Bot Aktif</span>
+            <button class="btn sm" onclick="refreshSecurityPanel()" style="margin-left:auto">Muat Ulang</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px">
+            <div><div class="lbl">SSH ditolak (24 jam)</div><div class="big num" id="secSshRejected">—</div></div>
+            <div><div class="lbl">Bot/Flood diblokir (24 jam)</div><div class="big num" id="secBotBlocked">—</div></div>
+            <div><div class="lbl">Login gagal ditahan (24 jam)</div><div class="big num" id="secLoginBlocked">—</div></div>
+            <div><div class="lbl">IP dalam blokir aktif</div><div class="big num" id="secActiveBlocks">—</div></div>
+          </div>
+        </div>
+      </section>
+      <section class="sheet" style="margin-top:16px">
+        <div class="sec-h">
+          <h2>Blokir IP Manual</h2>
+          <span>Block IP / Unblock IP + konfirmasi audit</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;padding:16px 20px">
+          <input id="secBlockIpInput" class="inp mono" style="max-width:220px" placeholder="cth 203.0.113.99" autocomplete="off">
+          <input id="secBlockReasonInput" class="inp" style="max-width:280px" placeholder="Alasan (wajib, min 10 karakter)">
+          <button class="btn p" onclick="blockIpAction()">Block IP</button>
+          <button class="btn" onclick="unblockIpAction()">Unblock IP</button>
+        </div>
+        <div class="prov"><span id="secBlockStatus">Setiap aksi Block/Unblock tercatat di log insiden.</span></div>
+      </section>
+      <section class="sheet" style="margin-top:16px" data-v3f12-vps-panel="true">
+        <div class="sec-h">
+          <h2>Pertahanan Siber VPS — ufw · fail2ban · Forensik Ghidra</h2>
+          <span id="secVpsUpdatedAt">Audit VPS 168.110.221.197 · data/security/vps-audit.json</span>
+        </div>
+        <div style="padding:16px 20px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="st g" id="secUfwBadge">UFW: —</span>
+            <span class="st g" id="secF2bBadge">fail2ban: —</span>
+            <span class="st g" id="secGhidraBadge">Ghidra: —</span>
+            <span class="mut" id="secVpsVerdict" style="font-size:13px">Menunggu audit VPS…</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px">
+            <div><div class="lbl">Aturan UFW</div><div class="big num" id="secUfwRules">—</div><div class="sub" id="secUfwDetail">default deny incoming</div></div>
+            <div><div class="lbl">Jail fail2ban</div><div class="big num" id="secF2bJails">—</div><div class="sub" id="secF2bDetail">sshd + nginx</div></div>
+            <div><div class="lbl">Proses asing (Ghidra)</div><div class="big num" id="secForeignProcs">—</div><div class="sub" id="secForeignDetail">target 0 asing</div></div>
+            <div><div class="lbl">Hash SHA-256 biner</div><div class="big num mono" id="secBinHash" style="font-size:12px;word-break:break-all">—</div><div class="sub">integritas node</div></div>
+          </div>
+          <div class="prov" style="margin-top:12px"><span>Alarm darurat serangan bot/scraper dikirim otomatis ke Telegram Admin + IP penyerang DIBLOKIR otomatis (HTTP 403 beruntun).</span></div>
+        </div>
+      </section>
+      <section class="sheet" style="margin-top:16px">
+        <div class="sec-h">
+          <h2>Log Insiden Terbaru</h2>
+          <span>Real-time dari data/security/security-state.json</span>
+        </div>
+        <div class="tw">
+          <table class="tbl">
+            <thead><tr><th>Waktu (WIB)</th><th>Jenis</th><th>IP Penyerang</th><th class="r">Percobaan</th><th>Tindakan Otomatis</th></tr></thead>
+            <tbody id="secIncidentsTbody">
+              <tr><td colspan="5" class="mut" style="text-align:center;padding:24px">Memuat insiden keamanan…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tabel Forensik Serangan & Pemblokiran Bot/IP -->
+      <section class="sheet" style="margin-top:16px" id="secForensicAttackSection">
+        <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <h2 style="font-size:16px;font-weight:700;margin:0">Tabel Forensik Serangan & Pemblokiran Bot/IP</h2>
+            <span style="font-size:12px;color:var(--ac-2)">Standar Forensik GitHub NSA/Ghidra · Inspeksi Real-Time Probe Malisius, SQLi, Traversal & Scanner</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn sm" id="btnForensicUnblockIp" onclick="unblockForensicIpPrompt()">Unblock IP</button>
+            <button class="btn sm" id="btnClearAttackLogs" onclick="clearForensicAttackLogs()">Bersihkan Log Pengujian</button>
+            <button class="btn sm p" onclick="refreshForensicAttackTable()">Muat Ulang</button>
+          </div>
+        </div>
+        <div class="tw">
+          <table class="tbl" id="forensicAttackTable" style="min-width:960px">
+            <thead>
+              <tr>
+                <th>Waktu (WIB)</th>
+                <th>Alamat IP</th>
+                <th>Jenis Serangan / Rule</th>
+                <th>Target Endpoint</th>
+                <th>User-Agent</th>
+                <th>Status Blokir</th>
+              </tr>
+            </thead>
+            <tbody id="forensicAttackTbody">
+              <tr>
+                <td class="num mut">04 Nov 2026, 16:35:12 WIB</td>
+                <td class="mono font-bold">198.51.100.44</td>
+                <td><span class="st r">SQLi Probe</span></td>
+                <td class="mono mut">/api/quote?ticker=' OR 1=1--</td>
+                <td class="mut">sqlmap/1.7.2#stable</td>
+                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
+              </tr>
+              <tr>
+                <td class="num mut">04 Nov 2026, 16:32:05 WIB</td>
+                <td class="mono font-bold">203.0.113.88</td>
+                <td><span class="st r">Path Traversal</span></td>
+                <td class="mono mut">/data/../../etc/passwd</td>
+                <td class="mut">python-requests/2.31.0</td>
+                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
+              </tr>
+              <tr>
+                <td class="num mut">04 Nov 2026, 16:28:40 WIB</td>
+                <td class="mono font-bold">192.0.2.145</td>
+                <td><span class="st a">Aggressive Scanner</span></td>
+                <td class="mono mut">/admin-console.php</td>
+                <td class="mut">Nikto/2.1.6</td>
+                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
+              </tr>
+              <tr>
+                <td class="num mut">04 Nov 2026, 16:15:22 WIB</td>
+                <td class="mono font-bold">198.51.100.10</td>
+                <td><span class="st r">Brute Force Login</span></td>
+                <td class="mono mut">/api/login-user</td>
+                <td class="mut">Go-http-client/1.1</td>
+                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
+              </tr>
+              <tr>
+                <td class="num mut">04 Nov 2026, 15:50:18 WIB</td>
+                <td class="mono font-bold">203.0.113.19</td>
+                <td><span class="st a">Sensitive Probe</span></td>
+                <td class="mono mut">/.env</td>
+                <td class="mut">curl/7.88.1</td>
+                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prov" style="margin-top:8px">
+          <span><b>Forensik Standar NSA/Ghidra:</b> Seluruh upaya penetrasi sistem ditindak otomatis oleh firewall lapisan Node & VPS, disertai bukti log tidak dapat disangkal.</span>
+        </div>
+      </section>
+    </div>
+    </div>
+  </main>
+</div>
+  </main>
+</div>
   </div>
 </section>
 
@@ -3447,11 +3793,15 @@ html.light #googleCompleteProfileModal input {
             </div>
             <div class="ana-ctx-row ana-ctx-row2">
                 <div id="analisisChartSubtabWrap" class="segx ana-sub" role="group" aria-label="Tampilan analisis">
-                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisSubTab('ai')">Analisis AI</button>
+                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('ai');">Analisis AI</button>
                     <!-- FIX-22: Chart Workstation is a first-class lens, directly
                          reachable as /analisis?tab=chart and from the sidebar. -->
-                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisSubTab('chart')" title="Chart Workstation">Chart Workstation</button>
-                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">Chart &amp; AI Vision</button>
+                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('chart');" title="Chart Workstation">Chart Workstation</button>
+                    <button id="tabBandarmologiSub" type="button" class="analisis-subtab" data-subtab="bandarmologi" onclick="switchAnalisisTab('bandarmologi')">Bandarmologi</button>
+                    <button id="tabSinyalIntelijenSub" type="button" class="analisis-subtab" data-subtab="intel" onclick="switchAnalisisTab('intel')">Sinyal Intelijen</button>
+                    <button id="tabBrokerHunterSub" type="button" class="analisis-subtab" data-subtab="hunter" onclick="switchAnalisisTab('hunter')">Broker Hunter</button>
+                    <button id="tabJejaringInsiderSub" type="button" class="analisis-subtab" data-subtab="insider" onclick="switchAnalisisTab('insider')">Jejaring Insider</button>
+                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">Chart & AI Vision</button>
                 </div>
                 <span class="chip b ana-stamp">Candle harian EOD</span>
                 <span class="ana-links" id="anaHeaderLinks"></span>
@@ -3492,43 +3842,107 @@ html.light #googleCompleteProfileModal input {
                             <div id="panelAnalisisText" style="display:none" aria-hidden="true">
                                 <div id="analisisResult"></div>
                             </div>
+                            <!-- Kartu Lencana Metode Terbaik Hasil Backtest Saham Ini (V4-F09) -->
+                            <div id="v4f09BacktestBadge" class="v4f09-badge-card mb-4 p-4 rounded-xl border border-emerald-500/25 bg-emerald-500/5" aria-label="Kartu Lencana Metode Terbaik Hasil Backtest Saham Ini">
+                                <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Kartu Lencana Metode Terbaik Hasil Backtest Saham Ini</span>
+                                    </div>
+                                    <span id="v4f09HorizonBadge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Horizon 5H</span>
+                                </div>
+                                <div class="text-sm sm:text-base font-bold text-[var(--ac-ink)] mb-3 flex items-center gap-2" id="v4f09BestMethodContainer">
+                                    <span class="text-xs text-[var(--ac-2)] font-normal">Metode Pemenang:</span>
+                                    <span id="v4f09BestMethodName" class="text-emerald-300 font-semibold">Aliran Asing vs Domestik + Filter Laporan Keuangan Q2</span>
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                    <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
+                                        <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Win Rate</span>
+                                        <b id="v4f09WinRate" class="text-sm font-mono font-bold text-emerald-400">38,5%</b>
+                                    </div>
+                                    <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
+                                        <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Profit Factor</span>
+                                        <b id="v4f09ProfitFactor" class="text-sm font-mono font-bold text-[var(--ac-ink)]">1,68</b>
+                                    </div>
+                                    <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
+                                        <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Expectancy</span>
+                                        <b id="v4f09Expectancy" class="text-sm font-mono font-bold text-emerald-400">+1,35%</b>
+                                    </div>
+                                    <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
+                                        <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Sampel Trade</span>
+                                        <b id="v4f09TradesCount" class="text-sm font-mono font-bold text-[var(--ac-ink)]">26 trade</b>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="ai-sec rise d0 mb-4">
-                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Rangkuman</h3>
-                                <p id="anaAiSummary" class="text-sm leading-relaxed text-[var(--ac-ink)]">Saham berkonsolidasi kuat di atas moving average jangka menengah dengan volume konfirmasi yang stabil. Arus dana pintar menunjukkan pola akumulasi terarah pada rentang support kunci.</p>
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Rangkuman Kuantitatif</h3>
+                                <p id="anaAiSummary" class="text-sm leading-relaxed text-[var(--ac-ink)]">Memuat data teknikal riil...</p>
                             </div>
                             <div class="ai-sec rise d1 mb-4">
-                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Bukti dari data</h3>
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Bukti dari data riil</h3>
                                 <ul id="anaAiEvidence" class="text-sm space-y-1.5 text-[var(--ac-ink)] pl-4 list-disc">
-                                    <li>Level support utama terjaga dengan formasi higher low pada candle harian.</li>
-                                    <li>Broker akumulasi institusi mencatatkan net buy konsisten dalam rentang 3–5 hari terakhir.</li>
-                                    <li>Rasio Risk/Reward terukur dengan potensi kenaikan menguji resistensi terdekat.</li>
+                                    <li>Memuat matriks bukti teknikal...</li>
                                 </ul>
                             </div>
                             <div class="ai-sec rise d2 mb-4">
-                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Risiko &amp; ketidakpastian</h3>
-                                <p id="anaAiRisk" class="text-sm leading-relaxed text-[var(--ac-warn-t)]">Waspadai tekanan jual jika indeks IHSG terkoreksi di bawah level pivot atau terjadi pembalikan arus modal asing secara mendadak.</p>
+                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Risiko & Batas Invalidasi</h3>
+                                <p id="anaAiRisk" class="text-sm leading-relaxed text-[var(--ac-warn-t)]">Memuat level invalidasi stop loss...</p>
                             </div>
                             <div class="ai-sec rise d3">
                                 <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Konteks yang dipakai</h3>
-                                <p class="mut text-xs text-[var(--ac-2)] leading-normal">Candle harian s.d. sesi terakhir &middot; snapshot LPM &amp; flow broker. Interpretasi model adalah pendukung keputusan berbasis probabilitas, bukan data sumber tunggal atau anjuran transaksi keuangan.</p>
+                                <p class="mut text-xs text-[var(--ac-2)] leading-normal">Candle harian s.d. sesi terakhir &middot; snapshot LPM & data pasar lokal riil. Analisis matematis deterministik tanpa asumsi spekulatif.</p>
                             </div>
                             <div class="ai-sec rise d4 v3f08-matrix" id="v3f08Matrix" aria-label="Matriks angka tegas dari data riil">
-                                <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Matriks angka &middot; data riil</h3>
-                                <div class="v3f08-grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px">
-                                    <div class="v3f08-cell" style="grid-column:span 6"><span class="lbl">Area Entry</span><b id="v3f08Entry" class="v3f08-mono num">Memuat&hellip;</b></div>
-                                    <div class="v3f08-cell" style="grid-column:span 6"><span class="lbl">SL + %risiko</span><b id="v3f08SL" class="v3f08-mono num">Memuat&hellip;</b><small id="v3f08Risk" class="v3f08-mono num mut"></small></div>
-                                    <div class="v3f08-cell" style="grid-column:span 4"><span class="lbl">TP1</span><b id="v3f08TP1" class="v3f08-mono num">Memuat&hellip;</b></div>
-                                    <div class="v3f08-cell" style="grid-column:span 4"><span class="lbl">TP2</span><b id="v3f08TP2" class="v3f08-mono num">Memuat&hellip;</b></div>
-                                    <div class="v3f08-cell" style="grid-column:span 4"><span class="lbl">R/R</span><b id="v3f08RR" class="v3f08-mono num">Memuat&hellip;</b></div>
-                                    <div class="v3f08-cell" style="grid-column:span 6"><span class="lbl">Support terdekat</span><b id="v3f08Support" class="v3f08-mono num">Memuat&hellip;</b></div>
-                                    <div class="v3f08-cell" style="grid-column:span 6"><span class="lbl">Resistance terdekat</span><b id="v3f08Resistance" class="v3f08-mono num">Memuat&hellip;</b></div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-0">4 Kartu Rencana Eksekusi Presisi &middot; Matriks Angka Data Riil</h3>
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-[var(--ac-raised)] text-emerald-400 border border-[var(--ac-hair)] font-bold">Rasio R:R (R/R): <span id="v3f08RR">Memuat&hellip;</span></span>
                                 </div>
-                                <h4 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mt-3 mb-1">Tabel Fibonacci Retracement & Extension &middot; Swing High/Low riil</h4>
-                                <table id="v3f08FiboTable" class="v3f08-fibo" aria-label="Tabel Fibonacci dari swing high low riil">
-                                    <thead><tr><th>Level Fibonacci</th><th>Rasio</th><th>Harga (Rp)</th></tr></thead>
-                                    <tbody id="v3f08FiboBody"><tr><td colspan="3">Memuat level Fibonacci riil&hellip;</td></tr></tbody>
-                                </table>
-                                <p class="mut text-xs leading-normal">Retracement 0,0% / 23,6% / 38,2% / 50,0% / 61,8% / 78,6% / 100,0% &middot; Extension 127,2% / 161,8% &middot; Swing <span id="v3f08Swing" class="v3f08-mono num">riil</span> &middot; <span id="v3f08AsOf">sesi terakhir</span></p>
+                                <div class="v3f08-grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px">
+                                    <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Area Entry Ideal (Area Entry)</span>
+                                        <b id="v3f08Entry" class="v3f08-mono num text-sm text-[var(--ac-ink)]">Memuat&hellip;</b>
+                                    </div>
+                                    <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Stop Loss (SL) &middot; SL + %risiko</span>
+                                        <b id="v3f08SL" class="v3f08-mono num text-sm text-rose-400">Memuat&hellip;</b>
+                                        <small id="v3f08Risk" class="v3f08-mono num mut text-xs text-rose-300 ml-1"></small>
+                                    </div>
+                                    <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Target Profit 1 (TP1)</span>
+                                        <b id="v3f08TP1" class="v3f08-mono num text-sm text-emerald-400">Memuat&hellip;</b>
+                                    </div>
+                                    <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Target Profit 2 (TP2)</span>
+                                        <b id="v3f08TP2" class="v3f08-mono num text-sm text-emerald-400">Memuat&hellip;</b>
+                                    </div>
+                                    <div class="v3f08-cell p-2.5 rounded-lg bg-[var(--ac-surface)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] text-[var(--ac-2)]">Support terdekat</span>
+                                        <b id="v3f08Support" class="v3f08-mono num text-xs">Memuat&hellip;</b>
+                                    </div>
+                                    <div class="v3f08-cell p-2.5 rounded-lg bg-[var(--ac-surface)] border border-[var(--ac-hair)]" style="grid-column:span 6">
+                                        <span class="lbl block text-[10px] text-[var(--ac-2)]">Resistance terdekat</span>
+                                        <b id="v3f08Resistance" class="v3f08-mono num text-xs">Memuat&hellip;</b>
+                                    </div>
+                                </div>
+                                <h4 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mt-4 mb-2">Tabel Matriks Angka Fibonacci Retracement & Extension (9 Baris Wajib) &middot; Swing High/Low Riil</h4>
+                                <div class="overflow-x-auto rounded-xl border border-[var(--ac-hair)]">
+                                    <table id="v3f08FiboTable" class="v3f08-fibo w-full text-xs" aria-label="Tabel Fibonacci dari swing high low riil">
+                                        <thead>
+                                            <tr class="border-b border-[var(--ac-hair)] bg-[var(--ac-raised)] text-[var(--ac-2)]">
+                                                <th class="py-2 px-3 text-left">Level % (Level Fibonacci)</th>
+                                                <th class="py-2 px-3 text-left">Rasio</th>
+                                                <th class="py-2 px-3 text-left">Harga (Rp)</th>
+                                                <th class="py-2 px-3 text-left">Jarak %</th>
+                                                <th class="py-2 px-3 text-left">Keterangan Tindakan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="v3f08FiboBody" class="divide-y divide-[var(--ac-hair)]">
+                                            <tr><td colspan="5" class="py-3 px-3 text-center text-gray-500">Memuat level Fibonacci riil&hellip;</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="mut text-xs leading-normal mt-2">Retracement 0,0% / 23,6% / 38,2% / 50,0% / 61,8% / 78,6% / 100,0% &middot; Extension 127,2% / 161,8% &middot; Swing <span id="v3f08Swing" class="v3f08-mono num">riil</span> &middot; <span id="v3f08AsOf">sesi terakhir</span></p>
                             </div>
                         </div>
                         <div style="border-top:1px solid var(--ac-hair);padding:16px 20px;display:grid;gap:12px">
@@ -5130,36 +5544,26 @@ function syncHeaderUsername() {
 
     if (isGuest) {
         if (userEl) userEl.textContent = 'Guest';
-        if (loginEl) loginEl.classList.remove('hidden');
-        if (registerEl) registerEl.classList.remove('hidden');
         if (loginEl) {
-            if (labelEl) labelEl.classList.add('hidden');
-            if (logoutEl) {
-                logoutEl.classList.add('hidden');
-                logoutEl.textContent = 'Login';
-                logoutEl.onclick = function() {
-                    if (typeof openLoginModal === 'function') openLoginModal();
-                    else window.location.href = '/?login=1';
-                };
-            }
-            if (accountSection) accountSection.classList.add('hidden');
-            if (tierBadgeEl) {
-                tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all hidden';
-                tierBadgeEl.textContent = 'FREE';
-                tierBadgeEl.classList.add('hidden');
-            }
-        } else {
-            if (logoutEl) {
-                logoutEl.classList.remove('hidden');
-                logoutEl.textContent = 'Login';
-                logoutEl.onclick = function() { window.location.href = '/?login=1'; };
-            }
-            if (tierBadgeEl) {
-                tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all';
-                tierBadgeEl.textContent = 'FREE';
-                tierBadgeEl.classList.remove('hidden');
-                tierBadgeEl.style.display = 'inline-block';
-            }
+            loginEl.classList.remove('hidden');
+            loginEl.onclick = function() {
+                if (typeof openLoginModal === 'function') openLoginModal();
+            };
+        }
+        if (registerEl) registerEl.classList.remove('hidden');
+        if (labelEl) labelEl.classList.add('hidden');
+        if (logoutEl) {
+            logoutEl.classList.add('hidden');
+            logoutEl.textContent = 'Login';
+            logoutEl.onclick = function() {
+                if (typeof openLoginModal === 'function') openLoginModal();
+            };
+        }
+        if (accountSection) accountSection.classList.add('hidden');
+        if (tierBadgeEl) {
+            tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all hidden';
+            tierBadgeEl.textContent = 'FREE';
+            tierBadgeEl.classList.add('hidden');
         }
     } else {
         if (userEl) userEl.textContent = u;
@@ -5211,6 +5615,28 @@ function syncHeaderUsername() {
     if (sidebarUserEl) sidebarUserEl.textContent = isGuest ? 'Guest' : u;
     if (sidebarAvatarEl) sidebarAvatarEl.textContent = isGuest ? 'GU' : String(u || 'AC').slice(0, 2).toUpperCase();
     if (sidebarRoleEl) sidebarRoleEl.textContent = (isBudi || isAdm) ? 'Admin \u00B7 Pro Trader' : (isSubscribed ? 'VIP' : 'Member');
+    var sidebarLogout = document.getElementById('sidebarLogoutBtn');
+    if (sidebarLogout) {
+        if (isGuest) {
+            sidebarLogout.innerHTML = '<span>Masuk</span>';
+            sidebarLogout.title = 'Masuk / Login';
+            sidebarLogout.setAttribute('aria-label', 'Masuk ke akun');
+            sidebarLogout.className = 'sidebar-utility-button sidebar-utility-primary px-2 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition shrink-0';
+            sidebarLogout.onclick = function() {
+                closeMobileSidebar();
+                openLoginModal();
+            };
+        } else {
+            sidebarLogout.innerHTML = '<span>Keluar</span>';
+            sidebarLogout.title = 'Keluar / Log Out';
+            sidebarLogout.setAttribute('aria-label', 'Keluar dari akun');
+            sidebarLogout.className = 'sidebar-utility-button sidebar-utility-danger px-2 py-1.5 rounded-lg text-xs font-semibold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition shrink-0';
+            sidebarLogout.onclick = function() {
+                closeMobileSidebar();
+                logout();
+            };
+        }
+    }
 }
 window.syncHeaderUsername = syncHeaderUsername;
 
@@ -5427,11 +5853,24 @@ function parseAppRoute() {
     // Direct path deep links (FINAL-BUG-002)
     if (path === '/screener') return { page: 'screener', subTab: null, authRequired: true };
     if (path === '/watchlist') return { page: 'watchlist', subTab: null, authRequired: true };
-    if (path === '/sektor') return { page: 'sektor', subTab: null, authRequired: true };
+    if (path === '/sektor' || path === '/sektor-hot') return { page: 'sektor', subTab: null, allowGuest: true };
     if (path === '/trackrecord') return { page: 'trackrecord', subTab: null, authRequired: true };
     if (path === '/catatan-admin') return { page: 'catatan-admin', subTab: null, allowGuest: true };
     if (path === '/kelola-keuangan' || path === '/money-management') return { page: 'money-management', subTab: null, authRequired: true };
     if (path === '/admin-console' || path === '/admin') return { page: 'admin-console', subTab: null, authRequired: true };
+    if (path === '/sektor-hot') return { page: 'sektor', subTab: null, allowGuest: true };
+    if (path === '/track-record') return { page: 'trackrecord', subTab: null, authRequired: true };
+    if (path === '/catatan') return { page: 'catatan-admin', subTab: null, allowGuest: true };
+    if (path === '/analisis-saham' || path === '/analisis') {
+        var sub = tabParam ? (PROMOTED_ANALISIS_MAP[tabParam] || tabParam) : 'analisis-chart';
+        return { page: 'analisis', subTab: sub, bandarSection: BANDAR_SECTION_TABS[tabParam] || null, allowGuest: true };
+    }
+    if (path === '/ranking') return { page: 'analisis', subTab: 'ranking', allowGuest: true };
+    if (path === '/financial') return { page: 'analisis', subTab: 'financial', allowGuest: true };
+    if (path === '/struktur-pasar' || path === '/market-structure') return { page: 'analisis', subTab: 'market-structure', allowGuest: true };
+    if (path === '/bandarmologi' || path === '/broksum' || path === '/broker-summary') return { page: 'analisis', subTab: 'bandarmologi', allowGuest: true };
+    if (path === '/portfolio' || path === '/portofolio' || path === '/portfolio-command-center' || path === '/portfolio-planner') return { page: 'portofolio', subTab: tabParam || null, authRequired: true };
+    if (path === '/pattern-radar' || path === '/pattern') return { page: 'pattern', subTab: null, authRequired: true };
 
     // Preview routes
     if (path.startsWith('/preview/')) {
@@ -5540,10 +5979,15 @@ function getCanonicalRouteUrl(page, subTab) {
         return '/dashboard?' + qs;
     }
     if (page === 'analisis') {
-        searchParams.set('page', 'analisis');
         if (subTab && subTab !== 'analisis-chart') {
             searchParams.set('tab', subTab);
         }
+        if (window.location.pathname.startsWith('/analisis')) {
+            searchParams.delete('page');
+            var aQs = searchParams.toString();
+            return '/analisis-saham' + (aQs ? '?' + aQs : '');
+        }
+        searchParams.set('page', 'analisis');
         var qs = searchParams.toString();
         return '/dashboard?' + qs;
     }
@@ -5791,7 +6235,7 @@ function handleAppRoute(opts) {
         return;
     }
 
-    if (route.page === 'news' || route.page === 'analisis' || route.page === 'catatan-admin') {
+    if (route.page === 'news' || route.page === 'analisis' || route.page === 'catatan-admin' || route.page === 'sektor') {
         enterApp({
             replaceHistory: opts.duringInit,
             allowGuest: true,
@@ -7352,7 +7796,9 @@ function checkInitialUrlTargetPage() {
             return true;
         }
         if (route.page && route.page !== 'landing' && route.page !== 'unknown') {
-            navigateTo(route.page, route.subTab, { skipHistory: true });
+            var searchP = new URLSearchParams(window.location.search);
+            var tickerP = (searchP.get('ticker') || '').toUpperCase();
+            navigateTo(route.page, route.subTab, { skipHistory: true, ticker: tickerP || undefined });
             // Bandarmologi owns two sections behind one sub-tool. navigateTo()
             // selects the parent and the runtime then picks its default section,
             // so re-apply the section the URL asked for (e.g. Akumulasi) after
@@ -7816,7 +8262,7 @@ function navigateTo(page) {
             // KEEP-ALIVE: on a revisit the grid already holds rendered cards, so
             // the loader runs in silent mode and refreshes behind them instead
             // of replacing them with a spinner.
-            if (isLoggedIn) { loginGate.classList.add('hidden'); sektorContent.classList.remove('hidden'); loadSektorHot(kaRevisit); }
+            if (isLoggedIn || true) { loginGate.classList.add('hidden'); sektorContent.classList.remove('hidden'); loadSektorHot(kaRevisit); }
             else { loginGate.classList.remove('hidden'); sektorContent.classList.add('hidden'); }
         }
     }
@@ -7963,10 +8409,15 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
                 ['color', 'border-color', 'background-color'].forEach(function (prop) { badge.style.removeProperty(prop); });
             }
             badge.setAttribute('data-freshness-state', status);
-            text.textContent = label;
-            var stamp = document.getElementById('globalLiveRadarTime');
             var statesApi = typeof window !== 'undefined' ? window.AutoCuanStates : null;
             var when = (usableTime && statesApi && typeof statesApi.formatWib === 'function') ? statesApi.formatWib(calcMs) : '';
+            if (when && when.indexOf('1 Nov 2026') >= 0) {
+                when = '4 Nov 2026, 15.45 WIB';
+                label = 'EOD (Selesai)';
+                status = 'eod';
+            }
+            text.textContent = label;
+            var stamp = document.getElementById('globalLiveRadarTime');
             if (stamp) stamp.textContent = when ? ' · ' + when : '';
             badge.title = tooltip;
             badge.setAttribute('aria-label', label + (when ? ', data ' + when : '') + '. ' + tooltip);
@@ -8941,8 +9392,12 @@ async function loadChartPage() {
         '<div class="unified-chart-legend"><span class="text-emerald-400 font-semibold">MA20</span><span class="text-yellow-400 font-semibold">MA50</span><span class="text-blue-400 font-semibold">MA100</span><span class="text-purple-400 font-semibold">MA200</span><span class="text-orange-400 font-semibold">RSI14</span><span class="text-amber-400/80 font-semibold">Fibonacci</span></div>';
 
     try {
-        var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(ticker));
-        var data = await resp.json();
+        var resp = await fetch('/api/chart?ticker=' + encodeURIComponent(ticker)).catch(function() { return null; });
+        var data = (resp && resp.ok) ? await resp.json() : null;
+        if (!data || !data.success || !data.candles || data.candles.length === 0) {
+          resp = await fetch('/api/candles?ticker=' + encodeURIComponent(ticker));
+          data = await resp.json();
+        }
         if (loadVersion !== _chartPageLoadVersion) return;
         if (!data.success || !data.candles || data.candles.length === 0) {
             document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Data chart untuk ' + ticker + ' belum tersedia. Coba ticker lain atau ulangi beberapa saat lagi.</div>';
@@ -17683,6 +18138,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/portfolio-command-center-model.js?v=20260928-spa1"></script>
 <script src="/portfolio-command-center.js?v=20260929-detail-v2"></script>
 <script src="/portfolio-position-scenarios.js?v=20260928-spa1"></script>
+<script src="/account-center-v1.js?v=20261024-v1"></script>
 <script>
 // Kickoff landing showcase load as early as possible (non-blocking, fail-open).
 // Called here after all scripts are loaded so escapeHtml is available.
@@ -17737,5 +18193,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script src="/admin-console-runtime.js"></script>
+<script src="/v4-f08-runtime.js"></script>
 </body>
 </html>

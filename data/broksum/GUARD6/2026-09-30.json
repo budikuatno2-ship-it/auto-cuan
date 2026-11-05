@@ -1,0 +1,20 @@
+{
+  "stock_code": "GUARD6",
+  "date": "2026-09-30",
+  "gross_buyers": [
+    {
+      "broker": "YP",
+      "bval": 100,
+      "bvol": 100,
+      "net_val": 100
+    }
+  ],
+  "gross_sellers": [
+    {
+      "broker": "AK",
+      "sval": 500000000,
+      "svol": 100000,
+      "net_val": -500000000
+    }
+  ]
+}

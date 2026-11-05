@@ -1,0 +1,241 @@
+{
+  "stock_code": "ADRO",
+  "ticker": "ADRO",
+  "date": "2026-10-28",
+  "flow": "all",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "DX",
+      "broker_name": "BAHANA SEKURITAS",
+      "bval": 15236045000,
+      "bvol": 6257300,
+      "sval": 50170000,
+      "svol": 20500,
+      "nval": 15185875000,
+      "nvol": 6236800,
+      "avg_price": 2434.92
+    },
+    {
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 8350543000,
+      "bvol": 3420000,
+      "sval": 3385136000,
+      "svol": 1386400,
+      "nval": 4965407000,
+      "nvol": 2033600,
+      "avg_price": 2441.68
+    },
+    {
+      "broker_code": "SS",
+      "broker_name": "SUPRA SEKURITAS INDONESIA",
+      "bval": 3925000000,
+      "bvol": 1600000,
+      "sval": 0,
+      "svol": 0,
+      "nval": 3925000000,
+      "nvol": 1600000,
+      "avg_price": 2453.13
+    },
+    {
+      "broker_code": "XL",
+      "broker_name": "STOCKBIT SEKURITAS DIGITAL",
+      "bval": 9272902000,
+      "bvol": 3798000,
+      "sval": 5678361000,
+      "svol": 2325100,
+      "nval": 3594541000,
+      "nvol": 1472900,
+      "avg_price": 2441.52
+    },
+    {
+      "broker_code": "NI",
+      "broker_name": "BNI SEKURITAS",
+      "bval": 5306545000,
+      "bvol": 2175200,
+      "sval": 1902740000,
+      "svol": 781900,
+      "nval": 3403805000,
+      "nvol": 1393300,
+      "avg_price": 2439.57
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 2653737000,
+      "bvol": 1084500,
+      "sval": 17412839000,
+      "svol": 7132900,
+      "nval": -14759102000,
+      "nvol": -6048400,
+      "avg_price": 2441.2
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 2178497000,
+      "bvol": 893200,
+      "sval": 9986803000,
+      "svol": 4087400,
+      "nval": -7808306000,
+      "nvol": -3194200,
+      "avg_price": 2443.31
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 2879838000,
+      "bvol": 1179700,
+      "sval": 7087846000,
+      "svol": 2900900,
+      "nval": -4208008000,
+      "nvol": -1721200,
+      "avg_price": 2443.33
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 2629761000,
+      "bvol": 1075700,
+      "sval": 5221040000,
+      "svol": 2140000,
+      "nval": -2591279000,
+      "nvol": -1064300,
+      "avg_price": 2439.74
+    },
+    {
+      "broker_code": "YP",
+      "broker_name": "MIRAE ASSET SEKURITAS INDONESIA",
+      "bval": 1903640000,
+      "bvol": 779100,
+      "sval": 3543470000,
+      "svol": 1447300,
+      "nval": -1639830000,
+      "nvol": -668200,
+      "avg_price": 2448.33
+    }
+  ],
+  "broker_net": 0,
+  "net_flow": 0,
+  "total_buy_val": 65030561000,
+  "total_sell_val": 65030561000,
+  "total_buy_vol": 26637600,
+  "total_volume": 26637600,
+  "total_turnover": 65030561000,
+  "top_buyers": [
+    {
+      "broker_code": "DX",
+      "broker_name": "BAHANA SEKURITAS",
+      "bval": 15236045000,
+      "bvol": 6257300,
+      "sval": 50170000,
+      "svol": 20500,
+      "nval": 15185875000,
+      "nvol": 6236800,
+      "avg_price": 2434.92
+    },
+    {
+      "broker_code": "CC",
+      "broker_name": "MANDIRI SEKURITAS",
+      "bval": 8350543000,
+      "bvol": 3420000,
+      "sval": 3385136000,
+      "svol": 1386400,
+      "nval": 4965407000,
+      "nvol": 2033600,
+      "avg_price": 2441.68
+    },
+    {
+      "broker_code": "SS",
+      "broker_name": "SUPRA SEKURITAS INDONESIA",
+      "bval": 3925000000,
+      "bvol": 1600000,
+      "sval": 0,
+      "svol": 0,
+      "nval": 3925000000,
+      "nvol": 1600000,
+      "avg_price": 2453.13
+    },
+    {
+      "broker_code": "XL",
+      "broker_name": "STOCKBIT SEKURITAS DIGITAL",
+      "bval": 9272902000,
+      "bvol": 3798000,
+      "sval": 5678361000,
+      "svol": 2325100,
+      "nval": 3594541000,
+      "nvol": 1472900,
+      "avg_price": 2441.52
+    },
+    {
+      "broker_code": "NI",
+      "broker_name": "BNI SEKURITAS",
+      "bval": 5306545000,
+      "bvol": 2175200,
+      "sval": 1902740000,
+      "svol": 781900,
+      "nval": 3403805000,
+      "nvol": 1393300,
+      "avg_price": 2439.57
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 2653737000,
+      "bvol": 1084500,
+      "sval": 17412839000,
+      "svol": 7132900,
+      "nval": -14759102000,
+      "nvol": -6048400,
+      "avg_price": 2441.2
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 2178497000,
+      "bvol": 893200,
+      "sval": 9986803000,
+      "svol": 4087400,
+      "nval": -7808306000,
+      "nvol": -3194200,
+      "avg_price": 2443.31
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 2879838000,
+      "bvol": 1179700,
+      "sval": 7087846000,
+      "svol": 2900900,
+      "nval": -4208008000,
+      "nvol": -1721200,
+      "avg_price": 2443.33
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 2629761000,
+      "bvol": 1075700,
+      "sval": 5221040000,
+      "svol": 2140000,
+      "nval": -2591279000,
+      "nvol": -1064300,
+      "avg_price": 2439.74
+    },
+    {
+      "broker_code": "YP",
+      "broker_name": "MIRAE ASSET SEKURITAS INDONESIA",
+      "bval": 1903640000,
+      "bvol": 779100,
+      "sval": 3543470000,
+      "svol": 1447300,
+      "nval": -1639830000,
+      "nvol": -668200,
+      "avg_price": 2448.33
+    }
+  ]
+}

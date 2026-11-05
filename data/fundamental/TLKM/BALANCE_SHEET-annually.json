@@ -1,0 +1,542 @@
+{
+  "ticker": "TLKM",
+  "report_type": "BALANCE_SHEET",
+  "period": "annually",
+  "requested_limit": 8,
+  "collected_at": "2026-10-28T14:43:02.525Z",
+  "data": {
+    "stock_code": "TLKM",
+    "report_type": "BALANCE_SHEET",
+    "period": "annually",
+    "count": 4,
+    "items": [
+      {
+        "year": "2025",
+        "quarter": "FY",
+        "label": "FY 2025",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "aset": {
+            "aset_lancar": {
+              "kas_dan_setara_kas": 34228000000000,
+              "aset_keuangan_lancar": {
+                "aset_keuangan_lancar_lainnya": 1420000000000,
+                "total": 1420000000000
+              },
+              "piutang_usaha": {
+                "piutang_usaha_pihak_ketiga": 9183000000000,
+                "piutang_usaha_pihak_berelasi": 2040000000000,
+                "total": 11223000000000
+              },
+              "persediaan_lancar": 901000000000,
+              "biaya_dibayar_dimuka_lancar": 7491000000000,
+              "uang_muka_lancar": 551000000000,
+              "pajak_dibayar_dimuka_lancar": 1979000000000,
+              "aset_non_keuangan_lancar_lainnya": 3222000000000,
+              "aset_tidak_lancar_atau_kelompok_lepasan_diklasifikasikan_sebagai_dimiliki_untuk_dijual": 751000000000,
+              "aset_lancar": 61766000000000,
+              "total": 61766000000000
+            },
+            "aset_tidak_lancar": {
+              "investasi_pada_ventura_bersama_dan_entitas_asosiasi": {
+                "investasi_pada_entitas_asosiasi": 106000000000,
+                "total": 106000000000
+              },
+              "uang_muka_tidak_lancar": 734000000000,
+              "aset_keuangan_tidak_lancar": {
+                "aset_keuangan_tidak_lancar_yang_diukur_pada_nilai_wajar_melalui_laba_rugi": 7281000000000,
+                "total": 7281000000000
+              },
+              "biaya_dibayar_dimuka_tidak_lancar": 7139000000000,
+              "aset_pajak_tangguhan": 6603000000000,
+              "aset_tetap": 193414000000000,
+              "goodwill": 914000000000,
+              "aset_takberwujud_selain_goodwill": 8323000000000,
+              "aset_tidak_lancar_non_keuangan_lainnya": 1479000000000,
+              "aset_tidak_lancar": 225993000000000,
+              "total": 225993000000000
+            },
+            "aset": 287759000000000,
+            "total": 287759000000000
+          },
+          "liabilitas_dan_ekuitas": {
+            "liabilitas": {
+              "liabilitas_jangka_pendek": {
+                "utang_bank_jangka_pendek": 6929000000000,
+                "utang_usaha": {
+                  "utang_usaha_pihak_ketiga": 15613000000000,
+                  "utang_usaha_pihak_berelasi": 571000000000,
+                  "total": 16184000000000
+                },
+                "utang_lainnya": {
+                  "utang_lainnya_pihak_ketiga": 648000000000,
+                  "total": 648000000000
+                },
+                "uang_muka_pelanggan_jangka_pendek": {
+                  "uang_muka_pelanggan_jangka_pendek_pihak_ketiga": 1523000000000,
+                  "total": 1523000000000
+                },
+                "beban_akrual_jangka_pendek": 14867000000000,
+                "utang_pajak": 2025000000000,
+                "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun": {
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_utang_bank": 17746000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_penerusan_pinjaman": 0,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_liabilitas_sewa_pembiayaan": 5590000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_utang_obligasi": 0,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_pinjaman_lainnya": 0,
+                  "total": 23336000000000
+                },
+                "liabilitas_non_keuangan_jangka_pendek_lainnya": 7970000000000,
+                "liabilitas_yang_secara_langsung_berhubungan_dengan_aset_tidak_lancar_atau_kelompok_lepasan_yang_diklasifikasikan_sebagai_dimiliki_untuk_dijual_atau_dimiliki_untuk_didistribusikan_kepada_pemil": 466000000000,
+                "liabilitas_jangka_pendek": 73948000000000,
+                "total": 73948000000000
+              },
+              "liabilitas_jangka_panjang": {
+                "liabilitas_pajak_tangguhan": 1233000000000,
+                "liabilitas_jangka_panjang_setelah_dikurangi_bagian_yang_jatuh_tempo_dalam_satu_tahun": {
+                  "liabilitas_jangka_panjang_atas_utang_bank": 23403000000000,
+                  "liabilitas_jangka_panjang_atas_liabilitas_sewa_pembiayaan": 18547000000000,
+                  "liabilitas_jangka_panjang_atas_utang_obligasi": 2696000000000,
+                  "total": 44646000000000
+                },
+                "provisi_jangka_panjang": {
+                  "provisi_jangka_panjang_lainnya": 1308000000000,
+                  "total": 1308000000000
+                },
+                "kewajiban_imbalan_pasca_kerja_jangka_panjang": 12996000000000,
+                "liabilitas_keuangan_jangka_panjang_lainnya": 240000000000,
+                "liabilitas_non_keuangan_jangka_panjang": 2851000000000,
+                "liabilitas_jangka_panjang": 63274000000000,
+                "total": 63274000000000
+              },
+              "liabilitas": 137222000000000,
+              "total": 137222000000000
+            },
+            "ekuitas": {
+              "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": {
+                "saham_biasa": 4953000000000,
+                "tambahan_modal_disetor": 2310000000000,
+                "saham_treasuri": 30000000000,
+                "komponen_ekuitas_lainnya": 10259000000000,
+                "saldo_laba_akumulasi_kerugian": {
+                  "saldo_laba_yang_telah_ditentukan_penggunaannya": 15337000000000,
+                  "saldo_laba_yang_belum_ditentukan_penggunaannya": 97856000000000,
+                  "total": 113193000000000
+                },
+                "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": 130685000000000,
+                "total": 130685000000000
+              },
+              "kepentingan_non_pengendali": 19852000000000,
+              "ekuitas": 150537000000000,
+              "total": 150537000000000
+            },
+            "liabilitas_dan_ekuitas": 287759000000000,
+            "total": 287759000000000
+          }
+        }
+      },
+      {
+        "year": "2024",
+        "quarter": "FY",
+        "label": "FY 2024",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "aset": {
+            "aset_lancar": {
+              "kas_dan_setara_kas": 33905000000000,
+              "aset_keuangan_lancar": {
+                "aset_keuangan_lancar_lainnya": 1285000000000,
+                "total": 1285000000000
+              },
+              "piutang_usaha": {
+                "piutang_usaha_pihak_ketiga": 9843000000000,
+                "piutang_usaha_pihak_berelasi": 2350000000000,
+                "total": 12193000000000
+              },
+              "piutang_lainnya": {
+                "piutang_lainnya_pihak_ketiga": 0,
+                "total": 0
+              },
+              "persediaan_lancar": 1096000000000,
+              "biaya_dibayar_dimuka_lancar": 7723000000000,
+              "uang_muka_lancar": 451000000000,
+              "pajak_dibayar_dimuka_lancar": 2844000000000,
+              "klaim_atas_pengembalian_pajak_lancar": 0,
+              "aset_non_keuangan_lancar_lainnya": 3583000000000,
+              "aset_tidak_lancar_atau_kelompok_lepasan_diklasifikasikan_sebagai_dimiliki_untuk_dijual": 0,
+              "aset_lancar": 63080000000000,
+              "total": 63080000000000
+            },
+            "aset_tidak_lancar": {
+              "investasi_pada_ventura_bersama_dan_entitas_asosiasi": {
+                "investasi_pada_entitas_asosiasi": 110000000000,
+                "total": 110000000000
+              },
+              "uang_muka_tidak_lancar": 205000000000,
+              "aset_keuangan_tidak_lancar": {
+                "aset_keuangan_tidak_lancar_yang_diukur_pada_nilai_wajar_melalui_laba_rugi": 8225000000000,
+                "total": 8225000000000
+              },
+              "biaya_dibayar_dimuka_tidak_lancar": 6003000000000,
+              "aset_pajak_tangguhan": 3409000000000,
+              "aset_tetap": 207476000000000,
+              "aset_imbalan_pasca_kerja": 0,
+              "goodwill": 995000000000,
+              "aset_takberwujud_selain_goodwill": 8447000000000,
+              "aset_tidak_lancar_non_keuangan_lainnya": 1725000000000,
+              "aset_tidak_lancar": 236595000000000,
+              "total": 236595000000000
+            },
+            "aset": 299675000000000,
+            "total": 299675000000000
+          },
+          "liabilitas_dan_ekuitas": {
+            "liabilitas": {
+              "liabilitas_jangka_pendek": {
+                "utang_bank_jangka_pendek": 11525000000000,
+                "utang_usaha": {
+                  "utang_usaha_pihak_ketiga": 14710000000000,
+                  "utang_usaha_pihak_berelasi": 626000000000,
+                  "total": 15336000000000
+                },
+                "utang_lainnya": {
+                  "utang_lainnya_pihak_ketiga": 454000000000,
+                  "total": 454000000000
+                },
+                "uang_muka_pelanggan_jangka_pendek": {
+                  "uang_muka_pelanggan_jangka_pendek_pihak_ketiga": 2872000000000,
+                  "total": 2872000000000
+                },
+                "beban_akrual_jangka_pendek": 14192000000000,
+                "utang_pajak": 3293000000000,
+                "pendapatan_diterima_dimuka_jangka_pendek": 0,
+                "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun": {
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_utang_bank": 13519000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_penerusan_pinjaman": 0,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_liabilitas_sewa_pembiayaan": 5491000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_utang_obligasi": 2347000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_pinjaman_lainnya": 0,
+                  "total": 21357000000000
+                },
+                "liabilitas_non_keuangan_jangka_pendek_lainnya": 7738000000000,
+                "liabilitas_jangka_pendek": 76767000000000,
+                "total": 76767000000000
+              },
+              "liabilitas_jangka_panjang": {
+                "liabilitas_pajak_tangguhan": 992000000000,
+                "liabilitas_jangka_panjang_setelah_dikurangi_bagian_yang_jatuh_tempo_dalam_satu_tahun": {
+                  "liabilitas_jangka_panjang_atas_utang_bank": 22822000000000,
+                  "liabilitas_jangka_panjang_atas_penerusan_pinjaman": 0,
+                  "liabilitas_jangka_panjang_atas_liabilitas_sewa_pembiayaan": 18468000000000,
+                  "liabilitas_jangka_panjang_atas_utang_obligasi": 2696000000000,
+                  "liabilitas_jangka_panjang_atas_pinjaman_lainnya": 0,
+                  "total": 43986000000000
+                },
+                "pendapatan_diterima_dimuka_jangka_panjang": 0,
+                "provisi_jangka_panjang": {
+                  "provisi_jangka_panjang_lainnya": 1192000000000,
+                  "total": 1192000000000
+                },
+                "kewajiban_imbalan_pasca_kerja_jangka_panjang": 11540000000000,
+                "liabilitas_keuangan_jangka_panjang_lainnya": 224000000000,
+                "liabilitas_non_keuangan_jangka_panjang": 2484000000000,
+                "liabilitas_jangka_panjang": 60418000000000,
+                "total": 60418000000000
+              },
+              "liabilitas": 137185000000000,
+              "total": 137185000000000
+            },
+            "ekuitas": {
+              "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": {
+                "saham_biasa": 4953000000000,
+                "tambahan_modal_disetor": 2310000000000,
+                "saham_treasuri": 0,
+                "komponen_ekuitas_lainnya": 9898000000000,
+                "saldo_laba_akumulasi_kerugian": {
+                  "saldo_laba_yang_telah_ditentukan_penggunaannya": 15337000000000,
+                  "saldo_laba_yang_belum_ditentukan_penggunaannya": 109596000000000,
+                  "total": 124933000000000
+                },
+                "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": 142094000000000,
+                "total": 142094000000000
+              },
+              "kepentingan_non_pengendali": 20396000000000,
+              "ekuitas": 162490000000000,
+              "total": 162490000000000
+            },
+            "liabilitas_dan_ekuitas": 299675000000000,
+            "total": 299675000000000
+          }
+        }
+      },
+      {
+        "year": "2023",
+        "quarter": "FY",
+        "label": "FY 2023",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "aset": {
+            "aset_lancar": {
+              "kas_dan_setara_kas": 29007000000000,
+              "aset_keuangan_lancar": {
+                "aset_keuangan_lancar_lainnya": 1661000000000,
+                "total": 1661000000000
+              },
+              "piutang_usaha": {
+                "piutang_usaha_pihak_ketiga": 8749000000000,
+                "piutang_usaha_pihak_berelasi": 1918000000000,
+                "total": 10667000000000
+              },
+              "piutang_lainnya": {
+                "piutang_lainnya_pihak_ketiga": 0,
+                "total": 0
+              },
+              "persediaan_lancar": 997000000000,
+              "biaya_dibayar_dimuka_lancar": 7228000000000,
+              "uang_muka_lancar": 768000000000,
+              "pajak_dibayar_dimuka_lancar": 1928000000000,
+              "klaim_atas_pengembalian_pajak_lancar": 0,
+              "aset_non_keuangan_lancar_lainnya": 3357000000000,
+              "aset_tidak_lancar_atau_kelompok_lepasan_diklasifikasikan_sebagai_dimiliki_untuk_dijual": 0,
+              "aset_lancar": 55613000000000,
+              "total": 55613000000000
+            },
+            "aset_tidak_lancar": {
+              "investasi_pada_ventura_bersama_dan_entitas_asosiasi": {
+                "investasi_pada_entitas_asosiasi": 109000000000,
+                "total": 109000000000
+              },
+              "uang_muka_tidak_lancar": 856000000000,
+              "aset_keuangan_tidak_lancar": {
+                "aset_keuangan_tidak_lancar_yang_diukur_pada_nilai_wajar_melalui_laba_rugi": 8053000000000,
+                "total": 8053000000000
+              },
+              "biaya_dibayar_dimuka_tidak_lancar": 4577000000000,
+              "aset_pajak_tangguhan": 4170000000000,
+              "aset_tetap": 180755000000000,
+              "aset_imbalan_pasca_kerja": 0,
+              "goodwill": 1079000000000,
+              "aset_takberwujud_selain_goodwill": 7652000000000,
+              "aset_tidak_lancar_non_keuangan_lainnya": 24178000000000,
+              "aset_tidak_lancar": 231429000000000,
+              "total": 231429000000000
+            },
+            "aset": 287042000000000,
+            "total": 287042000000000
+          },
+          "liabilitas_dan_ekuitas": {
+            "liabilitas": {
+              "liabilitas_jangka_pendek": {
+                "pinjaman_jangka_pendek_non_bank": 9650000000000,
+                "utang_usaha": {
+                  "utang_usaha_pihak_ketiga": 18023000000000,
+                  "utang_usaha_pihak_berelasi": 585000000000,
+                  "total": 18608000000000
+                },
+                "utang_lainnya": {
+                  "utang_lainnya_pihak_ketiga": 441000000000,
+                  "total": 441000000000
+                },
+                "uang_muka_pelanggan_jangka_pendek": {
+                  "uang_muka_pelanggan_jangka_pendek_pihak_ketiga": 2566000000000,
+                  "total": 2566000000000
+                },
+                "beban_akrual_jangka_pendek": 13079000000000,
+                "utang_pajak": 4525000000000,
+                "pendapatan_diterima_dimuka_jangka_pendek": 0,
+                "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun": {
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_utang_bank": 9282000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_penerusan_pinjaman": 84000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_liabilitas_sewa_pembiayaan": 5575000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_utang_obligasi": 548000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_pinjaman_lainnya": 362000000000,
+                  "total": 15851000000000
+                },
+                "liabilitas_non_keuangan_jangka_pendek_lainnya": 6848000000000,
+                "liabilitas_jangka_pendek": 71568000000000,
+                "total": 71568000000000
+              },
+              "liabilitas_jangka_panjang": {
+                "liabilitas_pajak_tangguhan": 841000000000,
+                "liabilitas_jangka_panjang_setelah_dikurangi_bagian_yang_jatuh_tempo_dalam_satu_tahun": {
+                  "liabilitas_jangka_panjang_atas_utang_bank": 22978000000000,
+                  "liabilitas_jangka_panjang_atas_penerusan_pinjaman": 0,
+                  "liabilitas_jangka_panjang_atas_liabilitas_sewa_pembiayaan": 14850000000000,
+                  "liabilitas_jangka_panjang_atas_utang_obligasi": 4795000000000,
+                  "liabilitas_jangka_panjang_atas_pinjaman_lainnya": 0,
+                  "total": 42623000000000
+                },
+                "pendapatan_diterima_dimuka_jangka_panjang": 0,
+                "provisi_jangka_panjang": {
+                  "provisi_jangka_panjang_lainnya": 1153000000000,
+                  "total": 1153000000000
+                },
+                "kewajiban_imbalan_pasca_kerja_jangka_panjang": 11414000000000,
+                "liabilitas_keuangan_jangka_panjang_lainnya": 290000000000,
+                "liabilitas_non_keuangan_jangka_panjang": 2591000000000,
+                "liabilitas_jangka_panjang": 58912000000000,
+                "total": 58912000000000
+              },
+              "liabilitas": 130480000000000,
+              "total": 130480000000000
+            },
+            "ekuitas": {
+              "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": {
+                "saham_biasa": 4953000000000,
+                "tambahan_modal_disetor": 2711000000000,
+                "saham_treasuri": 0,
+                "komponen_ekuitas_lainnya": 9639000000000,
+                "saldo_laba_akumulasi_kerugian": {
+                  "saldo_laba_yang_telah_ditentukan_penggunaannya": 15337000000000,
+                  "saldo_laba_yang_belum_ditentukan_penggunaannya": 103104000000000,
+                  "total": 118441000000000
+                },
+                "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": 135744000000000,
+                "total": 135744000000000
+              },
+              "kepentingan_non_pengendali": 20818000000000,
+              "ekuitas": 156562000000000,
+              "total": 156562000000000
+            },
+            "liabilitas_dan_ekuitas": 287042000000000,
+            "total": 287042000000000
+          }
+        }
+      },
+      {
+        "year": "2022",
+        "quarter": "FY",
+        "label": "FY 2022",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "aset": {
+            "aset_lancar": {
+              "kas_dan_setara_kas": 31947000000000,
+              "aset_keuangan_lancar": {
+                "aset_keuangan_lancar_lainnya": 1349000000000,
+                "total": 1349000000000
+              },
+              "piutang_usaha": {
+                "piutang_usaha_pihak_ketiga": 7014000000000,
+                "piutang_usaha_pihak_berelasi": 1620000000000,
+                "total": 8634000000000
+              },
+              "piutang_lainnya": {
+                "piutang_lainnya_pihak_ketiga": 245000000000,
+                "total": 245000000000
+              },
+              "persediaan_lancar": 1144000000000,
+              "biaya_dibayar_dimuka_lancar": 6081000000000,
+              "uang_muka_lancar": 679000000000,
+              "pajak_dibayar_dimuka_lancar": 1464000000000,
+              "klaim_atas_pengembalian_pajak_lancar": 380000000000,
+              "aset_non_keuangan_lancar_lainnya": 3128000000000,
+              "aset_tidak_lancar_atau_kelompok_lepasan_diklasifikasikan_sebagai_dimiliki_untuk_dijual": 6000000000,
+              "aset_lancar": 55057000000000,
+              "total": 55057000000000
+            },
+            "aset_tidak_lancar": {
+              "investasi_pada_ventura_bersama_dan_entitas_asosiasi": {
+                "investasi_pada_entitas_asosiasi": 123000000000,
+                "total": 123000000000
+              },
+              "uang_muka_tidak_lancar": 1265000000000,
+              "aset_keuangan_tidak_lancar": {
+                "aset_keuangan_tidak_lancar_yang_diukur_pada_nilai_wajar_melalui_laba_rugi": 8530000000000,
+                "aset_keuangan_tidak_lancar_lainnya": 2358000000000,
+                "total": 10888000000000
+              },
+              "aset_pajak_tangguhan": 4117000000000,
+              "aset_tetap": 173329000000000,
+              "aset_imbalan_pasca_kerja": 0,
+              "goodwill": 1090000000000,
+              "aset_takberwujud_selain_goodwill": 7212000000000,
+              "aset_tidak_lancar_non_keuangan_lainnya": 22111000000000,
+              "aset_tidak_lancar": 220135000000000,
+              "total": 220135000000000
+            },
+            "aset": 275192000000000,
+            "total": 275192000000000
+          },
+          "liabilitas_dan_ekuitas": {
+            "liabilitas": {
+              "liabilitas_jangka_pendek": {
+                "pinjaman_jangka_pendek_non_bank": 8191000000000,
+                "utang_usaha": {
+                  "utang_usaha_pihak_ketiga": 18026000000000,
+                  "utang_usaha_pihak_berelasi": 431000000000,
+                  "total": 18457000000000
+                },
+                "utang_lainnya": {
+                  "utang_lainnya_pihak_ketiga": 463000000000,
+                  "total": 463000000000
+                },
+                "uang_muka_pelanggan_jangka_pendek": {
+                  "uang_muka_pelanggan_jangka_pendek_pihak_ketiga": 2382000000000,
+                  "total": 2382000000000
+                },
+                "beban_akrual_jangka_pendek": 15445000000000,
+                "utang_pajak": 5372000000000,
+                "pendapatan_diterima_dimuka_jangka_pendek": 0,
+                "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun": {
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_utang_bank": 7788000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_penerusan_pinjaman": 118000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_liabilitas_sewa_pembiayaan": 4925000000000,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_utang_obligasi": 0,
+                  "liabilitas_jangka_panjang_yang_jatuh_tempo_dalam_satu_tahun_atas_pinjaman_lainnya": 952000000000,
+                  "total": 13783000000000
+                },
+                "liabilitas_non_keuangan_jangka_pendek_lainnya": 6295000000000,
+                "liabilitas_jangka_pendek": 70388000000000,
+                "total": 70388000000000
+              },
+              "liabilitas_jangka_panjang": {
+                "liabilitas_pajak_tangguhan": 1023000000000,
+                "liabilitas_jangka_panjang_setelah_dikurangi_bagian_yang_jatuh_tempo_dalam_satu_tahun": {
+                  "liabilitas_jangka_panjang_atas_utang_bank": 22085000000000,
+                  "liabilitas_jangka_panjang_atas_penerusan_pinjaman": 91000000000,
+                  "liabilitas_jangka_panjang_atas_liabilitas_sewa_pembiayaan": 13736000000000,
+                  "liabilitas_jangka_panjang_atas_utang_obligasi": 4793000000000,
+                  "liabilitas_jangka_panjang_atas_pinjaman_lainnya": 362000000000,
+                  "total": 41067000000000
+                },
+                "pendapatan_diterima_dimuka_jangka_panjang": 0,
+                "provisi_jangka_panjang": {
+                  "provisi_jangka_panjang_lainnya": 1031000000000,
+                  "total": 1031000000000
+                },
+                "kewajiban_imbalan_pasca_kerja_jangka_panjang": 10272000000000,
+                "liabilitas_keuangan_jangka_panjang_lainnya": 588000000000,
+                "liabilitas_non_keuangan_jangka_panjang": 1561000000000,
+                "liabilitas_jangka_panjang": 55542000000000,
+                "total": 55542000000000
+              },
+              "liabilitas": 125930000000000,
+              "total": 125930000000000
+            },
+            "ekuitas": {
+              "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": {
+                "saham_biasa": 4953000000000,
+                "tambahan_modal_disetor": 2711000000000,
+                "saham_treasuri": 0,
+                "komponen_ekuitas_lainnya": 9697000000000,
+                "saldo_laba_akumulasi_kerugian": {
+                  "saldo_laba_yang_telah_ditentukan_penggunaannya": 15337000000000,
+                  "saldo_laba_yang_belum_ditentukan_penggunaannya": 96560000000000,
+                  "total": 111897000000000
+                },
+                "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": 129258000000000,
+                "total": 129258000000000
+              },
+              "kepentingan_non_pengendali": 20004000000000,
+              "ekuitas": 149262000000000,
+              "total": 149262000000000
+            },
+            "liabilitas_dan_ekuitas": 275192000000000,
+            "total": 275192000000000
+          }
+        }
+      }
+    ]
+  }
+}

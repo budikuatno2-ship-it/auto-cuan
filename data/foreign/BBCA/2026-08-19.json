@@ -1,0 +1,114 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-08-19",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 156430395000,
+      "bvol": 24653700,
+      "bfrq": 2451,
+      "sfrq": 539,
+      "sval": 16128670000,
+      "svol": 2532400,
+      "nval": 140301725000,
+      "nvol": 22121300
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 28144055000,
+      "bvol": 4443100,
+      "bfrq": 423,
+      "sfrq": 480,
+      "sval": 12646530000,
+      "svol": 2000000,
+      "nval": 15497525000,
+      "nvol": 2443100
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 347447500,
+      "bvol": 54700,
+      "bfrq": 75,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 347447500,
+      "nvol": 54700
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 769280000,
+      "bvol": 121700,
+      "bfrq": 16,
+      "sfrq": 13,
+      "sval": 454427500,
+      "svol": 71300,
+      "nval": 314852500,
+      "nvol": 50400
+    }
+  ],
+  "broker_net": 156461550000,
+  "net_flow": 156461550000,
+  "total_buy_val": 185691177500,
+  "total_sell_val": 29229627500,
+  "total_turnover": 185691177500,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 156430395000,
+      "bvol": 24653700,
+      "bfrq": 2451,
+      "sfrq": 539,
+      "sval": 16128670000,
+      "svol": 2532400,
+      "nval": 140301725000,
+      "nvol": 22121300
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 28144055000,
+      "bvol": 4443100,
+      "bfrq": 423,
+      "sfrq": 480,
+      "sval": 12646530000,
+      "svol": 2000000,
+      "nval": 15497525000,
+      "nvol": 2443100
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 347447500,
+      "bvol": 54700,
+      "bfrq": 75,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 347447500,
+      "nvol": 54700
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 769280000,
+      "bvol": 121700,
+      "bfrq": 16,
+      "sfrq": 13,
+      "sval": 454427500,
+      "svol": 71300,
+      "nval": 314852500,
+      "nvol": 50400
+    }
+  ],
+  "top_sellers": []
+}

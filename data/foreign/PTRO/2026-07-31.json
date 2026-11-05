@@ -1,0 +1,114 @@
+{
+  "stock_code": "PTRO",
+  "ticker": "PTRO",
+  "date": "2026-07-31",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 20574826000,
+      "bvol": 4317100,
+      "bfrq": 1105,
+      "sfrq": 643,
+      "sval": 11136474000,
+      "svol": 2342300,
+      "nval": 9438352000,
+      "nvol": 1974800
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 6294540000,
+      "bvol": 1329200,
+      "bfrq": 285,
+      "sfrq": 109,
+      "sval": 1392858000,
+      "svol": 292700,
+      "nval": 4901682000,
+      "nvol": 1036500
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 1519103000,
+      "bvol": 318500,
+      "bfrq": 128,
+      "sfrq": 1,
+      "sval": 942000,
+      "svol": 200,
+      "nval": 1518161000,
+      "nvol": 318300
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 642922000,
+      "bvol": 135700,
+      "bfrq": 68,
+      "sfrq": 15,
+      "sval": 167225000,
+      "svol": 35100,
+      "nval": 475697000,
+      "nvol": 100600
+    }
+  ],
+  "broker_net": 16333892000,
+  "net_flow": 16333892000,
+  "total_buy_val": 29031391000,
+  "total_sell_val": 12697499000,
+  "total_turnover": 29031391000,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 20574826000,
+      "bvol": 4317100,
+      "bfrq": 1105,
+      "sfrq": 643,
+      "sval": 11136474000,
+      "svol": 2342300,
+      "nval": 9438352000,
+      "nvol": 1974800
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 6294540000,
+      "bvol": 1329200,
+      "bfrq": 285,
+      "sfrq": 109,
+      "sval": 1392858000,
+      "svol": 292700,
+      "nval": 4901682000,
+      "nvol": 1036500
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 1519103000,
+      "bvol": 318500,
+      "bfrq": 128,
+      "sfrq": 1,
+      "sval": 942000,
+      "svol": 200,
+      "nval": 1518161000,
+      "nvol": 318300
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 642922000,
+      "bvol": 135700,
+      "bfrq": 68,
+      "sfrq": 15,
+      "sval": 167225000,
+      "svol": 35100,
+      "nval": 475697000,
+      "nvol": 100600
+    }
+  ],
+  "top_sellers": []
+}

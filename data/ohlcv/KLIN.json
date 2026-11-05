@@ -1,0 +1,216 @@
+{
+  "ticker": "KLIN",
+  "symbol": "KLIN.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 25,
+  "latest": {
+    "date": "2026-10-30",
+    "open": 95,
+    "high": 98,
+    "low": 93,
+    "close": 97,
+    "volume": 17100
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 114,
+      "high": 117,
+      "low": 108,
+      "close": 114,
+      "volume": 183500
+    },
+    {
+      "date": "2026-09-29",
+      "open": 109,
+      "high": 117,
+      "low": 104,
+      "close": 111,
+      "volume": 148000
+    },
+    {
+      "date": "2026-09-30",
+      "open": 115,
+      "high": 115,
+      "low": 100,
+      "close": 114,
+      "volume": 108900
+    },
+    {
+      "date": "2026-10-01",
+      "open": 114,
+      "high": 125,
+      "low": 114,
+      "close": 123,
+      "volume": 640800
+    },
+    {
+      "date": "2026-10-02",
+      "open": 126,
+      "high": 135,
+      "low": 113,
+      "close": 117,
+      "volume": 435000
+    },
+    {
+      "date": "2026-10-05",
+      "open": 117,
+      "high": 126,
+      "low": 115,
+      "close": 117,
+      "volume": 231500
+    },
+    {
+      "date": "2026-10-06",
+      "open": 119,
+      "high": 121,
+      "low": 111,
+      "close": 116,
+      "volume": 158300
+    },
+    {
+      "date": "2026-10-07",
+      "open": 117,
+      "high": 118,
+      "low": 114,
+      "close": 118,
+      "volume": 91200
+    },
+    {
+      "date": "2026-10-08",
+      "open": 118,
+      "high": 120,
+      "low": 112,
+      "close": 117,
+      "volume": 177700
+    },
+    {
+      "date": "2026-10-09",
+      "open": 116,
+      "high": 119,
+      "low": 115,
+      "close": 116,
+      "volume": 192800
+    },
+    {
+      "date": "2026-10-12",
+      "open": 118,
+      "high": 118,
+      "low": 110,
+      "close": 112,
+      "volume": 219400
+    },
+    {
+      "date": "2026-10-13",
+      "open": 112,
+      "high": 116,
+      "low": 105,
+      "close": 116,
+      "volume": 367000
+    },
+    {
+      "date": "2026-10-14",
+      "open": 117,
+      "high": 117,
+      "low": 107,
+      "close": 108,
+      "volume": 287200
+    },
+    {
+      "date": "2026-10-15",
+      "open": 109,
+      "high": 115,
+      "low": 102,
+      "close": 105,
+      "volume": 217500
+    },
+    {
+      "date": "2026-10-16",
+      "open": 103,
+      "high": 103,
+      "low": 95,
+      "close": 95,
+      "volume": 124600
+    },
+    {
+      "date": "2026-10-19",
+      "open": 87,
+      "high": 95,
+      "low": 86,
+      "close": 88,
+      "volume": 88700
+    },
+    {
+      "date": "2026-10-20",
+      "open": 89,
+      "high": 95,
+      "low": 89,
+      "close": 95,
+      "volume": 91300
+    },
+    {
+      "date": "2026-10-21",
+      "open": 96,
+      "high": 104,
+      "low": 95,
+      "close": 98,
+      "volume": 161900
+    },
+    {
+      "date": "2026-10-22",
+      "open": 98,
+      "high": 98,
+      "low": 90,
+      "close": 96,
+      "volume": 583500
+    },
+    {
+      "date": "2026-10-23",
+      "open": 95,
+      "high": 105,
+      "low": 92,
+      "close": 98,
+      "volume": 656400
+    },
+    {
+      "date": "2026-10-26",
+      "open": 97,
+      "high": 102,
+      "low": 95,
+      "close": 100,
+      "volume": 77000
+    },
+    {
+      "date": "2026-10-27",
+      "open": 100,
+      "high": 100,
+      "low": 96,
+      "close": 98,
+      "volume": 27200
+    },
+    {
+      "date": "2026-10-28",
+      "open": 97,
+      "high": 98,
+      "low": 96,
+      "close": 97,
+      "volume": 6500
+    },
+    {
+      "date": "2026-10-29",
+      "open": 99,
+      "high": 99,
+      "low": 93,
+      "close": 98,
+      "volume": 21600
+    },
+    {
+      "date": "2026-10-30",
+      "open": 95,
+      "high": 98,
+      "low": 93,
+      "close": 97,
+      "volume": 17100
+    }
+  ]
+}

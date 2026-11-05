@@ -1,0 +1,90 @@
+{
+  "stock_code": "BMRI",
+  "ticker": "BMRI",
+  "date": "2026-08-19",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 2081035000,
+      "bvol": 500000,
+      "bfrq": 138,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2081035000,
+      "nvol": 500000
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 998146000,
+      "bvol": 240300,
+      "bfrq": 61,
+      "sfrq": 27,
+      "sval": 178140000,
+      "svol": 42700,
+      "nval": 820006000,
+      "nvol": 197600
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1192484000,
+      "bvol": 287000,
+      "bfrq": 103,
+      "sfrq": 69,
+      "sval": 478828000,
+      "svol": 115100,
+      "nval": 713656000,
+      "nvol": 171900
+    }
+  ],
+  "broker_net": 3614697000,
+  "net_flow": 3614697000,
+  "total_buy_val": 4271665000,
+  "total_sell_val": 656968000,
+  "total_turnover": 4271665000,
+  "top_buyers": [
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 2081035000,
+      "bvol": 500000,
+      "bfrq": 138,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2081035000,
+      "nvol": 500000
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 998146000,
+      "bvol": 240300,
+      "bfrq": 61,
+      "sfrq": 27,
+      "sval": 178140000,
+      "svol": 42700,
+      "nval": 820006000,
+      "nvol": 197600
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1192484000,
+      "bvol": 287000,
+      "bfrq": 103,
+      "sfrq": 69,
+      "sval": 478828000,
+      "svol": 115100,
+      "nval": 713656000,
+      "nvol": 171900
+    }
+  ],
+  "top_sellers": []
+}

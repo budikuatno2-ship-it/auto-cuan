@@ -981,7 +981,12 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     }
 
     if (ws && typeof ws.attach === 'function') {
-        try { ws.attach(chartId, candles, metrics, ticker, options); } catch (_) {}
+        try {
+            ws.attach(chartId, candles, metrics, ticker, options);
+            if (typeof ws.renderChartOverlay === 'function') {
+                ws.renderChartOverlay(chartId, ticker, candles, (wsState && wsState.activePreset) || 'pro');
+            }
+        } catch (_) {}
     }
 
     // Register the live chart before waiting on the network, so theme repaint,

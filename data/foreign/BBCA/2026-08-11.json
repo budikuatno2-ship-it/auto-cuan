@@ -1,0 +1,114 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-08-11",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 28912642500,
+      "bvol": 4610600,
+      "bfrq": 699,
+      "sfrq": 28,
+      "sval": 2570905000,
+      "svol": 408200,
+      "nval": 26341737500,
+      "nvol": 4202400
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 9770292500,
+      "bvol": 1562000,
+      "bfrq": 221,
+      "sfrq": 914,
+      "sval": 4275565000,
+      "svol": 684900,
+      "nval": 5494727500,
+      "nvol": 877100
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 5040000000,
+      "bvol": 800000,
+      "bfrq": 122,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5040000000,
+      "nvol": 800000
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 27033012500,
+      "bvol": 4311200,
+      "bfrq": 545,
+      "sfrq": 791,
+      "sval": 24782637500,
+      "svol": 3953500,
+      "nval": 2250375000,
+      "nvol": 357700
+    }
+  ],
+  "broker_net": 39126840000,
+  "net_flow": 39126840000,
+  "total_buy_val": 70755947500,
+  "total_sell_val": 31629107500,
+  "total_turnover": 70755947500,
+  "top_buyers": [
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 28912642500,
+      "bvol": 4610600,
+      "bfrq": 699,
+      "sfrq": 28,
+      "sval": 2570905000,
+      "svol": 408200,
+      "nval": 26341737500,
+      "nvol": 4202400
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 9770292500,
+      "bvol": 1562000,
+      "bfrq": 221,
+      "sfrq": 914,
+      "sval": 4275565000,
+      "svol": 684900,
+      "nval": 5494727500,
+      "nvol": 877100
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 5040000000,
+      "bvol": 800000,
+      "bfrq": 122,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5040000000,
+      "nvol": 800000
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 27033012500,
+      "bvol": 4311200,
+      "bfrq": 545,
+      "sfrq": 791,
+      "sval": 24782637500,
+      "svol": 3953500,
+      "nval": 2250375000,
+      "nvol": 357700
+    }
+  ],
+  "top_sellers": []
+}

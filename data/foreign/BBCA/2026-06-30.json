@@ -1,0 +1,138 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-06-30",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 143311457500,
+      "bvol": 25274600,
+      "bfrq": 1680,
+      "sfrq": 3575,
+      "sval": 88210942500,
+      "svol": 15620200,
+      "nval": 55100515000,
+      "nvol": 9654400
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 119059760000,
+      "bvol": 20886400,
+      "bfrq": 1351,
+      "sfrq": 2455,
+      "sval": 70369570000,
+      "svol": 12285100,
+      "nval": 48690190000,
+      "nvol": 8601300
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 30441825000,
+      "bvol": 5348300,
+      "bfrq": 777,
+      "sfrq": 38,
+      "sval": 1659967500,
+      "svol": 289800,
+      "nval": 28781857500,
+      "nvol": 5058500
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 29278400000,
+      "bvol": 5155600,
+      "bfrq": 1421,
+      "sfrq": 322,
+      "sval": 15048550000,
+      "svol": 2646800,
+      "nval": 14229850000,
+      "nvol": 2508800
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 11977700000,
+      "bvol": 2099700,
+      "bfrq": 352,
+      "sfrq": 136,
+      "sval": 2099252500,
+      "svol": 367700,
+      "nval": 9878447500,
+      "nvol": 1732000
+    }
+  ],
+  "broker_net": 156680860000,
+  "net_flow": 156680860000,
+  "total_buy_val": 334069142500,
+  "total_sell_val": 177388282500,
+  "total_turnover": 334069142500,
+  "top_buyers": [
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 143311457500,
+      "bvol": 25274600,
+      "bfrq": 1680,
+      "sfrq": 3575,
+      "sval": 88210942500,
+      "svol": 15620200,
+      "nval": 55100515000,
+      "nvol": 9654400
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 119059760000,
+      "bvol": 20886400,
+      "bfrq": 1351,
+      "sfrq": 2455,
+      "sval": 70369570000,
+      "svol": 12285100,
+      "nval": 48690190000,
+      "nvol": 8601300
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 30441825000,
+      "bvol": 5348300,
+      "bfrq": 777,
+      "sfrq": 38,
+      "sval": 1659967500,
+      "svol": 289800,
+      "nval": 28781857500,
+      "nvol": 5058500
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 29278400000,
+      "bvol": 5155600,
+      "bfrq": 1421,
+      "sfrq": 322,
+      "sval": 15048550000,
+      "svol": 2646800,
+      "nval": 14229850000,
+      "nvol": 2508800
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 11977700000,
+      "bvol": 2099700,
+      "bfrq": 352,
+      "sfrq": 136,
+      "sval": 2099252500,
+      "svol": 367700,
+      "nval": 9878447500,
+      "nvol": 1732000
+    }
+  ],
+  "top_sellers": []
+}

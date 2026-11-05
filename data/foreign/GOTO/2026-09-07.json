@@ -1,0 +1,162 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-09-07",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 828050000,
+      "bvol": 16561000,
+      "bfrq": 14,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 828050000,
+      "nvol": 16561000
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 9485000,
+      "bvol": 189700,
+      "bfrq": 131,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 9485000,
+      "nvol": 189700
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 5255000,
+      "bvol": 105100,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5255000,
+      "nvol": 105100
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 3005000,
+      "bvol": 60100,
+      "bfrq": 19,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 3005000,
+      "nvol": 60100
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2220000,
+      "bvol": 44400,
+      "bfrq": 26,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2220000,
+      "nvol": 44400
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1045000,
+      "bvol": 20900,
+      "bfrq": 8,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1045000,
+      "nvol": 20900
+    }
+  ],
+  "broker_net": 849060000,
+  "net_flow": 849060000,
+  "total_buy_val": 849060000,
+  "total_sell_val": 0,
+  "total_turnover": 849060000,
+  "top_buyers": [
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 828050000,
+      "bvol": 16561000,
+      "bfrq": 14,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 828050000,
+      "nvol": 16561000
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 9485000,
+      "bvol": 189700,
+      "bfrq": 131,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 9485000,
+      "nvol": 189700
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 5255000,
+      "bvol": 105100,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5255000,
+      "nvol": 105100
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 3005000,
+      "bvol": 60100,
+      "bfrq": 19,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 3005000,
+      "nvol": 60100
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2220000,
+      "bvol": 44400,
+      "bfrq": 26,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2220000,
+      "nvol": 44400
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1045000,
+      "bvol": 20900,
+      "bfrq": 8,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1045000,
+      "nvol": 20900
+    }
+  ],
+  "top_sellers": []
+}

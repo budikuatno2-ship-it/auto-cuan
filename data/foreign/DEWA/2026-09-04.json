@@ -1,0 +1,114 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-09-04",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 4703262800,
+      "bvol": 10527800,
+      "bfrq": 163,
+      "sfrq": 214,
+      "sval": 2124985600,
+      "svol": 4736900,
+      "nval": 2578277200,
+      "nvol": 5790900
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2934202400,
+      "bvol": 6572800,
+      "bfrq": 385,
+      "sfrq": 205,
+      "sval": 1378625000,
+      "svol": 3076500,
+      "nval": 1555577400,
+      "nvol": 3496300
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 1940457000,
+      "bvol": 4355700,
+      "bfrq": 228,
+      "sfrq": 132,
+      "sval": 1053667600,
+      "svol": 2361800,
+      "nval": 886789400,
+      "nvol": 1993900
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 586395800,
+      "bvol": 1322900,
+      "bfrq": 28,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 586395800,
+      "nvol": 1322900
+    }
+  ],
+  "broker_net": 5607039800,
+  "net_flow": 5607039800,
+  "total_buy_val": 10164318000,
+  "total_sell_val": 4557278200,
+  "total_turnover": 10164318000,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 4703262800,
+      "bvol": 10527800,
+      "bfrq": 163,
+      "sfrq": 214,
+      "sval": 2124985600,
+      "svol": 4736900,
+      "nval": 2578277200,
+      "nvol": 5790900
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 2934202400,
+      "bvol": 6572800,
+      "bfrq": 385,
+      "sfrq": 205,
+      "sval": 1378625000,
+      "svol": 3076500,
+      "nval": 1555577400,
+      "nvol": 3496300
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 1940457000,
+      "bvol": 4355700,
+      "bfrq": 228,
+      "sfrq": 132,
+      "sval": 1053667600,
+      "svol": 2361800,
+      "nval": 886789400,
+      "nvol": 1993900
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 586395800,
+      "bvol": 1322900,
+      "bfrq": 28,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 586395800,
+      "nvol": 1322900
+    }
+  ],
+  "top_sellers": []
+}

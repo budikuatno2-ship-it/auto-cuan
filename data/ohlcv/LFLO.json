@@ -1,0 +1,216 @@
+{
+  "ticker": "LFLO",
+  "symbol": "LFLO.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 25,
+  "latest": {
+    "date": "2026-10-30",
+    "open": 615,
+    "high": 680,
+    "low": 615,
+    "close": 680,
+    "volume": 1700
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 555,
+      "high": 555,
+      "low": 545,
+      "close": 550,
+      "volume": 1700
+    },
+    {
+      "date": "2026-09-29",
+      "open": 545,
+      "high": 555,
+      "low": 515,
+      "close": 555,
+      "volume": 16900
+    },
+    {
+      "date": "2026-09-30",
+      "open": 560,
+      "high": 590,
+      "low": 515,
+      "close": 590,
+      "volume": 49800
+    },
+    {
+      "date": "2026-10-01",
+      "open": 575,
+      "high": 615,
+      "low": 550,
+      "close": 615,
+      "volume": 70600
+    },
+    {
+      "date": "2026-10-02",
+      "open": 615,
+      "high": 615,
+      "low": 565,
+      "close": 605,
+      "volume": 5600
+    },
+    {
+      "date": "2026-10-05",
+      "open": 605,
+      "high": 605,
+      "low": 555,
+      "close": 595,
+      "volume": 8500
+    },
+    {
+      "date": "2026-10-06",
+      "open": 560,
+      "high": 595,
+      "low": 560,
+      "close": 590,
+      "volume": 5000
+    },
+    {
+      "date": "2026-10-07",
+      "open": 585,
+      "high": 585,
+      "low": 570,
+      "close": 575,
+      "volume": 3100
+    },
+    {
+      "date": "2026-10-08",
+      "open": 565,
+      "high": 590,
+      "low": 560,
+      "close": 565,
+      "volume": 4500
+    },
+    {
+      "date": "2026-10-09",
+      "open": 595,
+      "high": 595,
+      "low": 560,
+      "close": 580,
+      "volume": 11500
+    },
+    {
+      "date": "2026-10-12",
+      "open": 585,
+      "high": 585,
+      "low": 545,
+      "close": 565,
+      "volume": 9100
+    },
+    {
+      "date": "2026-10-13",
+      "open": 565,
+      "high": 570,
+      "low": 545,
+      "close": 565,
+      "volume": 3000
+    },
+    {
+      "date": "2026-10-14",
+      "open": 560,
+      "high": 560,
+      "low": 540,
+      "close": 540,
+      "volume": 1700
+    },
+    {
+      "date": "2026-10-15",
+      "open": 540,
+      "high": 545,
+      "low": 530,
+      "close": 540,
+      "volume": 6100
+    },
+    {
+      "date": "2026-10-16",
+      "open": 486,
+      "high": 540,
+      "low": 486,
+      "close": 540,
+      "volume": 5700
+    },
+    {
+      "date": "2026-10-19",
+      "open": 580,
+      "high": 580,
+      "low": 486,
+      "close": 580,
+      "volume": 16100
+    },
+    {
+      "date": "2026-10-20",
+      "open": 590,
+      "high": 635,
+      "low": 535,
+      "close": 625,
+      "volume": 24800
+    },
+    {
+      "date": "2026-10-21",
+      "open": 575,
+      "high": 625,
+      "low": 575,
+      "close": 625,
+      "volume": 9600
+    },
+    {
+      "date": "2026-10-22",
+      "open": 585,
+      "high": 680,
+      "low": 575,
+      "close": 680,
+      "volume": 35600
+    },
+    {
+      "date": "2026-10-23",
+      "open": 680,
+      "high": 680,
+      "low": 620,
+      "close": 660,
+      "volume": 69200
+    },
+    {
+      "date": "2026-10-26",
+      "open": 650,
+      "high": 650,
+      "low": 595,
+      "close": 650,
+      "volume": 27700
+    },
+    {
+      "date": "2026-10-27",
+      "open": 625,
+      "high": 645,
+      "low": 600,
+      "close": 645,
+      "volume": 9600
+    },
+    {
+      "date": "2026-10-28",
+      "open": 680,
+      "high": 680,
+      "low": 585,
+      "close": 680,
+      "volume": 123400
+    },
+    {
+      "date": "2026-10-29",
+      "open": 680,
+      "high": 680,
+      "low": 630,
+      "close": 665,
+      "volume": 8500
+    },
+    {
+      "date": "2026-10-30",
+      "open": 615,
+      "high": 680,
+      "low": 615,
+      "close": 680,
+      "volume": 1700
+    }
+  ]
+}

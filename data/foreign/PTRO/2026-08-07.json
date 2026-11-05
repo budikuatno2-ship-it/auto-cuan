@@ -1,0 +1,162 @@
+{
+  "stock_code": "PTRO",
+  "ticker": "PTRO",
+  "date": "2026-08-07",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 7827010000,
+      "bvol": 1530600,
+      "bfrq": 408,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 7827010000,
+      "nvol": 1530600
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 3544200000,
+      "bvol": 690100,
+      "bfrq": 144,
+      "sfrq": 18,
+      "sval": 416330000,
+      "svol": 81200,
+      "nval": 3127870000,
+      "nvol": 608900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 5072117500,
+      "bvol": 991500,
+      "bfrq": 215,
+      "sfrq": 169,
+      "sval": 1998992500,
+      "svol": 390000,
+      "nval": 3073125000,
+      "nvol": 601500
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 3040985000,
+      "bvol": 600300,
+      "bfrq": 123,
+      "sfrq": 74,
+      "sval": 1966375000,
+      "svol": 382800,
+      "nval": 1074610000,
+      "nvol": 217500
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 10552877500,
+      "bvol": 2064900,
+      "bfrq": 726,
+      "sfrq": 488,
+      "sval": 9481277500,
+      "svol": 1843000,
+      "nval": 1071600000,
+      "nvol": 221900
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 2105385000,
+      "bvol": 410400,
+      "bfrq": 114,
+      "sfrq": 59,
+      "sval": 1179900000,
+      "svol": 230000,
+      "nval": 925485000,
+      "nvol": 180400
+    }
+  ],
+  "broker_net": 17099700000,
+  "net_flow": 17099700000,
+  "total_buy_val": 32142575000,
+  "total_sell_val": 15042875000,
+  "total_turnover": 32142575000,
+  "top_buyers": [
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 7827010000,
+      "bvol": 1530600,
+      "bfrq": 408,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 7827010000,
+      "nvol": 1530600
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 3544200000,
+      "bvol": 690100,
+      "bfrq": 144,
+      "sfrq": 18,
+      "sval": 416330000,
+      "svol": 81200,
+      "nval": 3127870000,
+      "nvol": 608900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 5072117500,
+      "bvol": 991500,
+      "bfrq": 215,
+      "sfrq": 169,
+      "sval": 1998992500,
+      "svol": 390000,
+      "nval": 3073125000,
+      "nvol": 601500
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 3040985000,
+      "bvol": 600300,
+      "bfrq": 123,
+      "sfrq": 74,
+      "sval": 1966375000,
+      "svol": 382800,
+      "nval": 1074610000,
+      "nvol": 217500
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 10552877500,
+      "bvol": 2064900,
+      "bfrq": 726,
+      "sfrq": 488,
+      "sval": 9481277500,
+      "svol": 1843000,
+      "nval": 1071600000,
+      "nvol": 221900
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 2105385000,
+      "bvol": 410400,
+      "bfrq": 114,
+      "sfrq": 59,
+      "sval": 1179900000,
+      "svol": 230000,
+      "nval": 925485000,
+      "nvol": 180400
+    }
+  ],
+  "top_sellers": []
+}

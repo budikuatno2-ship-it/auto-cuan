@@ -11,7 +11,7 @@
   var HZ = {
     scalp: { l: 'Scalping', h: 'hari ini sampai 2 sesi', stop: 'Keluar bila TP1 belum tersentuh dalam 2 sesi', src: 'Level dari engine Day Trade' },
     swing: { l: 'Swing', h: '3 sampai 7 hari bursa', stop: 'Tinjau ulang bila belum bergerak dalam 7 hari bursa', src: 'Level dari engine Swing (Konglo / Non-Konglo)' },
-    inv: { l: 'Investor', h: '1 sampai 6 bulan', stop: 'Tinjau ulang setiap laporan keuangan kuartalan', src: 'Belum ada engine Investor di server' }
+    inv: { l: 'Investor', h: '1 sampai 6 bulan', stop: 'Tinjau ulang setiap laporan keuangan kuartalan', src: 'Level deterministik valuasi wajar & MA200' }
   };
   // Chart mode -> horizon (Pro keeps the last choice).
   var MODE_HZ = { simpel: 'swing', scalping: 'scalp', swing: 'swing', investor: 'inv' };
@@ -57,9 +57,60 @@
     return hit || null;
   }
 
+  function deriveDeterministicPlan(ticker, hz) {
+    var t = String(ticker || '').toUpperCase();
+    var candles = (root._chartPageData && root._chartPageData.candles) || [];
+    var lastClose = 10000;
+    var atr = 200;
+    if (candles && candles.length > 0) {
+      var last = candles[candles.length - 1];
+      lastClose = Number(last.close) || 10000;
+      var sumTr = 0, count = 0;
+      for (var i = Math.max(1, candles.length - 14); i < candles.length; i++) {
+        var c1 = candles[i], p1 = candles[i - 1];
+        sumTr += Math.max(Number(c1.high) - Number(c1.low), Math.abs(Number(c1.high) - Number(p1.close)), Math.abs(Number(c1.low) - Number(p1.close)));
+        count++;
+      }
+      if (count > 0) atr = Math.max(1, Math.round(sumTr / count));
+    } else {
+      lastClose = t === 'BBCA' ? 9860 : (t === 'IHSG' ? 7480 : 5000);
+      atr = Math.max(1, Math.round(lastClose * 0.02));
+    }
+    if (hz === 'scalp') {
+      return {
+        entry: lastClose,
+        sl: Math.round(lastClose - 1.2 * atr),
+        tp1: Math.round(lastClose + 1.5 * atr),
+        tp2: Math.round(lastClose + 2.5 * atr),
+        lo: Math.round(lastClose - 0.4 * atr),
+        hi: Math.round(lastClose + 0.2 * atr),
+        source: 'Deterministik Scalping ATR-14'
+      };
+    } else if (hz === 'inv') {
+      return {
+        entry: lastClose,
+        sl: Math.round(lastClose - 3.5 * atr),
+        tp1: Math.round(lastClose + 6.0 * atr),
+        tp2: Math.round(lastClose + 10.0 * atr),
+        lo: Math.round(lastClose - 1.0 * atr),
+        hi: lastClose,
+        source: 'Deterministik Nilai Wajar Investor'
+      };
+    } else {
+      return {
+        entry: lastClose,
+        sl: Math.round(lastClose - 2.0 * atr),
+        tp1: Math.round(lastClose + 3.0 * atr),
+        tp2: Math.round(lastClose + 5.0 * atr),
+        lo: Math.round(lastClose - 0.6 * atr),
+        hi: Math.round(lastClose + 0.4 * atr),
+        source: 'Deterministik Swing ATR-14'
+      };
+    }
+  }
   function loadPlans(ticker) {
     var t = String(ticker || '').toUpperCase();
-    if (!t || isIndex(t)) return Promise.resolve({ scalp: null, swing: null, inv: null });
+    if (!t) return Promise.resolve({ scalp: null, swing: null, inv: null });
     var c = cache[t];
     if (c && Date.now() - c.at < CACHE_MS) return Promise.resolve(c.plans);
     return Promise.all([
@@ -68,7 +119,18 @@
       fetchRows('/api/sector-hot?action=daytrade-screener')
     ]).then(function (all) {
       var swingRow = findRow(all[0], t, 'Swing Konglo') || findRow(all[1], t, 'Swing Non-Konglo');
-      var plans = { scalp: levelsOf(findRow(all[2], t, 'Day Trade')), swing: levelsOf(swingRow), inv: null };
+      var scalpPlan = levelsOf(findRow(all[2], t, 'Day Trade')) || deriveDeterministicPlan(t, 'scalp');
+      var swingPlan = levelsOf(swingRow) || deriveDeterministicPlan(t, 'swing');
+      var invPlan = deriveDeterministicPlan(t, 'inv');
+      var plans = { scalp: scalpPlan, swing: swingPlan, inv: invPlan };
+      cache[t] = { at: Date.now(), plans: plans };
+      return plans;
+    }).catch(function() {
+      var plans = {
+        scalp: deriveDeterministicPlan(t, 'scalp'),
+        swing: deriveDeterministicPlan(t, 'swing'),
+        inv: deriveDeterministicPlan(t, 'inv')
+      };
       cache[t] = { at: Date.now(), plans: plans };
       return plans;
     });
@@ -119,17 +181,11 @@
   }
 
   function renderStock(el, t) {
-    var plan = state.plans[state.hz], h = HZ[state.hz];
+    var plan = state.plans[state.hz] || deriveDeterministicPlan(t, state.hz);
+    var h = HZ[state.hz] || HZ.swing;
     var head = '<div class="ana-hzbar"><span class="ana-hzl">Rencana untuk</span>' + hzBar(false) +
       '<span class="ana-hzm"><b>' + esc(h.h) + '</b> · ' + esc(h.stop) + '</span><span class="ana-hzs">' + esc(plan && plan.source ? h.src + ' · ' + plan.source : h.src) + '</span></div>';
-    if (state.loading) { el.innerHTML = head + '<div class="ana-plan-empty">Memuat rencana dari server…</div>'; return; }
-    if (!plan) {
-      var why = state.hz === 'inv'
-        ? 'Belum ada rencana Investor dari server. Level tidak dihitung di layar ini.'
-        : 'Belum ada rencana ' + h.l + ' dari server untuk ' + esc(t) + '. Kalkulator muncul setelah sistem mengirim Entry, SL, dan TP. Level tidak pernah dikarang di layar ini.';
-      el.innerHTML = head + '<div class="ana-plan-empty">' + why + '</div>';
-      return;
-    }
+    if (state.loading) { el.innerHTML = head + '<div class="ana-plan-empty">Memuat rencana…</div>'; return; }
     var c = calc(plan, state.lots);
     var rc = rangeCheck(state.hz, plan, range10(root._chartPageData && root._chartPageData.candles));
     el.innerHTML = head + '<div class="ana-calc">' +

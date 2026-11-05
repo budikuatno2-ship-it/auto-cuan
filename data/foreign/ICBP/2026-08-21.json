@@ -1,0 +1,114 @@
+{
+  "stock_code": "ICBP",
+  "ticker": "ICBP",
+  "date": "2026-08-21",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 6159855000,
+      "bvol": 806400,
+      "bfrq": 312,
+      "sfrq": 369,
+      "sval": 2245142500,
+      "svol": 294000,
+      "nval": 3914712500,
+      "nvol": 512400
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 5828705000,
+      "bvol": 764200,
+      "bfrq": 407,
+      "sfrq": 639,
+      "sval": 5150885000,
+      "svol": 675500,
+      "nval": 677820000,
+      "nvol": 88700
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 46557500,
+      "bvol": 6100,
+      "bfrq": 9,
+      "sfrq": 1,
+      "sval": 34425000,
+      "svol": 4500,
+      "nval": 12132500,
+      "nvol": 1600
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 3815000,
+      "bvol": 500,
+      "bfrq": 3,
+      "sfrq": 1,
+      "sval": 2287500,
+      "svol": 300,
+      "nval": 1527500,
+      "nvol": 200
+    }
+  ],
+  "broker_net": 4606192500,
+  "net_flow": 4606192500,
+  "total_buy_val": 12038932500,
+  "total_sell_val": 7432740000,
+  "total_turnover": 12038932500,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 6159855000,
+      "bvol": 806400,
+      "bfrq": 312,
+      "sfrq": 369,
+      "sval": 2245142500,
+      "svol": 294000,
+      "nval": 3914712500,
+      "nvol": 512400
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 5828705000,
+      "bvol": 764200,
+      "bfrq": 407,
+      "sfrq": 639,
+      "sval": 5150885000,
+      "svol": 675500,
+      "nval": 677820000,
+      "nvol": 88700
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 46557500,
+      "bvol": 6100,
+      "bfrq": 9,
+      "sfrq": 1,
+      "sval": 34425000,
+      "svol": 4500,
+      "nval": 12132500,
+      "nvol": 1600
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 3815000,
+      "bvol": 500,
+      "bfrq": 3,
+      "sfrq": 1,
+      "sval": 2287500,
+      "svol": 300,
+      "nval": 1527500,
+      "nvol": 200
+    }
+  ],
+  "top_sellers": []
+}

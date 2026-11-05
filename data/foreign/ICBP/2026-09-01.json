@@ -1,0 +1,90 @@
+{
+  "stock_code": "ICBP",
+  "ticker": "ICBP",
+  "date": "2026-09-01",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 1531120000,
+      "bvol": 206200,
+      "bfrq": 123,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1531120000,
+      "nvol": 206200
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 1607230000,
+      "bvol": 214400,
+      "bfrq": 65,
+      "sfrq": 91,
+      "sval": 683850000,
+      "svol": 91100,
+      "nval": 923380000,
+      "nvol": 123300
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 238820000,
+      "bvol": 32200,
+      "bfrq": 41,
+      "sfrq": 3,
+      "sval": 15712500,
+      "svol": 2100,
+      "nval": 223107500,
+      "nvol": 30100
+    }
+  ],
+  "broker_net": 2677607500,
+  "net_flow": 2677607500,
+  "total_buy_val": 3377170000,
+  "total_sell_val": 699562500,
+  "total_turnover": 3377170000,
+  "top_buyers": [
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 1531120000,
+      "bvol": 206200,
+      "bfrq": 123,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1531120000,
+      "nvol": 206200
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 1607230000,
+      "bvol": 214400,
+      "bfrq": 65,
+      "sfrq": 91,
+      "sval": 683850000,
+      "svol": 91100,
+      "nval": 923380000,
+      "nvol": 123300
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 238820000,
+      "bvol": 32200,
+      "bfrq": 41,
+      "sfrq": 3,
+      "sval": 15712500,
+      "svol": 2100,
+      "nval": 223107500,
+      "nvol": 30100
+    }
+  ],
+  "top_sellers": []
+}

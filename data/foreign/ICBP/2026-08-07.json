@@ -1,0 +1,114 @@
+{
+  "stock_code": "ICBP",
+  "ticker": "ICBP",
+  "date": "2026-08-07",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 31787242500,
+      "bvol": 4135100,
+      "bfrq": 1795,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 31787242500,
+      "nvol": 4135100
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 13844655000,
+      "bvol": 1810700,
+      "bfrq": 1532,
+      "sfrq": 27,
+      "sval": 200067500,
+      "svol": 26000,
+      "nval": 13644587500,
+      "nvol": 1784700
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 9056907500,
+      "bvol": 1183700,
+      "bfrq": 571,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 9056907500,
+      "nvol": 1183700
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 639375000,
+      "bvol": 82500,
+      "bfrq": 14,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 639375000,
+      "nvol": 82500
+    }
+  ],
+  "broker_net": 55128112500,
+  "net_flow": 55128112500,
+  "total_buy_val": 55328180000,
+  "total_sell_val": 200067500,
+  "total_turnover": 55328180000,
+  "top_buyers": [
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 31787242500,
+      "bvol": 4135100,
+      "bfrq": 1795,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 31787242500,
+      "nvol": 4135100
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 13844655000,
+      "bvol": 1810700,
+      "bfrq": 1532,
+      "sfrq": 27,
+      "sval": 200067500,
+      "svol": 26000,
+      "nval": 13644587500,
+      "nvol": 1784700
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 9056907500,
+      "bvol": 1183700,
+      "bfrq": 571,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 9056907500,
+      "nvol": 1183700
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 639375000,
+      "bvol": 82500,
+      "bfrq": 14,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 639375000,
+      "nvol": 82500
+    }
+  ],
+  "top_sellers": []
+}

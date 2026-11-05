@@ -1,0 +1,216 @@
+{
+  "ticker": "OLIV",
+  "symbol": "OLIV.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 25,
+  "latest": {
+    "date": "2026-10-30",
+    "open": 44,
+    "high": 45,
+    "low": 43,
+    "close": 45,
+    "volume": 1115000
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 53,
+      "high": 56,
+      "low": 48,
+      "close": 49,
+      "volume": 12900100
+    },
+    {
+      "date": "2026-09-29",
+      "open": 49,
+      "high": 50,
+      "low": 46,
+      "close": 49,
+      "volume": 11069400
+    },
+    {
+      "date": "2026-09-30",
+      "open": 49,
+      "high": 51,
+      "low": 46,
+      "close": 48,
+      "volume": 7972200
+    },
+    {
+      "date": "2026-10-01",
+      "open": 48,
+      "high": 50,
+      "low": 47,
+      "close": 48,
+      "volume": 4076800
+    },
+    {
+      "date": "2026-10-02",
+      "open": 48,
+      "high": 49,
+      "low": 46,
+      "close": 48,
+      "volume": 5212100
+    },
+    {
+      "date": "2026-10-05",
+      "open": 47,
+      "high": 50,
+      "low": 47,
+      "close": 50,
+      "volume": 2651300
+    },
+    {
+      "date": "2026-10-06",
+      "open": 48,
+      "high": 53,
+      "low": 48,
+      "close": 51,
+      "volume": 6167600
+    },
+    {
+      "date": "2026-10-07",
+      "open": 50,
+      "high": 52,
+      "low": 49,
+      "close": 50,
+      "volume": 5635600
+    },
+    {
+      "date": "2026-10-08",
+      "open": 50,
+      "high": 50,
+      "low": 48,
+      "close": 49,
+      "volume": 8800500
+    },
+    {
+      "date": "2026-10-09",
+      "open": 49,
+      "high": 51,
+      "low": 48,
+      "close": 50,
+      "volume": 3020200
+    },
+    {
+      "date": "2026-10-12",
+      "open": 50,
+      "high": 54,
+      "low": 48,
+      "close": 50,
+      "volume": 14671900
+    },
+    {
+      "date": "2026-10-13",
+      "open": 50,
+      "high": 50,
+      "low": 48,
+      "close": 48,
+      "volume": 1515800
+    },
+    {
+      "date": "2026-10-14",
+      "open": 48,
+      "high": 51,
+      "low": 48,
+      "close": 49,
+      "volume": 4793200
+    },
+    {
+      "date": "2026-10-15",
+      "open": 49,
+      "high": 50,
+      "low": 48,
+      "close": 50,
+      "volume": 3856100
+    },
+    {
+      "date": "2026-10-16",
+      "open": 47,
+      "high": 47,
+      "low": 45,
+      "close": 45,
+      "volume": 7943700
+    },
+    {
+      "date": "2026-10-19",
+      "open": 45,
+      "high": 47,
+      "low": 41,
+      "close": 45,
+      "volume": 16737000
+    },
+    {
+      "date": "2026-10-20",
+      "open": 46,
+      "high": 49,
+      "low": 44,
+      "close": 49,
+      "volume": 5191000
+    },
+    {
+      "date": "2026-10-21",
+      "open": 48,
+      "high": 52,
+      "low": 47,
+      "close": 50,
+      "volume": 5491500
+    },
+    {
+      "date": "2026-10-22",
+      "open": 50,
+      "high": 50,
+      "low": 46,
+      "close": 47,
+      "volume": 16308400
+    },
+    {
+      "date": "2026-10-23",
+      "open": 47,
+      "high": 48,
+      "low": 46,
+      "close": 47,
+      "volume": 2230800
+    },
+    {
+      "date": "2026-10-26",
+      "open": 48,
+      "high": 48,
+      "low": 46,
+      "close": 46,
+      "volume": 1793500
+    },
+    {
+      "date": "2026-10-27",
+      "open": 47,
+      "high": 47,
+      "low": 43,
+      "close": 45,
+      "volume": 8005500
+    },
+    {
+      "date": "2026-10-28",
+      "open": 45,
+      "high": 47,
+      "low": 41,
+      "close": 46,
+      "volume": 7521500
+    },
+    {
+      "date": "2026-10-29",
+      "open": 47,
+      "high": 47,
+      "low": 44,
+      "close": 44,
+      "volume": 4274800
+    },
+    {
+      "date": "2026-10-30",
+      "open": 44,
+      "high": 45,
+      "low": 43,
+      "close": 45,
+      "volume": 1115000
+    }
+  ]
+}

@@ -1,0 +1,162 @@
+{
+  "stock_code": "BMRI",
+  "ticker": "BMRI",
+  "date": "2026-09-07",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 87980481000,
+      "bvol": 20030500,
+      "bfrq": 1742,
+      "sfrq": 2563,
+      "sval": 69583955000,
+      "svol": 15840200,
+      "nval": 18396526000,
+      "nvol": 4190300
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 40648448000,
+      "bvol": 9250700,
+      "bfrq": 1229,
+      "sfrq": 1153,
+      "sval": 24096781000,
+      "svol": 5481800,
+      "nval": 16551667000,
+      "nvol": 3768900
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 8109932000,
+      "bvol": 1850100,
+      "bfrq": 613,
+      "sfrq": 340,
+      "sval": 3823355000,
+      "svol": 871300,
+      "nval": 4286577000,
+      "nvol": 978800
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 1767414000,
+      "bvol": 402600,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1767414000,
+      "nvol": 402600
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1559832000,
+      "bvol": 355800,
+      "bfrq": 111,
+      "sfrq": 100,
+      "sval": 809669000,
+      "svol": 184200,
+      "nval": 750163000,
+      "nvol": 171600
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 30478880000,
+      "bvol": 6936300,
+      "bfrq": 1512,
+      "sfrq": 1140,
+      "sval": 29730406000,
+      "svol": 6757800,
+      "nval": 748474000,
+      "nvol": 178500
+    }
+  ],
+  "broker_net": 42500821000,
+  "net_flow": 42500821000,
+  "total_buy_val": 170544987000,
+  "total_sell_val": 128044166000,
+  "total_turnover": 170544987000,
+  "top_buyers": [
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 87980481000,
+      "bvol": 20030500,
+      "bfrq": 1742,
+      "sfrq": 2563,
+      "sval": 69583955000,
+      "svol": 15840200,
+      "nval": 18396526000,
+      "nvol": 4190300
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 40648448000,
+      "bvol": 9250700,
+      "bfrq": 1229,
+      "sfrq": 1153,
+      "sval": 24096781000,
+      "svol": 5481800,
+      "nval": 16551667000,
+      "nvol": 3768900
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 8109932000,
+      "bvol": 1850100,
+      "bfrq": 613,
+      "sfrq": 340,
+      "sval": 3823355000,
+      "svol": 871300,
+      "nval": 4286577000,
+      "nvol": 978800
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 1767414000,
+      "bvol": 402600,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1767414000,
+      "nvol": 402600
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 1559832000,
+      "bvol": 355800,
+      "bfrq": 111,
+      "sfrq": 100,
+      "sval": 809669000,
+      "svol": 184200,
+      "nval": 750163000,
+      "nvol": 171600
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 30478880000,
+      "bvol": 6936300,
+      "bfrq": 1512,
+      "sfrq": 1140,
+      "sval": 29730406000,
+      "svol": 6757800,
+      "nval": 748474000,
+      "nvol": 178500
+    }
+  ],
+  "top_sellers": []
+}

@@ -1,0 +1,163 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-09-10",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 57295000,
+      "bvol": 1145900,
+      "bfrq": 25,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 57295000,
+      "nvol": 1145900
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 9135000,
+      "bvol": 182700,
+      "bfrq": 63,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 9135000,
+      "nvol": 182700
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 2500000,
+      "bvol": 50000,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2500000,
+      "nvol": 50000
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 445000,
+      "bvol": 8900,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 445000,
+      "nvol": 8900
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 5000,
+      "bvol": 100,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5000,
+      "nvol": 100
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1480000,
+      "bvol": 29600,
+      "bfrq": 2,
+      "sfrq": 1,
+      "sval": 28740000,
+      "svol": 574800,
+      "nval": -27260000,
+      "nvol": -545200
+    }
+  ],
+  "broker_net": 42120000,
+  "net_flow": 42120000,
+  "total_buy_val": 70860000,
+  "total_sell_val": 28740000,
+  "total_turnover": 70860000,
+  "top_buyers": [
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 57295000,
+      "bvol": 1145900,
+      "bfrq": 25,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 57295000,
+      "nvol": 1145900
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 9135000,
+      "bvol": 182700,
+      "bfrq": 63,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 9135000,
+      "nvol": 182700
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 2500000,
+      "bvol": 50000,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2500000,
+      "nvol": 50000
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 445000,
+      "bvol": 8900,
+      "bfrq": 3,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 445000,
+      "nvol": 8900
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 5000,
+      "bvol": 100,
+      "bfrq": 1,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 5000,
+      "nvol": 100
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 1480000,
+      "bvol": 29600,
+      "bfrq": 2,
+      "sfrq": 1,
+      "sval": 28740000,
+      "svol": 574800,
+      "nval": -27260000,
+      "nvol": -545200
+    }
+  ]
+}

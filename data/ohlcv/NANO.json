@@ -1,0 +1,216 @@
+{
+  "ticker": "NANO",
+  "symbol": "NANO.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 25,
+  "latest": {
+    "date": "2026-10-30",
+    "open": 26,
+    "high": 27,
+    "low": 24,
+    "close": 24,
+    "volume": 170671000
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 31,
+      "high": 33,
+      "low": 29,
+      "close": 31,
+      "volume": 77241600
+    },
+    {
+      "date": "2026-09-29",
+      "open": 31,
+      "high": 31,
+      "low": 28,
+      "close": 28,
+      "volume": 91019600
+    },
+    {
+      "date": "2026-09-30",
+      "open": 28,
+      "high": 30,
+      "low": 26,
+      "close": 26,
+      "volume": 87086500
+    },
+    {
+      "date": "2026-10-01",
+      "open": 24,
+      "high": 27,
+      "low": 24,
+      "close": 25,
+      "volume": 78065000
+    },
+    {
+      "date": "2026-10-02",
+      "open": 24,
+      "high": 27,
+      "low": 23,
+      "close": 24,
+      "volume": 176650900
+    },
+    {
+      "date": "2026-10-05",
+      "open": 24,
+      "high": 26,
+      "low": 23,
+      "close": 26,
+      "volume": 30296800
+    },
+    {
+      "date": "2026-10-06",
+      "open": 26,
+      "high": 28,
+      "low": 25,
+      "close": 27,
+      "volume": 124363000
+    },
+    {
+      "date": "2026-10-07",
+      "open": 27,
+      "high": 29,
+      "low": 26,
+      "close": 29,
+      "volume": 67559000
+    },
+    {
+      "date": "2026-10-08",
+      "open": 29,
+      "high": 31,
+      "low": 28,
+      "close": 30,
+      "volume": 69637600
+    },
+    {
+      "date": "2026-10-09",
+      "open": 31,
+      "high": 31,
+      "low": 29,
+      "close": 29,
+      "volume": 40806900
+    },
+    {
+      "date": "2026-10-12",
+      "open": 30,
+      "high": 31,
+      "low": 28,
+      "close": 30,
+      "volume": 75859000
+    },
+    {
+      "date": "2026-10-13",
+      "open": 29,
+      "high": 32,
+      "low": 28,
+      "close": 30,
+      "volume": 58296000
+    },
+    {
+      "date": "2026-10-14",
+      "open": 30,
+      "high": 31,
+      "low": 28,
+      "close": 28,
+      "volume": 20967200
+    },
+    {
+      "date": "2026-10-15",
+      "open": 28,
+      "high": 29,
+      "low": 26,
+      "close": 28,
+      "volume": 36059300
+    },
+    {
+      "date": "2026-10-16",
+      "open": 26,
+      "high": 26,
+      "low": 26,
+      "close": 26,
+      "volume": 4056400
+    },
+    {
+      "date": "2026-10-19",
+      "open": 24,
+      "high": 24,
+      "low": 24,
+      "close": 24,
+      "volume": 14088500
+    },
+    {
+      "date": "2026-10-20",
+      "open": 22,
+      "high": 26,
+      "low": 22,
+      "close": 26,
+      "volume": 151938300
+    },
+    {
+      "date": "2026-10-21",
+      "open": 25,
+      "high": 28,
+      "low": 25,
+      "close": 28,
+      "volume": 238676900
+    },
+    {
+      "date": "2026-10-22",
+      "open": 27,
+      "high": 30,
+      "low": 27,
+      "close": 30,
+      "volume": 106210700
+    },
+    {
+      "date": "2026-10-23",
+      "open": 32,
+      "high": 33,
+      "low": 29,
+      "close": 31,
+      "volume": 60023200
+    },
+    {
+      "date": "2026-10-26",
+      "open": 30,
+      "high": 33,
+      "low": 29,
+      "close": 33,
+      "volume": 126358300
+    },
+    {
+      "date": "2026-10-27",
+      "open": 33,
+      "high": 34,
+      "low": 30,
+      "close": 30,
+      "volume": 111875800
+    },
+    {
+      "date": "2026-10-28",
+      "open": 30,
+      "high": 31,
+      "low": 27,
+      "close": 28,
+      "volume": 280583600
+    },
+    {
+      "date": "2026-10-29",
+      "open": 28,
+      "high": 29,
+      "low": 26,
+      "close": 26,
+      "volume": 58911800
+    },
+    {
+      "date": "2026-10-30",
+      "open": 26,
+      "high": 27,
+      "low": 24,
+      "close": 24,
+      "volume": 170671000
+    }
+  ]
+}

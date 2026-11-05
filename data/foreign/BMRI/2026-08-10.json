@@ -1,0 +1,90 @@
+{
+  "stock_code": "BMRI",
+  "ticker": "BMRI",
+  "date": "2026-08-10",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 30086193000,
+      "bvol": 7148500,
+      "bfrq": 436,
+      "sfrq": 31,
+      "sval": 132597000,
+      "svol": 31500,
+      "nval": 29953596000,
+      "nvol": 7117000
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 15243519000,
+      "bvol": 3619300,
+      "bfrq": 1368,
+      "sfrq": 369,
+      "sval": 8144415000,
+      "svol": 1938500,
+      "nval": 7099104000,
+      "nvol": 1680800
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 53275906000,
+      "bvol": 12706700,
+      "bfrq": 992,
+      "sfrq": 2630,
+      "sval": 46853177000,
+      "svol": 11146500,
+      "nval": 6422729000,
+      "nvol": 1560200
+    }
+  ],
+  "broker_net": 43475429000,
+  "net_flow": 43475429000,
+  "total_buy_val": 98605618000,
+  "total_sell_val": 55130189000,
+  "total_turnover": 98605618000,
+  "top_buyers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 30086193000,
+      "bvol": 7148500,
+      "bfrq": 436,
+      "sfrq": 31,
+      "sval": 132597000,
+      "svol": 31500,
+      "nval": 29953596000,
+      "nvol": 7117000
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 15243519000,
+      "bvol": 3619300,
+      "bfrq": 1368,
+      "sfrq": 369,
+      "sval": 8144415000,
+      "svol": 1938500,
+      "nval": 7099104000,
+      "nvol": 1680800
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 53275906000,
+      "bvol": 12706700,
+      "bfrq": 992,
+      "sfrq": 2630,
+      "sval": 46853177000,
+      "svol": 11146500,
+      "nval": 6422729000,
+      "nvol": 1560200
+    }
+  ],
+  "top_sellers": []
+}

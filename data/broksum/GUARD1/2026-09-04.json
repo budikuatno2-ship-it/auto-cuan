@@ -1,0 +1,18 @@
+{
+  "stock_code": "GUARD1",
+  "date": "2026-09-04",
+  "top_buyers": [
+    {
+      "broker": "AK",
+      "bval": 10000000,
+      "bvol": 10000
+    }
+  ],
+  "top_sellers": [
+    {
+      "broker": "YP",
+      "sval": 10000000,
+      "svol": 10000
+    }
+  ]
+}

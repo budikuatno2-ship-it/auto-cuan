@@ -1,0 +1,138 @@
+{
+  "stock_code": "GOTO",
+  "ticker": "GOTO",
+  "date": "2026-08-04",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 462665000,
+      "bvol": 9253300,
+      "bfrq": 413,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 462665000,
+      "nvol": 9253300
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 250765000,
+      "bvol": 5015300,
+      "bfrq": 12,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 250765000,
+      "nvol": 5015300
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 32255000,
+      "bvol": 645100,
+      "bfrq": 4,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 32255000,
+      "nvol": 645100
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 2430000,
+      "bvol": 48600,
+      "bfrq": 15,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2430000,
+      "nvol": 48600
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 1500000,
+      "bvol": 30000,
+      "bfrq": 2,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1500000,
+      "nvol": 30000
+    }
+  ],
+  "broker_net": 749615000,
+  "net_flow": 749615000,
+  "total_buy_val": 749615000,
+  "total_sell_val": 0,
+  "total_turnover": 749615000,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 462665000,
+      "bvol": 9253300,
+      "bfrq": 413,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 462665000,
+      "nvol": 9253300
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 250765000,
+      "bvol": 5015300,
+      "bfrq": 12,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 250765000,
+      "nvol": 5015300
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 32255000,
+      "bvol": 645100,
+      "bfrq": 4,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 32255000,
+      "nvol": 645100
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 2430000,
+      "bvol": 48600,
+      "bfrq": 15,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2430000,
+      "nvol": 48600
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 1500000,
+      "bvol": 30000,
+      "bfrq": 2,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1500000,
+      "nvol": 30000
+    }
+  ],
+  "top_sellers": []
+}

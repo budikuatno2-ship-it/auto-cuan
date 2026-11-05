@@ -1,0 +1,90 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-08-21",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 132111525000,
+      "bvol": 20513900,
+      "bfrq": 5552,
+      "sfrq": 1979,
+      "sval": 35030085000,
+      "svol": 5438000,
+      "nval": 97081440000,
+      "nvol": 15075900
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 102162827500,
+      "bvol": 15849000,
+      "bfrq": 3950,
+      "sfrq": 439,
+      "sval": 13490707500,
+      "svol": 2094400,
+      "nval": 88672120000,
+      "nvol": 13754600
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 116214500000,
+      "bvol": 18030400,
+      "bfrq": 2728,
+      "sfrq": 577,
+      "sval": 34541455000,
+      "svol": 5363700,
+      "nval": 81673045000,
+      "nvol": 12666700
+    }
+  ],
+  "broker_net": 267426605000,
+  "net_flow": 267426605000,
+  "total_buy_val": 350488852500,
+  "total_sell_val": 83062247500,
+  "total_turnover": 350488852500,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 132111525000,
+      "bvol": 20513900,
+      "bfrq": 5552,
+      "sfrq": 1979,
+      "sval": 35030085000,
+      "svol": 5438000,
+      "nval": 97081440000,
+      "nvol": 15075900
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 102162827500,
+      "bvol": 15849000,
+      "bfrq": 3950,
+      "sfrq": 439,
+      "sval": 13490707500,
+      "svol": 2094400,
+      "nval": 88672120000,
+      "nvol": 13754600
+    },
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 116214500000,
+      "bvol": 18030400,
+      "bfrq": 2728,
+      "sfrq": 577,
+      "sval": 34541455000,
+      "svol": 5363700,
+      "nval": 81673045000,
+      "nvol": 12666700
+    }
+  ],
+  "top_sellers": []
+}

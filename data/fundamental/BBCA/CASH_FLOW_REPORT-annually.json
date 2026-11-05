@@ -1,0 +1,274 @@
+{
+  "ticker": "BBCA",
+  "report_type": "CASH_FLOW_REPORT",
+  "period": "annually",
+  "requested_limit": 8,
+  "collected_at": "2026-10-28T14:42:49.142Z",
+  "data": {
+    "stock_code": "BBCA",
+    "report_type": "CASH_FLOW_REPORT",
+    "period": "annually",
+    "count": 4,
+    "items": [
+      {
+        "year": "2025",
+        "quarter": "FY",
+        "label": "FY 2025",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "arus_kas_dari_aktivitas_operasi": {
+            "arus_kas_sebelum_perubahan_dalam_aset_dan_liabilitas_operasi": {
+              "penerimaan_bunga_hasil_investasi_provisi_dan_komisi": 116653110000000,
+              "pembayaran_bunga_dan_bonus_provisi_dan_komisi": -13394155000000,
+              "pendapatan_dari_transaksi_operasional_lainnya": 3155605000000,
+              "penerimaan_pengembalian_pembayaran_pajak_penghasilan": -12512383000000,
+              "pembayaran_beban_operasional_lainnya": -33351462000000,
+              "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_operasi": -2440106000000,
+              "total": 58110609000000
+            },
+            "penurunan_kenaikan_aset_operasi": {
+              "penurunan_kenaikan_penempatan_pada_bank_lain_dan_bank_indonesia": -599435000000,
+              "penurunan_kenaikan_efek_yang_diperdagangkan": -11008328000000,
+              "penurunan_kenaikan_efek_yang_dibeli_dengan_janji_dijual_kembali": -3835846000000,
+              "penurunan_kenaikan_wesel_ekspor_dan_tagihan_lainnya": -2929891000000,
+              "penurunan_kenaikan_tagihan_akseptasi": 366799000000,
+              "penurunan_kenaikan_pinjaman_yang_diberikan": -75158559000000,
+              "penurunan_kenaikan_piutang_pembiayaan_konsumen": -163508000000,
+              "penurunan_kenaikan_investasi_sewa": 41223000000,
+              "penurunan_kenaikan_piutang_lainnya": -2502671000000,
+              "penurunan_kenaikan_aset_lainnya": -368424000000,
+              "total": -96158640000000
+            },
+            "kenaikan_penurunan_liabilitas_operasi": {
+              "kenaikan_penurunan_giro_dan_tabungan_simpanan_nasabah": 117824737000000,
+              "kenaikan_penurunan_deposito_berjangka_nasabah": -7414684000000,
+              "kenaikan_penurunan_tabungan_wadiah_simpanan_nasabah": 1215478000000,
+              "kenaikan_penurunan_simpanan_dari_bank_lain": 255355000000,
+              "kenaikan_penurunan_liabilitas_akseptasi": 81907000000,
+              "kenaikan_penurunan_dana_syirkah_temporer": 1145878000000,
+              "kenaikan_penurunan_liabilitas_lainnya": 2448145000000,
+              "total": 115556816000000
+            },
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_operasi": 77508785000000,
+            "total": 77508785000000
+          },
+          "arus_kas_dari_aktivitas_investasi": {
+            "penerimaan_dividen_dari_aktivitas_investasi": 107764000000,
+            "penerimaan_dari_penjualan_perolehan_aset_tetap": -2445295000000,
+            "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_investasi": -31353395000000,
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_investasi": -33690926000000,
+            "total": -33690926000000
+          },
+          "arus_kas_dari_aktivitas_pendanaan": {
+            "kenaikan_penurunan_efek_yang_diterbitkan": -435000000000,
+            "penerimaan_pinjaman_yang_diterima": 60800000000000,
+            "pembayaran_pinjaman_yang_diterima": -60995080000000,
+            "penjualan_pembelian_dari_saham_tresuri": -2152514000000,
+            "pembayaran_dividen_dari_aktivitas_pendanaan": -37595047000000,
+            "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_pendanaan": -1330996000000,
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_pendanaan": -41708637000000,
+            "total": -41708637000000
+          },
+          "kenaikan_penurunan_bersih_kas_dan_setara_kas": 2109222000000,
+          "kas_dan_setara_kas_arus_kas_awal_periode": 85482530000000,
+          "efek_perubahan_nilai_kurs_pada_kas_dan_setara_kas": -42424000000,
+          "kas_dan_setara_kas_arus_kas_akhir_periode": 87549328000000
+        }
+      },
+      {
+        "year": "2024",
+        "quarter": "FY",
+        "label": "FY 2024",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "arus_kas_dari_aktivitas_operasi": {
+            "arus_kas_sebelum_perubahan_dalam_aset_dan_liabilitas_operasi": {
+              "penerimaan_bunga_hasil_investasi_provisi_dan_komisi": 110947606000000,
+              "pembayaran_bunga_dan_bonus_provisi_dan_komisi": -12578014000000,
+              "pendapatan_dari_transaksi_operasional_lainnya": 6141705000000,
+              "laba_rugi_selisih_kurs": 3024747000000,
+              "penerimaan_pengembalian_pembayaran_pajak_penghasilan": -12282274000000,
+              "pembayaran_beban_operasional_lainnya": -36985821000000,
+              "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_operasi": -1930422000000,
+              "total": 56337527000000
+            },
+            "penurunan_kenaikan_aset_operasi": {
+              "penurunan_kenaikan_penempatan_pada_bank_lain_dan_bank_indonesia": 696624000000,
+              "penurunan_kenaikan_efek_yang_diperdagangkan": -5384422000000,
+              "penurunan_kenaikan_efek_yang_dibeli_dengan_janji_dijual_kembali": 91646548000000,
+              "penurunan_kenaikan_wesel_ekspor_dan_tagihan_lainnya": 1718437000000,
+              "penurunan_kenaikan_tagihan_akseptasi": 4880997000000,
+              "penurunan_kenaikan_pinjaman_yang_diberikan": -111218318000000,
+              "penurunan_kenaikan_piutang_pembiayaan_konsumen": -1075617000000,
+              "penurunan_kenaikan_investasi_sewa": 88851000000,
+              "penurunan_kenaikan_piutang_lainnya": -1696820000000,
+              "penurunan_kenaikan_aset_lainnya": -138657000000,
+              "total": -20482377000000
+            },
+            "kenaikan_penurunan_liabilitas_operasi": {
+              "kenaikan_penurunan_giro_dan_tabungan_simpanan_nasabah": 36034343000000,
+              "kenaikan_penurunan_deposito_berjangka_nasabah": -9343501000000,
+              "kenaikan_penurunan_tabungan_wadiah_simpanan_nasabah": 733393000000,
+              "kenaikan_penurunan_simpanan_dari_bank_lain": -6480950000000,
+              "kenaikan_penurunan_liabilitas_akseptasi": -2049301000000,
+              "kenaikan_penurunan_dana_syirkah_temporer": 1169261000000,
+              "kenaikan_penurunan_liabilitas_lainnya": -2098166000000,
+              "total": 17965079000000
+            },
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_operasi": 53820229000000,
+            "total": 53820229000000
+          },
+          "arus_kas_dari_aktivitas_investasi": {
+            "penerimaan_dividen_dari_aktivitas_investasi": 38095000000,
+            "penerimaan_dari_penjualan_perolehan_aset_tetap": -4166801000000,
+            "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_investasi": -54819800000000,
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_investasi": -58948506000000,
+            "total": -58948506000000
+          },
+          "arus_kas_dari_aktivitas_pendanaan": {
+            "penerimaan_pinjaman_yang_diterima": 73287728000000,
+            "pembayaran_pinjaman_yang_diterima": -72680017000000,
+            "pembayaran_dividen_dari_aktivitas_pendanaan": -34208826000000,
+            "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_pendanaan": 272426000000,
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_pendanaan": -33328689000000,
+            "total": -33328689000000
+          },
+          "kenaikan_penurunan_bersih_kas_dan_setara_kas": -38456966000000,
+          "kas_dan_setara_kas_arus_kas_awal_periode": 124395987000000,
+          "efek_perubahan_nilai_kurs_pada_kas_dan_setara_kas": -456491000000,
+          "kas_dan_setara_kas_arus_kas_akhir_periode": 85482530000000
+        }
+      },
+      {
+        "year": "2023",
+        "quarter": "FY",
+        "label": "FY 2023",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "arus_kas_dari_aktivitas_operasi": {
+            "arus_kas_sebelum_perubahan_dalam_aset_dan_liabilitas_operasi": {
+              "penerimaan_bunga_hasil_investasi_provisi_dan_komisi": 106414649000000,
+              "pembayaran_bunga_dan_bonus_provisi_dan_komisi": -12184461000000,
+              "pendapatan_dari_transaksi_operasional_lainnya": 6355896000000,
+              "laba_rugi_selisih_kurs": -465294000000,
+              "penerimaan_pengembalian_pembayaran_pajak_penghasilan": -11869562000000,
+              "pembayaran_beban_operasional_lainnya": -35130988000000,
+              "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_operasi": -1029720000000,
+              "total": 52090520000000
+            },
+            "penurunan_kenaikan_aset_operasi": {
+              "penurunan_kenaikan_penempatan_pada_bank_lain_dan_bank_indonesia": 417504000000,
+              "penurunan_kenaikan_efek_yang_diperdagangkan": -12118168000000,
+              "penurunan_kenaikan_efek_yang_dibeli_dengan_janji_dijual_kembali": 60869260000000,
+              "penurunan_kenaikan_wesel_ekspor_dan_tagihan_lainnya": -4489425000000,
+              "penurunan_kenaikan_tagihan_akseptasi": 572359000000,
+              "penurunan_kenaikan_pinjaman_yang_diberikan": -100405857000000,
+              "penurunan_kenaikan_piutang_pembiayaan_konsumen": -670970000000,
+              "penurunan_kenaikan_investasi_sewa": -17464000000,
+              "penurunan_kenaikan_piutang_lainnya": -1712883000000,
+              "penurunan_kenaikan_aset_lainnya": -7521645000000,
+              "total": -65077289000000
+            },
+            "kenaikan_penurunan_liabilitas_operasi": {
+              "kenaikan_penurunan_giro_dan_tabungan_simpanan_nasabah": 36788803000000,
+              "kenaikan_penurunan_deposito_berjangka_nasabah": 24284578000000,
+              "kenaikan_penurunan_tabungan_wadiah_simpanan_nasabah": 376110000000,
+              "kenaikan_penurunan_simpanan_dari_bank_lain": 2154145000000,
+              "kenaikan_penurunan_liabilitas_akseptasi": -2965392000000,
+              "kenaikan_penurunan_dana_syirkah_temporer": 1453497000000,
+              "kenaikan_penurunan_liabilitas_lainnya": 9010494000000,
+              "total": 71102235000000
+            },
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_operasi": 58115466000000,
+            "total": 58115466000000
+          },
+          "arus_kas_dari_aktivitas_investasi": {
+            "penerimaan_dividen_dari_aktivitas_investasi": 34528000000,
+            "penerimaan_dari_penjualan_perolehan_aset_tetap": -5077262000000,
+            "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_investasi": -64754015000000,
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_investasi": -69796749000000,
+            "total": -69796749000000
+          },
+          "arus_kas_dari_aktivitas_pendanaan": {
+            "penerimaan_pinjaman_yang_diterima": 49928825000000,
+            "pembayaran_pinjaman_yang_diterima": -49607671000000,
+            "pembayaran_dividen_dari_aktivitas_pendanaan": -26195948000000,
+            "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_pendanaan": 804113000000,
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_pendanaan": -25070681000000,
+            "total": -25070681000000
+          },
+          "kenaikan_penurunan_bersih_kas_dan_setara_kas": -36751964000000,
+          "kas_dan_setara_kas_arus_kas_awal_periode": 160422371000000,
+          "efek_perubahan_nilai_kurs_pada_kas_dan_setara_kas": 725580000000,
+          "kas_dan_setara_kas_arus_kas_akhir_periode": 124395987000000
+        }
+      },
+      {
+        "year": "2022",
+        "quarter": "FY",
+        "label": "FY 2022",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "arus_kas_dari_aktivitas_operasi": {
+            "arus_kas_sebelum_perubahan_dalam_aset_dan_liabilitas_operasi": {
+              "penerimaan_bunga_hasil_investasi_provisi_dan_komisi": 89720816000000,
+              "pembayaran_bunga_dan_bonus_provisi_dan_komisi": -8372338000000,
+              "pendapatan_dari_transaksi_operasional_lainnya": 5595626000000,
+              "laba_rugi_selisih_kurs": 3083584000000,
+              "penerimaan_pengembalian_pembayaran_pajak_penghasilan": -10107569000000,
+              "pembayaran_beban_operasional_lainnya": -29944225000000,
+              "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_operasi": -855848000000,
+              "total": 11295988000000
+            },
+            "penurunan_kenaikan_aset_operasi": {
+              "penurunan_kenaikan_penempatan_pada_bank_lain_dan_bank_indonesia": 9776116000000,
+              "penurunan_kenaikan_efek_yang_diperdagangkan": -209675000000,
+              "penurunan_kenaikan_efek_yang_dibeli_dengan_janji_dijual_kembali": -6900307000000,
+              "penurunan_kenaikan_wesel_ekspor_dan_tagihan_lainnya": 633297000000,
+              "penurunan_kenaikan_tagihan_akseptasi": -4054784000000,
+              "penurunan_kenaikan_pinjaman_yang_diberikan": -73189294000000,
+              "penurunan_kenaikan_piutang_pembiayaan_konsumen": -222986000000,
+              "penurunan_kenaikan_investasi_sewa": -38002000000,
+              "penurunan_kenaikan_piutang_lainnya": -1456064000000,
+              "penurunan_kenaikan_aset_lainnya": -25785000000,
+              "total": -75687484000000
+            },
+            "kenaikan_penurunan_liabilitas_operasi": {
+              "kenaikan_penurunan_giro_dan_tabungan_simpanan_nasabah": 74802958000000,
+              "kenaikan_penurunan_deposito_berjangka_nasabah": -19454803000000,
+              "kenaikan_penurunan_tabungan_wadiah_simpanan_nasabah": 1205821000000,
+              "kenaikan_penurunan_simpanan_dari_bank_lain": -2241366000000,
+              "kenaikan_penurunan_liabilitas_akseptasi": 3022354000000,
+              "kenaikan_penurunan_dana_syirkah_temporer": 718387000000,
+              "kenaikan_penurunan_liabilitas_lainnya": 2293350000000,
+              "total": 60346701000000
+            },
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_operasi": 33779263000000,
+            "total": 33779263000000
+          },
+          "arus_kas_dari_aktivitas_investasi": {
+            "penerimaan_dividen_dari_aktivitas_investasi": 46530000000,
+            "penerimaan_dari_penjualan_perolehan_aset_tetap": -3349686000000,
+            "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_investasi": -29079830000000,
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_investasi": -32382986000000,
+            "total": -32382986000000
+          },
+          "arus_kas_dari_aktivitas_pendanaan": {
+            "kenaikan_penurunan_efek_yang_diterbitkan": -483000000000,
+            "penerimaan_pinjaman_yang_diterima": 23546543000000,
+            "pembayaran_pinjaman_yang_diterima": -23237805000000,
+            "pembayaran_dividen_dari_aktivitas_pendanaan": -19107633000000,
+            "obligasi_subordinasi": 7500000000,
+            "penerimaan_pengeluaran_kas_lainnya_dari_aktivitas_pendanaan": 158179000000,
+            "arus_kas_bersih_yang_diperoleh_dari_digunakan_untuk_aktivitas_pendanaan": -19116216000000,
+            "total": -19116216000000
+          },
+          "kenaikan_penurunan_bersih_kas_dan_setara_kas": -17719939000000,
+          "kas_dan_setara_kas_arus_kas_awal_periode": 177268685000000,
+          "efek_perubahan_nilai_kurs_pada_kas_dan_setara_kas": 873625000000,
+          "kas_dan_setara_kas_arus_kas_akhir_periode": 160422371000000
+        }
+      }
+    ]
+  }
+}

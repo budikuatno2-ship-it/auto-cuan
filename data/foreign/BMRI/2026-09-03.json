@@ -1,0 +1,162 @@
+{
+  "stock_code": "BMRI",
+  "ticker": "BMRI",
+  "date": "2026-09-03",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 275451071000,
+      "bvol": 62128900,
+      "bfrq": 8259,
+      "sfrq": 1398,
+      "sval": 20708272000,
+      "svol": 4687500,
+      "nval": 254742799000,
+      "nvol": 57441400
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 141047466000,
+      "bvol": 31780700,
+      "bfrq": 2852,
+      "sfrq": 171,
+      "sval": 10546312000,
+      "svol": 2385700,
+      "nval": 130501154000,
+      "nvol": 29395000
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 157418615000,
+      "bvol": 35630400,
+      "bfrq": 5920,
+      "sfrq": 1430,
+      "sval": 43770553000,
+      "svol": 9897400,
+      "nval": 113648062000,
+      "nvol": 25733000
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 87028213000,
+      "bvol": 19683500,
+      "bfrq": 3015,
+      "sfrq": 1073,
+      "sval": 29622806000,
+      "svol": 6715300,
+      "nval": 57405407000,
+      "nvol": 12968200
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 2208496000,
+      "bvol": 500000,
+      "bfrq": 91,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2208496000,
+      "nvol": 500000
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 2137558000,
+      "bvol": 484500,
+      "bfrq": 76,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2137558000,
+      "nvol": 484500
+    }
+  ],
+  "broker_net": 560643476000,
+  "net_flow": 560643476000,
+  "total_buy_val": 665291419000,
+  "total_sell_val": 104647943000,
+  "total_turnover": 665291419000,
+  "top_buyers": [
+    {
+      "broker_code": "ZP",
+      "broker_name": "MAYBANK SEKURITAS INDONESIA",
+      "bval": 275451071000,
+      "bvol": 62128900,
+      "bfrq": 8259,
+      "sfrq": 1398,
+      "sval": 20708272000,
+      "svol": 4687500,
+      "nval": 254742799000,
+      "nvol": 57441400
+    },
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 141047466000,
+      "bvol": 31780700,
+      "bfrq": 2852,
+      "sfrq": 171,
+      "sval": 10546312000,
+      "svol": 2385700,
+      "nval": 130501154000,
+      "nvol": 29395000
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 157418615000,
+      "bvol": 35630400,
+      "bfrq": 5920,
+      "sfrq": 1430,
+      "sval": 43770553000,
+      "svol": 9897400,
+      "nval": 113648062000,
+      "nvol": 25733000
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 87028213000,
+      "bvol": 19683500,
+      "bfrq": 3015,
+      "sfrq": 1073,
+      "sval": 29622806000,
+      "svol": 6715300,
+      "nval": 57405407000,
+      "nvol": 12968200
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 2208496000,
+      "bvol": 500000,
+      "bfrq": 91,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2208496000,
+      "nvol": 500000
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 2137558000,
+      "bvol": 484500,
+      "bfrq": 76,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2137558000,
+      "nvol": 484500
+    }
+  ],
+  "top_sellers": []
+}

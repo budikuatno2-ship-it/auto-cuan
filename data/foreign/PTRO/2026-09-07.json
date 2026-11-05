@@ -1,0 +1,138 @@
+{
+  "stock_code": "PTRO",
+  "ticker": "PTRO",
+  "date": "2026-09-07",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 14822135000,
+      "bvol": 2678200,
+      "bfrq": 404,
+      "sfrq": 275,
+      "sval": 3733665000,
+      "svol": 673900,
+      "nval": 11088470000,
+      "nvol": 2004300
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 8164802500,
+      "bvol": 1480500,
+      "bfrq": 303,
+      "sfrq": 139,
+      "sval": 2808050000,
+      "svol": 508200,
+      "nval": 5356752500,
+      "nvol": 972300
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 6301225000,
+      "bvol": 1155700,
+      "bfrq": 220,
+      "sfrq": 81,
+      "sval": 2877275000,
+      "svol": 522200,
+      "nval": 3423950000,
+      "nvol": 633500
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 2411567500,
+      "bvol": 437300,
+      "bfrq": 117,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2411567500,
+      "nvol": 437300
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 1341610000,
+      "bvol": 242700,
+      "bfrq": 50,
+      "sfrq": 3,
+      "sval": 103725000,
+      "svol": 19000,
+      "nval": 1237885000,
+      "nvol": 223700
+    }
+  ],
+  "broker_net": 23518625000,
+  "net_flow": 23518625000,
+  "total_buy_val": 33041340000,
+  "total_sell_val": 9522715000,
+  "total_turnover": 33041340000,
+  "top_buyers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 14822135000,
+      "bvol": 2678200,
+      "bfrq": 404,
+      "sfrq": 275,
+      "sval": 3733665000,
+      "svol": 673900,
+      "nval": 11088470000,
+      "nvol": 2004300
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 8164802500,
+      "bvol": 1480500,
+      "bfrq": 303,
+      "sfrq": 139,
+      "sval": 2808050000,
+      "svol": 508200,
+      "nval": 5356752500,
+      "nvol": 972300
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 6301225000,
+      "bvol": 1155700,
+      "bfrq": 220,
+      "sfrq": 81,
+      "sval": 2877275000,
+      "svol": 522200,
+      "nval": 3423950000,
+      "nvol": 633500
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 2411567500,
+      "bvol": 437300,
+      "bfrq": 117,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 2411567500,
+      "nvol": 437300
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 1341610000,
+      "bvol": 242700,
+      "bfrq": 50,
+      "sfrq": 3,
+      "sval": 103725000,
+      "svol": 19000,
+      "nval": 1237885000,
+      "nvol": 223700
+    }
+  ],
+  "top_sellers": []
+}

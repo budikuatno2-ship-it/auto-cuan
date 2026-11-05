@@ -1,0 +1,112 @@
+{
+  "ticker": "WSKT",
+  "symbol": "WSKT.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 12,
+  "latest": {
+    "date": "2026-10-13",
+    "open": 202,
+    "high": 202,
+    "low": 202,
+    "close": 202,
+    "volume": 0
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-29",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-30",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-01",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-02",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-05",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-06",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-07",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-08",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-09",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-12",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-13",
+      "open": 202,
+      "high": 202,
+      "low": 202,
+      "close": 202,
+      "volume": 0
+    }
+  ]
+}

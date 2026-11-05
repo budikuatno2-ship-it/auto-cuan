@@ -1,0 +1,114 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-07-03",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 241931490000,
+      "bvol": 40009000,
+      "bfrq": 6802,
+      "sfrq": 106,
+      "sval": 3498345000,
+      "svol": 580000,
+      "nval": 238433145000,
+      "nvol": 39429000
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 270870785000,
+      "bvol": 44783800,
+      "bfrq": 6595,
+      "sfrq": 5304,
+      "sval": 177394807500,
+      "svol": 29400500,
+      "nval": 93475977500,
+      "nvol": 15383300
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 179596295000,
+      "bvol": 29663400,
+      "bfrq": 4749,
+      "sfrq": 2222,
+      "sval": 156319620000,
+      "svol": 25720300,
+      "nval": 23276675000,
+      "nvol": 3943100
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 9850277500,
+      "bvol": 1642900,
+      "bfrq": 333,
+      "sfrq": 74,
+      "sval": 6367542500,
+      "svol": 1057000,
+      "nval": 3482735000,
+      "nvol": 585900
+    }
+  ],
+  "broker_net": 358668532500,
+  "net_flow": 358668532500,
+  "total_buy_val": 702248847500,
+  "total_sell_val": 343580315000,
+  "total_turnover": 702248847500,
+  "top_buyers": [
+    {
+      "broker_code": "KZ",
+      "broker_name": "CLSA SEKURITAS INDONESIA",
+      "bval": 241931490000,
+      "bvol": 40009000,
+      "bfrq": 6802,
+      "sfrq": 106,
+      "sval": 3498345000,
+      "svol": 580000,
+      "nval": 238433145000,
+      "nvol": 39429000
+    },
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 270870785000,
+      "bvol": 44783800,
+      "bfrq": 6595,
+      "sfrq": 5304,
+      "sval": 177394807500,
+      "svol": 29400500,
+      "nval": 93475977500,
+      "nvol": 15383300
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 179596295000,
+      "bvol": 29663400,
+      "bfrq": 4749,
+      "sfrq": 2222,
+      "sval": 156319620000,
+      "svol": 25720300,
+      "nval": 23276675000,
+      "nvol": 3943100
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 9850277500,
+      "bvol": 1642900,
+      "bfrq": 333,
+      "sfrq": 74,
+      "sval": 6367542500,
+      "svol": 1057000,
+      "nval": 3482735000,
+      "nvol": 585900
+    }
+  ],
+  "top_sellers": []
+}

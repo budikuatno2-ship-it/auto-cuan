@@ -1,0 +1,114 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-08-20",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 38059693400,
+      "bvol": 83489600,
+      "bfrq": 1576,
+      "sfrq": 1587,
+      "sval": 21821996000,
+      "svol": 47789400,
+      "nval": 16237697400,
+      "nvol": 35700200
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 7451708000,
+      "bvol": 16439800,
+      "bfrq": 459,
+      "sfrq": 244,
+      "sval": 3747263600,
+      "svol": 8239600,
+      "nval": 3704444400,
+      "nvol": 8200200
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 3240137800,
+      "bvol": 7099000,
+      "bfrq": 152,
+      "sfrq": 34,
+      "sval": 982776400,
+      "svol": 2145800,
+      "nval": 2257361400,
+      "nvol": 4953200
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 10561040400,
+      "bvol": 23028300,
+      "bfrq": 317,
+      "sfrq": 94,
+      "sval": 10170359200,
+      "svol": 22361300,
+      "nval": 390681200,
+      "nvol": 667000
+    }
+  ],
+  "broker_net": 22590184400,
+  "net_flow": 22590184400,
+  "total_buy_val": 59312579600,
+  "total_sell_val": 36722395200,
+  "total_turnover": 59312579600,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 38059693400,
+      "bvol": 83489600,
+      "bfrq": 1576,
+      "sfrq": 1587,
+      "sval": 21821996000,
+      "svol": 47789400,
+      "nval": 16237697400,
+      "nvol": 35700200
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 7451708000,
+      "bvol": 16439800,
+      "bfrq": 459,
+      "sfrq": 244,
+      "sval": 3747263600,
+      "svol": 8239600,
+      "nval": 3704444400,
+      "nvol": 8200200
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 3240137800,
+      "bvol": 7099000,
+      "bfrq": 152,
+      "sfrq": 34,
+      "sval": 982776400,
+      "svol": 2145800,
+      "nval": 2257361400,
+      "nvol": 4953200
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 10561040400,
+      "bvol": 23028300,
+      "bfrq": 317,
+      "sfrq": 94,
+      "sval": 10170359200,
+      "svol": 22361300,
+      "nval": 390681200,
+      "nvol": 667000
+    }
+  ],
+  "top_sellers": []
+}

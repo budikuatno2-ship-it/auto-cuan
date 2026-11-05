@@ -1,0 +1,90 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-08-28",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 3674940600,
+      "bvol": 8287300,
+      "bfrq": 260,
+      "sfrq": 89,
+      "sval": 935206600,
+      "svol": 2108600,
+      "nval": 2739734000,
+      "nvol": 6178700
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 3637206200,
+      "bvol": 8223600,
+      "bfrq": 538,
+      "sfrq": 167,
+      "sval": 1650577600,
+      "svol": 3708900,
+      "nval": 1986628600,
+      "nvol": 4514700
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 2335607800,
+      "bvol": 5196900,
+      "bfrq": 278,
+      "sfrq": 180,
+      "sval": 1749286200,
+      "svol": 3972700,
+      "nval": 586321600,
+      "nvol": 1224200
+    }
+  ],
+  "broker_net": 5312684200,
+  "net_flow": 5312684200,
+  "total_buy_val": 9647754600,
+  "total_sell_val": 4335070400,
+  "total_turnover": 9647754600,
+  "top_buyers": [
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 3674940600,
+      "bvol": 8287300,
+      "bfrq": 260,
+      "sfrq": 89,
+      "sval": 935206600,
+      "svol": 2108600,
+      "nval": 2739734000,
+      "nvol": 6178700
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 3637206200,
+      "bvol": 8223600,
+      "bfrq": 538,
+      "sfrq": 167,
+      "sval": 1650577600,
+      "svol": 3708900,
+      "nval": 1986628600,
+      "nvol": 4514700
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 2335607800,
+      "bvol": 5196900,
+      "bfrq": 278,
+      "sfrq": 180,
+      "sval": 1749286200,
+      "svol": 3972700,
+      "nval": 586321600,
+      "nvol": 1224200
+    }
+  ],
+  "top_sellers": []
+}

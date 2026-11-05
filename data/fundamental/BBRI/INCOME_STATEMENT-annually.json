@@ -1,0 +1,346 @@
+{
+  "ticker": "BBRI",
+  "report_type": "INCOME_STATEMENT",
+  "period": "annually",
+  "requested_limit": 8,
+  "collected_at": "2026-10-28T14:42:50.845Z",
+  "data": {
+    "stock_code": "BBRI",
+    "report_type": "INCOME_STATEMENT",
+    "period": "annually",
+    "count": 4,
+    "items": [
+      {
+        "year": "2025",
+        "quarter": "FY",
+        "label": "FY 2025",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "pendapatan_dan_beban_operasional": {
+            "pendapatan_bunga": 207783368000000,
+            "beban_bunga": -57284939000000,
+            "pendapatan_asuransi": {
+              "pendapatan_dari_premi_asuransi": 7662733000000,
+              "pendapatan_asuransi_lainnya": 0,
+              "total": 7662733000000
+            },
+            "beban_asuransi": {
+              "beban_klaim": -6364550000000,
+              "beban_asuransi_lainnya": 0,
+              "total": -6364550000000
+            },
+            "pendapatan_sekuritas": {
+              "keuntungan_kerugian_dari_transaksi_perdagangan_efek_yang_telah_direalisasi": 3372396000000,
+              "keuntungan_kerugian_perubahan_nilai_wajar_efek": 160659000000,
+              "total": 3533055000000
+            },
+            "pendapatan_operasional_lainnya": {
+              "pendapatan_provisi_dan_komisi_dari_transaksi_lainnya_selain_kredit": 21447045000000,
+              "penerimaan_kembali_aset_yang_telah_dihapusbukukan": 20952308000000,
+              "keuntungan_kerugian_selisih_kurs_mata_uang_asing": 2087065000000,
+              "pendapatan_operasional_lainnya": 8060685000000,
+              "total": 52547103000000
+            },
+            "pemulihan_penyisihan_kerugian_penurunan_nilai": {
+              "pemulihan_penyisihan_kerugian_penurunan_nilai_aset_non_keuangan": -82414000000,
+              "pemulihan_penyisihan_estimasi_kerugian_atas_komitmen_dan_kontinjensi": 624058000000,
+              "total": 541644000000
+            },
+            "pembentukan_kerugian_penurunan_nilai": {
+              "pembentukan_penyisihan_kerugian_penurunan_nilai_aset_produktif": -46723647000000,
+              "pembentukan_penyisihan_kerugian_penurunan_nilai_aset_non_produktif": 0,
+              "total": -46723647000000
+            },
+            "pembalikan_beban_estimasi_kerugian_komitmen_dan_kontijensi": 0,
+            "beban_operasional_lainnya": {
+              "beban_umum_dan_administrasi": -33776049000000,
+              "beban_provisi_dan_komisi": -53113000000,
+              "beban_operasional_lainnya": -54617724000000,
+              "total": -88446886000000
+            },
+            "total": 150498429000000
+          },
+          "laba_operasional": 73247881000000,
+          "pendapatan_dan_beban_bukan_operasional": {
+            "pendapatan_bukan_operasional": -455062000000,
+            "beban_bukan_operasional": 0,
+            "total": -455062000000
+          },
+          "laba_rugi_sebelum_pajak_penghasilan": 72792819000000,
+          "pendapatan_beban_pajak": -15660454000000,
+          "laba_rugi_dari_operasi_yang_dilanjutkan": 57132365000000,
+          "laba_rugi": 57132365000000,
+          "pendapatan_komprehensif_lainnya_setelah_pajak": {
+            "pendapatan_komprehensif_lainnya_setelah_pajak": 2909006000000,
+            "total": 2909006000000
+          },
+          "laba_rugi_komprehensif": 60041371000000,
+          "laba_rugi_yang_dapat_diatribusikan": {
+            "laba_rugi_yang_dapat_diatribusikan_ke_entitas_induk": 56652384000000,
+            "laba_rugi_yang_dapat_diatribusikan_ke_kepentingan_non_pengendali": 479981000000,
+            "total": 57132365000000
+          },
+          "laba_rugi_komprehensif_yang_dapat_diatribusikan": {
+            "laba_rugi_komprehensif_yang_dapat_diatribusikan_ke_entitas_induk": 59265589000000,
+            "laba_rugi_komprehensif_yang_dapat_diatribusikan_ke_kepentingan_non_pengendali": 775782000000,
+            "total": 60041371000000
+          },
+          "laba_rugi_per_saham": {
+            "laba_per_saham_dasar_diatribusikan_kepada_pemilik_entitas_induk": {
+              "laba_rugi_per_saham_dasar_dari_operasi_yang_dilanjutkan": 376,
+              "total": 376
+            },
+            "total": 0
+          }
+        }
+      },
+      {
+        "year": "2024",
+        "quarter": "FY",
+        "label": "FY 2024",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "pendapatan_dan_beban_operasional": {
+            "pendapatan_bunga": 199266252000000,
+            "beban_bunga": -57209062000000,
+            "pendapatan_asuransi": {
+              "pendapatan_dari_premi_asuransi": 8760610000000,
+              "total": 8760610000000
+            },
+            "beban_asuransi": {
+              "beban_klaim": -5510130000000,
+              "total": -5510130000000
+            },
+            "pendapatan_sekuritas": {
+              "pendapatan_kegiatan_penjamin_emisi_dan_penjualan_efek": 0,
+              "keuntungan_kerugian_dari_transaksi_perdagangan_efek_yang_telah_direalisasi": 2209474000000,
+              "keuntungan_kerugian_perubahan_nilai_wajar_efek": 0,
+              "total": 2209474000000
+            },
+            "pendapatan_operasional_lainnya": {
+              "pendapatan_provisi_dan_komisi_dari_transaksi_lainnya_selain_kredit": 20475078000000,
+              "penerimaan_kembali_aset_yang_telah_dihapusbukukan": 25363951000000,
+              "keuntungan_kerugian_selisih_kurs_mata_uang_asing": 1187862000000,
+              "pendapatan_operasional_lainnya": 5324572000000,
+              "total": 52351463000000
+            },
+            "pemulihan_penyisihan_kerugian_penurunan_nilai": {
+              "pemulihan_penyisihan_kerugian_penurunan_nilai_aset_non_keuangan": -13008000000,
+              "pemulihan_penyisihan_estimasi_kerugian_atas_komitmen_dan_kontinjensi": 3596482000000,
+              "total": 3583474000000
+            },
+            "pembentukan_kerugian_penurunan_nilai": {
+              "pembentukan_penyisihan_kerugian_penurunan_nilai_aset_produktif": -41757637000000,
+              "pembentukan_penyisihan_kerugian_penurunan_nilai_aset_non_produktif": 0,
+              "total": -41757637000000
+            },
+            "pembalikan_beban_estimasi_kerugian_komitmen_dan_kontijensi": 0,
+            "beban_operasional_lainnya": {
+              "beban_umum_dan_administrasi": -29652420000000,
+              "beban_operasional_lainnya": -53464006000000,
+              "total": -83116426000000
+            },
+            "total": 142057190000000
+          },
+          "laba_operasional": 78578018000000,
+          "pendapatan_dan_beban_bukan_operasional": {
+            "pendapatan_bukan_operasional": -978908000000,
+            "beban_bukan_operasional": 0,
+            "total": -978908000000
+          },
+          "laba_rugi_sebelum_pajak_penghasilan": 77599110000000,
+          "pendapatan_beban_pajak": -16955302000000,
+          "laba_rugi_dari_operasi_yang_dilanjutkan": 60643808000000,
+          "laba_rugi": 60643808000000,
+          "pendapatan_komprehensif_lainnya_setelah_pajak": {
+            "pendapatan_komprehensif_lainnya_setelah_pajak": 1487794000000,
+            "total": 1487794000000
+          },
+          "laba_rugi_komprehensif": 62131602000000,
+          "laba_rugi_yang_dapat_diatribusikan": {
+            "laba_rugi_yang_dapat_diatribusikan_ke_entitas_induk": 60154887000000,
+            "laba_rugi_yang_dapat_diatribusikan_ke_kepentingan_non_pengendali": 488921000000,
+            "total": 60643808000000
+          },
+          "laba_rugi_komprehensif_yang_dapat_diatribusikan": {
+            "laba_rugi_komprehensif_yang_dapat_diatribusikan_ke_entitas_induk": 61788171000000,
+            "laba_rugi_komprehensif_yang_dapat_diatribusikan_ke_kepentingan_non_pengendali": 343431000000,
+            "total": 62131602000000
+          },
+          "laba_rugi_per_saham": {
+            "laba_per_saham_dasar_diatribusikan_kepada_pemilik_entitas_induk": {
+              "laba_rugi_per_saham_dasar_dari_operasi_yang_dilanjutkan": 399,
+              "total": 399
+            },
+            "total": 0
+          }
+        }
+      },
+      {
+        "year": "2023",
+        "quarter": "FY",
+        "label": "FY 2023",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "pendapatan_dan_beban_operasional": {
+            "pendapatan_bunga": 178995994000000,
+            "beban_bunga": -43812507000000,
+            "pendapatan_asuransi": {
+              "pendapatan_dari_premi_asuransi": 9078853000000,
+              "total": 9078853000000
+            },
+            "beban_asuransi": {
+              "beban_klaim": -6917461000000,
+              "total": -6917461000000
+            },
+            "pendapatan_sekuritas": {
+              "pendapatan_kegiatan_penjamin_emisi_dan_penjualan_efek": 1898653000000,
+              "keuntungan_kerugian_dari_transaksi_perdagangan_efek_yang_telah_direalisasi": 0,
+              "keuntungan_kerugian_perubahan_nilai_wajar_efek": 214435000000,
+              "total": 2113088000000
+            },
+            "pendapatan_operasional_lainnya": {
+              "pendapatan_provisi_dan_komisi_dari_transaksi_lainnya_selain_kredit": 20737913000000,
+              "penerimaan_kembali_aset_yang_telah_dihapusbukukan": 16833578000000,
+              "keuntungan_kerugian_selisih_kurs_mata_uang_asing": 402526000000,
+              "pendapatan_operasional_lainnya": 5858324000000,
+              "total": 43832341000000
+            },
+            "pemulihan_penyisihan_kerugian_penurunan_nilai": {
+              "pemulihan_penyisihan_kerugian_penurunan_nilai_aset_non_keuangan": -497848000000,
+              "pemulihan_penyisihan_estimasi_kerugian_atas_komitmen_dan_kontinjensi": 341994000000,
+              "total": -155854000000
+            },
+            "pembentukan_kerugian_penurunan_nilai": {
+              "pembentukan_penyisihan_kerugian_penurunan_nilai_aset_produktif": -29523426000000,
+              "pembentukan_penyisihan_kerugian_penurunan_nilai_aset_non_produktif": 0,
+              "total": -29523426000000
+            },
+            "pembalikan_beban_estimasi_kerugian_komitmen_dan_kontijensi": 0,
+            "beban_operasional_lainnya": {
+              "beban_umum_dan_administrasi": -28484209000000,
+              "beban_provisi_dan_komisi": 0,
+              "beban_operasional_lainnya": -48298082000000,
+              "total": -76782291000000
+            },
+            "total": 135183487000000
+          },
+          "laba_operasional": 76828737000000,
+          "pendapatan_dan_beban_bukan_operasional": {
+            "pendapatan_bukan_operasional": -399025000000,
+            "beban_bukan_operasional": 0,
+            "total": -399025000000
+          },
+          "laba_rugi_sebelum_pajak_penghasilan": 76429712000000,
+          "pendapatan_beban_pajak": -16004664000000,
+          "laba_rugi_dari_operasi_yang_dilanjutkan": 60425048000000,
+          "laba_rugi": 60425048000000,
+          "pendapatan_komprehensif_lainnya_setelah_pajak": {
+            "pendapatan_komprehensif_lainnya_setelah_pajak": 628611000000,
+            "total": 628611000000
+          },
+          "laba_rugi_komprehensif": 61053659000000,
+          "laba_rugi_yang_dapat_diatribusikan": {
+            "laba_rugi_yang_dapat_diatribusikan_ke_entitas_induk": 60099863000000,
+            "laba_rugi_yang_dapat_diatribusikan_ke_kepentingan_non_pengendali": 325185000000,
+            "total": 60425048000000
+          },
+          "laba_rugi_komprehensif_yang_dapat_diatribusikan": {
+            "laba_rugi_komprehensif_yang_dapat_diatribusikan_ke_entitas_induk": 60708390000000,
+            "laba_rugi_komprehensif_yang_dapat_diatribusikan_ke_kepentingan_non_pengendali": 345269000000,
+            "total": 61053659000000
+          },
+          "laba_rugi_per_saham": {
+            "laba_per_saham_dasar_diatribusikan_kepada_pemilik_entitas_induk": {
+              "laba_rugi_per_saham_dasar_dari_operasi_yang_dilanjutkan": 398,
+              "total": 398
+            },
+            "total": 0
+          }
+        }
+      },
+      {
+        "year": "2022",
+        "quarter": "FY",
+        "label": "FY 2022",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "pendapatan_dan_beban_operasional": {
+            "pendapatan_bunga": 151874816000000,
+            "beban_bunga": -27277743000000,
+            "pendapatan_asuransi": {
+              "pendapatan_dari_premi_asuransi": 8936995000000,
+              "total": 8936995000000
+            },
+            "beban_asuransi": {
+              "beban_klaim": -7359672000000,
+              "total": -7359672000000
+            },
+            "pendapatan_sekuritas": {
+              "pendapatan_kegiatan_penjamin_emisi_dan_penjualan_efek": 1518191000000,
+              "keuntungan_kerugian_dari_transaksi_perdagangan_efek_yang_telah_direalisasi": 0,
+              "keuntungan_kerugian_perubahan_nilai_wajar_efek": 145520000000,
+              "total": 1663711000000
+            },
+            "pendapatan_operasional_lainnya": {
+              "pendapatan_provisi_dan_komisi_dari_transaksi_lainnya_selain_kredit": 18794964000000,
+              "penerimaan_kembali_aset_yang_telah_dihapusbukukan": 12468321000000,
+              "keuntungan_kerugian_selisih_kurs_mata_uang_asing": 1132079000000,
+              "pendapatan_operasional_lainnya": 13243725000000,
+              "total": 45639089000000
+            },
+            "pemulihan_penyisihan_kerugian_penurunan_nilai": {
+              "pemulihan_penyisihan_kerugian_penurunan_nilai_aset_non_keuangan": -137431000000,
+              "pemulihan_penyisihan_estimasi_kerugian_atas_komitmen_dan_kontinjensi": 543145000000,
+              "total": 405714000000
+            },
+            "pembentukan_kerugian_penurunan_nilai": {
+              "pembentukan_penyisihan_kerugian_penurunan_nilai_aset_produktif": -27384906000000,
+              "pembentukan_penyisihan_kerugian_penurunan_nilai_aset_non_produktif": 0,
+              "total": -27384906000000
+            },
+            "pembalikan_beban_estimasi_kerugian_komitmen_dan_kontijensi": 0,
+            "beban_operasional_lainnya": {
+              "beban_umum_dan_administrasi": -25958686000000,
+              "beban_provisi_dan_komisi": 0,
+              "beban_operasional_lainnya": -56233281000000,
+              "total": -82191967000000
+            },
+            "total": 124597073000000
+          },
+          "laba_operasional": 64306037000000,
+          "pendapatan_dan_beban_bukan_operasional": {
+            "pendapatan_bukan_operasional": 290664000000,
+            "total": 290664000000
+          },
+          "laba_rugi_sebelum_pajak_penghasilan": 64596701000000,
+          "pendapatan_beban_pajak": -13188494000000,
+          "laba_rugi_dari_operasi_yang_dilanjutkan": 51408207000000,
+          "laba_rugi": 51408207000000,
+          "pendapatan_komprehensif_lainnya_setelah_pajak": {
+            "pendapatan_komprehensif_lainnya_setelah_pajak": -2839024000000,
+            "total": -2839024000000
+          },
+          "laba_rugi_komprehensif": 48569183000000,
+          "laba_rugi_yang_dapat_diatribusikan": {
+            "laba_rugi_yang_dapat_diatribusikan_ke_entitas_induk": 51170312000000,
+            "laba_rugi_yang_dapat_diatribusikan_ke_kepentingan_non_pengendali": 237895000000,
+            "total": 51408207000000
+          },
+          "laba_rugi_komprehensif_yang_dapat_diatribusikan": {
+            "laba_rugi_komprehensif_yang_dapat_diatribusikan_ke_entitas_induk": 48333349000000,
+            "laba_rugi_komprehensif_yang_dapat_diatribusikan_ke_kepentingan_non_pengendali": 235834000000,
+            "total": 48569183000000
+          },
+          "laba_rugi_per_saham": {
+            "laba_per_saham_dasar_diatribusikan_kepada_pemilik_entitas_induk": {
+              "laba_rugi_per_saham_dasar_dari_operasi_yang_dilanjutkan": 338,
+              "total": 338
+            },
+            "total": 0
+          }
+        }
+      }
+    ]
+  }
+}

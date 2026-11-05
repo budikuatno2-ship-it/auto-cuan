@@ -1,0 +1,114 @@
+{
+  "stock_code": "CUAN",
+  "ticker": "CUAN",
+  "date": "2026-08-07",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 15385772500,
+      "bvol": 20925000,
+      "bfrq": 1012,
+      "sfrq": 154,
+      "sval": 1821517000,
+      "svol": 2486400,
+      "nval": 13564255500,
+      "nvol": 18438600
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 11324204000,
+      "bvol": 15408900,
+      "bfrq": 616,
+      "sfrq": 45,
+      "sval": 731530500,
+      "svol": 993000,
+      "nval": 10592673500,
+      "nvol": 14415900
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 5762528500,
+      "bvol": 7839100,
+      "bfrq": 415,
+      "sfrq": 177,
+      "sval": 2096241000,
+      "svol": 2836600,
+      "nval": 3666287500,
+      "nvol": 5002500
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 2332309000,
+      "bvol": 3209900,
+      "bfrq": 198,
+      "sfrq": 10,
+      "sval": 391477000,
+      "svol": 529200,
+      "nval": 1940832000,
+      "nvol": 2680700
+    }
+  ],
+  "broker_net": 29764048500,
+  "net_flow": 29764048500,
+  "total_buy_val": 34804814000,
+  "total_sell_val": 5040765500,
+  "total_turnover": 34804814000,
+  "top_buyers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 15385772500,
+      "bvol": 20925000,
+      "bfrq": 1012,
+      "sfrq": 154,
+      "sval": 1821517000,
+      "svol": 2486400,
+      "nval": 13564255500,
+      "nvol": 18438600
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 11324204000,
+      "bvol": 15408900,
+      "bfrq": 616,
+      "sfrq": 45,
+      "sval": 731530500,
+      "svol": 993000,
+      "nval": 10592673500,
+      "nvol": 14415900
+    },
+    {
+      "broker_code": "BK",
+      "broker_name": "J.P. MORGAN SEKURITAS INDONESIA",
+      "bval": 5762528500,
+      "bvol": 7839100,
+      "bfrq": 415,
+      "sfrq": 177,
+      "sval": 2096241000,
+      "svol": 2836600,
+      "nval": 3666287500,
+      "nvol": 5002500
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 2332309000,
+      "bvol": 3209900,
+      "bfrq": 198,
+      "sfrq": 10,
+      "sval": 391477000,
+      "svol": 529200,
+      "nval": 1940832000,
+      "nvol": 2680700
+    }
+  ],
+  "top_sellers": []
+}

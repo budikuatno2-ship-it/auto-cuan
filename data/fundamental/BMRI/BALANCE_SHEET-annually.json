@@ -1,0 +1,848 @@
+{
+  "ticker": "BMRI",
+  "report_type": "BALANCE_SHEET",
+  "period": "annually",
+  "requested_limit": 8,
+  "collected_at": "2026-10-28T14:42:57.561Z",
+  "data": {
+    "stock_code": "BMRI",
+    "report_type": "BALANCE_SHEET",
+    "period": "annually",
+    "count": 4,
+    "items": [
+      {
+        "year": "2025",
+        "quarter": "FY",
+        "label": "FY 2025",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "aset": {
+            "kas": 33857220000000,
+            "giro_pada_bank_indonesia": 238289478000000,
+            "giro_pada_bank_lain": {
+              "giro_pada_bank_lain_pihak_ketiga": 60750690000000,
+              "giro_pada_bank_lain_pihak_berelasi": 201893000000,
+              "cadangan_kerugian_penurunan_nilai_pada_giro_pada_bank_lain": 27621000000,
+              "total": 60980204000000
+            },
+            "penempatan_pada_bank_indonesia_dan_bank_lain": {
+              "penempatan_pada_bank_indonesia_dan_bank_lain_pihak_ketiga": 49185275000000,
+              "penempatan_pada_bank_indonesia_dan_bank_lain_pihak_berelasi": 1286559000000,
+              "cadangan_kerugian_penurunan_nilai_pada_penempatan_pada_bank_lain": 1586000000,
+              "total": 50473420000000
+            },
+            "efek_efek_yang_diperdagangkan": {
+              "efek_efek_yang_diperdagangkan_pihak_ketiga": 107734397000000,
+              "efek_efek_yang_diperdagangkan_pihak_berelasi": 17034297000000,
+              "cadangan_kerugian_penurunan_nilai_pada_efek_efek_yang_diperdagangkan": 40720000000,
+              "total": 124809414000000
+            },
+            "efek_yang_dibeli_dengan_janji_dijual_kembali": 3903777000000,
+            "wesel_ekspor_dan_tagihan_lainnya": {
+              "wesel_ekspor_dan_tagihan_lainnya_pihak_ketiga": 25191454000000,
+              "wesel_ekspor_dan_tagihan_lainnya_pihak_berelasi": 6880657000000,
+              "cadangan_kerugian_penurunan_nilai_pada_wesel_ekspor_dan_tagihan_lainnya": 1432270000000,
+              "total": 33504381000000
+            },
+            "tagihan_akseptasi": {
+              "tagihan_akseptasi_pihak_ketiga": 6926985000000,
+              "tagihan_akseptasi_pihak_berelasi": 1161293000000,
+              "cadangan_kerugian_penurunan_nilai_pada_tagihan_akseptasi": 26015000000,
+              "total": 8114293000000
+            },
+            "tagihan_derivatif": {
+              "tagihan_derivatif_pihak_ketiga": 4247695000000,
+              "tagihan_derivatif_pihak_berelasi": 3029980000000,
+              "total": 7277675000000
+            },
+            "pinjaman_yang_diberikan": {
+              "pinjaman_yang_diberikan_pihak_ketiga": 1447120377000000,
+              "pinjaman_yang_diberikan_pihak_berelasi": 402847579000000,
+              "cadangan_kerugian_penurunan_nilai_pada_pinjaman_yang_diberikan": 48033747000000,
+              "total": 1898001703000000
+            },
+            "piutang_pembiayaan_konsumen": {
+              "piutang_pembiayaan_konsumen_pihak_ketiga": 40858943000000,
+              "piutang_pembiayaan_konsumen_pihak_berelasi": 4257000000,
+              "cadangan_kerugian_penurunan_nilai_pada_piutang_pembiayaan_konsumen": 1049570000000,
+              "total": 41912770000000
+            },
+            "investasi_sewa": {
+              "investasi_sewa_pihak_ketiga": 4851402000000,
+              "investasi_sewa_pihak_berelasi": -6140000000,
+              "investasi_sewa_nilai_residu_yang_terjamin": 1833652000000,
+              "investasi_sewa_pendapatan_pembiayaan_tangguhan": -691522000000,
+              "investasi_sewa_simpanan_jaminan": -1833652000000,
+              "cadangan_kerugian_penurunan_nilai_pada_investasi_sewa": 134987000000,
+              "total": 4288727000000
+            },
+            "obligasi_pemerintah": 292817548000000,
+            "aset_tidak_lancar_atau_kelompok_lepasan_diklasifikasikan_sebagai_dimiliki_untuk_dijual": 253774000000,
+            "biaya_dibayar_dimuka": 5673038000000,
+            "pajak_dibayar_dimuka": 851625000000,
+            "aset_pajak_tangguhan": 4654270000000,
+            "investasi_pada_ventura_bersama_dan_entitas_asosiasi": {
+              "investasi_pada_entitas_asosiasi": 2346322000000,
+              "total": 2346322000000
+            },
+            "goodwill": 519286000000,
+            "aset_takberwujud_selain_goodwill": 6999872000000,
+            "aset_tetap": 72062331000000,
+            "agunan_yang_diambil_alih": 942479000000,
+            "aset_lainnya": 38907451000000,
+            "aset": 2829948026000000,
+            "total": 2829948026000000
+          },
+          "liabilitas_dana_syirkah_temporer_dan_ekuitas": {
+            "liabilitas": {
+              "liabilitas_segera": 4537458000000,
+              "simpanan_nasabah": {
+                "giro": {
+                  "giro_pihak_ketiga": 468860753000000,
+                  "giro_pihak_berelasi": 197248837000000,
+                  "total": 666109590000000
+                },
+                "tabungan": {
+                  "tabungan_pihak_ketiga": 616814451000000,
+                  "tabungan_pihak_berelasi": 5100519000000,
+                  "total": 621914970000000
+                },
+                "deposito_berjangka": {
+                  "deposito_berjangka_pihak_ketiga": 379607155000000,
+                  "deposito_berjangka_pihak_berelasi": 149265493000000,
+                  "total": 528872648000000
+                },
+                "total": 0
+              },
+              "simpanan_dari_bank_lain": {
+                "simpanan_dari_bank_lain_pihak_berelasi": 1669124000000,
+                "simpanan_dari_bank_lain_pihak_ketiga": 19086419000000,
+                "total": 20755543000000
+              },
+              "efek_yang_dijual_dengan_janji_untuk_dibeli_kembali": 39955889000000,
+              "liabilitas_derivatif": {
+                "liabilitas_derivatif_pihak_ketiga": 4373784000000,
+                "liabilitas_derivatif_pihak_berelasi": 2467837000000,
+                "total": 6841621000000
+              },
+              "liabilitas_akseptasi": {
+                "liabilitas_akseptasi_pihak_berelasi": 1728332000000,
+                "liabilitas_akseptasi_pihak_ketiga": 6191001000000,
+                "total": 7919333000000
+              },
+              "pinjaman_yang_diterima": {
+                "pinjaman_yang_diterima_pihak_ketiga": 152427126000000,
+                "pinjaman_yang_diterima_pihak_berelasi": 2245296000000,
+                "total": 154672422000000
+              },
+              "liabilitas_kontrak_asuransi": 37850988000000,
+              "provisi": 112537000000,
+              "estimasi_kerugian_komitmen_dan_kontinjensi": 895791000000,
+              "beban_akrual": 6168983000000,
+              "utang_pajak": 3327702000000,
+              "liabilitas_pajak_tangguhan": 27996000000,
+              "liabilitas_lainnya": 42467140000000,
+              "kewajiban_imbalan_pasca_kerja": 7899583000000,
+              "pinjaman_subordinasi": {
+                "pinjaman_subordinasi_pihak_ketiga": 354779000000,
+                "pinjaman_subordinasi_pihak_berelasi": 35000000000,
+                "total": 389779000000
+              },
+              "liabilitas": 2212925204000000,
+              "total": 2212925204000000
+            },
+            "dana_syirkah_temporer": {
+              "bukan_bank": {
+                "giro_mudharabah": {
+                  "giro_mudharabah_pihak_ketiga": 24899562000000,
+                  "giro_berjangka_mudharabah_pihak_berelasi": 19137701000000,
+                  "total": 44037263000000
+                },
+                "tabungan_mudharabah": {
+                  "tabungan_mudharabah_pihak_ketiga": 98215131000000,
+                  "tabungan_mudharabah_pihak_berelasi": 1101408000000,
+                  "total": 99316539000000
+                },
+                "deposito_berjangka_mudharabah": {
+                  "deposito_berjangka_mudharabah_pihak_ketiga": 99334364000000,
+                  "deposito_berjangka_mudharabah_pihak_berelasi": 46178777000000,
+                  "total": 145513141000000
+                },
+                "total": 0
+              },
+              "bank": {
+                "giro_mudharabah": {
+                  "giro_mudharabah_pihak_ketiga": 24899562000000,
+                  "giro_berjangka_mudharabah_pihak_berelasi": 19137701000000,
+                  "total": 52357000000
+                },
+                "tabungan_mudharabah_ummat": 616794000000,
+                "deposito_berjangka_mudharabah": {
+                  "deposito_berjangka_mudharabah_pihak_ketiga": 99334364000000,
+                  "deposito_berjangka_mudharabah_pihak_berelasi": 46178777000000,
+                  "total": 84730000000
+                },
+                "total": 753881000000
+              },
+              "dana_syirkah_temporer": 289620824000000,
+              "total": 289620824000000
+            },
+            "ekuitas": {
+              "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": {
+                "saham_biasa": 11666667000000,
+                "tambahan_modal_disetor": 18095274000000,
+                "saham_treasuri": 403625000000,
+                "cadangan_revaluasi": 38445684000000,
+                "cadangan_selisih_kurs_penjabaran": 152018000000,
+                "cadangan_perubahan_nilai_wajar_aset_keuangan_nilai_wajar_melalui_pendapatan_komprehensif_lainnya": 1146052000000,
+                "cadangan_lindung_nilai_arus_kas": -11218000000,
+                "cadangan_pengukuran_kembali_program_imbalan_pasti": 1374981000000,
+                "cadangan_lainnya": 85052000000,
+                "komponen_ekuitas_lainnya": -309938000000,
+                "saldo_laba_akumulasi_kerugian": {
+                  "saldo_laba_yang_telah_ditentukan_penggunaanya": {
+                    "cadangan_umum_dan_wajib": 2333333000000,
+                    "cadangan_khusus": 3046935000000,
+                    "total": 5380268000000
+                  },
+                  "saldo_laba_yang_belum_ditentukan_penggunaannya": 218129454000000,
+                  "total": 218129454000000
+                },
+                "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": 293750669000000,
+                "total": 293750669000000
+              },
+              "kepentingan_non_pengendali": 33651329000000,
+              "ekuitas": 327401998000000,
+              "total": 327401998000000
+            },
+            "liabilitas_dana_syirkah_temporer_dan_ekuitas": 2829948026000000,
+            "total": 2829948026000000
+          }
+        }
+      },
+      {
+        "year": "2024",
+        "quarter": "FY",
+        "label": "FY 2024",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "aset": {
+            "kas": 31665082000000,
+            "giro_pada_bank_indonesia": 105146044000000,
+            "giro_pada_bank_lain": {
+              "giro_pada_bank_lain_pihak_ketiga": 46474028000000,
+              "giro_pada_bank_lain_pihak_berelasi": 194411000000,
+              "cadangan_kerugian_penurunan_nilai_pada_giro_pada_bank_lain": -30755000000,
+              "total": 46637684000000
+            },
+            "penempatan_pada_bank_indonesia_dan_bank_lain": {
+              "penempatan_pada_bank_indonesia_dan_bank_lain_pihak_ketiga": 60122934000000,
+              "penempatan_pada_bank_indonesia_dan_bank_lain_pihak_berelasi": 3107120000000,
+              "cadangan_kerugian_penurunan_nilai_pada_penempatan_pada_bank_lain": -1679000000,
+              "total": 63228375000000
+            },
+            "efek_efek_yang_diperdagangkan": {
+              "efek_efek_yang_diperdagangkan_pihak_ketiga": 75306473000000,
+              "efek_efek_yang_diperdagangkan_pihak_berelasi": 20223075000000,
+              "cadangan_kerugian_penurunan_nilai_pada_efek_efek_yang_diperdagangkan": -51497000000,
+              "total": 95478051000000
+            },
+            "efek_yang_dibeli_dengan_janji_dijual_kembali": 8290138000000,
+            "wesel_ekspor_dan_tagihan_lainnya": {
+              "wesel_ekspor_dan_tagihan_lainnya_pihak_ketiga": 22919450000000,
+              "wesel_ekspor_dan_tagihan_lainnya_pihak_berelasi": 7054667000000,
+              "cadangan_kerugian_penurunan_nilai_pada_wesel_ekspor_dan_tagihan_lainnya": -1422889000000,
+              "total": 28551228000000
+            },
+            "tagihan_akseptasi": {
+              "tagihan_akseptasi_pihak_ketiga": 7615001000000,
+              "tagihan_akseptasi_pihak_berelasi": 1698864000000,
+              "cadangan_kerugian_penurunan_nilai_pada_tagihan_akseptasi": -31340000000,
+              "total": 9282525000000
+            },
+            "tagihan_derivatif": {
+              "tagihan_derivatif_pihak_ketiga": 4812513000000,
+              "tagihan_derivatif_pihak_berelasi": 2948995000000,
+              "total": 7761508000000
+            },
+            "pinjaman_yang_diberikan": {
+              "pinjaman_yang_diberikan_pihak_ketiga": 1331581512000000,
+              "pinjaman_yang_diberikan_pihak_berelasi": 291635100000000,
+              "cadangan_kerugian_penurunan_nilai_pada_pinjaman_yang_diberikan": -49354645000000,
+              "total": 1573861967000000
+            },
+            "piutang_pembiayaan_konsumen": {
+              "piutang_pembiayaan_konsumen_pihak_ketiga": 41565795000000,
+              "piutang_pembiayaan_konsumen_pihak_berelasi": 7511000000,
+              "cadangan_kerugian_penurunan_nilai_pada_piutang_pembiayaan_konsumen": -934353000000,
+              "total": 40638953000000
+            },
+            "investasi_sewa": {
+              "investasi_sewa_pihak_ketiga": 6791445000000,
+              "investasi_sewa_pihak_berelasi": -22400000000,
+              "investasi_sewa_nilai_residu_yang_terjamin": 2445103000000,
+              "investasi_sewa_pendapatan_pembiayaan_tangguhan": -1011969000000,
+              "investasi_sewa_simpanan_jaminan": -2445103000000,
+              "cadangan_kerugian_penurunan_nilai_pada_investasi_sewa": -103337000000,
+              "total": 5653739000000
+            },
+            "obligasi_pemerintah": 287272659000000,
+            "biaya_dibayar_dimuka": 4827723000000,
+            "pajak_dibayar_dimuka": 739015000000,
+            "aset_pajak_tangguhan": 8353454000000,
+            "investasi_pada_ventura_bersama_dan_entitas_asosiasi": {
+              "investasi_pada_entitas_asosiasi": 2416748000000,
+              "total": 2416748000000
+            },
+            "goodwill": 519286000000,
+            "aset_takberwujud_selain_goodwill": 6525457000000,
+            "aset_tetap": 63030845000000,
+            "agunan_yang_diambil_alih": 998294000000,
+            "aset_lainnya": 36344487000000,
+            "aset": 2427223262000000,
+            "total": 2427223262000000
+          },
+          "liabilitas_dana_syirkah_temporer_dan_ekuitas": {
+            "liabilitas": {
+              "liabilitas_segera": 5703731000000,
+              "simpanan_nasabah": {
+                "giro": {
+                  "giro_pihak_ketiga": 414420537000000,
+                  "giro_pihak_berelasi": 154155472000000,
+                  "total": 568576009000000
+                },
+                "tabungan": {
+                  "tabungan_pihak_ketiga": 573852753000000,
+                  "tabungan_pihak_berelasi": 6339043000000,
+                  "total": 580191796000000
+                },
+                "deposito_berjangka": {
+                  "deposito_berjangka_pihak_ketiga": 243976854000000,
+                  "deposito_berjangka_pihak_berelasi": 53490298000000,
+                  "total": 297467152000000
+                },
+                "total": 0
+              },
+              "simpanan_dari_bank_lain": {
+                "simpanan_dari_bank_lain_pihak_berelasi": 6520346000000,
+                "simpanan_dari_bank_lain_pihak_ketiga": 20522363000000,
+                "total": 27042709000000
+              },
+              "efek_yang_dijual_dengan_janji_untuk_dibeli_kembali": 90256225000000,
+              "liabilitas_derivatif": {
+                "liabilitas_derivatif_pihak_ketiga": 5203494000000,
+                "liabilitas_derivatif_pihak_berelasi": 2133504000000,
+                "total": 7336998000000
+              },
+              "liabilitas_kepada_pemegang_polis_unit_linked": 28012886000000,
+              "liabilitas_akseptasi": {
+                "liabilitas_akseptasi_pihak_berelasi": 2565287000000,
+                "liabilitas_akseptasi_pihak_ketiga": 6570726000000,
+                "total": 9136013000000
+              },
+              "pinjaman_yang_diterima": {
+                "pinjaman_yang_diterima_pihak_ketiga": 143288024000000,
+                "pinjaman_yang_diterima_pihak_berelasi": 4627957000000,
+                "total": 147915981000000
+              },
+              "provisi": 264275000000,
+              "estimasi_kerugian_komitmen_dan_kontinjensi": 1114013000000,
+              "beban_akrual": 5466461000000,
+              "utang_pajak": 3078642000000,
+              "liabilitas_pajak_tangguhan": 9278000000,
+              "liabilitas_lainnya": 40131500000000,
+              "kewajiban_imbalan_pasca_kerja": 7160018000000,
+              "pinjaman_subordinasi": {
+                "pinjaman_subordinasi_pihak_ketiga": 363562000000,
+                "pinjaman_subordinasi_pihak_berelasi": 40000000000,
+                "total": 403562000000
+              },
+              "liabilitas": 1860408316000000,
+              "total": 1860408316000000
+            },
+            "dana_syirkah_temporer": {
+              "bukan_bank": {
+                "giro_mudharabah": {
+                  "giro_mudharabah_pihak_ketiga": 17389993000000,
+                  "giro_berjangka_mudharabah_pihak_berelasi": 19798526000000,
+                  "total": 37188519000000
+                },
+                "tabungan_mudharabah": {
+                  "tabungan_mudharabah_pihak_ketiga": 84878381000000,
+                  "tabungan_mudharabah_pihak_berelasi": 375768000000,
+                  "total": 85254149000000
+                },
+                "deposito_berjangka_mudharabah": {
+                  "deposito_berjangka_mudharabah_pihak_ketiga": 92461883000000,
+                  "deposito_berjangka_mudharabah_pihak_berelasi": 37757408000000,
+                  "total": 130219291000000
+                },
+                "total": 0
+              },
+              "bank": {
+                "giro_mudharabah": {
+                  "giro_mudharabah_pihak_ketiga": 17389993000000,
+                  "giro_berjangka_mudharabah_pihak_berelasi": 19798526000000,
+                  "total": 47282000000
+                },
+                "tabungan_mudharabah_ummat": 536509000000,
+                "deposito_berjangka_mudharabah": {
+                  "deposito_berjangka_mudharabah_pihak_ketiga": 92461883000000,
+                  "deposito_berjangka_mudharabah_pihak_berelasi": 37757408000000,
+                  "total": 94515000000
+                },
+                "total": 678306000000
+              },
+              "dana_syirkah_temporer": 253340265000000,
+              "total": 253340265000000
+            },
+            "ekuitas": {
+              "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": {
+                "saham_biasa": 11666667000000,
+                "tambahan_modal_disetor": 18095274000000,
+                "cadangan_revaluasi": 34772745000000,
+                "cadangan_selisih_kurs_penjabaran": 10289000000,
+                "cadangan_perubahan_nilai_wajar_aset_keuangan_nilai_wajar_melalui_pendapatan_komprehensif_lainnya": -2160850000000,
+                "cadangan_lindung_nilai_arus_kas": -8885000000,
+                "cadangan_pengukuran_kembali_program_imbalan_pasti": 1595606000000,
+                "cadangan_lainnya": 85052000000,
+                "komponen_ekuitas_lainnya": -309938000000,
+                "saldo_laba_akumulasi_kerugian": {
+                  "saldo_laba_yang_telah_ditentukan_penggunaanya": {
+                    "cadangan_umum_dan_wajib": 2333333000000,
+                    "cadangan_khusus": 3046935000000,
+                    "total": 5380268000000
+                  },
+                  "saldo_laba_yang_belum_ditentukan_penggunaannya": 214670201000000,
+                  "total": 214670201000000
+                },
+                "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": 283796429000000,
+                "total": 283796429000000
+              },
+              "kepentingan_non_pengendali": 29678252000000,
+              "ekuitas": 313474681000000,
+              "total": 313474681000000
+            },
+            "liabilitas_dana_syirkah_temporer_dan_ekuitas": 2427223262000000,
+            "total": 2427223262000000
+          }
+        }
+      },
+      {
+        "year": "2023",
+        "quarter": "FY",
+        "label": "FY 2023",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "aset": {
+            "kas": 26431740000000,
+            "giro_pada_bank_indonesia": 108605322000000,
+            "giro_pada_bank_lain": {
+              "giro_pada_bank_lain_pihak_ketiga": 36144993000000,
+              "giro_pada_bank_lain_pihak_berelasi": 461097000000,
+              "cadangan_kerugian_penurunan_nilai_pada_giro_pada_bank_lain": -32205000000,
+              "total": 36573885000000
+            },
+            "penempatan_pada_bank_indonesia_dan_bank_lain": {
+              "penempatan_pada_bank_indonesia_dan_bank_lain_pihak_ketiga": 71838685000000,
+              "penempatan_pada_bank_indonesia_dan_bank_lain_pihak_berelasi": 2049472000000,
+              "cadangan_kerugian_penurunan_nilai_pada_penempatan_pada_bank_lain": -957000000,
+              "total": 73887200000000
+            },
+            "efek_efek_yang_diperdagangkan": {
+              "efek_efek_yang_diperdagangkan_pihak_ketiga": 70921977000000,
+              "efek_efek_yang_diperdagangkan_pihak_berelasi": 23774139000000,
+              "cadangan_kerugian_penurunan_nilai_pada_efek_efek_yang_diperdagangkan": -150275000000,
+              "total": 94545841000000
+            },
+            "efek_yang_dibeli_dengan_janji_dijual_kembali": 22692928000000,
+            "wesel_ekspor_dan_tagihan_lainnya": {
+              "wesel_ekspor_dan_tagihan_lainnya_pihak_ketiga": 18463040000000,
+              "wesel_ekspor_dan_tagihan_lainnya_pihak_berelasi": 7581513000000,
+              "cadangan_kerugian_penurunan_nilai_pada_wesel_ekspor_dan_tagihan_lainnya": -1494653000000,
+              "total": 24549900000000
+            },
+            "tagihan_akseptasi": {
+              "tagihan_akseptasi_pihak_ketiga": 12543461000000,
+              "tagihan_akseptasi_pihak_berelasi": 2250427000000,
+              "cadangan_kerugian_penurunan_nilai_pada_tagihan_akseptasi": -122212000000,
+              "total": 14671676000000
+            },
+            "tagihan_derivatif": {
+              "tagihan_derivatif_pihak_ketiga": 1796775000000,
+              "tagihan_derivatif_pihak_berelasi": 198156000000,
+              "total": 1994931000000
+            },
+            "pinjaman_yang_diberikan": {
+              "pinjaman_yang_diberikan_pihak_ketiga": 1121751175000000,
+              "pinjaman_yang_diberikan_pihak_berelasi": 238081020000000,
+              "cadangan_kerugian_penurunan_nilai_pada_pinjaman_yang_diberikan": -53098619000000,
+              "total": 1306733576000000
+            },
+            "piutang_pembiayaan_konsumen": {
+              "piutang_pembiayaan_konsumen_pihak_ketiga": 32738254000000,
+              "piutang_pembiayaan_konsumen_pihak_berelasi": 11542000000,
+              "cadangan_kerugian_penurunan_nilai_pada_piutang_pembiayaan_konsumen": -713044000000,
+              "total": 32036752000000
+            },
+            "investasi_sewa": {
+              "investasi_sewa_pihak_ketiga": 6345951000000,
+              "investasi_sewa_pihak_berelasi": -28009000000,
+              "investasi_sewa_nilai_residu_yang_terjamin": 2672995000000,
+              "investasi_sewa_pendapatan_pembiayaan_tangguhan": -828700000000,
+              "investasi_sewa_simpanan_jaminan": -2672995000000,
+              "cadangan_kerugian_penurunan_nilai_pada_investasi_sewa": -70170000000,
+              "total": 5419072000000
+            },
+            "obligasi_pemerintah": 309182971000000,
+            "biaya_dibayar_dimuka": 2719789000000,
+            "pajak_dibayar_dimuka": 436532000000,
+            "aset_pajak_tangguhan": 10179244000000,
+            "investasi_pada_ventura_bersama_dan_entitas_asosiasi": {
+              "investasi_pada_entitas_asosiasi": 1827364000000,
+              "total": 1827364000000
+            },
+            "goodwill": 787466000000,
+            "aset_takberwujud_selain_goodwill": 5087132000000,
+            "aset_tetap": 57977707000000,
+            "agunan_yang_diambil_alih": 1112684000000,
+            "aset_lainnya": 36765737000000,
+            "aset": 2174219449000000,
+            "total": 2174219449000000
+          },
+          "liabilitas_dana_syirkah_temporer_dan_ekuitas": {
+            "liabilitas": {
+              "liabilitas_segera": 4484956000000,
+              "simpanan_nasabah": {
+                "giro": {
+                  "giro_pihak_ketiga": 385721324000000,
+                  "giro_pihak_berelasi": 166637832000000,
+                  "total": 552359156000000
+                },
+                "tabungan": {
+                  "tabungan_pihak_ketiga": 501750948000000,
+                  "tabungan_pihak_berelasi": 7540541000000,
+                  "total": 509291489000000
+                },
+                "deposito_berjangka": {
+                  "deposito_berjangka_pihak_ketiga": 254944523000000,
+                  "deposito_berjangka_pihak_berelasi": 34852981000000,
+                  "total": 289797504000000
+                },
+                "total": 0
+              },
+              "simpanan_dari_bank_lain": {
+                "simpanan_dari_bank_lain_pihak_berelasi": 668258000000,
+                "simpanan_dari_bank_lain_pihak_ketiga": 17016522000000,
+                "total": 17684780000000
+              },
+              "efek_yang_dijual_dengan_janji_untuk_dibeli_kembali": 36330064000000,
+              "liabilitas_derivatif": {
+                "liabilitas_derivatif_pihak_ketiga": 2037449000000,
+                "liabilitas_derivatif_pihak_berelasi": 76404000000,
+                "total": 2113853000000
+              },
+              "liabilitas_kepada_pemegang_polis_unit_linked": 29194702000000,
+              "liabilitas_akseptasi": {
+                "liabilitas_akseptasi_pihak_berelasi": 2614261000000,
+                "liabilitas_akseptasi_pihak_ketiga": 12179627000000,
+                "total": 14793888000000
+              },
+              "pinjaman_yang_diterima": {
+                "pinjaman_yang_diterima_pihak_ketiga": 93679835000000,
+                "pinjaman_yang_diterima_pihak_berelasi": 1765624000000,
+                "total": 95445459000000
+              },
+              "provisi": 286081000000,
+              "estimasi_kerugian_komitmen_dan_kontinjensi": 1143758000000,
+              "beban_akrual": 4799446000000,
+              "utang_pajak": 2690902000000,
+              "liabilitas_lainnya": 37399213000000,
+              "kewajiban_imbalan_pasca_kerja": 11894629000000,
+              "pinjaman_subordinasi": {
+                "pinjaman_subordinasi_pihak_ketiga": 205171000000,
+                "pinjaman_subordinasi_pihak_berelasi": 10000000000,
+                "total": 215171000000
+              },
+              "liabilitas": 1660442815000000,
+              "total": 1660442815000000
+            },
+            "dana_syirkah_temporer": {
+              "bukan_bank": {
+                "giro_mudharabah": {
+                  "giro_mudharabah_pihak_ketiga": 14779396000000,
+                  "giro_berjangka_mudharabah_pihak_berelasi": 17574469000000,
+                  "total": 32353865000000
+                },
+                "tabungan_mudharabah": {
+                  "tabungan_mudharabah_pihak_ketiga": 77508409000000,
+                  "tabungan_mudharabah_pihak_berelasi": 191661000000,
+                  "total": 77700070000000
+                },
+                "deposito_berjangka_mudharabah": {
+                  "deposito_berjangka_mudharabah_pihak_ketiga": 87541044000000,
+                  "deposito_berjangka_mudharabah_pihak_berelasi": 27906491000000,
+                  "total": 115447535000000
+                },
+                "total": 0
+              },
+              "bank": {
+                "giro_mudharabah": {
+                  "giro_mudharabah_pihak_ketiga": 14779396000000,
+                  "giro_berjangka_mudharabah_pihak_berelasi": 17574469000000,
+                  "total": 63394000000
+                },
+                "tabungan_mudharabah_ummat": 580115000000,
+                "deposito_berjangka_mudharabah": {
+                  "deposito_berjangka_mudharabah_pihak_ketiga": 87541044000000,
+                  "deposito_berjangka_mudharabah_pihak_berelasi": 27906491000000,
+                  "total": 136693000000
+                },
+                "total": 780202000000
+              },
+              "dana_syirkah_temporer": 226281672000000,
+              "total": 226281672000000
+            },
+            "ekuitas": {
+              "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": {
+                "saham_biasa": 11666667000000,
+                "tambahan_modal_disetor": 17643264000000,
+                "cadangan_revaluasi": 34716693000000,
+                "cadangan_selisih_kurs_penjabaran": -146299000000,
+                "cadangan_perubahan_nilai_wajar_aset_keuangan_nilai_wajar_melalui_pendapatan_komprehensif_lainnya": -1837760000000,
+                "cadangan_lindung_nilai_arus_kas": 1429000000,
+                "cadangan_pengukuran_kembali_program_imbalan_pasti": 1517183000000,
+                "cadangan_lainnya": 85052000000,
+                "komponen_ekuitas_lainnya": -97202000000,
+                "saldo_laba_akumulasi_kerugian": {
+                  "saldo_laba_yang_telah_ditentukan_penggunaanya": {
+                    "cadangan_umum_dan_wajib": 2333333000000,
+                    "cadangan_khusus": 3046935000000,
+                    "total": 5380268000000
+                  },
+                  "saldo_laba_yang_belum_ditentukan_penggunaannya": 191923489000000,
+                  "total": 191923489000000
+                },
+                "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": 260852784000000,
+                "total": 260852784000000
+              },
+              "kepentingan_non_pengendali": 26642178000000,
+              "ekuitas": 287494962000000,
+              "total": 287494962000000
+            },
+            "liabilitas_dana_syirkah_temporer_dan_ekuitas": 2174219449000000,
+            "total": 2174219449000000
+          }
+        }
+      },
+      {
+        "year": "2022",
+        "quarter": "FY",
+        "label": "FY 2022",
+        "fetched_at": "2026-08-02 19:32:25",
+        "data": {
+          "aset": {
+            "kas": 27212759000000,
+            "giro_pada_bank_indonesia": 107349158000000,
+            "giro_pada_bank_lain": {
+              "giro_pada_bank_lain_pihak_ketiga": 47699252000000,
+              "giro_pada_bank_lain_pihak_berelasi": 110733000000,
+              "cadangan_kerugian_penurunan_nilai_pada_giro_pada_bank_lain": -20285000000,
+              "total": 47789700000000
+            },
+            "penempatan_pada_bank_indonesia_dan_bank_lain": {
+              "penempatan_pada_bank_indonesia_dan_bank_lain_pihak_ketiga": 92243984000000,
+              "penempatan_pada_bank_indonesia_dan_bank_lain_pihak_berelasi": 3080128000000,
+              "cadangan_kerugian_penurunan_nilai_pada_penempatan_pada_bank_lain": -3601000000,
+              "total": 95320511000000
+            },
+            "efek_efek_yang_diperdagangkan": {
+              "efek_efek_yang_diperdagangkan_pihak_ketiga": 55550432000000,
+              "efek_efek_yang_diperdagangkan_pihak_berelasi": 27290577000000,
+              "cadangan_kerugian_penurunan_nilai_pada_efek_efek_yang_diperdagangkan": -41191000000,
+              "total": 82799818000000
+            },
+            "efek_yang_dibeli_dengan_janji_dijual_kembali": 11705989000000,
+            "wesel_ekspor_dan_tagihan_lainnya": {
+              "wesel_ekspor_dan_tagihan_lainnya_pihak_ketiga": 18635645000000,
+              "wesel_ekspor_dan_tagihan_lainnya_pihak_berelasi": 15157619000000,
+              "cadangan_kerugian_penurunan_nilai_pada_wesel_ekspor_dan_tagihan_lainnya": -1604705000000,
+              "total": 32188559000000
+            },
+            "tagihan_akseptasi": {
+              "tagihan_akseptasi_pihak_ketiga": 9884072000000,
+              "tagihan_akseptasi_pihak_berelasi": 1897509000000,
+              "cadangan_kerugian_penurunan_nilai_pada_tagihan_akseptasi": -61963000000,
+              "total": 11719618000000
+            },
+            "tagihan_derivatif": {
+              "tagihan_derivatif_pihak_ketiga": 2141933000000,
+              "tagihan_derivatif_pihak_berelasi": 110208000000,
+              "total": 2252141000000
+            },
+            "pinjaman_yang_diberikan": {
+              "pinjaman_yang_diberikan_pihak_ketiga": 973214336000000,
+              "pinjaman_yang_diberikan_pihak_berelasi": 199385546000000,
+              "cadangan_kerugian_penurunan_nilai_pada_pinjaman_yang_diberikan": -64612645000000,
+              "total": 1107987237000000
+            },
+            "piutang_pembiayaan_konsumen": {
+              "piutang_pembiayaan_konsumen_pihak_ketiga": 23749881000000,
+              "piutang_pembiayaan_konsumen_pihak_berelasi": 7846000000,
+              "cadangan_kerugian_penurunan_nilai_pada_piutang_pembiayaan_konsumen": -610361000000,
+              "total": 23147366000000
+            },
+            "investasi_sewa": {
+              "investasi_sewa_pihak_ketiga": 6761548000000,
+              "investasi_sewa_pihak_berelasi": -102811000000,
+              "investasi_sewa_nilai_residu_yang_terjamin": 2551829000000,
+              "investasi_sewa_pendapatan_pembiayaan_tangguhan": -786177000000,
+              "investasi_sewa_simpanan_jaminan": -2551829000000,
+              "cadangan_kerugian_penurunan_nilai_pada_investasi_sewa": -139173000000,
+              "total": 5733387000000
+            },
+            "obligasi_pemerintah": 329211764000000,
+            "biaya_dibayar_dimuka": 1895503000000,
+            "pajak_dibayar_dimuka": 1164925000000,
+            "aset_pajak_tangguhan": 12045479000000,
+            "investasi_pada_ventura_bersama_dan_entitas_asosiasi": {
+              "investasi_pada_entitas_asosiasi": 2688954000000,
+              "total": 2688954000000
+            },
+            "goodwill": 787466000000,
+            "aset_takberwujud_selain_goodwill": 4306143000000,
+            "aset_tetap": 56540566000000,
+            "agunan_yang_diambil_alih": 1145931000000,
+            "aset_lainnya": 27551713000000,
+            "aset": 1992544687000000,
+            "total": 1992544687000000
+          },
+          "liabilitas_dana_syirkah_temporer_dan_ekuitas": {
+            "liabilitas": {
+              "liabilitas_segera": 4056029000000,
+              "simpanan_nasabah": {
+                "giro": {
+                  "giro_pihak_ketiga": 361830544000000,
+                  "giro_pihak_berelasi": 157247418000000,
+                  "total": 519077962000000
+                },
+                "tabungan": {
+                  "tabungan_pihak_ketiga": 473631868000000,
+                  "tabungan_pihak_berelasi": 6850898000000,
+                  "total": 480482766000000
+                },
+                "deposito_berjangka": {
+                  "deposito_berjangka_pihak_ketiga": 265349216000000,
+                  "deposito_berjangka_pihak_berelasi": 30665985000000,
+                  "total": 296015201000000
+                },
+                "total": 0
+              },
+              "simpanan_dari_bank_lain": {
+                "simpanan_dari_bank_lain_pihak_berelasi": 641268000000,
+                "simpanan_dari_bank_lain_pihak_ketiga": 14206141000000,
+                "total": 14847409000000
+              },
+              "efek_yang_dijual_dengan_janji_untuk_dibeli_kembali": 24325475000000,
+              "liabilitas_derivatif": {
+                "liabilitas_derivatif_pihak_ketiga": 2039836000000,
+                "liabilitas_derivatif_pihak_berelasi": 86933000000,
+                "total": 2126769000000
+              },
+              "liabilitas_kepada_pemegang_polis_unit_linked": 29710227000000,
+              "liabilitas_akseptasi": {
+                "liabilitas_akseptasi_pihak_berelasi": 1750123000000,
+                "liabilitas_akseptasi_pihak_ketiga": 10031458000000,
+                "total": 11781581000000
+              },
+              "pinjaman_yang_diterima": {
+                "pinjaman_yang_diterima_pihak_ketiga": 60629414000000,
+                "pinjaman_yang_diterima_pihak_berelasi": 2210704000000,
+                "total": 62840118000000
+              },
+              "provisi": 323365000000,
+              "estimasi_kerugian_komitmen_dan_kontinjensi": 2073429000000,
+              "beban_akrual": 6493794000000,
+              "utang_pajak": 3590522000000,
+              "liabilitas_lainnya": 27336753000000,
+              "kewajiban_imbalan_pasca_kerja": 12607759000000,
+              "pinjaman_subordinasi": {
+                "pinjaman_subordinasi_pihak_ketiga": 546333000000,
+                "pinjaman_subordinasi_pihak_berelasi": 87000000000,
+                "total": 633333000000
+              },
+              "liabilitas": 1544096631000000,
+              "total": 1544096631000000
+            },
+            "dana_syirkah_temporer": {
+              "bukan_bank": {
+                "giro_mudharabah": {
+                  "giro_mudharabah_pihak_ketiga": 9020856000000,
+                  "giro_berjangka_mudharabah_pihak_berelasi": 13702232000000,
+                  "total": 22723088000000
+                },
+                "tabungan_mudharabah": {
+                  "tabungan_mudharabah_pihak_ketiga": 72183636000000,
+                  "tabungan_mudharabah_pihak_berelasi": 86070000000,
+                  "total": 72269706000000
+                },
+                "deposito_berjangka_mudharabah": {
+                  "deposito_berjangka_mudharabah_pihak_ketiga": 82418193000000,
+                  "deposito_berjangka_mudharabah_pihak_berelasi": 17857676000000,
+                  "total": 100275869000000
+                },
+                "total": 0
+              },
+              "bank": {
+                "giro_mudharabah": {
+                  "giro_mudharabah_pihak_ketiga": 9020856000000,
+                  "giro_berjangka_mudharabah_pihak_berelasi": 13702232000000,
+                  "total": 31880000000
+                },
+                "tabungan_mudharabah_ummat": 627646000000,
+                "deposito_berjangka_mudharabah": {
+                  "deposito_berjangka_mudharabah_pihak_ketiga": 82418193000000,
+                  "deposito_berjangka_mudharabah_pihak_berelasi": 17857676000000,
+                  "total": 274412000000
+                },
+                "total": 933938000000
+              },
+              "dana_syirkah_temporer": 196202601000000,
+              "total": 196202601000000
+            },
+            "ekuitas": {
+              "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": {
+                "saham_biasa": 11666667000000,
+                "tambahan_modal_disetor": 17643264000000,
+                "saham_treasuri": -150895000000,
+                "cadangan_revaluasi": 34716693000000,
+                "cadangan_selisih_kurs_penjabaran": -60427000000,
+                "cadangan_perubahan_nilai_wajar_aset_keuangan_nilai_wajar_melalui_pendapatan_komprehensif_lainnya": -2768553000000,
+                "cadangan_lindung_nilai_arus_kas": -3156000000,
+                "cadangan_pengukuran_kembali_program_imbalan_pasti": 1510016000000,
+                "cadangan_lainnya": 85052000000,
+                "komponen_ekuitas_lainnya": -106001000000,
+                "saldo_laba_akumulasi_kerugian": {
+                  "saldo_laba_yang_telah_ditentukan_penggunaanya": {
+                    "cadangan_umum_dan_wajib": 2333333000000,
+                    "cadangan_khusus": 3046935000000,
+                    "total": 5380268000000
+                  },
+                  "saldo_laba_yang_belum_ditentukan_penggunaannya": 161614963000000,
+                  "total": 161614963000000
+                },
+                "ekuitas_yang_diatribusikan_kepada_pemilik_entitas_induk": 229678786000000,
+                "total": 229678786000000
+              },
+              "kepentingan_non_pengendali": 22566669000000,
+              "ekuitas": 252245455000000,
+              "total": 252245455000000
+            },
+            "liabilitas_dana_syirkah_temporer_dan_ekuitas": 1992544687000000,
+            "total": 1992544687000000
+          }
+        }
+      }
+    ]
+  }
+}

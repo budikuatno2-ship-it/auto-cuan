@@ -1,0 +1,216 @@
+{
+  "ticker": "BEBS",
+  "symbol": "BEBS.JK",
+  "updated_at": "2026-11-04T15:45:00+07:00",
+  "total_candles": 25,
+  "latest": {
+    "date": "2026-10-30",
+    "open": 5,
+    "high": 5,
+    "low": 5,
+    "close": 5,
+    "volume": 0
+  },
+  "candles": [
+    {
+      "date": "2026-09-28",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-29",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-09-30",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-01",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-02",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-05",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-06",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-07",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-08",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-09",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-12",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-13",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-14",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-15",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-16",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-19",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-20",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-21",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-22",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-23",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-26",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-27",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-28",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-29",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    },
+    {
+      "date": "2026-10-30",
+      "open": 5,
+      "high": 5,
+      "low": 5,
+      "close": 5,
+      "volume": 0
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "stock_code": "BBCA",
+  "ticker": "BBCA",
+  "date": "2026-07-02",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 231418250000,
+      "bvol": 39983600,
+      "bfrq": 5623,
+      "sfrq": 4043,
+      "sval": 144987857500,
+      "svol": 24972600,
+      "nval": 86430392500,
+      "nvol": 15011000
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 46891130000,
+      "bvol": 8064700,
+      "bfrq": 1124,
+      "sfrq": 226,
+      "sval": 4012452500,
+      "svol": 691800,
+      "nval": 42878677500,
+      "nvol": 7372900
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 52216322500,
+      "bvol": 9006100,
+      "bfrq": 1474,
+      "sfrq": 602,
+      "sval": 13122995000,
+      "svol": 2265300,
+      "nval": 39093327500,
+      "nvol": 6740800
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 5426722500,
+      "bvol": 931700,
+      "bfrq": 140,
+      "sfrq": 40,
+      "sval": 872160000,
+      "svol": 149800,
+      "nval": 4554562500,
+      "nvol": 781900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 2809235000,
+      "bvol": 486600,
+      "bfrq": 142,
+      "sfrq": 133,
+      "sval": 2444570000,
+      "svol": 420800,
+      "nval": 364665000,
+      "nvol": 65800
+    }
+  ],
+  "broker_net": 173321625000,
+  "net_flow": 173321625000,
+  "total_buy_val": 338761660000,
+  "total_sell_val": 165440035000,
+  "total_turnover": 338761660000,
+  "top_buyers": [
+    {
+      "broker_code": "AK",
+      "broker_name": "UBS SEKURITAS INDONESIA",
+      "bval": 231418250000,
+      "bvol": 39983600,
+      "bfrq": 5623,
+      "sfrq": 4043,
+      "sval": 144987857500,
+      "svol": 24972600,
+      "nval": 86430392500,
+      "nvol": 15011000
+    },
+    {
+      "broker_code": "RX",
+      "broker_name": "MACQUARIE SEKURITAS INDONESIA",
+      "bval": 46891130000,
+      "bvol": 8064700,
+      "bfrq": 1124,
+      "sfrq": 226,
+      "sval": 4012452500,
+      "svol": 691800,
+      "nval": 42878677500,
+      "nvol": 7372900
+    },
+    {
+      "broker_code": "YU",
+      "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "bval": 52216322500,
+      "bvol": 9006100,
+      "bfrq": 1474,
+      "sfrq": 602,
+      "sval": 13122995000,
+      "svol": 2265300,
+      "nval": 39093327500,
+      "nvol": 6740800
+    },
+    {
+      "broker_code": "AI",
+      "broker_name": "KAY HIAN SEKURITAS",
+      "bval": 5426722500,
+      "bvol": 931700,
+      "bfrq": 140,
+      "sfrq": 40,
+      "sval": 872160000,
+      "svol": 149800,
+      "nval": 4554562500,
+      "nvol": 781900
+    },
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 2809235000,
+      "bvol": 486600,
+      "bfrq": 142,
+      "sfrq": 133,
+      "sval": 2444570000,
+      "svol": 420800,
+      "nval": 364665000,
+      "nvol": 65800
+    }
+  ],
+  "top_sellers": []
+}

@@ -1,0 +1,138 @@
+{
+  "stock_code": "DEWA",
+  "ticker": "DEWA",
+  "date": "2026-08-13",
+  "flow": "F",
+  "status": "RELEASED",
+  "is_complete": true,
+  "brokers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 6584102800,
+      "bvol": 14427600,
+      "bfrq": 386,
+      "sfrq": 171,
+      "sval": 1929310400,
+      "svol": 4219500,
+      "nval": 4654792400,
+      "nvol": 10208100
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 1461934000,
+      "bvol": 3242300,
+      "bfrq": 222,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1461934000,
+      "nvol": 3242300
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 2116222000,
+      "bvol": 4673700,
+      "bfrq": 296,
+      "sfrq": 120,
+      "sval": 898093000,
+      "svol": 1989500,
+      "nval": 1218129000,
+      "nvol": 2684200
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2350381800,
+      "bvol": 5174400,
+      "bfrq": 279,
+      "sfrq": 189,
+      "sval": 1332771800,
+      "svol": 2936700,
+      "nval": 1017610000,
+      "nvol": 2237700
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 9783793000,
+      "bvol": 21679000,
+      "bfrq": 687,
+      "sfrq": 1372,
+      "sval": 9007160000,
+      "svol": 19964300,
+      "nval": 776633000,
+      "nvol": 1714700
+    }
+  ],
+  "broker_net": 9129098400,
+  "net_flow": 9129098400,
+  "total_buy_val": 22296433600,
+  "total_sell_val": 13167335200,
+  "total_turnover": 22296433600,
+  "top_buyers": [
+    {
+      "broker_code": "LG",
+      "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "bval": 6584102800,
+      "bvol": 14427600,
+      "bfrq": 386,
+      "sfrq": 171,
+      "sval": 1929310400,
+      "svol": 4219500,
+      "nval": 4654792400,
+      "nvol": 10208100
+    },
+    {
+      "broker_code": "DP",
+      "broker_name": "DBS VICKERS SEKURITAS INDONESIA",
+      "bval": 1461934000,
+      "bvol": 3242300,
+      "bfrq": 222,
+      "sfrq": 0,
+      "sval": 0,
+      "svol": 0,
+      "nval": 1461934000,
+      "nvol": 3242300
+    },
+    {
+      "broker_code": "EP",
+      "broker_name": "MNC SEKURITAS",
+      "bval": 2116222000,
+      "bvol": 4673700,
+      "bfrq": 296,
+      "sfrq": 120,
+      "sval": 898093000,
+      "svol": 1989500,
+      "nval": 1218129000,
+      "nvol": 2684200
+    },
+    {
+      "broker_code": "BQ",
+      "broker_name": "KOREA INVESTMENT AND SEKURITAS INDONESIA",
+      "bval": 2350381800,
+      "bvol": 5174400,
+      "bfrq": 279,
+      "sfrq": 189,
+      "sval": 1332771800,
+      "svol": 2936700,
+      "nval": 1017610000,
+      "nvol": 2237700
+    },
+    {
+      "broker_code": "OD",
+      "broker_name": "BRI DANAREKSA SEKURITAS",
+      "bval": 9783793000,
+      "bvol": 21679000,
+      "bfrq": 687,
+      "sfrq": 1372,
+      "sval": 9007160000,
+      "svol": 19964300,
+      "nval": 776633000,
+      "nvol": 1714700
+    }
+  ],
+  "top_sellers": []
+}
