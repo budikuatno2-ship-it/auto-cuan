@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // Focused tests for the canonical-Production-domain redirect implemented as a
 // browser-page-only script at the top of public/index.html <head>. Goal: visitors
@@ -218,5 +219,5 @@ test('11: screener orchestration and after-market Top 5 lock are both VPS-local'
 // 12. API endpoint JavaScript count remains exactly 13.
 test('12: api endpoint count remains exactly 13', () => {
   var files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 13, 'found: ' + files.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });

@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 const test=require('node:test'), assert=require('node:assert/strict'), fs=require('node:fs'), path=require('node:path');
 const root=path.join(__dirname,'..'), migration=fs.readFileSync(path.join(root,'supabase','subscription-phase-2-migration.sql'),'utf8'), login=fs.readFileSync(path.join(root,'api','login-user.js'),'utf8'), admin=fs.readFileSync(path.join(root,'api','admin-users.js'),'utf8')+fs.readFileSync(path.join(root,'lib','admin-users-handler.js'),'utf8');
 const vouchers=require('../lib/vouchers'), identity=require('../lib/subscription-identity');
@@ -11,7 +12,7 @@ test('Phase 5B stores only HMAC voucher codes and redeems atomically through ser
 test('voucher browser actions and protected service actions fail closed with subscription capability',()=>{
   assert.match(login,/voucher-(quote|redeem)/); assert.match(login,/if \(!isSubscriptionFeatureEnabled\(\)\) return res\.status\(503\)/);
   assert.match(admin,/voucherActions/); assert.match(admin,/protectedSubscriptionActions\.indexOf\(action\) >= 0 && !isSubscriptionFeatureEnabled\(\)/);
-  assert.equal(fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 test('voucher Telegram foundation accepts only the fixed owner ID and keeps web UI absent',()=>{
   assert.equal(vouchers.VOUCHER_ADMIN_TELEGRAM_USER_ID,6396446903); assert.equal(vouchers.isVoucherAdminTelegramUser(6396446903),true); assert.equal(vouchers.isVoucherAdminTelegramUser(7),false);

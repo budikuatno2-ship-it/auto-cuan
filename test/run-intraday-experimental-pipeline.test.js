@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 /**
  * Tests for the combined intraday EXPERIMENTAL pipeline
@@ -374,7 +375,7 @@ test('15. swing, Top5 and public delivery modules are not imported by the pipeli
 
 test('16. API JavaScript endpoint count remains exactly 13', async () => {
   const entries = await fsp.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 // ===================================================================

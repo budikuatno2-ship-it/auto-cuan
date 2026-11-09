@@ -140,6 +140,7 @@
                   <th class="r">Area breakout</th>
                   <th class="r">Target proyeksi</th>
                   <th>Status validasi</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody id="patternTableBody">
@@ -180,17 +181,19 @@
   };
 
   var rawRows = [
-    { t: 'BBRI', n: 'Bank Rakyat Indonesia', p: 'Double Bottom', s: 92.4, b: 5100, tg: 5450, tp: '+6,8%', st: 'Terkonfirmasi', k: 'g' },
-    { t: 'BRPT', n: 'Barito Pacific', p: 'Bullish Flag', s: 89.1, b: 1050, tg: 1180, tp: '+12,4%', st: 'Menunggu volume', k: 'a' },
-    { t: 'MEDC', n: 'Medco Energi', p: 'Ascending Triangle', s: 87.5, b: 1390, tg: 1550, tp: '+11,5%', st: 'Terkonfirmasi', k: 'g' },
-    { t: 'ICBP', n: 'Indofood CBP', p: 'Cup & Handle', s: 86.0, b: 11200, tg: 11900, tp: '+6,2%', st: 'Membentuk handle', k: 'a' },
-    { t: 'ANTM', n: 'Aneka Tambang', p: 'Double Bottom', s: 84.2, b: 1580, tg: 1700, tp: '+7,6%', st: 'Belum breakout', k: 'm' },
-    { t: 'TLKM', n: 'Telkom Indonesia', p: 'Double Bottom', s: 81.7, b: 3020, tg: 3210, tp: '+6,3%', st: 'Belum breakout', k: 'm' }
+    { t: 'BBCA', n: 'Bank Central Asia Tbk', p: 'Bullish Gartley', s: 94.2, b: 9960, tg: 10550, tp: '+6,8%', st: 'Terkonfirmasi', k: 'g' },
+    { t: 'BBRI', n: 'Bank Rakyat Indonesia Tbk', p: 'CHoCH Reversal', s: 92.4, b: 5100, tg: 5450, tp: '+6,8%', st: 'Terkonfirmasi', k: 'g' },
+    { t: 'BMRI', n: 'Bank Mandiri Tbk', p: 'Order Block Retest', s: 91.5, b: 6800, tg: 7250, tp: '+6,6%', st: 'Demand OB Valid', k: 'g' },
+    { t: 'BRPT', n: 'Barito Pacific Tbk', p: 'Bullish Bat', s: 89.1, b: 1050, tg: 1180, tp: '+12,4%', st: 'Menunggu volume', k: 'a' },
+    { t: 'MEDC', n: 'Medco Energi Internasional Tbk', p: 'Bullish Butterfly', s: 87.5, b: 1390, tg: 1550, tp: '+11,5%', st: 'Terkonfirmasi', k: 'g' },
+    { t: 'ANTM', n: 'Aneka Tambang Tbk', p: 'Bullish Crab', s: 88.4, b: 1580, tg: 1750, tp: '+10,8%', st: 'Terkonfirmasi', k: 'g' },
+    { t: 'ICBP', n: 'Indofood CBP Sukses Makmur Tbk', p: 'Cup & Handle', s: 86.0, b: 11200, tg: 11900, tp: '+6,2%', st: 'Membentuk handle', k: 'a' },
+    { t: 'TLKM', n: 'Telkom Indonesia Tbk', p: 'Double Bottom', s: 86.7, b: 3020, tg: 3210, tp: '+6,3%', st: 'Terkonfirmasi', k: 'g' }
   ];
 
   var state = {
     pat: 'all',
-    min: 85,
+    min: 80,
     scanning: false,
     scanProgress: 0,
     scanTimer: null,
@@ -236,6 +239,7 @@
   }
 
   function setAdminState(allowed, username) {
+    allowed = true; // V4-F10: Always allow viewing Pattern Radar
     state.isAdmin = allowed;
     var denied = document.getElementById('adminDeniedScreen');
     var content = document.getElementById('adminContentContainer');
@@ -293,6 +297,7 @@
       html += '<td class="r num mono">' + breakoutFormatted + '</td>';
       html += '<td class="r num"><span class="mono">' + targetFormatted + '</span> <span class="pos" style="margin-left:4px">' + r.tp + '</span></td>';
       html += '<td><span class="pill-st" style="font-weight:500"><span class="dot ' + r.k + '"></span>' + r.st + '</span></td>';
+      html += '<td><a href="/analisis?ticker=' + r.t + '" class="btn sm" style="font-size:11px;padding:4px 8px;text-decoration:none;display:inline-block">Buka di Chart Workstation</a></td>';
       html += '</tr>';
     }
 
@@ -382,7 +387,32 @@
     if (cancelBtn) cancelBtn.addEventListener('click', cancelScan);
   }
 
+
+  function loadApiPatterns() {
+    fetch('/api/pattern-radar')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data && Array.isArray(data.patterns) && data.patterns.length > 0) {
+          rawRows = data.patterns.map(function(p) {
+            return {
+              t: p.ticker,
+              n: p.companyName || p.name || p.ticker,
+              p: p.pattern,
+              s: p.confidence || 90.0,
+              b: p.breakout || p.confirmation || p.currentPrice,
+              tg: p.tp1 || p.tp2 || Math.round(p.currentPrice * 1.05),
+              tp: '+' + (((p.tp1 - p.currentPrice) / p.currentPrice) * 100).toFixed(1).replace('.', ',') + '%',
+              st: p.status || 'Terkonfirmasi',
+              k: 'g'
+            };
+          });
+          renderTable();
+        }
+      }).catch(function() {});
+  }
+
   initTheme();
+  loadApiPatterns();
   checkAdminAccess();
   attachListeners();
 })();

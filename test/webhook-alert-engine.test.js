@@ -214,6 +214,16 @@ test('resilience: failure in one channel does not interrupt dispatch in the othe
   alertEngine.clearCooldownCache();
 
   const originalFetch = global.fetch;
+  const originalTelegramLive = process.env.TELEGRAM_LIVE;
+  const originalTelegramEnabled = process.env.TELEGRAM_ENABLED;
+
+  // V5 security package (lib/telegram-gate.js) defaults to dry-run; a live
+  // send requires explicit consent. Force the live path here so channel
+  // resilience is still verified against a real Telegram HTTP failure while
+  // Discord succeeds independently (no network is actually reached — fetch is
+  // mocked below).
+  process.env.TELEGRAM_LIVE = 'true';
+  process.env.TELEGRAM_ENABLED = '1';
 
   // Mock fetch: telegram fails with 500, discord succeeds with 204
   global.fetch = async (url) => {
@@ -256,5 +266,7 @@ test('resilience: failure in one channel does not interrupt dispatch in the othe
     assert.equal(res.channels.discord.status, 204);
   } finally {
     global.fetch = originalFetch;
+    if (originalTelegramLive === undefined) delete process.env.TELEGRAM_LIVE; else process.env.TELEGRAM_LIVE = originalTelegramLive;
+    if (originalTelegramEnabled === undefined) delete process.env.TELEGRAM_ENABLED; else process.env.TELEGRAM_ENABLED = originalTelegramEnabled;
   }
 });

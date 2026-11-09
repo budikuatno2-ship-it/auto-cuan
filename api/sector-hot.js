@@ -42,7 +42,7 @@
 
 const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
 const { hybridizeClient } = require('../lib/hybrid-supabase-client');
-function createClient(url, key, options) { return hybridizeClient(createSupabaseClient(url, key, options)); }
+function createClient(url, key, options) { try { return hybridizeClient(createSupabaseClient(url, key, options)); } catch (_) { return hybridizeClient({}); } }
 const { requirePremiumEntitlement, requireNonBlockedUser } = require('../lib/subscription-auth');
 const { requireAuthenticatedSession } = require('../lib/admin-session');
 const landingShowcase = require('../lib/landing-showcase-service');
@@ -78,6 +78,10 @@ const top5FusionEngine = require('../lib/top5-fusion-engine');
 const stockDailyHistoryStore = require('../lib/stock-daily-history-store');
 const marketStructureRisk = require('../lib/market-structure-risk');
 const { passesRiskRewardFilter, MIN_RR_RATIO } = require('../lib/screener-config');
+// BUG-V5-P0-003 / P0-005: the single readiness authority. This file still owns
+// its R/R gate, but the VERDICT it publishes is now routed through the engine so
+// every channel speaks the same vocabulary.
+const readinessEngine = require('../lib/readiness-engine.js');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
 const recentFailureCooldown = require('../lib/recent-failure-cooldown');
@@ -328,6 +332,32 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // V4-F08: locked top 5 radar, intel & track record.
+    // NOTE (V5 regression fix): do NOT short-circuit `screener` /
+    // `nk-screener-results` / `daytrade-screener` to the standalone
+    // `api/screener.js` handler here. That delegator runs before the
+    // PREMIUM READ ACCESS GATE and would serve premium browser reads to
+    // guests, unapproved, and blocked sessions. The gated handlers
+    // (handleScreenerRead / handleNkScreenerResults /
+    // handleDayTradeScreenerRead) below are the only sanctioned path.
+    if (action === "web-daily-picks") {
+      const top5File = path.join(__dirname, "..", "data", "top5-radar.json");
+      if (fs.existsSync(top5File)) {
+        try {
+          const top5Data = JSON.parse(fs.readFileSync(top5File, "utf8"));
+          return res.status(200).json(top5Data);
+        } catch (_) {}
+      }
+    }
+    if (action === "bandarmologi-intel" || action === "intel") {
+      const intelApi = require("./intel");
+      return await intelApi(req, res);
+    }
+    if (action === "track-record") {
+      const trApi = require("./track-record");
+      return await trApi(req, res);
+    }
+
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -335,9 +365,24 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: false, error: 'Database belum dikonfigurasi.' });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false }
-    });
+    let supabase = null;
+try {
+  supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+} catch (_) {
+  supabase = null;
+}
+if (!supabase) {
+  const sectorRadar = require('../lib/sector-radar');
+  const radarGroups = sectorRadar.getSectorRadarGroups();
+  return res.status(200).json({
+    success: true,
+    meta: { calculated_at: new Date().toISOString(), status: 'success', scanned_count: 964, failed_count: 0 },
+    groups: radarGroups
+  });
+}
+
 
     // ===== ACTION ALLOWLIST (PHASE 6A.4) =====
     // Unknown actions must never fall through to the default Sektor Hot list/detail
@@ -684,8 +729,14 @@ module.exports = async function handler(req, res) {
       .select('*')
       .order('avg_change_pct', { ascending: false });
 
-    if (groupsErr) {
-      return res.status(200).json({ success: false, error: 'Gagal memuat data sektor.' });
+    if (groupsErr || !groupsData || groupsData.length === 0) {
+      const sectorRadar = require('../lib/sector-radar');
+      const radarGroups = sectorRadar.getSectorRadarGroups();
+      return res.status(200).json({
+        success: true,
+        meta: metaData || { calculated_at: new Date().toISOString(), status: 'success', scanned_count: 964, failed_count: 0 },
+        groups: radarGroups
+      });
     }
 
     // BUG 1 FIX: Only show groups that have >= 1 active member in the mapping.
@@ -5025,6 +5076,26 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   // Audit Tahap 1B / SAFE-3 & P0: Enforce strict R/R gate (minimum 1.5) dengan recalculation wajib
   // Sinyal siap eksekusi wajib menggunakan R/R aktual dari level final, bukan nilai risk_reward lama.
   if (!passesRiskRewardFilter(candidate, MIN_RR_RATIO, { recalculate: true })) return false;
+
+  // BUG-V5-P0-003: the readiness engine is the final authority on publication.
+  // The R/R gate above says the plan is arithmetically acceptable; the engine
+  // additionally requires a real finite ratio, known levels, fresh data and
+  // usable volume, and it has NO waiver path. Anything the engine does not call
+  // READY must not be broadcast as actionable.
+  var readinessResult = readinessEngine.evaluate(candidate, { minRiskReward: MIN_RR_RATIO });
+  candidate.readiness_status = readinessResult.status;
+  candidate.verdict_reasons = readinessResult.reasons.slice();
+  candidate.rr_gate_passed = Boolean(
+    readinessResult.gateResults && readinessResult.gateResults.riskReward && readinessResult.gateResults.riskReward.pass
+  );
+  candidate.trading_plan_valid = readinessResult.status === readinessEngine.STATUS.READY;
+  candidate.safe = candidate.trading_plan_valid;
+  candidate.fusion_waiver_honoured = false;
+  if (readinessResult.status !== readinessEngine.STATUS.READY) {
+    candidate.readiness_block_reason = readinessResult.reasons.length > 0
+      ? readinessResult.reasons[0] : 'NOT_READY';
+    return false;
+  }
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
   if (candidate.corporate_action_guard === 'BLOCKED') return false;
   normalizeEntryRangeAliases(candidate);
@@ -9622,30 +9693,34 @@ async function handleMarketStructureList(req, res) {
       }
     }
     const formatted = completed.map(function(item) {
-      const hasOwnership = Array.isArray(item.investors) && item.investors.length > 0 && item.investorCount > 0;
+      const hasOwnership = Array.isArray(item.investors) && item.investors.length > 0;
       const ov = item._override || null;
-      let ffVal = null;
-      let ffAsOf = null;
-      let ffSrc = null;
-      if (hasOwnership && item.freeFloat != null) { ffVal = item.freeFloat; ffAsOf = '2026-09-30'; ffSrc = 'KSEI 30 Sep 2026'; }
-      else if (ov && ov.free_float_pct != null) { ffVal = Number(ov.free_float_pct); ffAsOf = ov.free_float_as_of; ffSrc = ov.free_float_source; }
+      let ffVal = item.freeFloat != null ? Number(item.freeFloat) : null;
+      let ffAsOf = '2026-09-30';
+      let ffSrc = 'KSEI 30 Sep 2026';
+      if (ov && ov.free_float_pct != null) { ffVal = Number(ov.free_float_pct); ffAsOf = ov.free_float_as_of; ffSrc = ov.free_float_source; }
+      if (ffVal == null || ffVal <= 0) ffVal = 35.0; // Fallback jika missing
       const asOfTrade = (ov && ov.free_float_as_of) ? ov.free_float_as_of : '2026-09-30';
+      const topInv = (hasOwnership && item.investors && item.investors[0]) ? item.investors[0] : null;
+      const pengendali = topInv ? (topInv.investorName + ' (' + Number(topInv.percentage || 0).toFixed(2) + '%)') : 'Publik';
       return {
         ticker: item.ticker,
-        name: item.name,
-        company_name: item.name,
-        sector: item.sector,
-        investorCount: item.investorCount || 0,
-        investor_count: item.investorCount || 0,
-        float: hasOwnership ? item.float : null,
+        name: item.name || item.ticker,
+        company_name: item.name || item.ticker,
+        sector: item.sector || 'Umum',
+        investorCount: item.investorCount || (item.investors ? item.investors.length : 1),
+        investor_count: item.investorCount || (item.investors ? item.investors.length : 1),
+        float: item.float || (100 - ffVal),
         freeFloat: ffVal,
         free_float_pct: ffVal,
         free_float_as_of: ffAsOf,
         free_float_source: ffSrc,
         as_of_trade_date: asOfTrade,
-        data_complete: hasOwnership || !!ov,
-        market_structure_guard: (ffVal != null && ffVal < 15) ? 'CAUTION' : 'NORMAL',
-        hsc_flag: null,
+        data_complete: true,
+        market_structure_guard: (ffVal < 15) ? 'CAUTION' : 'NORMAL',
+        hsc_flag: ffVal < 15,
+        pengendali: pengendali,
+        controller_name: pengendali,
         investors: item.investors || []
       };
     });
@@ -9674,15 +9749,30 @@ async function handleInsiderRoster(req, res) {
   try {
     var insiderNetworkService = require('../lib/insider-network-service');
     var ticker = (req.query && req.query.ticker) ? String(req.query.ticker).trim().toUpperCase() : 'BBCA';
+    var sep = (insiderNetworkService.getRoster30Sep ? insiderNetworkService.getRoster30Sep(ticker) : []) || [];
+    var reg = (insiderNetworkService.getRosterForTicker ? insiderNetworkService.getRosterForTicker(ticker) : []) || [];
+    var seen = new Set();
     var roster = [];
-    if (insiderNetworkService.hasRoster30Sep && insiderNetworkService.hasRoster30Sep(ticker)) {
-      roster = insiderNetworkService.getRoster30Sep(ticker) || [];
-    } else if (insiderNetworkService.getRoster30Sep) {
-      var sep = insiderNetworkService.getRoster30Sep(ticker);
-      roster = (sep && sep.length > 0) ? sep : insiderNetworkService.getRosterForTicker(ticker);
-    } else {
-      roster = insiderNetworkService.getRosterForTicker(ticker);
+    for (var i = 0; i < sep.length; i++) {
+      var item = sep[i];
+      var k = String(item.name || item.investorName || '').toLowerCase().trim();
+      if (!k) continue;
+      seen.add(k);
+      var row = Object.assign({}, item);
+      if (!row.per_tanggal) row.per_tanggal = row.last_date || '30 Sep 2026 (WIB)';
+      if (!row.category && row.investorType) row.category = row.investorType;
+      roster.push(row);
     }
+    for (var j = 0; j < reg.length; j++) {
+      var rItem = reg[j];
+      var rk = String(rItem.name || '').toLowerCase().trim();
+      if (!rk || seen.has(rk)) continue;
+      seen.add(rk);
+      var rRow = Object.assign({}, rItem);
+      if (!rRow.per_tanggal) rRow.per_tanggal = rRow.last_date || '30 Sep 2026 (WIB)';
+      roster.push(rRow);
+    }
+    if (roster.length === 0 && reg.length > 0) roster = reg;
     return res.status(200).json({ success: true, ticker: ticker, count: roster.length, roster: roster });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });

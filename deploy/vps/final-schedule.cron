@@ -1,15 +1,31 @@
-# BEGIN AUTO-CUAN FINAL SCHEDULE — V3-F01 PERMANEN (P2 + DARURAT 2026-11-03)
+# BEGIN AUTO-CUAN FINAL SCHEDULE — V5 TRUTHFUL SCHEDULE (BUG-V5-P0-006 FIX)
 # Timezone: Asia/Jakarta (WIB = UTC+7). Semua jam di bawah adalah WIB.
-# V3-F01 — 2026-11-03 | Branch: feat/daytrade-screener-v1
 # Semua baris dipanggil via deploy/vps/job-wrapper.sh <nama-job> <timeout-detik> <perintah>.
-# Wrapper otomatis: TZ, PATH, cd, load .env VPS aman, hard-stop 23:50-00:10,
+# Wrapper otomatis: TZ, PATH, cd, load .env VPS aman, BLOCKED exit 4 di 23:50-00:10,
 # flock -n /tmp/autocuan-<nama-job>.lock, nice/ionice, timeout -k 15,
-# heartbeat data/job-heartbeat/<nama-job>.json + log logs/cron/<nama-job>.log.
-# Kuota Arjum: dinamis via config/quota.json + lib/quota-state.js (V3-F01 reset harian).
-# Aturan V3-F01: weekdayBackfillLimit=13000, reserveFloorWeekday=5000 (exit 0 mutlak
+# heartbeat data/job-heartbeat/<nama-job>.json (exitCode asli + outcome
+# SUCCESS|SKIPPED|BLOCKED|FAILED|TIMEOUT) + log logs/cron/<nama-job>.log.
+#
+# JENDELA TERLARANG (FORBIDDEN WINDOW) 23:50-00:10 WIB:
+# config/quota.json mendefinisikan jendela aman kuota 23:50-00:10 WIB. Selama
+# jendela ini job-wrapper.sh MENOLAK menjalankan job pemakai kuota (outcome
+# BLOCKED, exit 4) dan lib/quota-state.js hard-stop di 23:50. ATURAN DESAIN:
+# TIDAK BOLEH ada entri cron job kuota yang START di dalam 23:50-00:10 WIB,
+# dan tidak boleh dijadwalkan sehingga timeout-nya melewati 23:50. Entri
+# 0-kuota (JOB_USES_QUOTA=0) dikecualikan. Validasi statis wajib:
+#   node tools/validate-schedule.js   (harus exit 0)
+# Latar belakang BUG-V5-P0-006: catchup sebelumnya dijadwalkan 00:01 WIB —
+# DI DALAM jendela terlarang — sehingga tiap hari deterministik kena
+# FORBIDDEN_WINDOW_SKIP. Catchup kini berjalan 00:15 WIB (catchup-0015),
+# tepat setelah jendela berakhir.
+#
+# SCHEDULER TUNGGAL (N13): cron adalah SATU-SATUNYA eksekutor jadwal.
+# scripts/scheduler-daemon.js hanyalah OBSERVER (tidak pernah spawn job).
+# Kuota Arjum: dinamis via config/quota.json + lib/quota-state.js (reset harian).
+# Aturan kuota: weekdayBackfillLimit=13000, reserveFloorWeekday=5000 (BLOCKED
 # saat sisa<=5000), weekend full 18080 reserveFloorWeekend=0.
-# pending-catchup-queue.json dieksekusi 00:00:01/00:01 WIB.
-# HARD STOP: 23:50 WIB (config/quota.json hardStopWIB). NOL entri mulai 23:50-00:10 WIB.
+# pending-catchup-queue.json dieksekusi 00:15 WIB (catchup-0015).
+# HARD STOP: 23:50 WIB (config/quota.json hardStopWIB). NOL job kuota mulai 23:50-00:10 WIB.
 CRON_TZ=Asia/Jakarta
 TZ=Asia/Jakarta
 SHELL=/bin/bash
@@ -28,9 +44,11 @@ MAILTO=""
 # Sektor Hot Intraday 09:05-15:35 tiap 30 mnt (0 kuota, agregasi candle lokal).
 5,35 09-15 * * 1-5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh sector-hot-intraday 600 bash /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh --force-local
 
-# ── RESET + CATCHUP 00:00/00:01 (V3-F01 permanen) ──
-# pending-catchup-queue.json dieksekusi 00:00:01/00:01 WIB (reset harian + kejar tanggal bolong).
-1 0 * * * /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh catchup-0001 600 /home/ubuntu/.local/node-v22/bin/node tools/catchup-missing-dates.js
+# ── RESET + CATCHUP 00:15 (BUG-V5-P0-006 fix; sebelumnya 00:01 di dalam jendela terlarang) ──
+# pending-catchup-queue.json dieksekusi 00:15 WIB (reset harian + kejar tanggal bolong).
+# 00:15 dipilih karena: (a) di luar 23:50-00:10; (b) sebelum estafet quota-burn :35
+# hari itu dimulai 00:35; (c) catchup 0-kuota lokal (cache) sehingga tidak berebut kuota.
+15 0 * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh catchup-0015 600 /home/ubuntu/.local/node-v22/bin/node tools/catchup-missing-dates.js
 # Backfill terukur weekday 00:15-15:30 (cap 13000 via floor 5000) — estafet dengan :35.
 15 0 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh quota-burn-0015 3300 /home/ubuntu/.local/node-v22/bin/node tools/quota-burn.js --floor 5000
 
@@ -94,4 +112,4 @@ MAILTO=""
 */5 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh watchdog 300 /home/ubuntu/.local/node-v22/bin/node tools/watchdog.js
 */5 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh security-monitor 300 /home/ubuntu/.local/node-v22/bin/node tools/security-monitor.js
 
-# END AUTO-CUAN FINAL SCHEDULE V3-F01 PERMANEN
+# END AUTO-CUAN FINAL SCHEDULE V5 TRUTHFUL SCHEDULE (catchup-0015 @ 00:15 WIB)

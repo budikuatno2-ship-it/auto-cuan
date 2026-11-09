@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { getSession, isSameOrigin } = require('../lib/admin-session');
+const { redactIngestedText } = require('../lib/secret-redaction');
 
 // Telemetry endpoint. It is deliberately fail-soft: a logging problem must never
 // surface as a broken UI, so every failure path still answers 200 with
@@ -36,9 +37,12 @@ const LIMITS = {
 
 function text(value, max) {
   if (value === null || value === undefined) return '';
+  // V5 security: redact secret-shaped content BEFORE length capping so a
+  // hostile caller cannot use this endpoint as free secret storage.
+  let out = redactIngestedText(value, null);
   // Strip control characters so a log row can never smuggle terminal escapes or
   // NUL into whatever an operator views the audit trail with.
-  return String(value).replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, max);
+  return out.replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, max);
 }
 
 // Best-effort sliding window, per serverless instance. Vercel may run several

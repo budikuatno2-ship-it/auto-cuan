@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # Reconcile owned jobs with the canonical schedule, preserving unrelated jobs.
+# V5 (BUG-V5-P0-006): canonical schedule now schedules catchup at 00:15 WIB
+# (catchup-0015), OUTSIDE the forbidden window 23:50-00:10. A fresh install of
+# this script therefore produces the corrected schedule automatically.
+# Pre-flight: the canonical file is validated statically (forbidden window +
+# cron/PM2 double-scheduling) before any crontab is touched.
 set -euo pipefail
 REPO="${AUTO_CUAN_REPO:-/home/ubuntu/auto-cuan}"
 RUNNER_DIR="${AUTO_CUAN_RUNNER_DIR:-/home/ubuntu/auto-cuan-runner}"
@@ -16,6 +21,9 @@ if [ "$DRY_RUN" -eq 0 ]; then
   fi
 fi
 mkdir -p "$RUNNER_DIR/backup"
+# Pre-flight static validation (BUG-V5-P0-006 + N13 double-scheduling guard).
+# The canonical file must pass BEFORE any crontab is modified.
+"$NODE_BIN" "$REPO/tools/validate-schedule.js"
 CURRENT="$(mktemp)"
 WORK="$(mktemp)"
 trap 'rm -f "$CURRENT" "$WORK"' EXIT

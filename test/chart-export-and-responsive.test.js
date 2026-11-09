@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // Focused, presentation-only tests for the Chart page + chart PNG export.
 // These are static/vm tests over public/index.html (matching the repo's existing
@@ -269,7 +270,7 @@ test('buildChartExportFilename is deterministic, WIB-based, and sanitized', () =
 // ---- 18. API endpoint count remains exactly 13 ----
 test('api/ still exposes exactly 13 endpoint JS files (no backend added/removed)', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter((f) => f.endsWith('.js'));
-  assert.equal(files.length, 13, 'expected 12 API endpoints, found ' + files.length + ': ' + files.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 // ---- Extra: every inline <script> block still parses (guards against syntax breakage) ----

@@ -1,0 +1,146 @@
+{
+  "conglomerates": [
+    {
+      "group_code": "BARITO_GROUP",
+      "group_aliases": ["BARITO", "KONGLO_BARITO"],
+      "group_name": "Konglomerasi Barito (Prajogo Pangestu)",
+      "owner_label": "Prajogo Pangestu",
+      "members": [
+        { "ticker": "BREN", "stock_name": "Barito Renewables Energy Tbk", "member_type": "ANCHOR", "weight": 0.35 },
+        { "ticker": "BRPT", "stock_name": "Barito Pacific Tbk", "member_type": "ANCHOR", "weight": 0.25 },
+        { "ticker": "CUAN", "stock_name": "Petrindo Jaya Kreasi Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "TPIA", "stock_name": "Chandra Asri Pacific Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "PTRO", "stock_name": "Petrosea Tbk", "member_type": "MEMBER", "weight": 0.05 },
+        { "ticker": "CDIA", "stock_name": "Chandra Daya Investasi Tbk", "member_type": "MEMBER", "weight": 0.05 }
+      ]
+    },
+    {
+      "group_code": "DJARUM_GROUP",
+      "group_aliases": ["DJARUM", "KONGLO_DJARUM"],
+      "group_name": "Konglomerasi Djarum (Budi & Michael Hartono)",
+      "owner_label": "Keluarga Hartono",
+      "members": [
+        { "ticker": "BBCA", "stock_name": "Bank Central Asia Tbk", "member_type": "ANCHOR", "weight": 0.60 },
+        { "ticker": "TOWR", "stock_name": "Sarana Menara Nusantara Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "BELI", "stock_name": "Global Digital Niaga (Blibli) Tbk", "member_type": "MEMBER", "weight": 0.10 },
+        { "ticker": "RANC", "stock_name": "Supra Boga Lestari Tbk", "member_type": "MEMBER", "weight": 0.05 },
+        { "ticker": "DNET", "stock_name": "Indoritel Makmur Internasional Tbk", "member_type": "MEMBER", "weight": 0.05 },
+        { "ticker": "EMTK", "stock_name": "Elang Mahkota Teknologi Tbk", "member_type": "MEMBER", "weight": 0.05 }
+      ]
+    },
+    {
+      "group_code": "SALIM_GROUP",
+      "group_aliases": ["SALIM", "KONGLO_SALIM"],
+      "group_name": "Konglomerasi Salim Group",
+      "owner_label": "Anthoni Salim",
+      "members": [
+        { "ticker": "INDF", "stock_name": "Indofood Sukses Makmur Tbk", "member_type": "ANCHOR", "weight": 0.25 },
+        { "ticker": "ICBP", "stock_name": "Indofood CBP Sukses Makmur Tbk", "member_type": "ANCHOR", "weight": 0.25 },
+        { "ticker": "SIMP", "stock_name": "Salim Ivomas Pratama Tbk", "member_type": "MEMBER", "weight": 0.10 },
+        { "ticker": "LSIP", "stock_name": "PP London Sumatra Indonesia Tbk", "member_type": "MEMBER", "weight": 0.10 },
+        { "ticker": "IMAS", "stock_name": "Indomobil Sukses Internasional Tbk", "member_type": "MEMBER", "weight": 0.08 },
+        { "ticker": "PANI", "stock_name": "Pantai Indah Kapuk Dua Tbk", "member_type": "MEMBER", "weight": 0.08 },
+        { "ticker": "AMMN", "stock_name": "Amman Mineral Internasional Tbk", "member_type": "MEMBER", "weight": 0.05 },
+        { "ticker": "MEDC", "stock_name": "Medco Energi Internasional Tbk", "member_type": "MEMBER", "weight": 0.05 },
+        { "ticker": "CMRY", "stock_name": "Cisarua Mountain Dairy Tbk", "member_type": "MEMBER", "weight": 0.02 },
+        { "ticker": "CSAP", "stock_name": "Catur Sentosa Adiprana Tbk", "member_type": "MEMBER", "weight": 0.02 }
+      ]
+    },
+    {
+      "group_code": "SINARMAS_GROUP",
+      "group_aliases": ["SINARMAS", "KONGLO_SINARMAS"],
+      "group_name": "Konglomerasi Sinarmas Group",
+      "owner_label": "Keluarga Widjaja",
+      "members": [
+        { "ticker": "INKP", "stock_name": "Indah Kiat Pulp & Paper Tbk", "member_type": "ANCHOR", "weight": 0.25 },
+        { "ticker": "TKIM", "stock_name": "Pabrik Kertas Tjiwi Kimia Tbk", "member_type": "ANCHOR", "weight": 0.20 },
+        { "ticker": "DSSA", "stock_name": "Dian Swastatika Sentosa Tbk", "member_type": "MEMBER", "weight": 0.20 },
+        { "ticker": "SMAR", "stock_name": "Smart Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "BSDE", "stock_name": "Bumi Serpong Damai Tbk", "member_type": "MEMBER", "weight": 0.10 },
+        { "ticker": "DUTI", "stock_name": "Duta Pertiwi Tbk", "member_type": "MEMBER", "weight": 0.05 },
+        { "ticker": "SMMA", "stock_name": "Sinarmas Multiartha Tbk", "member_type": "MEMBER", "weight": 0.05 }
+      ]
+    },
+    {
+      "group_code": "ASTRA_GROUP",
+      "group_aliases": ["ASTRA", "KONGLO_ASTRA"],
+      "group_name": "Konglomerasi Astra International",
+      "owner_label": "Jardine Matheson / Publik",
+      "members": [
+        { "ticker": "ASII", "stock_name": "Astra International Tbk", "member_type": "ANCHOR", "weight": 0.45 },
+        { "ticker": "UNTR", "stock_name": "United Tractors Tbk", "member_type": "ANCHOR", "weight": 0.25 },
+        { "ticker": "AALI", "stock_name": "Astra Agro Lestari Tbk", "member_type": "MEMBER", "weight": 0.10 },
+        { "ticker": "AUTO", "stock_name": "Astra Otoparts Tbk", "member_type": "MEMBER", "weight": 0.10 },
+        { "ticker": "ACST", "stock_name": "Acset Indonusa Tbk", "member_type": "MEMBER", "weight": 0.05 },
+        { "ticker": "ASGR", "stock_name": "Astra Graphia Tbk", "member_type": "MEMBER", "weight": 0.05 }
+      ]
+    },
+    {
+      "group_code": "LIPPO_GROUP",
+      "group_aliases": ["LIPPO", "KONGLO_LIPPO"],
+      "group_name": "Konglomerasi Lippo Group",
+      "owner_label": "Keluarga Riady",
+      "members": [
+        { "ticker": "LPKR", "stock_name": "Lippo Karawaci Tbk", "member_type": "ANCHOR", "weight": 0.25 },
+        { "ticker": "LPCK", "stock_name": "Lippo Cikarang Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "SILO", "stock_name": "Siloam International Hospitals Tbk", "member_type": "MEMBER", "weight": 0.20 },
+        { "ticker": "LPPF", "stock_name": "Matahari Department Store Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "LPGI", "stock_name": "Lippo General Insurance Tbk", "member_type": "MEMBER", "weight": 0.05 },
+        { "ticker": "MLPL", "stock_name": "Multipolar Tbk", "member_type": "MEMBER", "weight": 0.10 },
+        { "ticker": "MLPT", "stock_name": "Multipolar Technology Tbk", "member_type": "MEMBER", "weight": 0.05 },
+        { "ticker": "LPIN", "stock_name": "Multi Prima Sejahtera Tbk", "member_type": "MEMBER", "weight": 0.05 }
+      ]
+    },
+    {
+      "group_code": "BUMN_TAMBANG",
+      "group_aliases": ["BUMN_TAMBANG"],
+      "group_name": "Grup BUMN Tambang & Hilirisasi",
+      "owner_label": "MIND ID / NKRI",
+      "members": [
+        { "ticker": "ANTM", "stock_name": "Aneka Tambang Tbk", "member_type": "ANCHOR", "weight": 0.30 },
+        { "ticker": "PTBA", "stock_name": "Bukit Asam Tbk", "member_type": "MEMBER", "weight": 0.25 },
+        { "ticker": "TINS", "stock_name": "Timah Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "INCO", "stock_name": "Vale Indonesia Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "MDKA", "stock_name": "Merdeka Copper Gold Tbk", "member_type": "MEMBER", "weight": 0.15 }
+      ]
+    },
+    {
+      "group_code": "BUMN_BANK",
+      "group_aliases": ["BUMN_BANK"],
+      "group_name": "Grup BUMN Perbankan (Himbara)",
+      "owner_label": "Kementerian BUMN / NKRI",
+      "members": [
+        { "ticker": "BBRI", "stock_name": "Bank Rakyat Indonesia Tbk", "member_type": "ANCHOR", "weight": 0.40 },
+        { "ticker": "BMRI", "stock_name": "Bank Mandiri Tbk", "member_type": "ANCHOR", "weight": 0.35 },
+        { "ticker": "BBNI", "stock_name": "Bank Negara Indonesia Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "BBTN", "stock_name": "Bank Tabungan Negara Tbk", "member_type": "MEMBER", "weight": 0.05 },
+        { "ticker": "BRIS", "stock_name": "Bank Syariah Indonesia Tbk", "member_type": "MEMBER", "weight": 0.05 }
+      ]
+    },
+    {
+      "group_code": "BUMN_TELCO",
+      "group_aliases": ["BUMN_TELCO"],
+      "group_name": "Grup Telekomunikasi & Digital",
+      "owner_label": "Kementerian BUMN / Telkom",
+      "members": [
+        { "ticker": "TLKM", "stock_name": "Telkom Indonesia Tbk", "member_type": "ANCHOR", "weight": 0.50 },
+        { "ticker": "MTEL", "stock_name": "Dayamitra Telekomunikasi Tbk", "member_type": "MEMBER", "weight": 0.20 },
+        { "ticker": "EXCL", "stock_name": "XL Axiata Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "ISAT", "stock_name": "Indosat Ooredoo Hutchison Tbk", "member_type": "MEMBER", "weight": 0.15 }
+      ]
+    },
+    {
+      "group_code": "BUMN_KARYA",
+      "group_aliases": ["BUMN_KARYA"],
+      "group_name": "Grup BUMN Konstruksi & Infrastruktur",
+      "owner_label": "Kementerian BUMN / NKRI",
+      "members": [
+        { "ticker": "WIKA", "stock_name": "Wijaya Karya Tbk", "member_type": "ANCHOR", "weight": 0.30 },
+        { "ticker": "PTPP", "stock_name": "PP (Persero) Tbk", "member_type": "MEMBER", "weight": 0.25 },
+        { "ticker": "ADHI", "stock_name": "Adhi Karya Tbk", "member_type": "MEMBER", "weight": 0.20 },
+        { "ticker": "WSKT", "stock_name": "Waskita Karya Tbk", "member_type": "MEMBER", "weight": 0.15 },
+        { "ticker": "WTON", "stock_name": "Wijaya Karya Beton Tbk", "member_type": "MEMBER", "weight": 0.10 }
+      ]
+    }
+  ]
+}

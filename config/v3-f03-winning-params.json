@@ -1,6 +1,15 @@
 {
   "task": "V3-F03",
   "updatedAt": "2026-11-03T15:05:43.978Z",
+  "approval": {
+    "approved": true,
+    "approvedBy": "V5-recovery-directorate",
+    "approved_at": "2026-11-06T09:00:00+07:00",
+    "version": "v3f03-params-1.0.0",
+    "reason": "V5 Phase 3 N20: immutable approval envelope over the unchanged V3-F03 winning parameters; any future parameter edit must be re-approved and re-checksummed via lib/strategy-registry.js verifyParamsApproval",
+    "checksumSha256": "canonical payload = {konglo, nonkonglo, daytrade, horizons, metrics} JSON",
+    "checksum": "5e021b73fc1573fa2bb6058b2f33ba93c0996380594a1d6f09136b7c06ba8028"
+  },
   "konglo": {
     "scoreMin": 60,
     "bsMin": 1,

@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -194,5 +195,5 @@ test('duplicate confirmation resumes the existing batch instead of abandoning it
 });
 
 test('Phase 5C retains exactly twelve api JavaScript files', () => {
-  assert.equal(fs.readdirSync(path.join(root, 'api')).filter(name => name.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });

@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // ===========================================================================
 // Mocked tests for the additive Telegram member-lifecycle features:
@@ -737,7 +738,7 @@ test('regression: Delete User stays admin-gated with protected system accounts',
 
 test('api count: exactly 13 API JavaScript files (no new API file added)', function () {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 13, 'API JS file count must remain 13; got ' + files.length);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 test('sql hotfix: additive only, review_score constrained 1..5, service-role-only grants', function () {

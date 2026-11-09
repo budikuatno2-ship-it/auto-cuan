@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -79,7 +80,7 @@ test('subscription-status uses the signed identity and returns safe fields only'
 
 test('subscription safety invariants retain 12 API files and a guarded delete flow', () => {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter((name) => name.endsWith('.js'));
-  assert.equal(apiFiles.length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
   const adminUsers = fs.readFileSync(path.join(ROOT, 'api', 'admin-users.js'), 'utf8');
   // Account deletion exists ONLY inside admin-users behind the signed admin
   // session; no other handler may grow a delete action.

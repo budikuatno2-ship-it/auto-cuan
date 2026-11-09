@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // Focused mocked tests for the server-side signed-session admin authentication.
 // Local/mocked only: @supabase/supabase-js is stubbed via Module._load (it is not
@@ -411,6 +412,6 @@ test('existing Chart and Portfolio test files are still present', () => {
 // 23. API endpoint count remains exactly 13 (session helper lives in lib/, not api/)
 test('api/ still exposes exactly 13 endpoint JS files', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 13, 'found: ' + files.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
   assert.ok(fs.existsSync(path.join(ROOT, 'lib', 'admin-session.js')), 'session helper must live under lib/');
 });

@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 /**
  * Focused tests for the duplicate-active-recommendation fix and the enhanced
@@ -378,5 +379,5 @@ test('repeated dry-runs are non-mutating and produce identical dedup output', as
 test('api/ directory still contains exactly 13 endpoint JS files', function () {
   const apiDir = path.resolve(__dirname, '..', 'api');
   const jsFiles = fs.readdirSync(apiDir).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(jsFiles.length, 13, 'API endpoint JS count must remain exactly 13; found: ' + jsFiles.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });

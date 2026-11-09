@@ -73,6 +73,16 @@ test('FIX-01 AntiSlop: Foreign flow functions do not fabricate numbers when data
   assert.equal(par, 0.0, 'Foreign participation must be 0.0, NOT synthetic 28.5');
 
   // 4. getLatestForeignNet with no foreign net
+  //
+  // UPDATED 2026-11-05 (V5 P0-011): the contract tightened from "must not
+  // fabricate a number" to "must return explicit absence". This fixture's
+  // candles carry NO foreign-net field at all, so the honest answer is `null`
+  // (the absence sentinel), not numeric 0 - which is what the old
+  // `value || 0` defect produced and what made absence indistinguishable from
+  // a measured zero. A measured zero is still 0; see
+  // test/v5/volume-unit.test.js for that case.
   const latestNet = Workstation.getLatestForeignNet(candles, []);
-  assert.equal(latestNet, 0, 'Latest foreign net must be 0, not 0.12 * vol * close');
+  assert.equal(latestNet, null, 'Latest foreign net must be null (explicit absence), not 0.12 * vol * close and not the ambiguous 0');
+  const detail = Workstation.getLatestForeignNetDetail(candles, []);
+  assert.equal(detail.status, 'NOT_PUBLISHED', 'absence must carry an explicit status');
 });

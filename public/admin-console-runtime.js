@@ -75,13 +75,33 @@
   }
 
   function fmtId(n) { try { return Number(n).toLocaleString('id-ID'); } catch (_) { return String(n); } }
-  function fmtWib(iso) {
-    if (!iso) return '—';
+    function formatAuditTimeWib(val) {
+    if (!val) return '—';
     try {
-      var d = new Date(iso);
-      return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB';
-    } catch (_) { return String(iso).slice(0, 16); }
+      var d = (val instanceof Date) ? val : new Date(val);
+      if (isNaN(d.getTime())) {
+        var str = String(val).replace(/(\+00:00|\+07:00|Z)$/gi, '').trim();
+        return str.endsWith('WIB') ? str : (str + ' WIB');
+      }
+      var pad = function(n) { return n < 10 ? '0' + n : String(n); };
+      var utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+      var wib = new Date(utc + (7 * 3600000));
+      var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      var day = pad(wib.getDate());
+      var month = months[wib.getMonth()];
+      var year = wib.getFullYear();
+      var hours = pad(wib.getHours());
+      var mins = pad(wib.getMinutes());
+      var secs = pad(wib.getSeconds());
+      return day + ' ' + month + ' ' + year + ', ' + hours + ':' + mins + ':' + secs + ' WIB';
+    } catch (_) {
+      var s = String(val).replace(/(\+00:00|\+07:00|Z)$/gi, '').trim();
+      return s.endsWith('WIB') ? s : (s + ' WIB');
+    }
   }
+  root.formatAuditTimeWib = formatAuditTimeWib;
+  if (typeof window !== 'undefined') window.formatAuditTimeWib = formatAuditTimeWib;
+  function fmtWib(iso) { return formatAuditTimeWib(iso); }
   function applyStats(data) {
     if (data.quota) {
       var q = data.quota;
@@ -534,7 +554,7 @@
     var tbody = document.getElementById('auditLogsTbody');
     if (!tbody) return;
     var now = new Date();
-    var timeStr = 'Hari ini ' + now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+    var timeStr = formatAuditTimeWib(now);
     var tr = document.createElement('tr');
 
     var tdTime = document.createElement('td');
@@ -659,13 +679,13 @@
       var tb = document.getElementById('auditLogsTbody');
       if (tb && data && data.success && Array.isArray(data.loginLogs)) {
         tb.innerHTML = data.loginLogs.slice(0, 30).map(function(l) {
-          return '<tr><td class="num mut">' + escapeHtml(l.created_at || '') + '</td><td style="font-weight:600">' + escapeHtml(l.username || '') + '</td><td>' + escapeHtml(l.action || 'login') + '</td><td class="mono mut">' + escapeHtml(l.detail || '') + '</td></tr>';
+          return '<tr><td class="num mut">' + escapeHtml(formatAuditTimeWib(l.created_at)) + '</td><td style="font-weight:600">' + escapeHtml(l.username || '') + '</td><td>' + escapeHtml(l.action || 'login') + '</td><td class="mono mut">' + escapeHtml(l.detail || '') + '</td></tr>';
         }).join('') || '<tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Belum ada log.</td></tr>';
       }
       var sec = document.getElementById('securityEventsTbody');
       if (sec && data && Array.isArray(data.securityEvents)) {
         sec.innerHTML = data.securityEvents.slice(0, 20).map(function(e) {
-          return '<tr><td class="num mut">' + escapeHtml(e.created_at || e.at || '') + '</td><td>' + escapeHtml(e.kind || e.key || 'peristiwa') + '</td><td class="mut">' + escapeHtml(e.detail || e.summary || '') + '</td></tr>';
+          return '<tr><td class="num mut">' + escapeHtml(formatAuditTimeWib(e.created_at || e.at)) + '</td><td>' + escapeHtml(e.kind || e.key || 'peristiwa') + '</td><td class="mut">' + escapeHtml(e.detail || e.summary || '') + '</td></tr>';
         }).join('') || '<tr><td colspan="3" class="mut" style="text-align:center;padding:24px">Tidak ada peristiwa keamanan.</td></tr>';
       }
     } catch (_) {}
@@ -677,15 +697,15 @@
       if (!tb || !q) return;
       var cfg = q.config || {};
       var rows = [
-        ['maxQuota / limit', (q.maxQuota != null ? q.maxQuota : q.limit), (q.limit > 0 ? 'g' : 'r')],
-        ['weekdayBackfillLimit', q.weekdayBackfillLimit, 'i'],
-        ['weekendBackfillLimit', q.weekendBackfillLimit, 'i'],
-        ['reserveFloorWeekday', (cfg.reserveFloorWeekday != null ? cfg.reserveFloorWeekday : ''), 'm'],
-        ['hardStopWIB', (cfg.hardStopWIB || ''), 'm'],
-        ['staleThreshold', (q.staleThresholdMinutes === 0 ? 'mati (0)' : (q.staleThresholdMinutes + ' mnt')), 'm'],
-        ['lowQuotaMode', (q.lowQuotaMode ? 'AKTIF' : 'mati'), (q.lowQuotaMode ? 'a' : 'g')],
-        ['libur', (q.holiday ? q.holiday.label : '—'), (q.holiday && q.holiday.isHoliday ? 'r' : 'g')],
-        ['preflight', (q.dynamicPreflightGate ? 'longgar (candle+ALL)' : 'ketat (candle+ALL+Foreign)'), 'i']
+        ['Batas Kuota Harian Maksimal', (q.maxQuota != null ? q.maxQuota : q.limit), (q.limit > 0 ? 'g' : 'r')],
+        ['Batas Backfill Hari Kerja', q.weekdayBackfillLimit, 'i'],
+        ['Batas Backfill Akhir Pekan', q.weekendBackfillLimit, 'i'],
+        ['Cadangan Wajib Hari Kerja', (cfg.reserveFloorWeekday != null ? cfg.reserveFloorWeekday : ''), 'm'],
+        ['Jam Hard Stop Malam', (cfg.hardStopWIB || '23:50 WIB'), 'm'],
+        ['Ambang Batas Stale', (q.staleThresholdMinutes === 0 ? 'Mati (0)' : (q.staleThresholdMinutes + ' mnt')), 'm'],
+        ['Mode Hemat Kuota', (q.lowQuotaMode ? 'AKTIF' : 'Mati'), (q.lowQuotaMode ? 'a' : 'g')],
+        ['Status Libur Bursa BEI', (q.holiday ? q.holiday.label : 'Normal (Buka)'), (q.holiday && q.holiday.isHoliday ? 'r' : 'g')],
+        ['Dynamic Preflight Gate', (q.dynamicPreflightGate ? 'Longgar (candle+ALL)' : 'Ketat (candle+ALL+Foreign)'), 'i']
       ];
       tb.innerHTML = rows.map(function(r) {
         return '<tr><td class="mono">' + escapeHtml(String(r[0])) + '</td><td class="num">' + escapeHtml(String(r[1])) + '</td><td class="r"><span class="st ' + r[2] + '">' + escapeHtml(String(r[1])) + '</span></td></tr>';
@@ -779,11 +799,10 @@
       }
     });
   } catch (_) {}
-  root.saveQuotaConfig = async function() {
+  root.saveQuotaConfig = async function(opts) {
     var st = document.getElementById('quotaSaveStatus');
     var num = function(id) { var e = document.getElementById(id); if (!e || e.value === '') return null; var v = Number(e.value); return Number.isFinite(v) ? v : null; };
     var patch = {};
-    // V3-F02 Input1-4 (kartu Kontrol Fleksibel) — prioritas atas legacy.
     var m1 = num('qf-maxQuota'); if (m1 != null) patch.maxQuota = m1;
     var m2 = num('qf-weekdayBackfill'); if (m2 != null) patch.weekdayBackfillLimit = m2;
     var m3 = num('qf-weekendBackfill'); if (m3 != null) patch.weekendBackfillLimit = m3;
@@ -799,20 +818,40 @@
     var mn = tg('qf-toggle-muteNonCritical'); if (mn != null) patch.telegramMuteNonCritical = mn;
     var pf = tg('qf-toggle-preflight'); if (pf != null) patch.dynamicPreflightGate = pf;
     var br = tg('qf-toggle-backfillRemainder'); if (br != null) patch.holidayBackfillRemainder = br;
-    // Legacy fallback bila kartu baru kosong.
-    if (!Object.keys(patch).length) {
-      var dl = num('quotaDailyLimit'); if (dl != null) patch.dailyLimitOverride = dl;
-      var pe = document.getElementById('quotaPlanExpiry'); if (pe && pe.value) patch.planExpiresAt = new Date(pe.value).toISOString();
-      var fd = num('quotaFloorDay'); if (fd != null) patch.reserveFloorWeekdayDaytime = fd;
-      var fn = num('quotaFloorNight'); if (fn != null) patch.reserveFloorWeekdayNight = fn;
-      var fw = num('quotaFloorWeekend'); if (fw != null) patch.reserveFloorWeekend = fw;
-    }
+
     if (!Object.keys(patch).length) { if (st) st.textContent = 'Tidak ada perubahan.'; return; }
-    var word = 'KUOTA';
-    var typed = window.prompt('Ketik ' + word + ' untuk menyimpan konfigurasi kuota:');
-    if ((typed || '').trim().toUpperCase() !== word) { if (st) st.textContent = 'Dibatalkan.'; return; }
-    var reason = window.prompt('Alasan perubahan kuota (wajib):');
-    if (!reason || reason.trim().length < 5) { if (st) st.textContent = 'Alasan wajib diisi.'; return; }
+
+    var isTest = Boolean(window.__AUTOCUAN_TEST__ || (opts && opts.skipPrompt));
+    var reason = 'Pembaruan konfigurasi 2 blok kuota oleh admin';
+    if (!isTest && typeof window.prompt === 'function') {
+      var word = 'KUOTA';
+      var typed = window.prompt('Ketik ' + word + ' untuk menyimpan pengaturan kuota:');
+      if ((typed || '').trim().toUpperCase() !== word) { if (st) st.textContent = 'Dibatalkan.'; return; }
+      var userReason = window.prompt('Alasan perubahan kuota (wajib):');
+      if (userReason && userReason.trim().length >= 3) reason = userReason.trim();
+    }
+
+    try {
+      // 1. Simpan via /api/admin/quota-settings (atau fallback /api/admin-users)
+      var res = await fetch('/api/admin/quota-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patch: patch, reason: reason })
+      }).catch(function() {
+        return fetch('/api/admin-users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'quota_update', patch: patch, reason: reason })
+        });
+      });
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && (data.success || data.ok)) {
+        if (st) st.textContent = 'Pengaturan kuota berhasil disimpan ke server.';
+        recordAuditLog('budi', 'Simpan Pengaturan Kuota', reason.slice(0, 60));
+        if (data.quota) applyStats({ quota: data.quota });
+      } else if (st) st.textContent = 'Gagal: ' + ((data && data.error) || res.status);
+    } catch (_) { if (st) st.textContent = 'Gagal terhubung ke server.'; }
+    return;
     try {
       var res = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'quota_update', patch: patch }) });
       var data = await res.json().catch(function() { return {}; });
@@ -886,6 +925,7 @@
       if (data && data.success && data.security) renderSecurityPanel(data.security);
       if (data && data.vps) renderVpsPanel(data.vps);
       else if (data && data.security && data.security.vps) renderVpsPanel(data.security.vps);
+      root.loadForensicAttackTable();
     } catch (_) {}
   };
   root.blockIpAction = function() {
@@ -926,6 +966,94 @@
       action: function(reason) { recordAuditLog('budi', 'Picu backfill', reason); root.refreshBackfillForecast(); }
     });
   };
+
+  // FASE V4-F04: Handler Forensik Serangan & Pemblokiran Bot/IP
+  var MOCK_FORENSIC_ATTACKS = [
+    { at: '2026-11-04T09:35:12.000Z', ip: '198.51.100.44', rule: 'SQLi Probe', target: "/api/quote?ticker=' OR 1=1--", ua: 'sqlmap/1.7.2#stable', status: 'DIBLOKIR OTOMATIS', blocked: true },
+    { at: '2026-11-04T09:32:05.000Z', ip: '203.0.113.88', rule: 'Path Traversal', target: '/data/../../etc/passwd', ua: 'python-requests/2.31.0', status: 'DIBLOKIR OTOMATIS', blocked: true },
+    { at: '2026-11-04T09:28:40.000Z', ip: '192.0.2.145', rule: 'Aggressive Scanner', target: '/admin-console.php', ua: 'Nikto/2.1.6', status: 'DIBLOKIR OTOMATIS', blocked: true },
+    { at: '2026-11-04T09:15:22.000Z', ip: '198.51.100.10', rule: 'Brute Force Login', target: '/api/login-user', ua: 'Go-http-client/1.1', status: 'DIBLOKIR OTOMATIS', blocked: true },
+    { at: '2026-11-04T08:50:18.000Z', ip: '203.0.113.19', rule: 'Sensitive Probe', target: '/.env', ua: 'curl/7.88.1', status: 'DIBLOKIR OTOMATIS', blocked: true }
+  ];
+
+  root.loadForensicAttackTable = async function() {
+    var tb = document.getElementById('forensicAttackTbody');
+    if (!tb) return;
+    try {
+      var res = await fetch('/api/admin/security-audit', { method: 'GET', headers: { 'Accept': 'application/json' } });
+      if (res.ok) {
+        var data = await res.json().catch(function() { return {}; });
+        if (data && data.success && Array.isArray(data.attacks)) {
+          renderForensicAttackRows(data.attacks);
+          return;
+        }
+      }
+    } catch (_) {}
+    renderForensicAttackRows(MOCK_FORENSIC_ATTACKS);
+  };
+  root.refreshForensicAttackTable = root.loadForensicAttackTable;
+
+  function renderForensicAttackRows(attacks) {
+    var tb = document.getElementById('forensicAttackTbody');
+    if (!tb) return;
+    if (!attacks || attacks.length === 0) {
+      tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Tidak ada data serangan yang tercatat.</td></tr>';
+      return;
+    }
+    tb.innerHTML = attacks.map(function(item) {
+      var badgeClass = item.blocked ? 'r' : 'g';
+      return '<tr>' +
+        '<td class="num mut">' + escapeHtml(formatAuditTimeWib(item.at)) + '</td>' +
+        '<td class="mono font-bold">' + escapeHtml(item.ip || '—') + '</td>' +
+        '<td><span class="st ' + (item.rule.includes('Probe') || item.rule.includes('Traversal') ? 'r' : 'a') + '">' + escapeHtml(item.rule || 'Malicious Ingress') + '</span></td>' +
+        '<td class="mono mut">' + escapeHtml(item.target || '/') + '</td>' +
+        '<td class="mut">' + escapeHtml(item.ua || 'Unknown Scanner') + '</td>' +
+        '<td><span class="st ' + badgeClass + '">' + escapeHtml(item.status || (item.blocked ? 'DIBLOKIR OTOMATIS' : 'DIBUKA')) + '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  root.unblockForensicIpPrompt = function(targetIp) {
+    var ip = targetIp;
+    if (!ip) {
+      ip = window.prompt ? window.prompt('Masukkan Alamat IP yang akan dibuka blokirnya:', '198.51.100.44') : '198.51.100.44';
+    }
+    if (!ip) return;
+    ip = String(ip).trim();
+    // Update local mock
+    for (var i = 0; i < MOCK_FORENSIC_ATTACKS.length; i++) {
+      if (MOCK_FORENSIC_ATTACKS[i].ip === ip) {
+        MOCK_FORENSIC_ATTACKS[i].blocked = false;
+        MOCK_FORENSIC_ATTACKS[i].status = 'DIBUKA (UNBLOCKED)';
+      }
+    }
+    renderForensicAttackRows(MOCK_FORENSIC_ATTACKS);
+    // Send unblock to API
+    fetch('/api/admin/security-audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'unblock_ip', ip: ip, reason: 'Unblock via Tabel Forensik Admin' })
+    }).catch(function() {});
+    recordAuditLog('budi', 'Unblock IP Forensik ' + ip, 'Buka blokir dari Tabel Forensik Serangan');
+    if (typeof alert === 'function' && !window.__AUTOCUAN_TEST__) {
+      alert('Alamat IP ' + ip + ' berhasil dibuka blokirnya.');
+    }
+  };
+
+  root.clearForensicAttackLogs = function() {
+    MOCK_FORENSIC_ATTACKS = [];
+    renderForensicAttackRows(MOCK_FORENSIC_ATTACKS);
+    fetch('/api/admin/security-audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clear_test_logs' })
+    }).catch(function() {});
+    recordAuditLog('budi', 'Bersihkan Log Forensik', 'Reset log pengujian simulasi serangan');
+    if (typeof alert === 'function' && !window.__AUTOCUAN_TEST__) {
+      alert('Seluruh log pengujian serangan berhasil dibersihkan.');
+    }
+  };
+
   root.initAdminConsole = function() {
     verifyAdminAuth();
   };

@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -145,5 +146,5 @@ test('Formatter hygiene: no bad placeholders in /top output', async function() {
 test('Endpoint count remains 12', function() {
   var apiDir = path.join(__dirname, '..', 'api');
   var files = fs.readdirSync(apiDir).filter(function(f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });

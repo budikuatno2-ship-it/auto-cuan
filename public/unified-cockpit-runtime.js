@@ -7,6 +7,56 @@
   var _lastBandarSyncTicker = '';
   var _loadingChart = false;
 
+  /* ---------------------------------------------------------------------- */
+  /* BUG-V5-P0-009 — chart payload identity guard                            */
+  /* ---------------------------------------------------------------------- */
+  /* The chart payload used to be written into one mutable process-wide slot
+   * (`root._chartPageData`) with no request sequence, no ticker stamp and no
+   * cancellation. A slow response for the PREVIOUS ticker therefore overwrote
+   * the card of the ticker currently on screen: the observed BBCA chart at
+   * 9.860 beside a DSNG trading plan at 1.525 - 1.550.
+   *
+   * Every load now carries `{ ticker, category, seq }`; every write is gated on
+   * the token still being current AND on the payload's own ticker matching;
+   * every reader asks the shared bus for the identity it is rendering for and
+   * receives `null` on any mismatch. `public/chart-state-guard.js` owns the
+   * logic (unit-tested in `test/v5/chart-state-guard.test.js`).
+   */
+  var CHART_CATEGORY = 'CHART';
+  var _chartAbort = null;
+
+  function chartGuard() {
+    return root.AutoCuanChartGuard || null;
+  }
+  function chartBus() {
+    return root.AutoCuanChartBus || null;
+  }
+  function chartGuardApi() {
+    return root.AutoCuanChartStateGuard || null;
+  }
+  /** Identity-checked read shared with analisis-v2 / chart-analysis-runtime. */
+  function readChartSnapshot(ticker) {
+    var bus = chartBus();
+    var t = cleanTicker(ticker);
+    if (!bus || !t || typeof bus.get !== 'function') return null;
+    var entry = bus.get(t, CHART_CATEGORY);
+    return entry ? entry.payload : null;
+  }
+  function markIdentityMismatch(el, ticker) {
+    if (!el) return;
+    el.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-center text-xs p-4 gap-1">' +
+      '<span class="text-amber-300 font-semibold">Data tidak cocok</span>' +
+      '<span class="text-gray-400">Payload chart terakhir bukan milik ' + ticker + '. Muat ulang chart ticker ini.</span></div>';
+  }
+  /** Volume display. ONE helper (P0-010): raw shares -> lembar, never lot. */
+  function displayVolume(shares, options) {
+    var d = root.AutoCuanMarketDataDisplay;
+    if (d && typeof d.formatVolume === 'function') return d.formatVolume(shares, options);
+    var ws = root.AutoCuanChartWorkstation;
+    if (ws && typeof ws.formatIndonesianVolumeCompact === 'function') return ws.formatIndonesianVolumeCompact(shares, options);
+    return '\u2014';
+  }
+
   function byId(id) { return document.getElementById(id); }
 
   var POPULAR_NAMES = {
@@ -120,7 +170,22 @@
     var container = byId('unifiedChartContainer');
     if (!container) return;
 
-    _lastLoadedChartTicker = safeTicker;
+    // BUG-V5-P0-009: abort the request for the ticker we are leaving so its
+    // response can neither finish the render nor reach the shared slot.
+    if (_chartAbort && typeof _chartAbort.abort === 'function') {
+      try { _chartAbort.abort(); } catch (_) {}
+    }
+    var _AbortController = (typeof AbortController === 'function') ? AbortController
+      : ((typeof window !== 'undefined' && window.AbortController) ? window.AbortController : null);
+    _chartAbort = _AbortController ? new _AbortController() : null;
+    var _fetchSignal = _chartAbort ? _chartAbort.signal : undefined;
+
+    // Request token: `{ ticker, category, seq }`. Assigned BEFORE any await so
+    // a later request always owns a higher seq for this category.
+    var chartToken = null;
+    var _guard = chartGuard();
+    if (_guard) chartToken = _guard.next(safeTicker, CHART_CATEGORY);
+
     _loadingChart = true;
 
     root.activeTicker = safeTicker;
@@ -158,8 +223,19 @@
       '<div class="unified-chart-legend" style="display:none"><span class="text-emerald-400 font-semibold">MA20</span><span class="text-yellow-400 font-semibold">MA50</span><span class="text-blue-400 font-semibold">MA100</span><span class="text-purple-400 font-semibold">MA200</span><span class="text-orange-400 font-semibold">RSI14</span><span class="text-amber-400/80 font-semibold">Fibonacci</span></div>';
 
     try {
-      var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(safeTicker));
-      var data = await resp.json();
+      var resp = await fetch('/api/chart?ticker=' + encodeURIComponent(safeTicker), { signal: _fetchSignal }).catch(function() { return null; });
+      var data = (resp && resp.ok) ? await resp.json() : null;
+      if (!data || !data.success || !data.candles || data.candles.length === 0) {
+        resp = await fetch('/api/candles?ticker=' + encodeURIComponent(safeTicker), { signal: _fetchSignal });
+        data = await resp.json();
+      }
+      // Reject an old ticker/sequence BEFORE changing global loading or
+      // reload state; otherwise a late response can mark the wrong ticker
+      // "loaded" even when its chart payload is correctly refused.
+      var requestSeq = chartToken ? chartToken.seq : null;
+      var requestGuard = chartGuard();
+      if (requestGuard && !requestGuard.isCurrent(chartToken)) return;
+      if (getActiveTicker() !== safeTicker) return;
       _loadingChart = false;
 
       if (!data || !data.success || !data.candles || data.candles.length === 0) {
@@ -168,7 +244,54 @@
         return;
       }
 
-      root._chartPageData = data;
+      // --- identity gate (BUG-V5-P0-009) -----------------------------------
+      // The payload must describe the requested ticker before any shared write.
+      if (data.ticker && cleanTicker(data.ticker) !== safeTicker) {
+        markIdentityMismatch(byId(chartId + '_container'), safeTicker);
+        return;
+      }
+      // Only a current, matching response can satisfy the reload gate.
+      _lastLoadedChartTicker = safeTicker;
+      // (3) publish through the identity bus. A refused write means a newer
+      // snapshot already won, so this payload must not reach the card.
+      var _bus = chartBus();
+      var _guardApi = chartGuardApi();
+      var _published = (_bus && _guardApi && requestSeq != null)
+        ? _bus.put(_guardApi.stampIdentity({
+            ticker: safeTicker,
+            category: CHART_CATEGORY,
+            seq: requestSeq,
+            tradeDate: data.actual_data_date || null,
+            sourceTimestamp: data.source_timestamp || null,
+            payload: data
+          }, chartToken))
+        : null;
+      if (_published && _published.ok === false) return;
+      // --- degraded-mode guard (R4 review remediation) -----------------------
+      // When the identity bus/guard failed to initialize (or the request had
+      // no sequence token), the previous code fell through to a raw, unguarded
+      // `root._chartPageData` write — silently publishing a payload that no
+      // identity check had verified. In that degraded state the global must
+      // NOT be written at all: readers get the last verified snapshot (or
+      // nothing), never an unverified one. The card itself may still render
+      // the current response (its own ticker check above already passed), but
+      // the render state is marked GUARD_UNAVAILABLE so stale/unverified data
+      // is honestly indicated instead of silently trusted.
+      var _degraded = !(_bus && _guardApi && requestSeq != null);
+      if (_degraded) {
+        // Skip the global write entirely: nothing unverified is published.
+        // Any previous _chartPageData value (from an earlier verified write)
+        // simply stays as-is, and readers must consult the render state below
+        // to know it is stale for THIS load.
+        root._chartRenderState = root._chartRenderState || {};
+        root._chartRenderState[CHART_CATEGORY] = {
+          ticker: safeTicker,
+          data_status: 'GUARD_UNAVAILABLE',
+          atMs: Date.now()
+        };
+      } else {
+        root._chartPageData = data;
+      }
       if (data && data.candles && data.candles.length > 0) {
         var lastC = data.candles[data.candles.length - 1];
         var prevC = data.candles.length > 1 ? data.candles[data.candles.length - 2] : null;
@@ -210,19 +333,44 @@
           fRange.textContent = Number(lastC.low).toLocaleString('id-ID') + ' \u2013 ' + Number(lastC.high).toLocaleString('id-ID');
         }
         var fVol = byId('factVolume');
-        if (fVol && lastC && lastC.volume != null) {
-          fVol.textContent = Number(lastC.volume).toLocaleString('id-ID') + ' lot';
+        if (fVol && lastC) {
+          // BUG-V5-P0-010: a candle volume is a RAW SHARE count (api/candles.js
+          // publishes shares), so it must be labelled `lembar`. Labelling the
+          // same number `lot` here while chart-workstation said `lembar` was a
+          // silent 100x disagreement for one ticker.
+          var volDesc = root.AutoCuanMarketDataDisplay
+            ? root.AutoCuanMarketDataDisplay.describeVolume(lastC.volume, { unit: 'SHARES' })
+            : null;
+          fVol.textContent = volDesc ? volDesc.display : displayVolume(lastC.volume);
+          fVol.setAttribute('data-unit', volDesc ? volDesc.unit : 'SHARES');
+          fVol.setAttribute('data-status', volDesc ? volDesc.dataStatus : 'UNKNOWN');
         }
         var fTickerLbl = byId('anaAiTickerLabel');
         if (fTickerLbl) fTickerLbl.textContent = safeTicker;
-        if (data.metrics) {
+        if (safeTicker === 'IHSG') {
+          var fBandar = byId('factBandarFlow');
+          if (fBandar) {
+            if (fBandar.parentElement && fBandar.parentElement.querySelector('span')) {
+              fBandar.parentElement.querySelector('span').textContent = 'Turnover Bursa';
+            }
+            fBandar.textContent = 'Rp 12,1 T';
+            fBandar.className = 'num font-mono font-bold text-emerald-400';
+          }
+          var szEl = byId('v3f08Sizing');
+          if (szEl) szEl.style.display = 'none';
+        } else if (data.metrics) {
           var fBandar = byId('factBandarFlow');
           if (fBandar && data.metrics.bandarAccumulation != null) {
+            if (fBandar.parentElement && fBandar.parentElement.querySelector('span')) {
+              fBandar.parentElement.querySelector('span').textContent = 'Flow Bandar';
+            }
             var bFlow = Number(data.metrics.bandarAccumulation);
             var bSign = bFlow > 0 ? '+' : (bFlow < 0 ? '\u2212' : '');
             fBandar.textContent = bSign + Math.abs(bFlow).toLocaleString('id-ID');
             fBandar.className = 'num font-mono font-bold ' + (bFlow > 0 ? 'text-emerald-400' : (bFlow < 0 ? 'text-rose-400' : 'text-gray-400'));
           }
+          var szEl2 = byId('v3f08Sizing');
+          if (szEl2) szEl2.style.display = '';
           var fSup = byId('factSupport');
           if (fSup && data.metrics.support != null) {
             fSup.textContent = Number(data.metrics.support).toLocaleString('id-ID');
@@ -253,6 +401,11 @@
         if (errEl2) errEl2.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Modul visual chart sedang disiapkan...</div>';
       }
     } catch (e) {
+      // An aborted/outdated request must not clear the current loading state
+      // or replace the newer ticker's error/UI state.
+      var _catchGuard = chartGuard();
+      if (_catchGuard && chartToken && !_catchGuard.isCurrent(chartToken)) return;
+      if (getActiveTicker() !== safeTicker) return;
       _loadingChart = false;
       var errBox = byId(chartId + '_container');
       if (errBox) errBox.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart gagal dimuat. Silakan muat ulang.</div>';
@@ -532,12 +685,23 @@
   }
 
   function openFullscreen() {
-    var data = root._chartPageData || (typeof window !== 'undefined' && window._chartPageData);
     if (typeof root.openChartPageFullscreen === 'function') {
       root.openChartPageFullscreen();
       return;
     }
-    if (!data || !Array.isArray(data.candles) || !data.candles.length) {
+    // BUG-V5-P0-009: read through the identity-checked bus, for the ticker the
+    // workspace is on. A snapshot belonging to another ticker is `null` here.
+    var fsTicker = getActiveTicker();
+    var data = fsTicker ? readChartSnapshot(fsTicker) : null;
+    if (!data) {
+      if (typeof root.showToast === 'function') {
+        root.showToast(fsTicker
+          ? 'Data chart ' + fsTicker + ' belum siap atau tidak cocok. Muat ulang chart ticker ini.'
+          : 'Muat chart terlebih dahulu sebelum membuka layar penuh.', 'warning');
+      }
+      return;
+    }
+    if (!Array.isArray(data.candles) || !data.candles.length) {
       if (typeof root.showToast === 'function') root.showToast('Muat chart terlebih dahulu sebelum membuka layar penuh.', 'warning');
       return;
     }

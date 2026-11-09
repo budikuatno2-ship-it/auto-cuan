@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 /**
  * Focused tests for the non-mutating dry-run mode of the shared Telegram
@@ -472,5 +473,5 @@ test('dry-run diagnostics surface event-order ambiguity without creating a senda
 test('api/ directory still contains exactly 13 endpoint JS files', function () {
   const apiDir = path.resolve(__dirname, '..', 'api');
   const jsFiles = fs.readdirSync(apiDir).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(jsFiles.length, 13, 'API endpoint JS count must remain exactly 13; found: ' + jsFiles.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });

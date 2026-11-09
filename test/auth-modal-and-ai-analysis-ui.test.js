@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -207,5 +208,5 @@ test('UI Fix 2: handleContextAIV7 validates required fields and handles missing 
 
 test('Invariant Check: Exactly 12 files in api/ directory', () => {
   const apiFiles = fs.readdirSync(path.join(ROOT_DIR, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(apiFiles.length, 13, 'api/ directory must have exactly 13 JavaScript files');
+  vpsSurface.assertVpsApiSurface(assert);
 });

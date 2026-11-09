@@ -206,37 +206,70 @@ async function loadTrackRecord(force) {
     }
 }
 
+// V5 P0-003: an absent figure must render '—', never a fabricated 0 / '0.0%'.
+//
+// The server now honestly reports `null` for anything the backtest source does
+// not contain (per-trade hit counts, SL rate, TP2 rate). The previous renderer
+// used `sum.x || 0` and `|| '0.0%'`, which converted every absence into a
+// confident zero — a client-side re-fabrication of exactly the class of defect
+// this package removes.
+function trNum(value, suffix) {
+    if (value == null || value === '' || (typeof value === 'number' && !isFinite(value))) return '—';
+    return String(value) + (suffix || '');
+}
+
 function renderTrackRecordUI(data) {
     if (!data) return;
     var sum = data.summary || {};
+    var unavailable = sum.unavailable_reason || null;
 
     // 1. Summary Cards
     var elTotal = document.getElementById('trTotalSignals');
-    if (elTotal) elTotal.textContent = (sum.total_signals || 0) + ' Sinyal';
+    if (elTotal) {
+        // The backtest file has no per-trade ledger, so a "total sinyal" count
+        // does not exist. Show the real ticker/trade count instead of a zero.
+        elTotal.textContent = sum.total_trades_simulated != null
+            ? trNum(sum.total_trades_simulated, ' Trade')
+            : '—';
+    }
 
     var elTotalSub = document.getElementById('trTotalSignalsSub');
-    if (elTotalSub) elTotalSub.textContent = (sum.total_resolved || 0) + ' selesai · ' + ((sum.running_signals || 0) + (sum.waiting_signals || 0)) + ' aktif';
+    if (elTotalSub) {
+        elTotalSub.textContent = sum.total_tickers_tested != null
+            ? trNum(sum.total_tickers_tested, ' ticker diuji · ') + trNum(sum.qualified_tickers, ' sampel memadai')
+            : (unavailable ? 'Tidak tersedia di sumber' : '—');
+    }
 
     var elWr1 = document.getElementById('trWinRateTp1');
-    if (elWr1) elWr1.textContent = sum.win_rate_tp1 || '0.0%';
+    if (elWr1) {
+        elWr1.textContent = sum.win_rate_pct != null
+            ? trNum(sum.win_rate_pct, '%')
+            : (sum.win_rate_tp1 != null ? trNum(sum.win_rate_tp1, '%') : '—');
+    }
 
     var elTp1Sub = document.getElementById('trTp1HitsSub');
     if (elTp1Sub) {
-        var resolvedCount = sum.total_resolved != null ? sum.total_resolved : (sum.resolved_win_rate || '115');
-        elTp1Sub.textContent = (sum.tp1_hits || 0) + ' dari ' + (sum.total_signals || 0) + ' total sinyal (selesai: ' + resolvedCount + ')';
+        // Hit count is genuinely unknown; the weighted rate's basis is not.
+        elTp1Sub.textContent = sum.tp1_hits != null
+            ? trNum(sum.tp1_hits) + ' dari ' + trNum(sum.total_signals) + ' total sinyal'
+            : 'Rata-rata tertimbang jumlah trade' + (sum.min_win_rate_sample != null ? ' · min sampel ' + sum.min_win_rate_sample : '');
     }
 
     var elWr2 = document.getElementById('trWinRateTp2');
-    if (elWr2) elWr2.textContent = sum.win_rate_tp2 || '0.0%';
+    if (elWr2) elWr2.textContent = sum.win_rate_tp2 != null ? trNum(sum.win_rate_tp2, '%') : '—';
 
     var elTp2Sub = document.getElementById('trTp2HitsSub');
-    if (elTp2Sub) elTp2Sub.textContent = (sum.tp2_hits || 0) + ' target maksimal';
+    if (elTp2Sub) elTp2Sub.textContent = sum.tp2_hits != null
+        ? trNum(sum.tp2_hits) + ' target maksimal'
+        : 'Tidak ada kolom outcome TP2 di sumber';
 
     var elSl = document.getElementById('trSlRate');
-    if (elSl) elSl.textContent = sum.sl_rate || '0.0%';
+    if (elSl) elSl.textContent = sum.sl_rate != null ? trNum(sum.sl_rate, '%') : '—';
 
     var elSlSub = document.getElementById('trSlHitsSub');
-    if (elSlSub) elSlSub.textContent = (sum.sl_hits || 0) + ' dari ' + (sum.total_signals || 0) + ' total sinyal';
+    if (elSlSub) elSlSub.textContent = sum.sl_hits != null
+        ? trNum(sum.sl_hits) + ' dari ' + trNum(sum.total_signals) + ' total sinyal'
+        : 'Tidak ada kolom outcome SL di sumber';
 
     var elBestGain = document.getElementById('trBestGain');
     var elBestGainSub = document.getElementById('trBestGainSub');
@@ -302,8 +335,19 @@ function renderTrackRecordUI(data) {
             var c = cats[key];
             if (!c) return;
             var m = meta[key] || { label: c.label || key, description: '' };
-            var wrTp1Text = c.win_rate_tp1 != null ? c.win_rate_tp1 : (c.total ? ((c.tp1_hits / c.total) * 100).toFixed(1) + '%' : '-');
-            var slRateText = c.sl_rate != null ? c.sl_rate : (c.total ? ((c.sl_hits / c.total) * 100).toFixed(1) + '%' : '-');
+            // Unknown is '—'. `c.total` / `c.tp1_hits` are legitimately null when
+            // the source does not classify tickers into this channel, so the
+            // previous `((c.tp1_hits / c.total) * 100)` produced NaN.
+            var wrTp1Text = c.win_rate_tp1 != null
+                ? trNum(c.win_rate_tp1, '%')
+                : ((c.total != null && c.tp1_hits != null)
+                    ? ((c.tp1_hits / c.total) * 100).toFixed(1) + '%'
+                    : '—');
+            var slRateText = c.sl_rate != null
+                ? trNum(c.sl_rate, '%')
+                : ((c.total != null && c.sl_hits != null)
+                    ? ((c.sl_hits / c.total) * 100).toFixed(1) + '%'
+                    : '—');
             html += '<div class="ac-surface-bounded p-3 flex flex-col justify-between hover:border-[var(--ac-primary,#10b981)] transition cursor-pointer" onclick="filterTrackRecordCategory(\'' + key + '\')">' +
                 '<div>' +
                     '<div class="flex items-center justify-between gap-2 mb-1">' +
@@ -315,8 +359,8 @@ function renderTrackRecordUI(data) {
                     '<p class="text-[11px] text-[var(--ac-text-secondary,#9ca3af)] line-clamp-1 mb-2">' + (m.description || '') + '</p>' +
                 '</div>' +
                 '<div class="grid grid-cols-3 gap-1 pt-2 border-t border-[var(--ac-line-hairline,#374151)] text-center text-[10px]">' +
-                    '<div><span class="text-[var(--ac-text-muted,#6b7280)] block">Total</span><span class="font-bold text-[var(--text-primary,#e5e7eb)] text-xs font-mono tabular-nums lining-nums">' + c.total + '</span></div>' +
-                    '<div><span class="text-[var(--ac-text-muted,#6b7280)] block">TP1/TP2</span><span class="font-bold text-emerald-400 text-xs font-mono tabular-nums lining-nums">' + c.tp1_hits + '</span></div>' +
+                    '<div><span class="text-[var(--ac-text-muted,#6b7280)] block">Total</span><span class="font-bold text-[var(--text-primary,#e5e7eb)] text-xs font-mono tabular-nums lining-nums">' + trNum(c.total) + '</span></div>' +
+                    '<div><span class="text-[var(--ac-text-muted,#6b7280)] block">TP1/TP2</span><span class="font-bold text-emerald-400 text-xs font-mono tabular-nums lining-nums">' + trNum(c.tp1_hits) + '</span></div>' +
                     '<div><span class="text-[var(--ac-text-muted,#6b7280)] block">SL Rate</span><span class="font-bold text-red-400 text-xs font-mono tabular-nums lining-nums">' + slRateText + '</span></div>' +
 
                 '</div>' +
@@ -364,8 +408,37 @@ function getOutcomeClass(outcome) {
     return 'tr-status-default';
 }
 
+/**
+ * V5 P0-003: honest label for a row whose record carries no trade outcome.
+ *
+ * `api/track-record.js` no longer invents a per-trade status (it previously
+ * cycled RUNNING / WAITING_ENTRY / SL_HIT / TP1_HIT by array index). A backtest
+ * statistic therefore arrives with `status: null` and
+ * `record_type: 'BACKTEST_STATISTIC'`. Labelling that "Status belum dikenali"
+ * would read as a data error, so it is named for what it is.
+ */
 function formatOutcomeLabel(s) {
     if (!s) return 'Status belum dikenali';
+
+    // No outcome asserted by the source => say so, do not imply a defect.
+    if (s.record_type === 'BACKTEST_STATISTIC' && s.outcome == null && s.status == null) {
+        return 'Statistik backtest (tanpa outcome per-trade)';
+    }
+
+    // Server readiness verdicts that are not trade outcomes.
+    var readinessLabels = {
+        READY: 'Siap Entry',
+        WATCH: 'Pantau',
+        WAITING_CONFIRMATION: 'Menunggu Konfirmasi',
+        INSUFFICIENT_DATA: 'Data Tidak Cukup',
+        EXPIRED: 'Kedaluwarsa',
+        REJECTED: 'Ditolak'
+    };
+    var verdictKey = String(s.readiness_status || '').toUpperCase();
+    if (readinessLabels[verdictKey] && s.outcome == null) {
+        return readinessLabels[verdictKey];
+    }
+
     var isExpiredSignal = s.outcome === 'EXPIRED' || s.status === 'EXPIRED' || s.status_label === 'Sinyal Kedaluwarsa' || s.status_label === 'Expired';
     if (isExpiredSignal) return 'Sinyal Kedaluwarsa';
 

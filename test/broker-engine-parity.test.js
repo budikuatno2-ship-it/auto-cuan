@@ -5,17 +5,19 @@ const assert = require('node:assert/strict');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const bandarmologiRuntime = require('../public/bandarmologi-runtime');
 
-test('Engine Data Parity: normalizeBrokerValue handles trillion scale anomalies unconditionally', () => {
-  // 4.26 Triliun artifact without avgPrice/vol
+test('Engine Data Parity: normalizeBrokerValue returns source values verbatim (no silent /100 rewrite)', () => {
+  // BUG-V5-P8: a measured broker value must never be rewritten. The /100
+  // "100x artifact" heuristic was removed; a unit-error is now quarantined by the
+  // backend via data_status instead of being silently divided here.
   const trillionArtifact = -4260000000000;
   const normalized = bandarmologiRuntime.normalizeBrokerValue(trillionArtifact);
-  assert.equal(normalized, -42600000000, 'Must unconditionally divide >= 5e11 by 100 into Miliar scale');
+  assert.equal(normalized, -4260000000000, '>= 5e11 must stay verbatim (no /100 rewrite)');
 
   const positiveTrillion = 5200000000000;
   const normPos = bandarmologiRuntime.normalizeBrokerValue(positiveTrillion);
-  assert.equal(normPos, 52000000000, 'Must unconditionally divide positive >= 5e11 by 100');
+  assert.equal(normPos, 5200000000000, 'positive >= 5e11 must stay verbatim');
 
-  // Normal scale values below 500 Miliar should not be altered
+  // Normal scale values below 500 Miliar should also be unaltered
   const normalVal = 45000000000; // 45 Miliar
   assert.equal(bandarmologiRuntime.normalizeBrokerValue(normalVal), 45000000000);
 });

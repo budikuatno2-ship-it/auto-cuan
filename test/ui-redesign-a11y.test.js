@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // ===========================================================================
 // Focused regression tests for the PREMIUM UI ELEVATION redesign.
@@ -289,7 +290,7 @@ test('API JavaScript file count remains exactly 13', () => {
   // Unchanged: /api/track-record is a vercel.json REWRITE onto
   // /api/sector-hot?action=track-record, so it adds no serverless function.
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 13, 'API JS count must remain 13; got ' + files.length);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 test('/api/track-record is aliased to the sector-hot track-record action', () => {

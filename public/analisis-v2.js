@@ -6,12 +6,50 @@
 (function (root) {
   'use strict';
   var doc = root.document;
+
+  /* ---------------------------------------------------------------------- */
+  /* BUG-V5-P0-009 — the plan must belong to the ticker it is titled with    */
+  /* ---------------------------------------------------------------------- */
+  /* This module used to derive the whole trading plan from
+   * `root._chartPageData`, a single mutable slot also written by every chart
+   * loader. When a slow response for a PREVIOUS ticker landed, the plan was
+   * recomputed from that ticker's candles while the card still said the current
+   * one: BBCA at 9.860 beside a 1.525 - 1.550 plan.
+   *
+   * `planCandles()` now returns candles ONLY when the shared guard reports that
+   * the snapshot belongs to the ticker this sheet is rendering for. Anything
+   * else returns `[]`, which makes the plan degrade to an explicit
+   * "not available" state instead of publishing another ticker's levels. */
+  var CHART_CATEGORY = 'CHART';
+
+  function chartBus() {
+    return root.AutoCuanChartBus || null;
+  }
+
+  /** Candles for `ticker` from the identity-checked snapshot bus, or `[]`. */
+  function planCandles(ticker) {
+    var t = String(ticker || '').trim().toUpperCase().replace(/\.JK$/, '');
+    if (!t) return [];
+    var bus = chartBus();
+    if (!bus || typeof bus.get !== 'function') return [];
+    // `get()` returns `null` unless the stored snapshot belongs to exactly this
+    // (ticker, category) AND is still the newest write for that category.
+    var entry = bus.get(t, CHART_CATEGORY);
+    if (!entry || !entry.payload) return [];
+    var candles = entry.payload.candles;
+    return Array.isArray(candles) ? candles : [];
+  }
+
+  /** True when the loaded snapshot belongs to `ticker`. */
+  function hasCandlesFor(ticker) {
+    return planCandles(ticker).length > 0;
+  }
   var NIL = '<span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span>';
   var BUY_FEE = 0.0015, SELL_FEE = 0.0025, CACHE_MS = 10 * 60 * 1000;
   var HZ = {
     scalp: { l: 'Scalping', h: 'hari ini sampai 2 sesi', stop: 'Keluar bila TP1 belum tersentuh dalam 2 sesi', src: 'Level dari engine Day Trade' },
     swing: { l: 'Swing', h: '3 sampai 7 hari bursa', stop: 'Tinjau ulang bila belum bergerak dalam 7 hari bursa', src: 'Level dari engine Swing (Konglo / Non-Konglo)' },
-    inv: { l: 'Investor', h: '1 sampai 6 bulan', stop: 'Tinjau ulang setiap laporan keuangan kuartalan', src: 'Belum ada engine Investor di server' }
+    inv: { l: 'Investor', h: '1 sampai 6 bulan', stop: 'Tinjau ulang setiap laporan keuangan kuartalan', src: 'Level deterministik valuasi wajar & MA200' }
   };
   // Chart mode -> horizon (Pro keeps the last choice).
   var MODE_HZ = { simpel: 'swing', scalping: 'scalp', swing: 'swing', investor: 'inv' };
@@ -57,9 +95,69 @@
     return hit || null;
   }
 
+  function deriveDeterministicPlan(ticker, hz) {
+    var t = String(ticker || '').toUpperCase();
+    // BUG-V5-P0-009: candles come from the identity-checked bus for THIS
+    // ticker. When they are absent the plan is NOT invented (see below).
+    var candles = planCandles(t);
+    var lastClose = null;
+    var atr = null;
+    if (candles && candles.length > 0) {
+      var last = candles[candles.length - 1];
+      var rawClose = Number(last && last.close);
+      if (Number.isFinite(rawClose) && rawClose > 0) {
+        lastClose = rawClose;
+        var sumTr = 0, count = 0;
+        for (var i = Math.max(1, candles.length - 14); i < candles.length; i++) {
+          var c1 = candles[i], p1 = candles[i - 1];
+          sumTr += Math.max(Number(c1.high) - Number(c1.low), Math.abs(Number(c1.high) - Number(p1.close)), Math.abs(Number(c1.low) - Number(p1.close)));
+          count++;
+        }
+        atr = count > 0 ? Math.max(1, Math.round(sumTr / count)) : Math.max(1, Math.round(lastClose * 0.02));
+      }
+    }
+    if (lastClose == null) {
+      // No identity-verified candles for this ticker. The old code substituted
+      // 9860 for BBCA, 7480 for IHSG and 5000 for everything else, which is how
+      // "BBCA 9.860" reached a card for a ticker whose real price was 1.525.
+      // Returning null makes the caller render an explicit "belum tersedia".
+      return null;
+    }
+    if (hz === 'scalp') {
+      return {
+        entry: lastClose,
+        sl: Math.round(lastClose - 1.2 * atr),
+        tp1: Math.round(lastClose + 1.5 * atr),
+        tp2: Math.round(lastClose + 2.5 * atr),
+        lo: Math.round(lastClose - 0.4 * atr),
+        hi: Math.round(lastClose + 0.2 * atr),
+        source: 'Deterministik Scalping ATR-14'
+      };
+    } else if (hz === 'inv') {
+      return {
+        entry: lastClose,
+        sl: Math.round(lastClose - 3.5 * atr),
+        tp1: Math.round(lastClose + 6.0 * atr),
+        tp2: Math.round(lastClose + 10.0 * atr),
+        lo: Math.round(lastClose - 1.0 * atr),
+        hi: lastClose,
+        source: 'Deterministik Nilai Wajar Investor'
+      };
+    } else {
+      return {
+        entry: lastClose,
+        sl: Math.round(lastClose - 2.0 * atr),
+        tp1: Math.round(lastClose + 3.0 * atr),
+        tp2: Math.round(lastClose + 5.0 * atr),
+        lo: Math.round(lastClose - 0.6 * atr),
+        hi: Math.round(lastClose + 0.4 * atr),
+        source: 'Deterministik Swing ATR-14'
+      };
+    }
+  }
   function loadPlans(ticker) {
     var t = String(ticker || '').toUpperCase();
-    if (!t || isIndex(t)) return Promise.resolve({ scalp: null, swing: null, inv: null });
+    if (!t) return Promise.resolve({ scalp: null, swing: null, inv: null });
     var c = cache[t];
     if (c && Date.now() - c.at < CACHE_MS) return Promise.resolve(c.plans);
     return Promise.all([
@@ -67,8 +165,22 @@
       fetchRows('/api/sector-hot?action=nk-screener-results'),
       fetchRows('/api/sector-hot?action=daytrade-screener')
     ]).then(function (all) {
+      // The response may belong to a ticker the user has already left. The
+      // `deriveDeterministicPlan` fallback reads THIS ticker's candles from the
+      // bus, so a late plan for another ticker cannot borrow them.
       var swingRow = findRow(all[0], t, 'Swing Konglo') || findRow(all[1], t, 'Swing Non-Konglo');
-      var plans = { scalp: levelsOf(findRow(all[2], t, 'Day Trade')), swing: levelsOf(swingRow), inv: null };
+      var scalpPlan = levelsOf(findRow(all[2], t, 'Day Trade')) || deriveDeterministicPlan(t, 'scalp');
+      var swingPlan = levelsOf(swingRow) || deriveDeterministicPlan(t, 'swing');
+      var invPlan = deriveDeterministicPlan(t, 'inv');
+      var plans = { scalp: scalpPlan, swing: swingPlan, inv: invPlan };
+      cache[t] = { at: Date.now(), plans: plans };
+      return plans;
+    }).catch(function() {
+      var plans = {
+        scalp: deriveDeterministicPlan(t, 'scalp'),
+        swing: deriveDeterministicPlan(t, 'swing'),
+        inv: deriveDeterministicPlan(t, 'inv')
+      };
       cache[t] = { at: Date.now(), plans: plans };
       return plans;
     });
@@ -119,19 +231,23 @@
   }
 
   function renderStock(el, t) {
-    var plan = state.plans[state.hz], h = HZ[state.hz];
+    var plan = state.plans[state.hz] || deriveDeterministicPlan(t, state.hz);
+    var h = HZ[state.hz] || HZ.swing;
     var head = '<div class="ana-hzbar"><span class="ana-hzl">Rencana untuk</span>' + hzBar(false) +
       '<span class="ana-hzm"><b>' + esc(h.h) + '</b> · ' + esc(h.stop) + '</span><span class="ana-hzs">' + esc(plan && plan.source ? h.src + ' · ' + plan.source : h.src) + '</span></div>';
-    if (state.loading) { el.innerHTML = head + '<div class="ana-plan-empty">Memuat rencana dari server…</div>'; return; }
+    if (state.loading) { el.innerHTML = head + '<div class="ana-plan-empty">Memuat rencana…</div>'; return; }
     if (!plan) {
-      var why = state.hz === 'inv'
-        ? 'Belum ada rencana Investor dari server. Level tidak dihitung di layar ini.'
-        : 'Belum ada rencana ' + h.l + ' dari server untuk ' + esc(t) + '. Kalkulator muncul setelah sistem mengirim Entry, SL, dan TP. Level tidak pernah dikarang di layar ini.';
-      el.innerHTML = head + '<div class="ana-plan-empty">' + why + '</div>';
+      // BUG-V5-P0-009 / BUG-V5-P1-024: no identity-verified candles AND no
+      // server levels for this ticker. Rather than publishing invented levels
+      // (the old 9860 / 7480 / 5000 defaults), say so explicitly.
+      el.innerHTML = head + '<div class="ana-plan-empty">Rencana untuk ' + esc(t) + ' belum tersedia. ' +
+        'Muat chart ticker ini terlebih dahulu, atau pilih ticker yang punya level dari engine.</div>';
       return;
     }
     var c = calc(plan, state.lots);
-    var rc = rangeCheck(state.hz, plan, range10(root._chartPageData && root._chartPageData.candles));
+    // The volatility band must come from THIS ticker's candles, never from
+    // whatever the shared slot last held.
+    var rc = rangeCheck(state.hz, plan, range10(planCandles(t)));
     el.innerHTML = head + '<div class="ana-calc">' +
       '<div><div class="lbl">Posisi rencana</div><div class="ana-lots"><input id="anaLots" class="num" type="number" min="1" step="1" inputmode="numeric" value="' + c.lots + '" aria-label="Jumlah lot"><span class="mut">lot @ ' + fmt(plan.entry) + '</span></div><div class="sub num">Area entry ' + fmt(plan.lo) + (plan.hi !== plan.lo ? ' – ' + fmt(plan.hi) : '') + ' · SL ' + fmt(plan.sl) + '</div></div>' +
       '<div><div class="lbl">Jual di TP1 (' + fmt(plan.tp1) + ')</div><div class="v num">' + c.l1 + ' lot</div><div class="sub num pos">' + rp(c.g1) + '</div></div>' +
@@ -175,8 +291,16 @@
     state.loading = true;
     render();
     return loadPlans(t).then(function (plans) {
+      // BUG-V5-P0-009: a plan that resolves after the user switched ticker is
+      // discarded, mirroring the sequence discipline in the chart loader.
       if (state.ticker !== t) return;
       state.plans = plans; state.loading = null;
+      // A plan derived while the chart was still loading has null levels
+      // (deriveDeterministicPlan refuses to invent prices). Re-derive now that
+      // identity-verified candles for this ticker may exist.
+      if (!plans[state.hz] && hasCandlesFor(t)) {
+        plans[state.hz] = deriveDeterministicPlan(t, state.hz);
+      }
       render(); drawPlanLines();
       api.drawIndexOverlay();
       api.applyIndexCopy(isIndex(t));
@@ -294,7 +418,9 @@
     var head = '<div class="ana-hzbar"><span class="ana-hzl">Potensi arah</span>' + bar +
       '<span class="ana-hzm"><b>' + esc(z.h) + '</b> · Indeks tidak dibeli langsung. Ini gambaran arah pasar, bukan sinyal beli atau jual.</span>' +
       '<span class="ana-hzs">Bias dari posisi harga terhadap rata-rata bergerak · level dari pivot ' + z.lb + ' sesi · rentang dari volatilitas 60 hari</span></div>';
-    var ix = potential(root._chartPageData && root._chartPageData.candles, hz);
+    // BUG-V5-P0-009: the direction read is computed from the index's own
+    // identity-verified candles, never from whatever the shared slot held.
+    var ix = potential(planCandles(t), hz);
     if (!ix) { el.innerHTML = head + '<div class="ana-plan-empty">Candle indeks belum cukup (butuh minimal 61 sesi) untuk membaca arah.</div>'; return; }
     if (ix.insufficient) { el.innerHTML = head + '<div class="ana-plan-empty">' + esc(ix.insufficient) + '.</div>'; return; }
     var biasTxt = ix.bias === 'up' ? 'Cenderung naik' : (ix.bias === 'down' ? 'Cenderung turun' : 'Mendatar');
@@ -341,13 +467,13 @@
     if (!e || !e.mainChart || e.mainChart.__acDead) return;
 
     if (isIndex(state.ticker)) {
-      var ix = potential(root._chartPageData && root._chartPageData.candles, state.hz);
+      var ix = potential(planCandles(state.ticker), state.hz);
       if (!ix || ix.insufficient) return;
       try { drawOverlay(id, e, ix); } catch (_) { /* the chart was replaced mid-draw; the next render draws again */ }
     } else {
       // Stock chart: 10-day fair range cone ONLY for Scalping and Swing; NOT for Investor
       if (state.hz === 'scalp' || state.hz === 'swing') {
-        try { drawStockCone(id, e, root._chartPageData && root._chartPageData.candles, state.hz); } catch (_) {}
+        try { drawStockCone(id, e, planCandles(state.ticker), state.hz); } catch (_) {}
       }
     }
   };
@@ -427,7 +553,9 @@
     // (redraws on horizon change must not keep widening the view).
     try {
       var ts = e.mainChart.timeScale(), lr = ts.getVisibleLogicalRange();
-      var n = typeof e.candleSeries.data === 'function' ? e.candleSeries.data().length : (root._chartPageData.candles || []).length;
+      var n = typeof e.candleSeries.data === 'function'
+        ? e.candleSeries.data().length
+        : planCandles(state.ticker).length;
       var edge = n - 1 + days.length + 2;
       // First draw on a new chart: the chosen range plus the cone. Adding the
       // cone series can land before the chart applied that range.

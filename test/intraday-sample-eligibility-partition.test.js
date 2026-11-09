@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 /**
  * Focused tests for the production-eligibility partitioning + additive
@@ -369,7 +370,7 @@ test('E15. lifecycle + eligibility modules perform no production mutation (no su
 // ===================================================================
 test('E16. API endpoint count remains exactly 13', async () => {
   const entries = await fs.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 // Extra: the shared policy must not use execution_grade to decide eligibility

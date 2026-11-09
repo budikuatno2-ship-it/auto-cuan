@@ -159,7 +159,10 @@ test('AUDIT-F4-13: cross trade broker yang sama (lot identik) tidak boleh jadi A
 test('AUDIT-F4-14: runtime normalizeBrokerValue membaca string numerik, bukan membuangnya', () => {
   assert.equal(bandarmologiRuntime.normalizeBrokerValue('1.500.000.000'), 1500000000, 'thousand-dotted string must parse');
   assert.equal(bandarmologiRuntime.normalizeBrokerValue('1500000000'), 1500000000, 'plain numeric string must parse');
-  assert.equal(bandarmologiRuntime.normalizeBrokerValue('5000000000000'), 50000000000, '5 T string must parse then normalise to Miliar scale');
+  // BUG-V5-P8: the client must never silently divide a >= 5e11 value by 100
+  // (that is a backend quarantine concern). Here it returns the source value
+  // verbatim so no fabricated replacement magnitude is published.
+  assert.equal(bandarmologiRuntime.normalizeBrokerValue('5000000000000'), 5000000000000, '5 T string must parse verbatim (no silent /100 rewrite)');
   assert.equal(bandarmologiRuntime.normalizeBrokerValue(null), 0);
   assert.equal(bandarmologiRuntime.normalizeBrokerValue('—'), 0);
 });

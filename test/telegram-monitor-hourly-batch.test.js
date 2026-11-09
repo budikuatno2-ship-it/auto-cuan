@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 /**
  * Focused tests for the HOURLY BATCH SUMMARY cadence of the shared Telegram
@@ -379,5 +380,5 @@ test('preview_hourly_batch=1 forces a batch preview at :30 ONLY in dry-run, and 
 test('api/ directory still contains exactly 13 endpoint JS files', function () {
   const apiDir = path.resolve(__dirname, '..', 'api');
   const jsFiles = fs.readdirSync(apiDir).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(jsFiles.length, 13, 'API endpoint JS count must remain exactly 13; found: ' + jsFiles.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });

@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 /**
  * Trade Plan V2 — Runtime Source Adapter tests (REAL-shaped fixtures)
@@ -374,7 +375,7 @@ test('15. sample capture never fabricates structure from SL/TP when absent', () 
 
 test('16. the API surface remains exactly 13 endpoints', () => {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter((f) => f.endsWith('.js'));
-  assert.equal(apiFiles.length, 13, 'API endpoint count must stay 12: ' + apiFiles.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 

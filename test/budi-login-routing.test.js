@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // Focused tests for the frontend compatibility fix that routes the existing `budi`
 // admin through the REAL server login (/api/login-user) instead of a local-only
@@ -94,5 +95,5 @@ test('11: logout calls the server logout action and clears local UI state', () =
 // 16. API endpoint count remains exactly 13.
 test('16: api endpoint count remains exactly 13', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 13, 'found: ' + files.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });

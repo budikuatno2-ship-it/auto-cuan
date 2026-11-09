@@ -1,17 +1,39 @@
 #!/usr/bin/env bash
-# P2 — Pembungkus tunggal semua job cron WIB (job-wrapper).
+# Pembungkus tunggal semua job cron WIB (job-wrapper) — V5 truth-telling edition.
 # Kontrak: deploy/vps/final-schedule.cron WAJIB memanggil semua baris via
 #   job-wrapper.sh <nama-job> <timeout-detik> <perintah...>
-# Fitur:
+#
+# ============================================================================
+# TRI-STATE EXIT CONTRACT (BUG-V5-P0-007 / negative control N12)
+# ============================================================================
+#   0   = SUCCESS   job ran to completion and exited 0
+#   1   = FAILED    job ran and failed (real exit code preserved)
+#   2   = USAGE     wrapper misuse / invalid arguments / invalid job name
+#   3   = SKIPPED   job self-reported a scheduled fail-closed skip (exit 3).
+#                 The wrapper NEVER rewrites this to 0.
+#   4   = BLOCKED   wrapper-level safety lock refused execution:
+#                   - LOCK_BUSY            (single-flight lock held)
+#                   - FORBIDDEN_WINDOW_SKIP (quota safety window 23:50-00:10 WIB
+#                     is a HARD SAFETY LOCK, therefore BLOCKED=4, not SKIPPED)
+#   124 = TIMEOUT   preserved verbatim from timeout(1)
+#
+# TRUTH RULE: the wrapper preserves the job's real exit code. A skipped or
+# blocked run must never be recorded as exit 0 / SUCCESS by cron, monitoring,
+# or the heartbeat JSON. Every heartbeat line carries BOTH `exitCode` (numeric)
+# and `outcome` (SUCCESS|SKIPPED|BLOCKED|FAILED|TIMEOUT) plus the legacy
+# `status` label kept for dashboard compatibility (OK / SCHEDULED_SKIP /
+# LOCK_BUSY / FORBIDDEN_WINDOW_SKIP / TIMEOUT / ERROR).
+#
+# Fitur lain:
 #   (a) set TZ=Asia/Jakarta + PATH lengkap (termasuk path Node/NVM VPS);
 #   (b) cd ke direktori kerja benar (/home/ubuntu/auto-cuan atau -runner) + load .env aman (tanpa print nilai);
-#   (c) cek jam WIB untuk job pemakai kuota: jendela terlarang 23:50 s.d. 00:10 WIB langsung exit rapi;
+#   (c) cek jam WIB untuk job pemakai kuota: jendela terlarang 23:50 s.d. 00:10 WIB -> BLOCKED exit 4;
 #   (d) flock -n /tmp/autocuan-<nama-job>.lock (bersihkan lockfile basi bila PID mati!), nice/ionice, timeout -k 15;
 #   (e) tulis Heartbeat Nyata ke data/job-heartbeat/<nama-job>.json + log ke logs/cron/<nama-job>.log.
 # Privasi: DILARANG print nilai .env/API key/token/SESSION_SECRET/*.key ke stdout/log.
 set -u
 
-WRAPPER_VERSION="P2-1.0.0"
+WRAPPER_VERSION="V5-2.0.0-tristate"
 
 # --- (a) TZ + PATH lengkap ---
 export TZ=Asia/Jakarta
@@ -150,6 +172,16 @@ in_forbidden_window() {
   fi
 }
 
+# Heartbeat writer: semantic outcome + legacy status label + real exit code.
+# $1=outcome $2=status_label $3=exit_code $4=duration_ms $5=requests_used $6=error_snippet
+write_heartbeat() {
+  local _outcome="$1" _status_label="$2" _exit_code="$3" _dur="$4" _req="$5" _err="$6"
+  local _start_iso="$7" _end_iso="$8"
+  printf '{"jobName":"%s","lastStartWIB":"%s","lastEndWIB":"%s","durationMs":%s,"exitCode":%s,"outcome":"%s","status":"%s","requestsUsed":%s,"lastErrorSnippet":"%s"}\n' \
+    "$JOB_NAME" "$_start_iso" "$_end_iso" "$_dur" "$_exit_code" "$_outcome" "$_status_label" "$_req" "$_err" \
+    > "$HEARTBEAT_FILE.tmp.$$" 2>/dev/null && mv "$HEARTBEAT_FILE.tmp.$$" "$HEARTBEAT_FILE" 2>/dev/null || true
+}
+
 NOW_HM="$(wib_hm)"
 if [ -n "$SIM_HM" ]; then
   NOW_HM="$SIM_HM"
@@ -158,14 +190,15 @@ NOW_ISO="$(wib_iso)"
 START_MS="$(date +%s%3N 2>/dev/null || date +%s000)"
 
 # --- (c) hard stop WIB untuk job pemakai kuota ---
+# DESAIN (BUG-V5-P0-006/007): jendela 23:50-00:10 WIB adalah KUNCI KESELAMATAN
+# kuota (safety lock), bukan sekadar skip kosmetik -> outcome BLOCKED, exit 4.
+# Jangan pernah merekamnya sebagai exit 0/SUCCESS.
 if [ "$USES_QUOTA" -eq 1 ] && in_forbidden_window "$NOW_HM" "$FORBID_START" "$FORBID_END"; then
   END_ISO="$(wib_iso)"
-  # Heartbeat rapi: exit 0 (skip terjadwal, bukan gagal), status FORBIDDEN_WINDOW_SKIP.
-  _hb="{\"jobName\":\"$JOB_NAME\",\"lastStartWIB\":\"$NOW_ISO\",\"lastEndWIB\":\"$END_ISO\",\"durationMs\":0,\"exitCode\":0,\"requestsUsed\":0,\"status\":\"FORBIDDEN_WINDOW_SKIP\",\"lastErrorSnippet\":\"\"}"
-  printf '%s\n' "$_hb" > "$HEARTBEAT_FILE.tmp.$$" 2>/dev/null && mv "$HEARTBEAT_FILE.tmp.$$" "$HEARTBEAT_FILE" 2>/dev/null || true
-  printf '[%s] %s SKIP forbidden window %s-%s WIB (hard stop).\n' "$NOW_ISO" "$JOB_NAME" "$FORBID_START" "$FORBID_END" >> "$LOG_FILE" 2>/dev/null || true
-  echo "[$NOW_ISO] $JOB_NAME SKIP forbidden window $FORBID_START-$FORBID_END WIB (hard stop)."
-  exit 0
+  write_heartbeat "BLOCKED" "FORBIDDEN_WINDOW_SKIP" 4 0 0 "" "$NOW_ISO" "$END_ISO"
+  printf '[%s] %s BLOCKED forbidden window %s-%s WIB (hard safety lock) exit=4.\n' "$NOW_ISO" "$JOB_NAME" "$FORBID_START" "$FORBID_END" >> "$LOG_FILE" 2>/dev/null || true
+  echo "[$NOW_ISO] $JOB_NAME BLOCKED forbidden window $FORBID_START-$FORBID_END WIB (hard safety lock)."
+  exit 4
 fi
 
 # --- (d) flock -n + stale-lock cleanup + nice/ionice + timeout ---
@@ -192,36 +225,15 @@ fi
 echo "$$" > "$LOCK_FILE.pid.$$" 2>/dev/null || true
 
 # Jalankan perintah di bawah flock + nice + ionice + timeout.
-# flock -n: tick berikutnya no-op bila masih berjalan (exit 0, status LOCK_BUSY).
+# flock -n: tick berikutnya -> LOCK_BUSY (BLOCKED, exit 4), BUKAN exit 0.
 # timeout -k 15: SIGTERM lalu SIGKILL 15 detik kemudian.
-EXIT_CODE=0
 set +u
 /usr/bin/flock -n "$LOCK_FILE" /usr/bin/nice -n 10 /usr/bin/ionice -c2 -n7 /usr/bin/timeout -k 15 "$TIMEOUT_SEC" "$@" >> "$LOG_FILE" 2>&1 &
 CMD_PID=$!
 wait "$CMD_PID"
-EXIT_CODE=$?
+CMD_EXIT=$?
 set -u
-# flock exit 1 = lock busy (single-flight, bukan gagal).
-# P2: exit 3 = SKIP terjadwal fail-closed (mis. top5 screeners_not_ready,
-# fastwatcher non-trading-day) -> heartbeat hijau, bukan gagal infra.
-STATUS="OK"
-if [ "$EXIT_CODE" -eq 0 ]; then
-  STATUS="OK"
-elif [ "$EXIT_CODE" -eq 3 ]; then
-  STATUS="SCHEDULED_SKIP"
-  EXIT_CODE=0
-elif [ "$EXIT_CODE" -eq 124 ]; then
-  STATUS="TIMEOUT"
-elif [ "$EXIT_CODE" -eq 1 ] && [ ! -f "$LOCK_FILE" ]; then
-  STATUS="OK"
-else
-  # Bedakan LOCK_BUSY (flock -n gagal akuisisi -> exit 1 tanpa output baru).
-  # Heuristik: bila log tidak bertambah dalam 2 detik terakhir, anggap LOCK_BUSY.
-  STATUS="ERROR"
-fi
-# Deteksi LOCK_BUSY: flock -n mengembalikan 1 TANPA menjalankan perintah.
-# Kita tandai via penanda waktu: bila perintah tidak pernah start, timeout tidak terlibat.
-# Sederhana: bila EXIT_CODE=1 dan durasi < 2000ms, anggap LOCK_BUSY (bukan error kuota).
+
 END_MS="$(date +%s%3N 2>/dev/null || date +%s000)"
 case "$END_MS" in
   ''|*[!0-9]*) END_MS="$START_MS" ;;
@@ -231,16 +243,46 @@ case "$START_MS" in
 esac
 DURATION_MS=$((END_MS - START_MS))
 if [ "$DURATION_MS" -lt 0 ]; then DURATION_MS=0; fi
-if [ "$EXIT_CODE" -eq 1 ] && [ "$DURATION_MS" -lt 2000 ]; then
-  # Konfirmasi: coba akuisisi non-blokir sesaat; bila gagal, memang busy.
-  if ! /usr/bin/flock -n "$LOCK_FILE" true 2>/dev/null; then
-    STATUS="LOCK_BUSY"
-    EXIT_CODE=0
-  fi
-fi
-if [ "$STATUS" = "LOCK_BUSY" ]; then
-  EXIT_CODE=0
-fi
+
+# --- klasifikasi outcome (BUG-V5-P0-007): kode exit asli DIPERTAHANKAN ---
+# Tri-state: 0=SUCCESS, 3=SKIPPED (job skip terjadwal), 4=BLOCKED (LOCK_BUSY),
+# 124=TIMEOUT, lainnya=FAILED. DILARANG memetakan skip/blok ke 0.
+OUTCOME="FAILED"
+STATUS_LABEL="ERROR"
+REASON=""
+case "$CMD_EXIT" in
+  0)
+    OUTCOME="SUCCESS"
+    STATUS_LABEL="OK"
+    ;;
+  3)
+    OUTCOME="SKIPPED"
+    STATUS_LABEL="SCHEDULED_SKIP"
+    REASON="job self-reported scheduled skip (exit 3 preserved)"
+    ;;
+  124)
+    OUTCOME="TIMEOUT"
+    STATUS_LABEL="TIMEOUT"
+    REASON="timeout -k 15 reached"
+    ;;
+  1)
+    # Heuristik LOCK_BUSY: flock -n gagal akuisisi -> exit 1 tanpa menjalankan
+    # perintah (durasi < 2000ms). Konfirmasi dengan akuisisi non-blokir sesaat.
+    if [ "$DURATION_MS" -lt 2000 ] && ! /usr/bin/flock -n "$LOCK_FILE" true 2>/dev/null; then
+      OUTCOME="BLOCKED"
+      STATUS_LABEL="LOCK_BUSY"
+      REASON="single-flight lock held by another run"
+      CMD_EXIT=4
+    else
+      OUTCOME="FAILED"
+      STATUS_LABEL="ERROR"
+    fi
+    ;;
+  *)
+    OUTCOME="FAILED"
+    STATUS_LABEL="ERROR"
+    ;;
+esac
 
 END_ISO="$(wib_iso)"
 # requestsUsed: hitung dari state kuota bila tersedia (delta usedToday), tanpa print secret.
@@ -257,10 +299,9 @@ if [ -f "$LOG_FILE" ]; then
   LAST_ERR="$(tail -c 300 "$LOG_FILE" 2>/dev/null | tr '\n' ' ' | sed 's/"/_/g' | cut -c1-300 || true)"
 fi
 
-# --- (e) Heartbeat Nyata ---
-_hb="{\"jobName\":\"$JOB_NAME\",\"lastStartWIB\":\"$NOW_ISO\",\"lastEndWIB\":\"$END_ISO\",\"durationMs\":$DURATION_MS,\"exitCode\":$EXIT_CODE,\"requestsUsed\":$REQUESTS_USED,\"status\":\"$STATUS\",\"lastErrorSnippet\":\"$LAST_ERR\"}"
-printf '%s\n' "$_hb" > "$HEARTBEAT_FILE.tmp.$$" 2>/dev/null && mv "$HEARTBEAT_FILE.tmp.$$" "$HEARTBEAT_FILE" 2>/dev/null || true
-printf '[%s] %s END exit=%s status=%s durMs=%s\n' "$END_ISO" "$JOB_NAME" "$EXIT_CODE" "$STATUS" "$DURATION_MS" >> "$LOG_FILE" 2>/dev/null || true
+# --- (e) Heartbeat Nyata (exit code asli, tanpa rewrites) ---
+write_heartbeat "$OUTCOME" "$STATUS_LABEL" "$CMD_EXIT" "$DURATION_MS" "$REQUESTS_USED" "$LAST_ERR" "$NOW_ISO" "$END_ISO"
+printf '[%s] %s END exit=%s outcome=%s label=%s durMs=%s %s\n' "$END_ISO" "$JOB_NAME" "$CMD_EXIT" "$OUTCOME" "$STATUS_LABEL" "$DURATION_MS" "$REASON" >> "$LOG_FILE" 2>/dev/null || true
 rm -f "$LOCK_FILE.pid.$$" 2>/dev/null || true
 
-exit "$EXIT_CODE"
+exit "$CMD_EXIT"

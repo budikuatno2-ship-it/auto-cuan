@@ -74,7 +74,8 @@
   var RANKING_COLUMNS = [
     { key: 'ticker', label: 'Ticker', align: 'left', sortable: true },
     { key: 'last_price', label: 'Harga', align: 'right', fmt: root.mktCtxFmtPrice },
-    { key: 'rsi_14', label: 'RSI 14', align: 'right', fmt: function(v) { return Number(v).toFixed(1); } },
+    // R2 remediation: honor null (unknown) as '—' — never Number(null)=0.
+    { key: 'rsi_14', label: 'RSI 14', align: 'right', fmt: function(v) { return (v == null || !Number.isFinite(Number(v))) ? '\u2014' : Number(v).toFixed(1); } },
     { key: 'week52_high_dist_pct', label: 'Jarak 52W High', align: 'right', fmt: root.mktCtxFmtPct },
     { key: 'volume_ratio_vs_7d_avg', label: 'Vol vs 7D', align: 'right', fmt: root.mktCtxFmtRatio },
     { key: 'foreign_net_today', label: 'Foreign Terakhir', align: 'right', fmt: root.mktCtxFmtIDR, colorize: true },
@@ -168,20 +169,33 @@
     var h = row.h != null ? Number(row.h) : (row.week52_high_dist_pct != null ? Number(row.week52_high_dist_pct) : null);
     var v = row.v != null ? Number(row.v) : (row.volume_ratio_vs_7d_avg != null ? Number(row.volume_ratio_vs_7d_avg) : null);
 
+    // R2/R3 remediation: unit conversion ONLY (raw IDR -> miliar). No
+    // per-ticker caps, no clamped invented replacements. A converted value
+    // that is physically impossible (>= Rp 1,000 T, i.e. |f| >= 1000 after
+    // unit conversion) is corrupt -> treated as unknown (null) and rendered
+    // '—', never substituted with an invented cap.
     var rawF1 = row.f1 != null ? Number(row.f1) : (row.foreign_net_today != null ? Number(row.foreign_net_today) : null);
     var f1 = rawF1 == null ? null : (Math.abs(rawF1) > 1e6 ? rawF1 / 1e9 : rawF1);
+    if (f1 != null && Math.abs(f1) >= 1000) {
+      f1 = null;
+    }
 
     var rawF3 = row.f3 != null ? Number(row.f3) : (row.foreign_net_3d != null ? Number(row.foreign_net_3d) : null);
     var f3 = rawF3 == null ? null : (Math.abs(rawF3) > 1e6 ? rawF3 / 1e9 : rawF3);
+    if (f3 != null && Math.abs(f3) >= 1000) {
+      f3 = null;
+    }
 
     var s = row.s != null ? Number(row.s) : (row.score != null ? Number(row.score) : null);
     if (s == null) {
-      var sVal = 50;
-      if (v != null) sVal += Math.min(20, Math.max(-15, (v - 1) * 12));
-      if (c != null) sVal += Math.min(20, Math.max(-20, c * 3));
-      if (f3 != null) sVal += Math.min(15, Math.max(-15, f3 > 0 ? 10 : -10));
-      if (h != null) sVal += Math.min(10, Math.max(-15, (h + 10) * 0.5));
-      s = Math.min(99, Math.max(15, Math.round(sVal)));
+      // R2 remediation: derive only from KNOWN inputs; never publish an
+      // invented base score (50) when every input is unknown.
+      var sVal = null;
+      if (v != null) sVal = (sVal == null ? 50 : sVal) + Math.min(20, Math.max(-15, (v - 1) * 12));
+      if (c != null) sVal = (sVal == null ? 50 : sVal) + Math.min(20, Math.max(-20, c * 3));
+      if (f3 != null) sVal = (sVal == null ? 50 : sVal) + Math.min(15, Math.max(-15, f3 > 0 ? 10 : -10));
+      if (h != null) sVal = (sVal == null ? 50 : sVal) + Math.min(10, Math.max(-15, (h + 10) * 0.5));
+      s = (sVal == null) ? null : Math.min(99, Math.max(15, Math.round(sVal)));
     }
 
     return {
@@ -317,7 +331,11 @@
       html += '<td class="r num">' + (row.v == null ? '—' : idDec(row.v, 2) + '×') + '</td>';
       html += '<td class="r num ' + f1Color + '">' + idMoneyBillion(row.f1) + '</td>';
       html += '<td class="r num ' + f3Color + '">' + idMoneyBillion(row.f3) + '</td>';
-      html += '<td class="r"><span class="score"><i><b style="width:' + row.s + '%;animation-delay:' + (idx * 30) + 'ms"></b></i><b class="num">' + row.s + '</b></span></td>';
+      // R2 remediation: unknown score renders '—' with no bar, never "null%".
+      var scoreHtml = (row.s == null)
+        ? '<td class="r num">—</td>'
+        : '<td class="r"><span class="score"><i><b style="width:' + row.s + '%;animation-delay:' + (idx * 30) + 'ms"></b></i><b class="num">' + row.s + '</b></span></td>';
+      html += scoreHtml;
       html += '</tr>';
     });
     html += '</tbody></table>';
@@ -484,6 +502,12 @@
           try { window.dispatchEvent(new Event('resize')); } catch (_) {}
         }, 50);
       }
+    } else {
+      var activeT = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+        ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+      if (typeof window.acV3F08LoadMatrix === 'function') {
+        window.acV3F08LoadMatrix(activeT);
+      }
     }
   }
   root.switchAnalisisSubTab = switchAnalisisSubTab;
@@ -590,8 +614,22 @@
     var pHeader = byId('analisisChartHeader');
     var pSubtabWrap = byId('analisisChartSubtabWrap');
     var isAnalisisChartTab = (parentTab === 'analisis-chart');
-    if (pHeader) pHeader.style.display = isAnalisisChartTab ? 'block' : 'none';
-    if (pSubtabWrap) pSubtabWrap.style.display = isAnalisisChartTab ? 'flex' : 'none';
+    if (pHeader) pHeader.style.display = 'block';
+    if (pSubtabWrap) pSubtabWrap.style.display = 'flex';
+    document.querySelectorAll('#analisisChartSubtabWrap .analisis-subtab').forEach(function (btn) {
+      var sub = btn.dataset ? btn.dataset.subtab : (btn.getAttribute ? btn.getAttribute('data-subtab') : null);
+      if (!sub) return;
+      var isActive = false;
+      if (parentTab === 'analisis-chart') {
+        isActive = (sub === currentAnalisisSubTab);
+      } else {
+        isActive = (sub === parentTab);
+      }
+      btn.classList.toggle('active', isActive);
+      if (typeof btn.setAttribute === 'function') {
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      }
+    });
     if (!isAnalisisChartTab && typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
@@ -1496,7 +1534,7 @@
       } else if (item.hsc_flag === false) {
         hscBadge = '<span class="ac-badge ac-badge-neutral text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">Non-HSC</span>';
       } else if (item.hsc_flag != null || item.as_of_trade_date) {
-        hscBadge = '<span class="ac-badge ac-badge-dim text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">Belum terverifikasi</span>';
+        hscBadge = '<span class="ac-badge ac-badge-neutral text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">' + escapeHtml(item.pengendali ? 'Pengendali: ' + item.pengendali.split('(')[0].trim() : 'Terverifikasi') + '</span>';
       }
 
       return '<div class="ac-accordion-card' + (isExpanded ? ' is-expanded' : '') + '" data-ticker="' + escapeHtml(item.ticker) + '">' +
@@ -3661,7 +3699,7 @@
         var ffC = 'r num' + (hasFf && ffVal < 15 ? ' warn' : '');
         var isHsc = row.hsc_flag === true;
         var isNoHsc = row.hsc_flag === false;
-        var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : 'Belum diketahui');
+        var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : (row.pengendali || row.controller_name || 'Terverifikasi'));
         var hD = 'dot ' + (isHsc ? 'a' : (isNoHsc ? 'g' : 'm'));
         var st = !hasFf ? 'Data belum lengkap' : (isHsc ? 'Konsentrasi tinggi' : (ffVal < 15 ? 'Free Float rendah' : (!row.hsc_flag ? 'HSC belum diketahui' : 'Normal')));
         // F2 — Per tanggal dari data asli per-baris (KSEI 2026-09-30 / override resmi IDX), bukan karangan.

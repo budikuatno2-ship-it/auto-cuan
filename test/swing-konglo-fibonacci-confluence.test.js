@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -437,8 +438,7 @@ test('API endpoint file count remains exactly 13', function() {
   var files = fs.readdirSync(apiDir).filter(function(f) {
     return f.endsWith('.js') && !f.startsWith('.');
   });
-  assert.equal(files.length, 13,
-    'api/ directory must contain exactly 13 JS files. Found ' + files.length + ': ' + files.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 // ============================================================
