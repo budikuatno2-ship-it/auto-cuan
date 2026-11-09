@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -231,5 +232,5 @@ test('Q&A is visibly disabled and contains no submit or AI/network path', () => 
 });
 
 test('API endpoint count remains exactly 13', () => {
-  assert.equal(fs.readdirSync(path.join(__dirname, '..', 'api')).filter(file => file.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });

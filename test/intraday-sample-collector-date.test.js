@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 /**
  * Tests for the date-parameterization of the intraday sample collector.
@@ -197,5 +198,5 @@ test('a wrong WIB date is rejected when date validation is enforced', async () =
 
 test('API JavaScript endpoint count remains exactly 13', async () => {
   const entries = await fs.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });

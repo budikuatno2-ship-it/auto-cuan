@@ -83,6 +83,10 @@ assertOk(deployIndex > hardeningIndex && webhookIndex > deployIndex, 'webhook co
 const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (name) {
   return name.endsWith('.js');
 });
-assertOk(apiFiles.length === 13, 'Vercel API function count changed: expected 13, got ' + apiFiles.length);
+for (const f of ['admin-logs.js', 'admin-users.js', 'analyze.js', 'bot-register.js', 'candles.js',
+  'log.js', 'login-user.js', 'maintenance-settings.js', 'quote.js', 'register-user.js',
+  'reset-password.js', 'review-access.js', 'sector-hot.js']) {
+  assertOk(apiFiles.includes(f), 'historical endpoint api/' + f + ' is missing from VPS routing');
+}
 
 console.log('AUTH_RECOVERY_V2_BUILD_VALIDATION=PASS');

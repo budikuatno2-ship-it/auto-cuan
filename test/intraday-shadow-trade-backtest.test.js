@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -451,7 +452,7 @@ test('30. backtest modules import no Telegram / Supabase / DB-mutation / trading
 
 test('31. API endpoint count remains exactly 13', async () => {
   const entries = await fsp.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 // ===================================================================

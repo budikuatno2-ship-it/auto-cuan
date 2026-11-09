@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -237,5 +238,5 @@ test('renderBacktestTradeTable outputs detailed 10-column table format', () => {
 test('API endpoint count is maintained (13 Vercel functions budget)', () => {
   const apiDir = path.resolve(__dirname, '..', 'api');
   const files = fs.readdirSync(apiDir).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 13, 'api/ must strictly contain 13 endpoints (with admin-notes rewritten to sector-hot)');
+  vpsSurface.assertVpsApiSurface(assert);
 });

@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -182,7 +183,7 @@ test('16. existing production test infrastructure not broken', () => {
 
 test('17. API endpoint count remains exactly 13', async () => {
   const entries = await fs.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter(f => f.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 
@@ -510,7 +511,7 @@ test('B16. production modules still load correctly', () => {
 // B17: API endpoint count remains exactly 13
 test('B17. API endpoint count remains exactly 13', async () => {
   const entries = await fs.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter(f => f.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 // ===================================================================

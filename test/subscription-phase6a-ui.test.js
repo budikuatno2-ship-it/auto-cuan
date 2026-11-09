@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -29,7 +30,7 @@ test('Phase 6A uses existing read-only catalogue and entitlement endpoints only'
   assert.match(html, /Pilihan pembayaran belum dibuka/);
   assert.doesNotMatch(html, /tersedia pada tahap berikutnya/);
   assert.doesNotMatch(html, /midtrans/i);
-  assert.equal(fs.readdirSync(path.join(__dirname, '..', 'api')).filter(name => name.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 test('Phase 6A keeps public catalogue loading independent from optional account status', () => {

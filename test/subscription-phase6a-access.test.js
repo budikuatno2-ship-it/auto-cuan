@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -285,7 +286,7 @@ test('premium status uses signed-session server state, disables caching, and API
   assert.match(source, /subscriptionAction === 'premium-access-status'/);
   assert.match(source, /resolvePremiumAccess\(req, db\)/);
   assert.match(source, /Cache-Control', 'private, no-store'/);
-  assert.equal(fs.readdirSync(path.join(ROOT, 'api')).filter(name => name.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 test('subscription copy stays Indonesian, dormant, and free of unfinished phase wording', () => {

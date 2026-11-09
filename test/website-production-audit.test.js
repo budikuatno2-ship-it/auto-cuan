@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // Regression matrix for the production website audit:
 //  A. build validates and is idempotent
@@ -126,7 +127,7 @@ test('A: build validator passes twice and rewrites nothing', () => {
 
 test('A: exactly 13 Vercel API functions', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter((f) => f.endsWith('.js'));
-  assert.equal(files.length, 13, 'found: ' + files.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 // --- B. access ------------------------------------------------------------------

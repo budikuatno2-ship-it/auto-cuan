@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // Focused tests for the Portfolio pricing/isolation/refresh fixes and the
 // account/device/security audit. Presentation + audit only: no schema, no new
@@ -458,7 +459,7 @@ test('register-user.js rate limits account creation, keyed on the observed addre
 // 30. API endpoint count remains exactly 13
 test('api/ still exposes exactly 13 endpoint JS files', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 13, 'found: ' + files.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 // 29. Existing valid register behavior still works (v2: atomic RPC path via stub).

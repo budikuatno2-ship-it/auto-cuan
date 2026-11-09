@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // Compatibility audit for the EXISTING `budi` administrator account under the new
 // signed-session model. Mocked/local only: @supabase/supabase-js is stubbed via
@@ -388,5 +389,5 @@ test('budi login is routed through the real server (no local-only admin shortcut
 // API endpoint count remains exactly 13.
 test('api endpoint count remains exactly 13', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 13, 'found: ' + files.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });

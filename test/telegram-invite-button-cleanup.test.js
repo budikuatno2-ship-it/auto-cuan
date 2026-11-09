@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // ===========================================================================
 // Mocked tests for the Telegram "Ajukan Bergabung" button cleanup fix.
@@ -100,7 +101,7 @@ test('the completed cleanup message text matches the required copy', function ()
 
 test('API JavaScript file count remains exactly 13', function () {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 13, 'API JS file count must remain 13; got ' + files.length);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 test('Delete User is admin-gated and protects system accounts (no extra endpoint)', function () {

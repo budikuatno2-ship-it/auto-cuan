@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -52,7 +53,7 @@ test('critical DOM ids are unique and api endpoint boundary remains unchanged', 
   for (const id of ['initialLoader', 'landingPage', 'dashboardScreen', 'blockedScreen', 'maintenanceScreen', 'serviceStatusScreen']) {
     assert.equal((html.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1, `${id} must be unique`);
   }
-  assert.equal(fs.readdirSync(path.join(root, 'api')).filter(name => name.endsWith('.js')).length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
   assert.equal((html.match(/id="deleteUser/gi) || []).length, 0, 'no Delete User control');
 });
 

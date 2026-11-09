@@ -77,12 +77,20 @@ for (const match of index.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)
 }
 assertOk(inlineCount > 0, 'no inline scripts found in public/index.html');
 
-// --- 2. Vercel function budget -------------------------------------------
-// The 13-function budget is unchanged. /api/track-record is a REWRITE onto
-// /api/sector-hot?action=track-record (see vercel.json), not a new function,
-// so the Track Record tab gets a stable JSON URL without spending budget.
+// --- 2. API surface (VPS routing; retired Vercel function budget) ---------
+// Auto-Cuan now deploys on Oracle VPS + PM2 + Nginx (Vercel retired). The VPS
+// server auto-routes every top-level api/*.js file, so there is no fixed
+// function budget anymore. The invariant that must still hold: the 13
+// historical endpoints stay present, and every /api/* rewrite alias resolves.
 const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (name) { return name.endsWith('.js'); });
-assertOk(apiFiles.length === 13, 'Vercel API function count changed: expected 13, got ' + apiFiles.length);
+const HISTORICAL_ENDPOINTS = [
+  'admin-logs.js', 'admin-users.js', 'analyze.js', 'bot-register.js', 'candles.js',
+  'log.js', 'login-user.js', 'maintenance-settings.js', 'quote.js', 'register-user.js',
+  'reset-password.js', 'review-access.js', 'sector-hot.js'
+];
+for (const f of HISTORICAL_ENDPOINTS) {
+  assertOk(apiFiles.includes(f), 'historical endpoint api/' + f + ' is missing from VPS routing');
+}
 const vercelConfig = JSON.parse(read('vercel.json'));
 assertOk(
   (vercelConfig.rewrites || []).some(function (rule) { return rule.source === '/api/track-record'; }),

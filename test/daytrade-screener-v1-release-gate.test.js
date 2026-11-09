@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const vpsSurface = require('./lib/vps-api-surface');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 
@@ -47,30 +48,9 @@ function mockRes() {
 // 1. Invariant & Architecture Integrity Verification
 // ----------------------------------------------------------------------------
 
-test('PR 9 Gate: api/ directory contains exactly 13 endpoints (architectural invariant)', () => {
-  const apiDir = path.join(ROOT_DIR, 'api');
-  assert.ok(fs.existsSync(apiDir), 'api directory must exist');
-
-  const files = fs.readdirSync(apiDir).filter(f => f.endsWith('.js')).sort();
-  assert.equal(files.length, 13, 'api/ must strictly contain exactly 13 JavaScript files');
-
-  const expectedFiles = [
-    'admin-logs.js',
-    'admin-users.js',
-    'analyze.js',
-    'bot-register.js',
-    'candles.js',
-    'log.js',
-    'login-user.js',
-    'maintenance-settings.js',
-    'quote.js',
-    'register-user.js',
-    'reset-password.js',
-    'review-access.js',
-    'sector-hot.js'
-  ].sort();
-
-  assert.deepEqual(files, expectedFiles, 'api/ file list must match exact expected 13 endpoints');
+test('PR 9 Gate: VPS API surface keeps historical endpoints and resolves /api/* aliases', () => {
+  assert.ok(fs.existsSync(path.join(ROOT_DIR, 'api')), 'api directory must exist');
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 test('PR 9 Gate: Core AI provider, cache, and telemetry modules exist and export expected functions', () => {

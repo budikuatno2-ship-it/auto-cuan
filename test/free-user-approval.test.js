@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -734,5 +735,5 @@ test('doLogin routes a valid pending response to the approval panel and never lo
 
 test('API endpoint JavaScript count remains exactly 13', function() {
   const endpoints = fs.readdirSync(path.join(ROOT, 'api')).filter(function(file) { return file.endsWith('.js'); });
-  assert.equal(endpoints.length, 13, endpoints.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });

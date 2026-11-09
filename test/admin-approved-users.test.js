@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 // ===========================================================================
 // Mocked tests for the "Sudah Di-approve" (Approved Users) admin view.
@@ -294,7 +295,7 @@ test('device modal for an unknown user renders a safe not-found message', functi
 // ===========================================================================
 test('API JavaScript file count remains exactly 13', function () {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 13, 'API JS file count must remain 13; got ' + files.length);
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 test('Delete User is guarded (admin API) and absent from the approved table', function () {

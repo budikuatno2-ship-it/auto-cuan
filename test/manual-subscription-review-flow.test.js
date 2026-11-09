@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +27,7 @@ test('manual subscription server and browser runtimes parse', () => {
 
 test('subscription routes preserve Vercel 12-function budget', () => {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(name => name.endsWith('.js'));
-  assert.equal(apiFiles.length, 13);
+  vpsSurface.assertVpsApiSurface(assert);
   const config = source('vercel.json'); // minified JSON, no space after ":"
   assert.match(config, /"source":\s*"\/api\/subscription-manual"/);
   assert.match(config, /"destination":\s*"\/api\/review-access\?surface=subscription-manual"/);

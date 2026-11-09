@@ -117,8 +117,10 @@ async function main() {
     process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'gate-v3-f06-secret-1234567890';
     // Gate memakai token dummy non-placeholder + stub notifier: jalur HTTPS nyata
     // tetap diverifikasi via source assertion (api.telegram.org) tanpa jaringan.
+    // Dummy sengaja TIDAK berbentuk <id>:<token> agar tidak memicu pemindai
+    // kredensial telegram-bot-token (false positive) — tetap non-placeholder.
     const origBotToken = process.env.TELEGRAM_BOT_TOKEN;
-    process.env.TELEGRAM_BOT_TOKEN = '1100000000:AAgateV3F06DummyTokenForLocalAssertionOnly0000';
+    process.env.TELEGRAM_BOT_TOKEN = 'gate-v3-f06-dummy-token-local-assertion-only-not-a-real-secret';
     const adminSession = require(path.join(ROOT, 'lib', 'admin-session'));
     const token = adminSession.createSessionToken({ userId: 'gate-u1', username: 'budi', isAdmin: true });
     if (!token) {

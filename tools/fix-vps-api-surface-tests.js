@@ -16,24 +16,29 @@ const ROOT = path.resolve(__dirname, '..');
 const HELPER_REQUIRE = "const vpsSurface = require('./lib/vps-api-surface');";
 
 const FILES = [
-  'admin-approved-users', 'admin-command-login', 'ai-eval-openagentic-quality',
-  'auth-modal-and-ai-analysis-ui', 'auto-swing-telegram-digest',
-  'budi-admin-compatibility', 'budi-login-routing', 'canonical-domain-redirect',
-  'canonical-plan-rollout', 'dashboard-top5-monitor-loading',
+  'admin-approved-users', 'admin-command-login', 'admin-session-auth',
+  'ai-eval-openagentic-quality', 'auth-modal-and-ai-analysis-ui',
+  'auto-swing-telegram-digest', 'budi-admin-compatibility',
+  'budi-login-routing', 'canonical-domain-redirect', 'canonical-plan-rollout',
+  'chart-export-and-responsive', 'dashboard-top5-monitor-loading',
   'daytrade-experimental-admin-alert', 'free-user-approval',
   'intraday-eligibility-parity-lifecycle', 'intraday-sample-collector-date',
   'intraday-sample-collector', 'intraday-sample-eligibility-partition',
   'intraday-shadow-scoring-live', 'intraday-shadow-scoring',
   'intraday-shadow-trade-backtest', 'manual-subscription-review-flow',
-  'pattern-map', 'production-loader-hotfix', 'rich-telegram-format',
-  'run-intraday-experimental-pipeline', 'security-phase1', 'subscription-auth',
-  'subscription-phase4', 'subscription-phase5b', 'subscription-phase5c',
+  'pattern-map', 'portfolio-and-security', 'production-loader-hotfix',
+  'rich-telegram-format', 'run-intraday-experimental-pipeline',
+  'security-phase1', 'subscription-auth', 'subscription-phase4',
+  'subscription-phase5a', 'subscription-phase5b', 'subscription-phase5c',
   'subscription-phase6a-access', 'subscription-phase6a-ui',
   'swing-konglo-fibonacci-confluence', 'telegram-candidate-digest-gate',
   'telegram-invite-button-cleanup', 'telegram-member-lifecycle',
-  'telegram-verification-v2', 'top10-command-selection',
+  'telegram-monitor-dedup', 'telegram-monitor-dry-run',
+  'telegram-monitor-hourly-batch', 'telegram-verification-v2',
+  'top10-command-selection', 'track-record-backtest',
   'trade-plan-v2-daytrade-diagnostic', 'trade-plan-v2-integration',
-  'trade-plan-v2-sweep-diagnostic', 'ui-redesign-a11y', 'website-production-audit'
+  'trade-plan-v2-source-adapters', 'trade-plan-v2-sweep-diagnostic',
+  'ui-redesign-a11y', 'website-production-audit'
 ];
 
 // Balanced extraction of an `assert.equal(...)` call starting at index i.

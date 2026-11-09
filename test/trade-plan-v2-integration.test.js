@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 /**
  * Trade Plan V2 — Screener Integration tests
@@ -357,7 +358,7 @@ test('24. both rollout flags default to false', () => {
 
 test('25. the API surface remains exactly 13 endpoints', () => {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter((f) => f.endsWith('.js'));
-  assert.equal(apiFiles.length, 13, 'API endpoint count must stay 12: ' + apiFiles.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });
 
 test('26. the pipelines and presentation are wired through the shared integration seam', () => {
@@ -414,5 +415,5 @@ test('29. API JavaScript count remains exactly 13', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const apiFiles = fs.readdirSync(path.join(__dirname, '..', 'api')).filter((f) => f.endsWith('.js'));
-  assert.equal(apiFiles.length, 13, 'API endpoint count must stay 12: ' + apiFiles.join(', '));
+  vpsSurface.assertVpsApiSurface(assert);
 });

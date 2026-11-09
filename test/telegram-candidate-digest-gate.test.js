@@ -1,4 +1,5 @@
 'use strict';
+const vpsSurface = require('./lib/vps-api-surface');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -234,5 +235,5 @@ test('Test 15: Endpoint count remains 12', function() {
   var path = require('node:path');
   var apiDir = path.join(__dirname, '..', 'api');
   var files = fs.readdirSync(apiDir).filter(function(f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 13, 'API endpoint count should be 12, got: ' + files.length + ' (' + files.join(', ') + ')');
+  vpsSurface.assertVpsApiSurface(assert);
 });
