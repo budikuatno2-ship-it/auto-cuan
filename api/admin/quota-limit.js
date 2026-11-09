@@ -230,9 +230,10 @@ async function handler(req, res) {
         return res.status(500).json({ success: false, error: describeReadFailure(read) });
       }
       const blob = read.blob;
-      // FIX (finding 4): use the REAL quota authority accessor. quota-state.js
-      // exposes resolveQuotaTruth() which wraps quota-limit.resolveTruth().
-      const truth = quotaState.resolveQuotaTruth({ now, state, config: cfg });
+      // Use the actual exported quota authority, including unknown/blocked
+      // truth. A valid but unseeded provider blob must remain readable (HTTP
+      // 200 with ok:false); only corrupt/unreadable configuration returns 500.
+      const truth = quotaLimit.resolveTruth({ now, state, config: cfg });
       return res.status(200).json({
         success: true,
         ok: truth.ok === true,
