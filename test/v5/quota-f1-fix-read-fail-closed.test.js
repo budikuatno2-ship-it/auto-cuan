@@ -512,7 +512,7 @@ main()
         }
       });
     } catch (e) {
-      /* swallowed by test() */ 
+      /* swallowed by test() */
     }
     const failed = results.filter((r) => !r.ok);
     process.stdout.write('\n' + (results.length - failed.length) + '/' + results.length + ' FIX1-fail-closed cases passed\n');

@@ -1,7 +1,7 @@
 'use strict';
 /**
  * build-v3-audit-package.js
- * 
+ *
  * Skrip eksekusi tunggal non-destruktif untuk:
  * 1. Membuat MANIFEST_AUDIT_V3_LENGKAP.md berisi inventaris seluruh berkas V3
  *    (ukuran byte, mtime WIB, ringkasan perubahan).
@@ -247,7 +247,7 @@ function generateManifest(fileMap) {
 
   md += `\n---\n\n`;
   md += `## 2. REKAPITULASI KATEGORI\n\n`;
-  
+
   const categories = {
     'Laporan & Manifest': items.filter(i => i.relPath.endsWith('.md')),
     'Skrip Gate V3 & Pengujian': items.filter(i => i.relPath.startsWith('tools/gates/') || i.relPath.startsWith('tools/d1-live')),

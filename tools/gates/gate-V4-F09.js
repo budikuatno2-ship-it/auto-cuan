@@ -288,7 +288,7 @@ async function main() {
     const bbcaEval = await page.evaluate(() => {
       const fiboRows = Array.from(document.querySelectorAll('#v3f08FiboBody tr'));
       const requiredLevels = ['0,0%', '23,6%', '38,2%', '50,0%', '61,8%', '78,6%', '100,0%', '127,2%', '161,8%'];
-      
+
       const rowsData = fiboRows.map(r => {
         const text = r.textContent || '';
         return {
@@ -381,7 +381,7 @@ async function main() {
     const ihsgEval = await page.evaluate(() => {
       const fiboRows = Array.from(document.querySelectorAll('#v3f08FiboBody tr'));
       const requiredLevels = ['0,0%', '23,6%', '38,2%', '50,0%', '61,8%', '78,6%', '100,0%', '127,2%', '161,8%'];
-      
+
       const bodyText = document.body.innerText || '';
       const allLevelsInDOM = requiredLevels.every(lvl => bodyText.includes(lvl));
 

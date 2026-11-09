@@ -966,7 +966,7 @@
       action: function(reason) { recordAuditLog('budi', 'Picu backfill', reason); root.refreshBackfillForecast(); }
     });
   };
-  
+
   // FASE V4-F04: Handler Forensik Serangan & Pemblokiran Bot/IP
   var MOCK_FORENSIC_ATTACKS = [
     { at: '2026-11-04T09:35:12.000Z', ip: '198.51.100.44', rule: 'SQLi Probe', target: "/api/quote?ticker=' OR 1=1--", ua: 'sqlmap/1.7.2#stable', status: 'DIBLOKIR OTOMATIS', blocked: true },

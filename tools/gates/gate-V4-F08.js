@@ -279,10 +279,10 @@ async function main() {
     const screenerEval = await pageScreener.evaluate(() => {
       const bodyText = document.body.innerText || '';
       const stuckLoading = bodyText.includes('Memuat data screener...');
-      
+
       const rows = document.querySelectorAll('#screenerTableBody tr.kg-table-row, #nkScreenerTableBody tr.kg-table-row, #dtScreenerTableBody tr.kg-table-row');
       const tableHeaders = Array.from(document.querySelectorAll('#screenerTable th, #nkScreenerTable th, #dtScreenerTable th, #page-screener th, table th')).map(th => th.textContent.trim());
-      
+
       const hasWinRate = tableHeaders.some(h => h.includes('Win Rate')) || bodyText.includes('Win Rate');
       const hasBestMethod = tableHeaders.some(h => h.includes('Metode Terbaik')) || bodyText.includes('Metode Terbaik');
       const hasStale = bodyText.includes('Stale') || bodyText.includes('stale');
@@ -332,7 +332,7 @@ async function main() {
       const noteText = noteEl ? noteEl.textContent.trim() : '';
       const rows = top5List ? top5List.querySelectorAll('.dashboard-decision-row, .rk.dashboard-decision-row') : [];
       const plans = top5List ? top5List.querySelectorAll('.dash-plan') : [];
-      
+
       const bodyText = top5List ? top5List.innerText : '';
       const isAwaiting = bodyText.includes('Belum ada Top 5');
 

@@ -4711,7 +4711,7 @@
     html += '    </div>';
     html += '  </aside>';
     html += '</div>';
-    
+
     // 4. LEGACY CONTROLS PRESERVED IN ALAT LANJUTAN
     html += '<details class="adv-tools" style="margin-top:20px"><summary>Alat lanjutan</summary>';
     html += '  <div class="card-pad" style="border-top:1px solid var(--ac-hair);margin-top:12px">';

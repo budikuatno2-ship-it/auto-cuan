@@ -272,7 +272,7 @@ async function main() {
     console.log('[ASERSI 2] Menguji Chart Workstation untuk ticker BBCA...');
     const page = await preparePage(browser);
     await page.goto(`${baseUrl}/analisis?ticker=BBCA`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    
+
     // Ukur waktu tunggu kemunculan kanvas chart
     const t0Chart = Date.now();
     await page.waitForSelector('canvas', { timeout: 3000 });
@@ -482,7 +482,7 @@ async function main() {
     const radarEval = await pageRadar.evaluate(() => {
       const bodyText = document.body.innerText || '';
       const zeroFound = bodyText.includes('0 saham berpola') || bodyText.includes('Tidak ada pola di atas ambang');
-      
+
       const tableRows = document.querySelectorAll('#patternTableBody tr');
       const cardRows = document.querySelectorAll('.ps-card');
       const activeCount = Math.max(tableRows.length, cardRows.length);

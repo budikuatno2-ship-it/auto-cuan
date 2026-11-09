@@ -114,7 +114,7 @@ function normalizeCandles(ticker, chartResult) {
   if (ticker === 'IHSG') {
     // Candle yang valid di atas 6000
     const cleanCandles = rawCandles.filter(c => c.close >= 6000);
-    
+
     // Tambahkan bar EOD riil untuk sesi terkini (2026-11-03 dan 2026-11-04) dengan kisaran wajar BEI
     const datesPresent = new Set(cleanCandles.map(c => c.date));
     if (!datesPresent.has('2026-11-03')) {
@@ -234,7 +234,7 @@ async function syncTicker(ticker) {
 
 async function main() {
   console.log('=== PEMULIHAN DATA HARGA RIIL YAHOO FINANCE (0 KUOTA ARJUM) ===');
-  
+
   // 1. Sinkronkan IHSG
   await syncTicker('IHSG');
 

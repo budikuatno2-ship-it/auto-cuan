@@ -117,12 +117,12 @@ const totalMb = (totalBytes / (1024 * 1024)).toFixed(2);
 
 let md = `# MANIFEST_AUDIT_FINAL — Inventaris Lengkap Paket Arsip Audit V3 (Non-Destruktif)
 
-**Tanggal:** 2026-11-04  
-**Target Repository:** \`D:\\auto-cuan-2\` (Branch: \`feat/daytrade-screener-v1\`)  
-**Paket Arsip:** \`D:\\AUDIT_ROO_V3_FINAL.zip\`  
-**Folder Staging:** \`D:\\staging-audit-roo-v3\\\`  
-**Total Berkas Terinventaris:** ${items.length} berkas  
-**Total Ukuran Berkas:** ${totalMb} MB (${totalBytes} bytes)  
+**Tanggal:** 2026-11-04
+**Target Repository:** \`D:\\auto-cuan-2\` (Branch: \`feat/daytrade-screener-v1\`)
+**Paket Arsip:** \`D:\\AUDIT_ROO_V3_FINAL.zip\`
+**Folder Staging:** \`D:\\staging-audit-roo-v3\\\`
+**Total Berkas Terinventaris:** ${items.length} berkas
+**Total Ukuran Berkas:** ${totalMb} MB (${totalBytes} bytes)
 
 ---
 

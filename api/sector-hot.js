@@ -332,11 +332,14 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // V4-F08: Standalone EOD screener, locked top 5 radar, intel, & track record
-    if (action === "screener" || action === "nk-screener-results" || action === "daytrade-screener") {
-      const screenerApi = require("./screener");
-      return await screenerApi(req, res);
-    }
+    // V4-F08: locked top 5 radar, intel & track record.
+    // NOTE (V5 regression fix): do NOT short-circuit `screener` /
+    // `nk-screener-results` / `daytrade-screener` to the standalone
+    // `api/screener.js` handler here. That delegator runs before the
+    // PREMIUM READ ACCESS GATE and would serve premium browser reads to
+    // guests, unapproved, and blocked sessions. The gated handlers
+    // (handleScreenerRead / handleNkScreenerResults /
+    // handleDayTradeScreenerRead) below are the only sanctioned path.
     if (action === "web-daily-picks") {
       const top5File = path.join(__dirname, "..", "data", "top5-radar.json");
       if (fs.existsSync(top5File)) {

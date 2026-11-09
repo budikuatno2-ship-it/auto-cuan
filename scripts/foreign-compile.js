@@ -99,8 +99,11 @@ function safeWriteJson(filePath, data) {
  * @returns {{value:number|null, status:string, reason:string|null}}
  */
 function checkNetForeign(rawNetForeign, lastPrice, volumeToday) {
+  // An empty/whitespace-only string is "absent", NOT a measured zero. `Number('')`
+  // is 0, so without this guard a blank read would be fabricated into 0.
+  const isBlankString = typeof rawNetForeign === 'string' && rawNetForeign.trim() === '';
   const n = Number(rawNetForeign);
-  if (rawNetForeign == null || !Number.isFinite(n)) {
+  if (rawNetForeign == null || isBlankString || !Number.isFinite(n)) {
     return { value: null, status: 'NOT_PUBLISHED', reason: 'net_foreign_not_numeric' };
   }
   const price = Number(lastPrice || 0);

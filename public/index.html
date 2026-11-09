@@ -3128,7 +3128,7 @@ html.light #googleCompleteProfileModal input {
       <div>
         <div class="kick" style="color:var(--ac-info)">Admin · Akses Terbatas</div>
         <h1>Admin Console</h1>
-        <p>Operasional Auto-Cuan: persetujuan akun, pengguna, mode maintenance, voucher, job data, dan log audit. Setiap aksi tercatat.</p>
+        <p>Operasional Auto-Cuan: persetujuan akun, pengguna, mode maintenance, kupon akses, job data, dan log audit. Setiap aksi tercatat.</p>
       </div>
       <span class="st i" id="adminRoleBadge">Administrator Aktif</span>
     </div>
@@ -3154,7 +3154,7 @@ html.light #googleCompleteProfileModal input {
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(2)" data-admin-tab="2">Persetujuan Akun <span class="st a" id="tabPendingCount">0</span></button>
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(3)" data-admin-tab="3">Pengguna</button>
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(4)" data-admin-tab="4">Mode Maintenance</button>
-      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(5)" data-admin-tab="5">Kupon/Voucher</button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(5)" data-admin-tab="5">Kupon</button>
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(6)" data-admin-tab="6">Job &amp; Data Pipeline</button>
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(7)" data-admin-tab="7">Log Audit & Keamanan</button>
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(8)" data-admin-tab="8">Keamanan & Audit <span class="st g" id="tabSecBadge">Aman</span></button>
@@ -3442,14 +3442,14 @@ html.light #googleCompleteProfileModal input {
       </section>
     </div>
 
-    <!-- TAB 5: KUPON/VOUCHER -->
+    <!-- TAB 5: KUPON AKSES -->
     <div id="panelTab5" class="admin-panel" style="display:none">
       <div style="display:grid;grid-template-columns:minmax(280px, 340px) 1fr;gap:20px;align-items:start">
         <section class="sheet" style="padding:20px">
-          <h2 style="margin:0 0 16px;font-size:16px;font-weight:700">Buat Voucher Baru</h2>
+          <h2 style="margin:0 0 16px;font-size:16px;font-weight:700">Buat Kupon Baru</h2>
           <div style="display:flex;flex-direction:column;gap:14px">
             <div>
-              <label class="flabel" for="vCodeInput">Kode Voucher</label>
+              <label class="flabel" for="vCodeInput">Kode Kupon</label>
               <input id="vCodeInput" class="inp mono" style="text-transform:uppercase" placeholder="CUAN2026" value="CUAN2026">
             </div>
             <div>
@@ -3468,21 +3468,21 @@ html.light #googleCompleteProfileModal input {
               <label class="flabel" for="vExpiryInput">Kedaluwarsa</label>
               <input id="vExpiryInput" type="date" class="inp" value="2026-12-31">
             </div>
-            <button class="btn p" style="margin-top:6px" onclick="createVoucherAction()">Terbitkan Voucher</button>
+            <button class="btn p" style="margin-top:6px" onclick="createKuponAction()">Terbitkan Kupon</button>
           </div>
         </section>
 
         <section class="sheet">
           <div class="sec-h">
-            <h2>Voucher Aktif</h2>
+            <h2>Kupon Aktif</h2>
             <span>Daftar kode promosi dan kuota</span>
           </div>
           <div class="tw">
             <table class="tbl">
               <thead><tr><th>Kode</th><th>Paket</th><th class="r">Terpakai</th><th>Kedaluwarsa</th><th class="r">Aksi</th></tr></thead>
-              <tbody id="vouchersTableTbody">
-                <tr><td class="mono" style="font-weight:600">CUAN2026</td><td class="mut">Pro Trader · 30 hari</td><td class="r num">12 / 50</td><td class="num mut">31 Des 2026</td><td class="r"><button class="btn sm" onclick="revokeVoucher('CUAN2026')">Nonaktifkan</button></td></tr>
-                <tr><td class="mono" style="font-weight:600">IDX-OKT</td><td class="mut">Pro Trader · 90 hari</td><td class="r num">48 / 50</td><td class="num mut">31 Okt 2026</td><td class="r"><button class="btn sm" onclick="revokeVoucher('IDX-OKT')">Nonaktifkan</button></td></tr>
+              <tbody id="adminCouponsTableTbody">
+                <tr><td class="mono" style="font-weight:600">CUAN2026</td><td class="mut">Pro Trader · 30 hari</td><td class="r num">12 / 50</td><td class="num mut">31 Des 2026</td><td class="r"><button class="btn sm" onclick="revokeKupon('CUAN2026')">Nonaktifkan</button></td></tr>
+                <tr><td class="mono" style="font-weight:600">IDX-OKT</td><td class="mut">Pro Trader · 90 hari</td><td class="r num">48 / 50</td><td class="num mut">31 Okt 2026</td><td class="r"><button class="btn sm" onclick="revokeKupon('IDX-OKT')">Nonaktifkan</button></td></tr>
               </tbody>
             </table>
           </div>

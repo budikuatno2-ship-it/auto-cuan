@@ -50,7 +50,7 @@
         '</td></tr>';
       return;
     }
-    
+
     var table = tbody.closest('table');
     if (table) {
       var thead = table.querySelector('thead');
@@ -176,7 +176,7 @@
 
         var html = '<div class="tw"><div class="dash-rk-table dashboard-decision-list">';
         html += '<div class="rk hd" aria-hidden="true"><span>#</span><span>Ticker</span><span>Setup</span><span class="r">Harga</span><span class="r">Chg</span><span>Win Rate</span><span class="r">Entry / Target</span><span>Status</span><span></span></div>';
-        
+
         picks.forEach(function(r, idx) {
           var p = Number(r.last_price || r.close || 0);
           var sc = Number(r.score || 85);
@@ -231,7 +231,7 @@
         var data = await res.json();
         if (data && data.success) {
           var html = '<div class="space-y-6" data-v4f08-intel="true">';
-          
+
           // Section 1: Anomali Volume
           html += '<div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-4">' +
             '<div class="flex items-center justify-between mb-3">' +
@@ -316,7 +316,7 @@
           if (mSl) mSl.textContent = s.sl_hits.toLocaleString('id-ID');
           if (mSlSub) mSlSub.textContent = (s.sl_rate || '10,0%') + ' dari ' + s.total_resolved.toLocaleString('id-ID') + ' selesai';
           if (mExp) mExp.textContent = (s.expired_signals || 100).toLocaleString('id-ID');
-          
+
           var chip = $('trProvenanceChip');
           if (chip) chip.textContent = 'dari ' + s.total_signals.toLocaleString('id-ID') + ' sinyal terakhir';
         }

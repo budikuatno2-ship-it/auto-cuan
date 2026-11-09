@@ -1,10 +1,10 @@
 # AUTO-CUAN V4: 8 INSTITUTIONAL GITHUB ENGINEERING SKILLS & ARCHITECTURAL MANIFESTO
 
-**Document Identification:** `.roo/rules/auto-cuan-8-github-skills.md`  
-**Status:** PERMANENT INSTITUTIONAL DIRECTIVE (NON-NEGOTIABLE ARCHITECTURAL RULE)  
-**Classification:** ARCHITECTURAL INTEGRITY, PRODUCTION EXCELLENCE & FORENSIC OBSERVABILITY  
-**Scope:** Frontend UI/UX, Full-Viewport Layout, Backend Quota Engine, Screener Pipelines, Real-Time Charting, Telemetry, and Security  
-**Target Environment:** Auto-Cuan V4 Core, Daytrade V7, Stock Arjum Financial Engine, Broker Hunter, and AI Cockpit  
+**Document Identification:** `.roo/rules/auto-cuan-8-github-skills.md`
+**Status:** PERMANENT INSTITUTIONAL DIRECTIVE (NON-NEGOTIABLE ARCHITECTURAL RULE)
+**Classification:** ARCHITECTURAL INTEGRITY, PRODUCTION EXCELLENCE & FORENSIC OBSERVABILITY
+**Scope:** Frontend UI/UX, Full-Viewport Layout, Backend Quota Engine, Screener Pipelines, Real-Time Charting, Telemetry, and Security
+**Target Environment:** Auto-Cuan V4 Core, Daytrade V7, Stock Arjum Financial Engine, Broker Hunter, and AI Cockpit
 
 ---
 
@@ -26,8 +26,8 @@ Every pull request, refactor, backend endpoint, and frontend template within the
 ---
 
 ## 2. SKILL 1: NUTLOPE/HALLMARK — FULL-VIEWPORT 12-COLUMN INSTITUTIONAL BENTO GRID
-**Repository:** [https://github.com/nutlope/hallmark](https://github.com/nutlope/hallmark)  
-**Domain:** Viewport Architecture, Bento Grid Modularization, Multi-Pane Density, Zero Outer-Scroll  
+**Repository:** [https://github.com/nutlope/hallmark](https://github.com/nutlope/hallmark)
+**Domain:** Viewport Architecture, Bento Grid Modularization, Multi-Pane Density, Zero Outer-Scroll
 
 ### 2.1 The Zero-Outer-Scroll Invariant
 Institutional trading workstations (Bloomberg Terminal, FactSet, TradingView Pro) operate on a zero-outer-scroll paradigm. The primary application window must fit exactly within `100vh` (or `100dvh` on modern mobile browsers) without page-level vertical scrollbars. Scrolling is strictly confined to internal scroll containers (`overflow-y-auto`) within isolated bento cards.
@@ -119,22 +119,22 @@ Traders require zero-latency keyboard switching across bento cards:
 ---
 
 ## 3. SKILL 2: MIQDADBADJUBER/ANTI-SLOP — ZERO AI SLOP & STRICT QUANTITATIVE PRECISION
-**Repository:** [https://github.com/miqdadbadjuber/anti-slop](https://github.com/miqdadbadjuber/anti-slop)  
-**Domain:** Numeric Determinism, Prompt Guardrails, Blacklisted Jargon, Financial Computation  
+**Repository:** [https://github.com/miqdadbadjuber/anti-slop](https://github.com/miqdadbadjuber/anti-slop)
+**Domain:** Numeric Determinism, Prompt Guardrails, Blacklisted Jargon, Financial Computation
 
 ### 3.1 Eradication of AI Slop and Qualitative Vague Assertions
 Trading interfaces must never display AI-generated fluff, marketing jargon, or qualitative hand-waving. Every assertion must be substantiated by a verifiable mathematical derivation or raw exchange metric.
 
 #### Comprehensive Blacklisted Slop Matrix & Mandatory Substitutions:
-- ❌ *"Saham ini sangat menjanjikan dengan prospek cerah di masa depan"*  
+- ❌ *"Saham ini sangat menjanjikan dengan prospek cerah di masa depan"*
   ✅ **Mandatory Substitution:** *"CR3: 68.4% (Akumulasi masif ZP, CC, AK), Net Foreign Flow: +Rp 14.2 M, Breakout R1 1.450 pada 2.4x Median Volume 20 Hari."*
-- ❌ *"Potensi cuan luar biasa, segera serok sebelum terbang to the moon"*  
+- ❌ *"Potensi cuan luar biasa, segera serok sebelum terbang to the moon"*
   ✅ **Mandatory Substitution:** *"Setup Daytrade V7 Terpenuhi: Bid/Offer Ratio 2.14, VWAP 845 (Last Price 850, +0.59% vs VWAP), Volatilitas 1.8x ATR(14)."*
-- ❌ *"Kondisi pasar saat ini agak kurang bersahabat dan galau"*  
+- ❌ *"Kondisi pasar saat ini agak kurang bersahabat dan galau"*
   ✅ **Mandatory Substitution:** *"IHSG -0.84% (52 Advancing, 314 Declining, 120 Unchanged), Total Turnover Rp 8.1T vs 20-Day Median Rp 10.5T."*
-- ❌ *"Bandar terlihat sedang memainkan harga secara misterius"*  
+- ❌ *"Bandar terlihat sedang memainkan harga secara misterius"*
   ✅ **Mandatory Substitution:** *"Top Broker Concentration (CR1: 34.2% by YU), Net Absorption Rp 28.5 M, Average Buy Price Rp 422 vs Market Rp 428."*
-- ❌ *"Tampaknya candle membentuk pola bullish yang cantik"*  
+- ❌ *"Tampaknya candle membentuk pola bullish yang cantik"*
   ✅ **Mandatory Substitution:** *"Candle Daily: Hammer Rejection di Support S2 (Low 1.280, Close 1.315), Upper Shadow 4.2%, Lower Shadow 18.6%."*
 
 ### 3.2 IEEE-754 Precision Standards & Safe Decimal Arithmetic
@@ -149,7 +149,7 @@ const InstitutionalMath = {
     if (val === null || val === undefined || isNaN(val)) return 0;
     return Math.round(Number(val));
   },
-  
+
   formatPercent(val) {
     if (val === null || val === undefined || isNaN(val)) return '0.00%';
     const num = Number(val);
@@ -211,8 +211,8 @@ When invoking LLMs for market summary, the system prompt must inject strict math
 ---
 
 ## 4. SKILL 3: PBAKAUS/IMPECCABLE — ZERO LAYOUT SHIFT & DETERMINISTIC SUB-15MS FAST-BUNDLE RENDERING
-**Repository:** [https://github.com/pbakaus/impeccable](https://github.com/pbakaus/impeccable)  
-**Domain:** Core Web Vitals, Cumulative Layout Shift (CLS), Latency Budgets, Asset Delivery  
+**Repository:** [https://github.com/pbakaus/impeccable](https://github.com/pbakaus/impeccable)
+**Domain:** Core Web Vitals, Cumulative Layout Shift (CLS), Latency Budgets, Asset Delivery
 
 ### 4.1 Cumulative Layout Shift Invariant: CLS = 0.000
 Institutional traders make decisions in milliseconds. A jumping button or resizing chart container causes costly misclicks. Layout shift is strictly forbidden.
@@ -280,8 +280,8 @@ class FastBundleCache {
 ---
 
 ## 5. SKILL 4: CTH9191/ANIMATE — 60 FPS GPU-ACCELERATED MICRO-TRANSITIONS
-**Repository:** [https://github.com/cth9191/animate](https://github.com/cth9191/animate)  
-**Domain:** Composite Layers, Hardware Acceleration, 60 FPS Frame Budget, Micro-Interactions  
+**Repository:** [https://github.com/cth9191/animate](https://github.com/cth9191/animate)
+**Domain:** Composite Layers, Hardware Acceleration, 60 FPS Frame Budget, Micro-Interactions
 
 ### 5.1 The Composite-Only Animation Rule
 Animating layout properties (`width`, `height`, `top`, `left`, `margin`, `padding`) forces the browser engine through expensive **Recalculate Style -> Layout -> Paint -> Composite** cycles, dropping frame rates below 60 FPS.
@@ -347,8 +347,8 @@ document.addEventListener('visibilitychange', () => {
 ---
 
 ## 6. SKILL 5: DHVANILPATEL/SWARM-CURSORS — SINGLE REQUESTANIMATIONFRAME BATCHED CANVAS/SVG RENDERING
-**Repository:** [https://github.com/DhvanilPatel/swarm-cursors](https://github.com/DhvanilPatel/swarm-cursors)  
-**Domain:** Crosshair Coordinates, High-Frequency Event Coalescing, Zero GC Pressure  
+**Repository:** [https://github.com/DhvanilPatel/swarm-cursors](https://github.com/DhvanilPatel/swarm-cursors)
+**Domain:** Crosshair Coordinates, High-Frequency Event Coalescing, Zero GC Pressure
 
 ### 6.1 The Event Throttling & Batching Problem
 Mouse movements on high-polling rate gaming mice generate 500 to 1,000 `pointermove` events per second. Binding raw DOM updates directly to `onmousemove` immediately chokes the main thread.
@@ -442,8 +442,8 @@ function setupHighDpiCanvas(canvas, cssWidth, cssHeight) {
 ---
 
 ## 7. SKILL 6: TENCENT/BROWSERSKILL — AUTOMATED LIVE DOM & BOUNDING-BOX INSPECTION
-**Repository:** [https://github.com/Tencent/BrowserSkill](https://github.com/Tencent/BrowserSkill)  
-**Domain:** DOM Geometry Inspection, Overlap Auditing, Viewport Boundary Clipping  
+**Repository:** [https://github.com/Tencent/BrowserSkill](https://github.com/Tencent/BrowserSkill)
+**Domain:** DOM Geometry Inspection, Overlap Auditing, Viewport Boundary Clipping
 
 ### 7.1 Autonomous Live Bounding-Box Verification
 Trading dashboards frequently suffer from overlapping popovers, clipped dropdowns, and truncated numbers. BrowserSkill's bounding-box verification algorithm is embedded into our CI/CD and gate suites to verify element geometries in real time:
@@ -508,8 +508,8 @@ High-contrast readability is mandatory for institutional visual ergonomics:
 ---
 
 ## 8. SKILL 7: BROWSER-USE/BROWSER-USE — END-TO-END REAL USER JOURNEY CLICK SIMULATION
-**Repository:** [https://github.com/browser-use/browser-use](https://github.com/browser-use/browser-use)  
-**Domain:** Autonomous Agent Automation, Real Human Journey Validation, Resilient Selectors  
+**Repository:** [https://github.com/browser-use/browser-use](https://github.com/browser-use/browser-use)
+**Domain:** Autonomous Agent Automation, Real Human Journey Validation, Resilient Selectors
 
 ### 8.1 Natural Human Interaction Physics
 Testing trading platforms with naive synthetic scripts (`element.click()`) fails to surface real interaction race conditions, hover state bugs, and touch target misses.
@@ -588,8 +588,8 @@ function generateBezierCurve(start, end, controlPoints = 2, steps = 25) {
 ---
 
 ## 9. SKILL 8: NATIONALSECURITYAGENCY/GHIDRA — DEEP FORENSIC TELEMETRY, PROCESS INTEGRITY & THREAT AUDIT TABLE
-**Repository:** [https://github.com/NationalSecurityAgency/ghidra](https://github.com/NationalSecurityAgency/ghidra)  
-**Domain:** Reverse Engineering Defense, Tamper Detection, STRIDE Threat Modeling, Immutable Audit Trails  
+**Repository:** [https://github.com/NationalSecurityAgency/ghidra](https://github.com/NationalSecurityAgency/ghidra)
+**Domain:** Reverse Engineering Defense, Tamper Detection, STRIDE Threat Modeling, Immutable Audit Trails
 
 ### 9.1 Forensic Telemetry & Cryptographic Verification
 Auto-Cuan handles privileged market intelligence, automated trade screener triggers, and high-value Stock Arjum API quota. To guard against unauthorized memory modifications or code tampering:
@@ -904,8 +904,8 @@ function triggerEmergencyQuotaLockdown(reason) {
 
 Every commit must be verified against `tools/gates/gate-V4-F01.js` and higher gate suites. Any violation of these eight skills results in an immediate build rejection and gate failure.
 
-**SIGNED & RATIFIED:** Auto-Cuan V4 Core Architecture Directorate  
-**DATE:** 2026-11-04  
+**SIGNED & RATIFIED:** Auto-Cuan V4 Core Architecture Directorate
+**DATE:** 2026-11-04
 
 
 ---
