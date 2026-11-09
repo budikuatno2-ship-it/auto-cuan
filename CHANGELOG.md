@@ -54,3 +54,9 @@ All notable changes to the Auto Cuan Daytrade Screener & AI Reliability Upgrade 
 - Verified absolute repository invariants (exactly 12 API files, zero secret leaks, zero live network calls in tests).
 - Added comprehensive release gate end-to-end test suite (`test/daytrade-screener-v1-release-gate.test.js`).
 - Registered all 316 tests in `tools/curated-build-tests.json` with 100% pass rate.
+
+## [D1] - 2026-11-02
+
+### Deploy Produksi feat/daytrade-screener-v1 (PR #924 + konvergensi VPS PR #925)
+- Merge PR #924 (fix regression + deploy production) ke feat/daytrade-screener-v1.
+- Konvergensi VPS diverged (ahead 2, behind 18) via merge --no-ff ke d1/vps-converge-feat tanpa reset/rebase/force.
