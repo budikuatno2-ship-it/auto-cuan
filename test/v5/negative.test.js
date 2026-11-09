@@ -1164,8 +1164,18 @@ const N15 = {
     const plan = H.readText('public/analisis-v2.js');
     const evidence = [];
     if (chart.ok) {
-      const guarded = /_chartRequestSeq/.test(chart.text) && /AbortController/.test(chart.text);
-      if (!guarded) evidence.push('unified-cockpit-runtime.js chart loader still lacks a request-sequence/abort guard');
+      // The loader owns a guard token via chartGuard().next(), not a variable
+      // named _chartRequestSeq. Check the real acquisition, rejection and
+      // cancellation contract rather than requiring an arbitrary identifier.
+      const hasSequence = /chartGuard\(\)\.next\(/.test(chart.text) ||
+        /_guard\.next\(safeTicker,\s*CHART_CATEGORY\)/.test(chart.text);
+      const rejectsOldRequest = /\.isCurrent\(chartToken\)/.test(chart.text);
+      const hasAbort = /new\s+_AbortController\(\)/.test(chart.text) &&
+        /_chartAbort\.abort\(\)/.test(chart.text);
+      const preventsStaleState = /if\s*\(getActiveTicker\(\)\s*!==\s*safeTicker\)\s*return/.test(chart.text);
+      if (!(hasSequence && rejectsOldRequest && hasAbort && preventsStaleState)) {
+        evidence.push('unified-cockpit-runtime.js missing actual request token, current-request rejection, abort, or active-ticker state guard');
+      }
     }
     if (plan.ok) {
       const hardcoded = lineScan(plan.text, /9860|7480|5000\)\s*;?\s*$/);
