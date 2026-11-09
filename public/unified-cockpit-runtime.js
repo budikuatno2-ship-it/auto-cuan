@@ -229,11 +229,14 @@
         resp = await fetch('/api/candles?ticker=' + encodeURIComponent(safeTicker), { signal: _fetchSignal });
         data = await resp.json();
       }
+      // Reject an old ticker/sequence BEFORE changing global loading or
+      // reload state; otherwise a late response can mark the wrong ticker
+      // "loaded" even when its chart payload is correctly refused.
+      var requestSeq = chartToken ? chartToken.seq : null;
+      var requestGuard = chartGuard();
+      if (requestGuard && !requestGuard.isCurrent(chartToken)) return;
+      if (getActiveTicker() !== safeTicker) return;
       _loadingChart = false;
-
-      // The reload gate may only be satisfied once the response has actually
-      // arrived for THIS ticker, never while the request is still in flight.
-      _lastLoadedChartTicker = safeTicker;
 
       if (!data || !data.success || !data.candles || data.candles.length === 0) {
         var errEl = byId(chartId + '_container');
@@ -242,17 +245,13 @@
       }
 
       // --- identity gate (BUG-V5-P0-009) -----------------------------------
-      // (1) the request must still be the newest one for this category;
-      var requestSeq = chartToken ? chartToken.seq : null;
-      var requestGuard = chartGuard();
-      if (requestGuard && !requestGuard.isCurrent(chartToken)) {
-        return; // an older request resolved late: discard, never render
-      }
-      // (2) the payload must describe the ticker the user is looking at.
+      // The payload must describe the requested ticker before any shared write.
       if (data.ticker && cleanTicker(data.ticker) !== safeTicker) {
         markIdentityMismatch(byId(chartId + '_container'), safeTicker);
         return;
       }
+      // Only a current, matching response can satisfy the reload gate.
+      _lastLoadedChartTicker = safeTicker;
       // (3) publish through the identity bus. A refused write means a newer
       // snapshot already won, so this payload must not reach the card.
       var _bus = chartBus();
@@ -402,6 +401,11 @@
         if (errEl2) errEl2.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Modul visual chart sedang disiapkan...</div>';
       }
     } catch (e) {
+      // An aborted/outdated request must not clear the current loading state
+      // or replace the newer ticker's error/UI state.
+      var _catchGuard = chartGuard();
+      if (_catchGuard && chartToken && !_catchGuard.isCurrent(chartToken)) return;
+      if (getActiveTicker() !== safeTicker) return;
       _loadingChart = false;
       var errBox = byId(chartId + '_container');
       if (errBox) errBox.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart gagal dimuat. Silakan muat ulang.</div>';
