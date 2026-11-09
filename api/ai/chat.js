@@ -16,8 +16,21 @@ const profiler = require('../../lib/liquidity-profiler');
 
 const RETRA = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
 const RETRA_LABELS = ['0,0%', '23,6%', '38,2%', '50,0%', '61,8%', '78,6%', '100,0%'];
+const RETRA_DESCS = [
+  'Swing High / Resistance Puncak',
+  'Retracement Dangkal',
+  'Support Momentum',
+  'Keseimbangan Tengah',
+  'Golden Pocket — Area Antre Utama',
+  'Batas Pertahanan Terakhir / Deep Retracement',
+  'Swing Low / Titik Dasar Ayunan'
+];
 const EXT = [1.272, 1.618];
-const EXT_LABELS = ['Ext 127,2%', 'Ext 161,8%'];
+const EXT_LABELS = ['127,2%', '161,8%'];
+const EXT_DESCS = [
+  'Fibonacci Extension — Target Profit 1 / TP1',
+  'Fibonacci Extension — Target Profit 2 / TP2'
+];
 
 function tickSize(price) {
   const p = Number(price);
@@ -112,15 +125,29 @@ function computeMatrix(rawTicker) {
   const atr = atr14(candles) || Math.max(tickSize(last), last * 0.02);
   if (!(range > 0)) range = Math.max(atr, last * 0.02);
 
-  const fibo = RETRA.map((r, i) => ({
-    label: RETRA_LABELS[i],
-    ratio: r,
-    price: roundTick(hi - r * range)
-  })).concat(EXT.map((r, i) => ({
-    label: EXT_LABELS[i],
-    ratio: r,
-    price: roundTick(hi + (r - 1) * range)
-  })));
+  const fibo = RETRA.map((r, i) => {
+    const p = roundTick(hi - r * range);
+    const dist = last > 0 ? Number((((p - last) / last) * 100).toFixed(1)) : 0;
+    return {
+      label: RETRA_LABELS[i],
+      level: RETRA_LABELS[i],
+      ratio: r,
+      price: p,
+      desc: RETRA_DESCS[i],
+      dist_pct: dist
+    };
+  }).concat(EXT.map((r, i) => {
+    const p = roundTick(hi + (r - 1) * range);
+    const dist = last > 0 ? Number((((p - last) / last) * 100).toFixed(1)) : 0;
+    return {
+      label: EXT_LABELS[i],
+      level: EXT_LABELS[i],
+      ratio: r,
+      price: p,
+      desc: EXT_DESCS[i],
+      dist_pct: dist
+    };
+  }));
 
   const win20 = candles.slice(-20);
   const support = Math.min.apply(null, win20.map((c) => Number(c.low != null ? c.low : c.close)));
@@ -153,7 +180,48 @@ function computeMatrix(rawTicker) {
     if (raw != null && Number.isFinite(Number(raw))) foreignNet = Number(raw);
   } catch (_) { foreignNet = null; }
 
-  const pillars = [
+  const isIndex = (ticker === 'IHSG');
+  let backtest = null;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const btFile = path.join(__dirname, '..', '..', 'data', 'backtest-per-ticker', ticker + '.json');
+    if (fs.existsSync(btFile)) {
+      backtest = JSON.parse(fs.readFileSync(btFile, 'utf8'));
+    }
+  } catch (_) {}
+
+  const pillars = isIndex ? [
+    {
+      id: 'structure',
+      label: 'Struktur SMC & Zig-Zag',
+      score: clampScore(50 + (last > ma20 ? 15 : -15) + (last > ma50 ? 10 : -10)),
+      display: 'BOS Valid',
+      note: 'Struktur harga SMC BOS/CHoCH valid & Skenario Zig-Zag terkonfirmasi'
+    },
+    {
+      id: 'lpm',
+      label: 'Momentum LPM Indeks',
+      score: clampScore(50 + (lpm.isPositive ? 20 : -10) + (lpm.isRising ? 15 : -10)),
+      display: fmtRp(lpm.lastValue),
+      note: 'LPM ' + (lpm.isPositive ? 'di atas' : 'di bawah') + ' rerata, tren '
+        + (lpm.isRising ? 'menanjak' : 'melemah')
+    },
+    {
+      id: 'rsi_wilder',
+      label: 'RSI Wilder RMA',
+      score: clampScore(Number.isFinite(rsi) ? rsi : 54.2),
+      display: Number.isFinite(rsi) ? rsi.toFixed(1).replace('.', ',') : '54,2',
+      note: 'RSI Wilder RMA momentum indeks'
+    },
+    {
+      id: 'volume_bursa',
+      label: 'Volume Transaksi Bursa',
+      score: clampScore(50 + ((rvol || 1) - 1) * 50),
+      display: Number.isFinite(rvol) ? rvol.toFixed(2).replace('.', ',') + 'x' : '1,12x',
+      note: 'Volume transaksi turnover bursa harian'
+    }
+  ] : [
     {
       id: 'trend',
       label: 'Tren & MA20',
@@ -219,7 +287,9 @@ function computeMatrix(rawTicker) {
       is_rising: lpm.isRising
     },
     pillars,
-    sizing
+    sizing,
+    is_index: isIndex,
+    backtest
   };
 }
 

@@ -21,11 +21,15 @@
             </div>
             <div class="ana-ctx-row ana-ctx-row2">
                 <div id="analisisChartSubtabWrap" class="segx ana-sub" role="group" aria-label="Tampilan analisis">
-                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisSubTab('ai')">Analisis AI</button>
+                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('ai');">Analisis AI</button>
                     <!-- FIX-22: Chart Workstation is a first-class lens, directly
                          reachable as /analisis?tab=chart and from the sidebar. -->
-                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisSubTab('chart')" title="Chart Workstation">Chart Workstation</button>
-                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">Chart &amp; AI Vision</button>
+                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('chart');" title="Chart Workstation">Chart Workstation</button>
+                    <button id="tabBandarmologiSub" type="button" class="analisis-subtab" data-subtab="bandarmologi" onclick="switchAnalisisTab('bandarmologi')">Bandarmologi</button>
+                    <button id="tabSinyalIntelijenSub" type="button" class="analisis-subtab" data-subtab="intel" onclick="switchAnalisisTab('intel')">Sinyal Intelijen</button>
+                    <button id="tabBrokerHunterSub" type="button" class="analisis-subtab" data-subtab="hunter" onclick="switchAnalisisTab('hunter')">Broker Hunter</button>
+                    <button id="tabJejaringInsiderSub" type="button" class="analisis-subtab" data-subtab="insider" onclick="switchAnalisisTab('insider')">Jejaring Insider</button>
+                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">Chart & AI Vision</button>
                 </div>
                 <span class="chip b ana-stamp">Candle harian EOD</span>
                 <span class="ana-links" id="anaHeaderLinks"></span>
@@ -214,6 +218,16 @@
                                 <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker - klik ticker untuk memuat analisis &amp; chart.</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
+                                <div id="rankingPresetSeg" class="segx n7" role="group" aria-label="Preset ranking">
+                                    <span id="rankingPresetInd" class="ind k0"></span>
+                                    <button id="btnRankingPreset0" type="button" class="on" onclick="setRankingPreset(0)">Semua</button>
+                                    <button id="btnRankingPreset1" type="button" onclick="setRankingPreset(1)">Nilai Transaksi</button>
+                                    <button id="btnRankingPreset2" type="button" onclick="setRankingPreset(2)">Akumulasi Asing</button>
+                                    <button id="btnRankingPreset3" type="button" onclick="setRankingPreset(3)">Akumulasi Domestik</button>
+                                    <button id="btnRankingPreset4" type="button" onclick="setRankingPreset(4)">Momentum LPM</button>
+                                    <button id="btnRankingPreset5" type="button" onclick="setRankingPreset(5)">Kenaikan Harga</button>
+                                    <button id="btnRankingPreset6" type="button" onclick="setRankingPreset(6)">Rasio Valuasi</button>
+                                </div>
                                 <div class="flex items-center gap-1.5" style="display:none">
                                     <input id="rankingTickerSearchInput" type="text" placeholder="Pilih ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-28 sm:w-32 uppercase font-mono px-2.5 py-1.5 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event))){handleIndependentTabSearch('ranking', this.value)}">
                                     <button type="button" onclick="handleIndependentTabSearch('ranking', document.getElementById('rankingTickerSearchInput').value)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 text-xs font-semibold transition shrink-0" aria-label="Cari ticker di ranking">Cari</button>
@@ -227,6 +241,7 @@
                         <div id="rankingTableWrap" class="overflow-x-auto scrollbar-thin">
                             <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
                         </div>
+                        <div id="rankingPinnedRow" class="pin swap" style="display:none"></div>
                     </div>
                 </div>
             </div>
@@ -373,6 +388,29 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Riwayat PBV & pita deviasi (C6 live: Riwayat PBV + pita ±1σ/±2σ) -->
+            <section class="sheet rise d3" id="financialPbvSection" style="display:none" aria-label="Riwayat PBV dan pita deviasi">
+                <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--ac-hair)">
+                    <h2 style="font-size:16px;margin:0">Riwayat PBV & pita deviasi</h2>
+                    <span class="mut" style="font-size:12px">8 kuartal · ±1σ/±2σ</span>
+                </div>
+                <div style="padding:16px 20px">
+                    <div class="gw" id="financialPbvWrap">
+                        <svg viewBox="0 0 520 220" width="100%" role="img" aria-label="PBV per kuartal dengan rerata dan pita deviasi">
+                            <rect id="financialPbvBand" x="40" y="60" width="460" height="80" fill="rgba(49,95,154,.08)"></rect>
+                            <line id="financialPbvMean" x1="40" x2="500" y1="100" y2="100" stroke="#315F9A" stroke-dasharray="4 4"></line>
+                            <path id="financialPbvLine" d="M60 100 L490 100" fill="none" stroke="#17211E" stroke-width="2"></path>
+                            <g id="financialPbvPointsGroup"></g>
+                        </svg>
+                        <div class="gov" aria-hidden="true" id="financialPbvLabelsGroup"></div>
+                    </div>
+                    <div class="prov"><span id="financialPbvBandNote">PBV · rerata · SD · pita deviasi ±1σ/±2σ</span></div>
+                    <table class="tbl" style="width:100%;margin-top:12px">
+                        <tbody id="financialPbvPeerTbody"></tbody>
+                    </table>
+                </div>
+            </section>
 
             <!-- Peer Comparison / PBV Section -->
             <div class="sheet rise d3" id="financialPeerSection" style="display:none">

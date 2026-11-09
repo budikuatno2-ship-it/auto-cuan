@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b0e14">
     <meta name="robots" content="noindex, nofollow">
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
-    <title>Analisis Saham &amp; Cockpit AI | Auto-Cuan</title>
+    <title>Analisis Saham | Auto-Cuan</title>
     <link rel="preload" href="/fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/geist-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/fonts/ac-fonts.css?v=20261020-v1">
@@ -62,7 +62,7 @@
         <div class="brand">
             <div class="brand-mark" aria-hidden="true">AC</div>
             <div class="brand-copy">
-                <h1>Analisis Saham &amp; Cockpit AI</h1>
+                <h1>Analisis Saham </h1>
                 <p>Chart interaktif, analisis teknikal komprehensif, dan pembacaan visual AI.</p>
             </div>
         </div>
@@ -885,7 +885,11 @@
     </div>
 
     <!-- SCRIPTS -->
-    <script src="/market-feature-runtime.js?v=20261023-v4"></script>
+    <!-- V5 P0-009/P0-010/P0-011: identity guard + one volume/foreign-flow
+         display helper, loaded before every chart/plan module. -->
+    <script src="/chart-state-guard.js?v=20261105-v5p0"></script>
+    <script src="/market-data-display.js?v=20261105-v5p0"></script>
+    <script src="/market-feature-runtime.js?v=20261105-v5p0"></script>
     <script src="/chart-viewer.js?v=20260905-v1"></script>
     <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
     <script src="/unified-cockpit-runtime.js?v=20261023-v2"></script>

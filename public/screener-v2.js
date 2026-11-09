@@ -66,6 +66,73 @@
     }).join('');
   }
 
+  // ---------------------------------------------------------------------------
+  // V5 P0-003 / P0-005: honest verdict rendering.
+  //
+  // The server now publishes a readiness verdict that is one of READY / WATCH /
+  // WAITING_CONFIRMATION / INSUFFICIENT_DATA / EXPIRED / REJECTED, plus the
+  // machine-readable `verdict_reasons` that produced it. Rows legitimately
+  // arrive with `quality_grade: null`, `action: null` and unknown numerics.
+  //
+  // This renderer therefore NEVER substitutes a label of its own: it shows the
+  // server's status verbatim, prints `—` for any absent number, and prints the
+  // first rejection reason so a user can see WHY a row is not actionable.
+  // ---------------------------------------------------------------------------
+  var VERDICT_LABEL = {
+    READY: 'Siap Entry',
+    WATCH: 'Pantau',
+    WAITING_CONFIRMATION: 'Menunggu Konfirmasi',
+    INSUFFICIENT_DATA: 'Data Tidak Cukup',
+    EXPIRED: 'Kedaluwarsa',
+    REJECTED: 'Ditolak'
+  };
+
+  var REASON_LABEL = {
+    RR_BELOW_MIN: 'R/R di bawah batas minimum',
+    RR_UNKNOWN: 'R/R tidak tersedia',
+    RR_CONTRADICTS_REPORTED: 'R/R metadata berbeda dari level rencana',
+    INVALID_OHLCV: 'Data OHLC tidak valid',
+    TRADE_PLAN_STRUCTURALLY_INVALID: 'Level rencana tidak koheren',
+    TRADE_PLAN_LEVELS_ABSENT: 'Level rencana belum lengkap',
+    PRICE_ABSENT: 'Harga tidak tersedia',
+    PRICE_NOT_POSITIVE: 'Harga tidak valid',
+    DATA_EXPIRED: 'Data melewati batas kesegaran',
+    DATA_STALE_WITHIN_TOLERANCE: 'Data belum diperbarui hari ini',
+    DATA_STALE_AGE_UNKNOWN: 'Umur data tidak diketahui',
+    DATA_PARTIAL: 'Data belum lengkap',
+    DATA_NOT_AVAILABLE: 'Sumber data tidak tersedia',
+    VOLUME_UNKNOWN: 'Volume tidak tersedia',
+    VOLUME_ZERO: 'Volume nol',
+    LIQUIDITY_UNKNOWN: 'Likuiditas tidak tersedia',
+    LIQUIDITY_BELOW_MIN: 'Likuiditas di bawah batas',
+    SOURCE_ADVISES_CAUTION: 'Sumber menyarankan hati-hati',
+    WAIVER_IGNORED: 'Waiver diabaikan (tidak ada jalur waiver)',
+    ALL_GATES_PASSED: 'Semua gate terpenuhi'
+  };
+
+  /** Server verdict, or null when the row predates the engine. */
+  function verdictOf(r) {
+    if (!r) return null;
+    var v = r.readiness_status || r.status;
+    if (typeof v !== 'string') return null;
+    var up = v.toUpperCase();
+    return Object.prototype.hasOwnProperty.call(VERDICT_LABEL, up) ? up : null;
+  }
+
+  /** First reason code, rendered as human text. Never invented. */
+  function reasonHtml(r) {
+    if (!r) return '';
+    var code = (Array.isArray(r.verdict_reasons) && r.verdict_reasons.length
+      ? r.verdict_reasons[0]
+      : r.verdict_reason) || null;
+    if (!code) return '';
+    // READY rows carry ALL_GATES_PASSED, which needs no warning banner.
+    if (String(code).toUpperCase() === 'ALL_GATES_PASSED') return '';
+    var text = REASON_LABEL[String(code).toUpperCase()] || String(code);
+    return '<p class="scr-help warn-t">Status: <b>' + esc(text) + '</b>' +
+      ' <span class="mut">(' + esc(String(code)) + ')</span></p>';
+  }
+
   function summaryHtml(r, type) {
     if (!r) return '';
     var l = levels(r);
@@ -83,6 +150,14 @@
     var tJs = esc(String(r.ticker || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
 
     var html = '<div class="scr-sum" data-ac-ui="v2">';
+    // The verdict banner is emitted before the plan so a user reads the status
+    // before the numbers that may contradict it.
+    var verdictKey = verdictOf(r);
+    if (verdictKey && verdictKey !== 'READY') {
+      html += '<p class="scr-help warn-t" data-ac-verdict="' + verdictKey + '">' +
+        '<b>' + esc(VERDICT_LABEL[verdictKey]) + '</b>' +
+        ' <span class="mut">· ' + verdictKey + '</span></p>';
+    }
     html += '<div class="scr-sum-head"><div><div class="scr-sum-id"><span class="tk mono">' + t + '</span>' + (tier || exec ? '<span class="chip b">' + esc([tier, exec ? 'Exec ' + exec : ''].filter(Boolean).join(' · ')) + '</span>' : '') + '</div>' + (name ? '<div class="mut scr-sum-name">' + esc(name) + '</div>' : '') + '</div>';
     html += '<button type="button" class="vbtn sm wl-star-btn scr-star' + (starred ? ' active on-star' : '') + '" data-ticker="' + t + '" aria-pressed="' + starred + '" aria-label="' + (starred ? 'Hapus ' + t + ' dari Watchlist' : 'Simpan ' + t + ' ke Watchlist') + '" title="Simpan ke Watchlist" onclick="window.toggleWatchlistTicker(\'' + tJs + '\', null, event)"><svg width="15" height="15" viewBox="0 0 24 24" fill="' + (starred ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></button></div>';
     html += '<div class="scr-sum-px"><span class="num mono">' + (px(last) ? 'Rp ' + px(last) : NIL) + '</span>' + (chg != null ? '<span class="num ' + (chg > 0 ? 'pos' : chg < 0 ? 'neg' : 'mut') + '">' + (chg > 0 ? '+' : chg < 0 ? '−' : '') + Math.abs(chg).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%</span>' : '') + '<span class="mut num scr-sum-score">Skor <b>' + (score != null ? esc(score) : '—') + '</b></span></div>';
@@ -95,6 +170,10 @@
     html += kv('Target 2', px(l.t2), 'mono pos');
     html += kv('Risk / Reward', l.rr != null ? '1 : ' + l.rr.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null, 'scr-strong');
     if (l.rr != null && l.rr < minRr) html += '<p class="scr-help warn-t">R/R di bawah batas minimum 1 : ' + String(minRr).replace('.', ',') + '. Tinjau ulang sebelum entry.</p>';
+    // The server's rejection reason, not a client-side guess. When the engine
+    // refused this row, the reason is printed even if its R/R happens to look
+    // acceptable — the two can legitimately disagree (e.g. stale data).
+    html += reasonHtml(r);
 
     html += positionHtml(r);
     html += gatesHtml(r, type);

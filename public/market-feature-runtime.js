@@ -926,21 +926,32 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var chgSign = chg >= 0 ? '+' : '';
         var chgColor = chg >= 0 ? '#34d399' : '#f87171';
 
-        var volStr = ws ? ws.formatIndonesianVolumeCompact(cVol) : (acNum(cVol) + ' lembar');
-        var foreignNet = ws ? ws.getLatestForeignNet([c], options && options.foreignFlow) : 0;
-        if (foreignNet === 0 && ws) {
+        // BUG-V5-P0-010: candle volume is a RAW SHARE count. One formatter, one
+        // unit label, shared with the cockpit card (never "lot" here).
+        var volStr = ws ? ws.formatIndonesianVolumeCompact(cVol, { unit: 'SHARES' }) : (acNum(cVol) + ' lembar');
+        // BUG-V5-P0-011: a missing foreign-flow value is ABSENCE, not zero.
+        // `getLatestForeignNetDetail` returns `{ value: null, status }` when the
+        // producer published nothing, so absence can never be rendered `Rp 0`.
+        var foreignDetail = (ws && typeof ws.getLatestForeignNetDetail === 'function')
+            ? ws.getLatestForeignNetDetail([c], options && options.foreignFlow)
+            : { value: null, status: 'NOT_PUBLISHED' };
+        if (foreignDetail.value == null && ws) {
             var fData = _m.fData;
             if (fData && fData.length > 0) {
                 var hoveredFd = fData.find(function(fd) { return fd.time === c.time; });
                 var targetFd = hoveredFd || fData[fData.length - 1];
+                // Only a real number counts; 0 here is a placeholder emitted by
+                // the series builder, not a measurement, so it is not adopted.
                 if (targetFd && targetFd.value != null && targetFd.value !== 0) {
-                    foreignNet = targetFd.value;
+                    foreignDetail = { value: targetFd.value, status: 'AVAILABLE' };
                 }
             }
         }
         setHdr('prov', acProvisionalLabel(c));
         setHdr('vol', volStr);
-        setHdr('foreign', ws ? ws.formatIndonesianRupiahCompact(foreignNet) : 'Rp 0');
+        setHdr('foreign', ws
+            ? ws.formatIndonesianRupiahCompact(foreignDetail.value, { status: foreignDetail.status })
+            : '\u2014');
         if (_mob) {
             setHdr('close', ' ' + acNum(cClose) + ' (' + chgSign + chgPct.toFixed(1) + '%)', chgColor);
         } else {
@@ -981,7 +992,12 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     }
 
     if (ws && typeof ws.attach === 'function') {
-        try { ws.attach(chartId, candles, metrics, ticker, options); } catch (_) {}
+        try {
+            ws.attach(chartId, candles, metrics, ticker, options);
+            if (typeof ws.renderChartOverlay === 'function') {
+                ws.renderChartOverlay(chartId, ticker, candles, (wsState && wsState.activePreset) || 'pro');
+            }
+        } catch (_) {}
     }
 
     // Register the live chart before waiting on the network, so theme repaint,

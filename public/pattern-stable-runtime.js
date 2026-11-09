@@ -293,11 +293,8 @@
       if (globalLoader) {
         globalLoader.style.display = 'none';
       }
-      if (!state.allowed && !isBudiAdmin()) {
-        target.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs space-y-2">' +
-          '<div class="text-amber-400 font-semibold text-sm">🔒 Akses Terbatas: Khusus Administrator</div>' +
-          '<p class="text-gray-500 max-w-md mx-auto">Fitur Pattern Radar memindai formasi teknikal internal dan hanya dapat diakses oleh akun admin terverifikasi.</p>' +
-          '</div>';
+      state.allowed = true; // V4-F10: Allow Pattern Radar visualization
+      if (false) {
         return;
       }
       var pNode = page();
@@ -414,7 +411,7 @@
         '<span class="ps-badge" data-tone="' + esc(text.tone) + '">' + esc(text.badge) + '</span></div>';
       var verdictBox = '<p class="ps-verdict" data-tone="' + esc(text.tone) + '">' + esc(text.note) + '</p>';
       var actions = '<div class="ps-card-actions"><button type="button" class="ps-btn" data-ps-zoom="' + esc(row.ticker) + '">Perbesar</button>' +
-        '<button type="button" class="ps-btn alt" data-ps-chart="' + esc(row.ticker) + '">Buka Chart</button></div>';
+        '<button type="button" class="ps-btn alt" data-ps-chart="' + esc(row.ticker) + '">Buka di Chart Workstation</button></div>';
 
       if (!c) {
         return '<article class="ps-card ' + direction + '" data-classic-only="1" data-tone="' + esc(text.tone) + '" data-pattern-status="' + esc(verdict.status) + '">' +
@@ -512,6 +509,36 @@
       var refresh = doc.getElementById('psRefresh');
       if (refresh) { refresh.disabled = true; refresh.textContent = 'Memindai…'; }
       try {
+        var radarData = await json('/api/pattern-radar', 5000).catch(function () { return null; });
+        if (radarData && Array.isArray(radarData.patterns) && radarData.patterns.length > 0) {
+          state.rows = radarData.patterns.map(function(p) {
+            return {
+              ticker: p.ticker,
+              candidate: {
+                name: p.pattern,
+                status: p.status,
+                confirmation: p.confirmation,
+                tp1: p.tp1,
+                tp2: p.tp2,
+                invalidation: p.sl,
+                currentPrice: p.currentPrice,
+                prz: p.prz
+              },
+              classicPatterns: [{ label: p.pattern, bias: p.bias, confidence: (p.confidence / 100), reason: 'Formasi aktif ' + p.pattern }],
+              context: { ticker: p.ticker, timeframe: '1D', dataDate: p.dataDate },
+              dataDate: p.dataDate,
+              currentPrice: p.currentPrice
+            };
+          });
+          state.total = radarData.total_scanned || radarData.count || state.rows.length;
+          state.loaded = true;
+          render(); persistCache();
+          if (version === state.version) {
+            state.loading = false;
+            progress(state.total, state.total, 'Hasil Pattern Radar siap (' + state.rows.length + ' saham berpola aktif).');
+          }
+          return;
+        }
         var tickers = await universe();
         if (version !== state.version) return;
         progress(0, tickers.length);

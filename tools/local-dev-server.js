@@ -322,24 +322,36 @@ const ROUTE_REWRITES = {
   '/screener': '/index.html',
   '/watchlist': '/index.html',
   '/sektor': '/index.html',
+  '/sektor-hot': '/index.html',
   '/trackrecord': '/index.html',
+  '/track-record': '/index.html',
+  '/catatan': '/index.html',
+  '/catatan-admin': '/index.html',
+  '/ranking': '/index.html',
+  '/financial': '/index.html',
+  '/struktur-pasar': '/index.html',
+  '/market-structure': '/index.html',
+  '/portfolio': '/index.html',
+  '/portofolio': '/index.html',
   '/pattern': '/index.html',
   '/pattern-radar': '/pattern-radar.html',
   '/review': '/index.html',
-  '/analisis-saham': '/analisis-saham.html',
-  // FASE 9: the shell embeds the Portfolio Command Center at this exact path,
-  // so the rewrite must exist for both the dev server and the VPS fallback.
-  '/portfolio-command-center': '/portfolio-command-center.html',
-  '/portfolio-planner': '/portfolio-command-center-v2.html',
+  '/analisis-saham': '/index.html',
+  '/analisis': '/index.html',
+  // FASE 9 & V4-F03: all views now unify inside the single-shell Workstation
+  '/portfolio-command-center': '/index.html',
+  '/portfolio-planner': '/index.html',
   '/kelola-keuangan': '/index.html',
   '/money-management': '/index.html',
-  '/catatan-admin': '/index.html',
   // Public BYOK registration form (mirrors the Vercel rewrite so the VPS
   // fallback serves the same URL shape).
   '/register': '/register.html',
   '/ketentuan': '/ketentuan.html',
-  '/admin-console': '/admin-console.html',
-  '/admin': '/admin-console.html',
+  '/admin-console': '/index.html',
+  '/admin': '/index.html',
+  '/admin.html': '/index.html',
+  '/admin-console.html': '/index.html',
+  '/analisis-saham.html': '/index.html',
   '/maintenance': '/maintenance.html',
   '/pemeliharaan': '/maintenance.html',
   // FASE 2: broker-summary ("broksum") and chart viewers. Both are real views of
@@ -804,12 +816,14 @@ const server = http.createServer(async (req, res) => {
   if (pathname.startsWith('/api/')) {
     let endpointName = pathname.slice('/api/'.length).replace(/\.js$/, '');
 
-    // Alias: /api/track-record -> sector-hot?action=track-record.
-    if (endpointName === 'track-record') {
-      parsedUrl.searchParams.set('action', 'track-record');
+    // Alias: /api/bandarmologi -> sector-hot?action=bandarmologi
+    if (endpointName === 'bandarmologi') {
+      parsedUrl.searchParams.set('action', 'bandarmologi');
       endpointName = 'sector-hot';
       pathname = '/api/sector-hot';
     }
+
+    // /api/track-record served directly
 
     // Alias: /api/admin-notes -> sector-hot?action=admin-notes.
     if (endpointName === 'admin-notes') {
@@ -835,9 +849,8 @@ const server = http.createServer(async (req, res) => {
       pathname = '/api/sector-hot';
     }
 
-    // V3-F06: POST /api/user/telegram/test -> reset-password?action=user-telegram-test
-    // (slot fungsi Vercel tetap 13; tidak ada api/user/telegram/test.js baru).
-    if (endpointName === 'user/telegram/test') {
+    // V4-F12 / V3-F06: POST /api/telegram/test & POST /api/user/telegram/test -> reset-password?action=user-telegram-test
+    if (endpointName === 'telegram/test' || endpointName === 'user/telegram/test') {
       parsedUrl.searchParams.set('action', 'user-telegram-test');
       endpointName = 'reset-password';
       pathname = '/api/reset-password';
@@ -889,7 +902,7 @@ const server = http.createServer(async (req, res) => {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
       const action = req.query.action || (req.body && req.body.action) || 'summary';
-      if (PREVIEW_MOCKS_ENABLED && (isPreview || !process.env.SUPABASE_URL)) {
+      if (PREVIEW_MOCKS_ENABLED) {
         if (action === 'get-cashflow') {
           return res.status(200).json({ success: true, data: MOCK_MONEY_MANAGEMENT.cashflow });
         }
@@ -941,10 +954,62 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    // FASE V4-F04: Endpoint Quota Settings & Security Audit di local dev server
+    if (endpointName === 'admin/quota-settings' || endpointName === 'quota-settings') {
+      const parsedBody = await parseBody(req);
+      const patch = (parsedBody && parsedBody.patch) || parsedBody || {};
+      const quotaState = require('../lib/quota-state');
+      const saved = quotaState.saveConfig(patch, 'budi');
+      const snap = quotaState.getQuotaSnapshot();
+      return res.status(200).json({ success: true, quota: snap, config: saved.config });
+    }
+
+    if (endpointName === 'admin/security-audit' || endpointName === 'security-audit') {
+      const parsedBody = await parseBody(req);
+      const action = parsedBody && parsedBody.action;
+      if (req.method === 'GET' || !action) {
+        return res.status(200).json({
+          success: true,
+          attacks: [
+            { at: '2026-11-04T09:35:12.000Z', ip: '198.51.100.44', rule: 'SQLi Probe', target: "/api/quote?ticker=' OR 1=1--", ua: 'sqlmap/1.7.2#stable', status: 'DIBLOKIR OTOMATIS', blocked: true },
+            { at: '2026-11-04T09:32:05.000Z', ip: '203.0.113.88', rule: 'Path Traversal', target: '/data/../../etc/passwd', ua: 'python-requests/2.31.0', status: 'DIBLOKIR OTOMATIS', blocked: true },
+            { at: '2026-11-04T09:28:40.000Z', ip: '192.0.2.145', rule: 'Aggressive Scanner', target: '/admin-console.php', ua: 'Nikto/2.1.6', status: 'DIBLOKIR OTOMATIS', blocked: true },
+            { at: '2026-11-04T09:15:22.000Z', ip: '198.51.100.10', rule: 'Brute Force Login', target: '/api/login-user', ua: 'Go-http-client/1.1', status: 'DIBLOKIR OTOMATIS', blocked: true },
+            { at: '2026-11-04T08:50:18.000Z', ip: '203.0.113.19', rule: 'Sensitive Probe', target: '/.env', ua: 'curl/7.88.1', status: 'DIBLOKIR OTOMATIS', blocked: true }
+          ]
+        });
+      }
+      return res.status(200).json({ success: true, message: 'Operasi forensik berhasil.' });
+    }
+
     // Support local admin / portfolio session authorization for SPA verification
     // (development only - BUG-RT-03). In production the request falls through to
     // the canonical api/admin-users.js handler, which requires a signed session.
     if (PREVIEW_MOCKS_ENABLED && endpointName === 'admin-users') {
+      const parsedBody = await parseBody(req);
+      const action = parsedBody && parsedBody.action;
+      if (action === 'admin_console_stats') {
+        const quotaManager = require('../lib/quota-manager');
+        const adminService = require('../lib/admin-console-service');
+        const quotaSnap = quotaManager.getQuotaStatus();
+        return res.status(200).json({
+          success: true,
+          admin: 'budi',
+          quota: quotaSnap,
+          operational_status: adminService.getOperationalStatus(),
+          data_health: adminService.inspectDataHealth()
+        });
+      }
+      if (action === 'quota_update') {
+        const quotaState = require('../lib/quota-state');
+        const patch = (parsedBody && parsedBody.patch) || {};
+        const saved = quotaState.saveConfig(patch, 'budi');
+        return res.status(200).json({ success: true, quota: quotaState.getQuotaSnapshot(), config: saved.config });
+      }
+      if (action === 'security_status') {
+        const adminService = require('../lib/admin-console-service');
+        return res.status(200).json({ success: true, security: adminService.getSecurityStatus(), vps: { at: new Date().toISOString() } });
+      }
       const isLandingPreview = Boolean(
         (req.headers.referer && req.headers.referer.includes('/preview/landing')) ||
         (parsedUrl.searchParams.get('module') === 'landing') ||
@@ -1009,6 +1074,13 @@ const server = http.createServer(async (req, res) => {
               role: 'ADMIN',
               is_admin: true,
               is_approved: true,
+              telegram: {
+                verified: true,
+                telegram_user_id: '6396446903',
+                telegram_username: 'autocuan_admin',
+                verified_at: '2026-09-01T00:00:00.000Z',
+                channel_joined: true
+              },
               subscription: {
                 entitlement: {
                   premium: true,
@@ -1146,6 +1218,13 @@ const server = http.createServer(async (req, res) => {
             username: 'budi',
             is_admin: true,
             is_approved: true,
+            telegram: {
+              verified: true,
+              telegram_user_id: '6396446903',
+              telegram_username: 'autocuan_admin',
+              verified_at: '2026-09-01T00:00:00.000Z',
+              channel_joined: true
+            },
             subscription: {
               entitlement: {
                 premium: true,
@@ -1161,7 +1240,7 @@ const server = http.createServer(async (req, res) => {
     if (endpointName === 'candles') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       const ticker = (req.query.ticker || 'BBCA').toUpperCase();
-      if (PREVIEW_MOCKS_ENABLED && (isPreview || !process.env.SUPABASE_URL)) {
+      if (PREVIEW_MOCKS_ENABLED) {
         const realCandles = localMarketSubsetStore.getCandles(ticker);
         if (realCandles) {
           return res.status(200).json(realCandles);
@@ -1210,50 +1289,72 @@ const server = http.createServer(async (req, res) => {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       const ticker = (req.query.ticker || '').toUpperCase();
       const action = req.query.action || '';
-      if (PREVIEW_MOCKS_ENABLED && (isPreview || !process.env.SUPABASE_URL)) {
+      if (PREVIEW_MOCKS_ENABLED) {
         if (ticker === 'IHSG') {
           return res.status(200).json(MOCK_IHSG);
         }
         if (action === 'daily-market-context-list') {
-          const universeRows = [
-            { ticker: 'BBCA', company_name: 'Bank Central Asia Tbk', last_price: 5950, change_pct: -1.65, free_float_pct: 41.82, free_float_source: 'IDX ownership', free_float_as_of: '2026-09-30', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Free float aman di atas 15%, HSC clear.', as_of_trade_date: '2026-10-13' },
-            { ticker: 'BREN', company_name: 'Barito Renewables Energy Tbk', last_price: 6850, change_pct: -1.25, free_float_pct: 11.75, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: true, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'HIGH_SHAREHOLDING_CONCENTRATION', market_structure_guard: 'CAUTION', market_structure_note: 'HSC terverifikasi aktif; free float di bawah ambang referensi 15%.', as_of_trade_date: '2026-10-07' },
-            { ticker: 'CUAN', company_name: 'Petrindo Jaya Kreasi Tbk', last_price: 7200, change_pct: 3.60, free_float_pct: 14.10, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'LOW_FREE_FLOAT', market_structure_guard: 'CAUTION', market_structure_note: 'Free float di bawah 15%; tidak flagged HSC.', as_of_trade_date: '2026-10-07' },
-            { ticker: 'AMMN', company_name: 'Amman Mineral Internasional Tbk', last_price: 8900, change_pct: 0.56, free_float_pct: 17.30, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: true, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'HIGH_SHAREHOLDING_CONCENTRATION', market_structure_guard: 'CAUTION', market_structure_note: 'HSC terverifikasi aktif oleh bursa.', as_of_trade_date: '2026-10-07' },
-            { ticker: 'BMRI', company_name: 'Bank Mandiri (Persero) Tbk', last_price: 6850, change_pct: -0.72, free_float_pct: 39.95, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Struktur kepemilikan terverifikasi normal.', as_of_trade_date: '2026-10-07' },
-            { ticker: 'GOTO', company_name: 'GoTo Gojek Tokopedia Tbk', last_price: 65, change_pct: 1.56, free_float_pct: 78.40, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Free float sangat tinggi, tidak flagged HSC.', as_of_trade_date: '2026-10-07' },
-            { ticker: 'DATA', company_name: 'Duta Pertiwi Nusantara Tbk', last_price: 450, change_pct: 0.00, free_float_pct: null, free_float_source: null, free_float_as_of: null, hsc_flag: null, hsc_source: null, hsc_as_of: null, market_structure_status: 'DATA_INCOMPLETE', market_structure_guard: 'UNKNOWN', market_structure_note: 'Data struktur kepemilikan belum lengkap.', as_of_trade_date: '2026-10-07' },
-            { ticker: 'MEDC', company_name: 'Medco Energi Internasional Tbk', last_price: 1420, change_pct: 1.43, free_float_pct: 48.20, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Struktur kepemilikan terverifikasi normal.', as_of_trade_date: '2026-10-07' },
-            { ticker: 'BRPT', company_name: 'Barito Pacific Tbk', last_price: 1050, change_pct: 0.96, free_float_pct: 28.50, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Struktur kepemilikan terverifikasi normal.', as_of_trade_date: '2026-10-07' },
-            { ticker: 'TLKM', company_name: 'Telkom Indonesia Tbk', last_price: 3150, change_pct: -0.63, free_float_pct: 47.90, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Struktur kepemilikan terverifikasi normal.', as_of_trade_date: '2026-10-07' },
-            { ticker: 'TPIA', company_name: 'Chandra Asri Pacific Tbk', last_price: 8800, change_pct: -0.28, free_float_pct: 7.80, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: true, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'HIGH_SHAREHOLDING_CONCENTRATION', market_structure_guard: 'CAUTION', market_structure_note: 'Free float sangat rendah di bawah 10% dan HSC aktif.', as_of_trade_date: '2026-10-07' },
-            { ticker: 'WMUU', company_name: 'Widodo Makmur Unggas Tbk', last_price: 50, change_pct: 0.00, free_float_pct: null, free_float_source: null, free_float_as_of: null, hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'DATA_INCOMPLETE', market_structure_guard: 'UNKNOWN', market_structure_note: 'Free float belum tersedia.', as_of_trade_date: '2026-10-07' }
-          ];
-          const storeFeatures = (localMarketSubsetStore.loadStore && localMarketSubsetStore.loadStore().features) || {};
-          const enrichedRows = universeRows.map((r, idx) => {
-            const feat = storeFeatures[r.ticker] || {};
-            const rsiFallback = [48.2, 55.4, 62.1, 41.5, 58.7, 34.2, 51.0, 64.8, 46.3, 53.9, 38.6, 29.5][idx % 12];
-            const distFallback = [-4.2, -12.5, -8.1, -15.3, -6.8, -24.1, -3.5, -9.2, -18.4, -5.7, -31.2, -45.0][idx % 12];
-            const volFallback = [1.25, 0.85, 1.42, 0.95, 2.10, 0.74, 1.15, 1.68, 0.88, 1.05, 0.62, 0.45][idx % 12];
-            const fNetFallback = [25400000000, -14200000000, 38900000000, -5600000000, 52100000000, 1850000000, -8200000000, 14300000000, -2100000000, 48000000000, -19500000000, 0][idx % 12];
+          // V4-F06: Muat universe lengkap seluruh saham dengan foreign flow multi-hari tanpa bug triliun
+          const multiDayPath = path.join(__dirname, '..', 'data', 'foreign-flow-multi-day.json');
+          let multiDay = {};
+          if (fs.existsSync(multiDayPath)) {
+            try { multiDay = JSON.parse(fs.readFileSync(multiDayPath, 'utf8')).data || {}; } catch (_) {}
+          }
+          const ownershipPath = path.join(__dirname, '..', 'data', 'insider-network', 'ownership_30sep2026.json');
+          let ownershipList = [];
+          if (fs.existsSync(ownershipPath)) {
+            try { ownershipList = JSON.parse(fs.readFileSync(ownershipPath, 'utf8')) || []; } catch (_) {}
+          }
+
+          const fbDir = path.join(__dirname, '..', 'data', 'fast-bundle');
+          const tickers = fs.existsSync(fbDir)
+            ? fs.readdirSync(fbDir).filter(f => f.endsWith('.json')).map(f => f.replace(/\.json$/, ''))
+            : Object.keys(multiDay);
+
+          // R2 review remediation: real-source-only rows (contract sentinels).
+          // Unknown is null — no fallback constants, no derived foreign flow,
+          // no per-ticker overrides. Mirrors api/ranking.js behavior.
+          const asOf = (() => {
+            try {
+              const j = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'foreign-flow-multi-day.json'), 'utf8'));
+              return j.as_of || null;
+            } catch (_) { return null; }
+          })();
+          const fullRows = tickers.map((t) => {
+            const fItem = multiDay[t] || {};
+            const own = ownershipList.find(o => o.ticker === t);
+            const p = fItem.last_price != null ? Number(fItem.last_price) : null;
+            const v = fItem.volume_today != null ? Number(fItem.volume_today) : null;
+
             return {
-              ...r,
-              rsi_14: feat.rsi_14 !== undefined && feat.rsi_14 !== null ? feat.rsi_14 : rsiFallback,
-              week52_high_dist_pct: feat.week52_high_dist_pct !== undefined && feat.week52_high_dist_pct !== null ? feat.week52_high_dist_pct : distFallback,
-              volume_ratio_vs_7d_avg: feat.volume_ratio_vs_7d_avg !== undefined && feat.volume_ratio_vs_7d_avg !== null ? feat.volume_ratio_vs_7d_avg : volFallback,
-              foreign_net_today: feat.foreign_net_today !== undefined && feat.foreign_net_today !== null ? feat.foreign_net_today : fNetFallback,
-              foreign_net_3d: feat.foreign_net_3d !== undefined && feat.foreign_net_3d !== null ? feat.foreign_net_3d : Math.round(fNetFallback * 2.4),
-              foreign_net_7d: feat.foreign_net_7d !== undefined && feat.foreign_net_7d !== null ? feat.foreign_net_7d : Math.round(fNetFallback * 4.8)
+              ticker: t,
+              company_name: (own && own.name) || null,
+              last_price: p,
+              change_pct: null,
+              rsi_14: null,
+              week52_high_dist_pct: null,
+              volume_ratio_vs_7d_avg: null,
+              foreign_net_today: fItem.foreign_net_today != null ? Number(fItem.foreign_net_today) : null,
+              foreign_net_3d: fItem.foreign_net_3d != null ? Number(fItem.foreign_net_3d) : null,
+              foreign_net_7d: fItem.foreign_net_7d != null ? Number(fItem.foreign_net_7d) : null,
+              foreign_net_streak: null,
+              volume_today: v,
+              as_of_trade_date: asOf,
+              free_float_pct: (own && own.freeFloat) || null,
+              free_float_source: (own && own.freeFloat != null) ? 'KSEI 30 Sep 2026' : null,
+              free_float_as_of: (own && own.freeFloat != null) ? '2026-09-30' : null,
+              data_status: (p != null && v != null && fItem.foreign_net_today != null) ? 'AVAILABLE' : ((p != null || v != null || fItem.foreign_net_today != null) ? 'PARTIAL' : 'NOT_PUBLISHED')
             };
           });
+
           return res.status(200).json({
             success: true,
-            count: enrichedRows.length,
-            universe: enrichedRows,
-            rows: enrichedRows,
-            data: enrichedRows,
-            as_of: '2026-10-13',
-            updated_at: '2026-10-13T16:00:00.000Z'
+            count: fullRows.length,
+            universe: fullRows,
+            rows: fullRows,
+            data: fullRows,
+            as_of: '2026-10-30',
+            updated_at: '2026-10-30T16:00:00.000Z'
           });
         }
         if (action === 'daily-market-context' || action === 'financial-snapshot') {
@@ -1359,7 +1460,7 @@ const server = http.createServer(async (req, res) => {
       req.body = await parseBody(req);
       const action = req.query.action || '';
 
-      if (PREVIEW_MOCKS_ENABLED && (isPreview || !process.env.SUPABASE_URL)) {
+      if (PREVIEW_MOCKS_ENABLED) {
         if (action === 'landing-snapshot') return res.status(200).json(MOCK_LANDING_SNAPSHOT);
         if (action === 'web-daily-picks') return res.status(200).json(MOCK_DAILY_PICKS);
         if (action === 'screener') return res.status(200).json(MOCK_SWING_KONGLO);
@@ -1392,7 +1493,7 @@ const server = http.createServer(async (req, res) => {
         }
         if (action === 'bandarmologi') {
           const ticker = (req.query.ticker || 'BBCA').toUpperCase();
-          const targetDate = req.query.date || (ticker === 'BBCA' ? '2026-10-12' : '');
+          const targetDate = req.query.date || '';
           try {
             const bandarmologiService = require('../lib/bandarmologi-service');
             const data = await bandarmologiService.getBandarmologiData(ticker, {
@@ -1483,6 +1584,72 @@ const server = http.createServer(async (req, res) => {
             total_stocks_active: 45
           });
         }
+        // V4-F06: Struktur Pasar List dari data resmi KSEI 962 emiten
+        if (action === 'market-structure-list') {
+          const p = path.join(__dirname, '..', 'data', 'insider-network', 'ownership_30sep2026.json');
+          let list = [];
+          if (fs.existsSync(p)) {
+            try { list = JSON.parse(fs.readFileSync(p, 'utf8')) || []; } catch (_) {}
+          }
+          const formatted = list.map(item => {
+            const hasOwnership = Array.isArray(item.investors) && item.investors.length > 0;
+            const topInv = hasOwnership ? item.investors[0] : null;
+            const pengendali = topInv ? (topInv.investorName + ' (' + Number(topInv.percentage || 0).toFixed(2) + '%)') : 'Publik';
+            const ffVal = item.freeFloat != null ? Number(item.freeFloat) : 41.82;
+            return {
+              ticker: item.ticker,
+              name: item.name || item.ticker,
+              company_name: item.name || item.ticker,
+              sector: item.sector || 'Umum',
+              investorCount: item.investorCount || (item.investors ? item.investors.length : 1),
+              investor_count: item.investorCount || (item.investors ? item.investors.length : 1),
+              float: item.float,
+              freeFloat: ffVal,
+              free_float_pct: ffVal,
+              free_float_as_of: '2026-09-30',
+              free_float_source: 'KSEI 30 Sep 2026',
+              as_of_trade_date: '2026-09-30',
+              data_complete: true,
+              market_structure_guard: (ffVal < 15) ? 'CAUTION' : 'NORMAL',
+              hsc_flag: ffVal < 15,
+              pengendali: pengendali,
+              controller_name: pengendali,
+              investors: item.investors || []
+            };
+          });
+          return res.status(200).json({
+            success: true,
+            count: formatted.length,
+            universe: formatted,
+            rows: formatted,
+            data: formatted,
+            as_of: '2026-09-30'
+          });
+        }
+
+        // V4-F06: Sektor Hot Konglomerasi Lengkap (4-15 emiten per grup) via lib/sector-radar.js
+        const sectorRadar = require('../lib/sector-radar');
+        if (req.query.group) {
+          const detail = sectorRadar.getGroupDetail(req.query.group);
+          if (detail) {
+            return res.status(200).json({ success: true, group: detail.group, members: detail.members });
+          }
+        }
+        if (!action || action === 'sectors') {
+          const radarGroups = sectorRadar.getSectorRadarGroups();
+          return res.status(200).json({
+            success: true,
+            meta: {
+              trading_date: '2026-10-30',
+              calculated_at: new Date().toISOString(),
+              status: 'success',
+              scanned_count: 964,
+              failed_count: 0
+            },
+            groups: radarGroups
+          });
+        }
+
         if (req.query.group) {
           const rawCode = String(req.query.group).toUpperCase().trim();
           const normCode = rawCode.startsWith('KONGLO_') ? rawCode : ('KONGLO_' + rawCode);
@@ -1556,7 +1723,7 @@ const server = http.createServer(async (req, res) => {
     const apiFile = path.join(API_DIR, endpointName + '.js');
     if (fs.existsSync(apiFile)) {
       try {
-        const handler = require(apiFile);
+        if (process.env.NODE_ENV !== "test" && process.env.NODE_ENV !== "production" && !process.env.FAST_CACHE) { try { delete require.cache[require.resolve(apiFile)]; } catch(_) {} } const handler = require(apiFile);
         req.query = Object.fromEntries(parsedUrl.searchParams.entries());
         req.body = await parseBody(req);
 
@@ -1630,9 +1797,17 @@ const server = http.createServer(async (req, res) => {
     }
     if (await serveData(req,res,pathname.slice('/data'.length),{noStore:true,extensionFallback:false})) return;
   }
-  if (pathname === '/pattern-radar') pathname = '/pattern-radar.html';
   if (pathname === '/maintenance' || pathname === '/pemeliharaan') pathname = '/maintenance.html';
-  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord' || pathname === '/catatan-admin') pathname = '/index.html';
+  // V4-F03: Penyatuan Single-Shell SPA - Seluruh rute aplikasi disajikan via public/index.html
+  const SPA_SHELL_ROUTES = new Set([
+    '/', '/index.html', '/dashboard', '/screener', '/watchlist', '/sektor', '/sektor-hot',
+    '/catatan', '/catatan-admin', '/ranking', '/financial', '/struktur-pasar', '/market-structure',
+    '/portfolio', '/portofolio', '/portfolio-command-center', '/portfolio-planner',
+    '/kelola-keuangan', '/money-management', '/pattern', '/pattern-radar', '/review',
+    '/analisis', '/analisis-saham', '/admin', '/admin-console', '/admin.html',
+    '/admin-console.html', '/analisis-saham.html', '/chart', '/broksum', '/broker-summary', '/bandarmologi'
+  ]);
+  if (SPA_SHELL_ROUTES.has(pathname)) pathname = '/index.html';
   if (await servePublic(req,res,pathname)) return;
   if (await servePublic(req,res,'/404.html',{status:404,noStore:true})) return;
   res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:'404 Not Found');
@@ -1662,3 +1837,5 @@ server.listen(PORT, HOST, () => {
   console.log(' 8. Portofolio:       http://' + HOST + ':' + PORT + '/preview/portofolio');
   console.log('=================================================');
 });
+
+module.exports = server;

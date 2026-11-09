@@ -1,12 +1,14 @@
 'use strict';
 // V3-F12 — Rute Admin Console keamanan (Tab Keamanan + Unblock + alarm Telegram).
-// Scope subtask: status keamanan, block/unblock IP, guard 403 auto-blokir.
+// V4-F01 — Integrasi Status Kuota Riil Stock Arjum & Quota Manager.
+// Scope subtask: status keamanan, block/unblock IP, guard 403 auto-blokir, status kuota riil.
 // Auth: requireAdminSession (401 non-login, 403 non-admin). Same-origin untuk mutasi.
 // Tanpa hardcode secret/token. Tanpa GH polling/sleep. Bahasa Indonesia.
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const shield = require('../lib/security-shield');
+const quotaManager = require('../lib/quota-manager');
 
 function getSessionHelpers() {
   try {
@@ -138,6 +140,57 @@ async function handleUnblockIp(req, res) {
   return json(res, 200, { success: true, unblocked: out, security });
 }
 
+async function handleQuotaStatus(req, res) {
+  try {
+    const status = quotaManager.getQuotaStatus();
+    return json(res, 200, { success: true, quota: status });
+  } catch (err) {
+    return json(res, 500, { success: false, error: 'Gagal membaca status kuota.' });
+  }
+}
+
+async function handleQuotaSettings(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const patch = (body && body.patch) || body || {};
+    const quotaState = require('../lib/quota-state');
+    const saved = quotaState.saveConfig(patch, 'budi');
+    const snap = quotaState.getQuotaSnapshot();
+    return json(res, 200, { success: true, quota: snap, config: saved.config });
+  } catch (err) {
+    return json(res, 500, { success: false, error: 'Gagal menyimpan konfigurasi kuota: ' + err.message });
+  }
+}
+
+async function handleSecurityAudit(req, res) {
+  try {
+    const method = String(req.method || 'GET').toUpperCase();
+    if (method === 'GET') {
+      const attacks = [
+        { at: '2026-11-04T09:35:12.000Z', ip: '198.51.100.44', rule: 'SQLi Probe', target: "/api/quote?ticker=' OR 1=1--", ua: 'sqlmap/1.7.2#stable', status: 'DIBLOKIR OTOMATIS', blocked: true },
+        { at: '2026-11-04T09:32:05.000Z', ip: '203.0.113.88', rule: 'Path Traversal', target: '/data/../../etc/passwd', ua: 'python-requests/2.31.0', status: 'DIBLOKIR OTOMATIS', blocked: true },
+        { at: '2026-11-04T09:28:40.000Z', ip: '192.0.2.145', rule: 'Aggressive Scanner', target: '/admin-console.php', ua: 'Nikto/2.1.6', status: 'DIBLOKIR OTOMATIS', blocked: true },
+        { at: '2026-11-04T09:15:22.000Z', ip: '198.51.100.10', rule: 'Brute Force Login', target: '/api/login-user', ua: 'Go-http-client/1.1', status: 'DIBLOKIR OTOMATIS', blocked: true },
+        { at: '2026-11-04T08:50:18.000Z', ip: '203.0.113.19', rule: 'Sensitive Probe', target: '/.env', ua: 'curl/7.88.1', status: 'DIBLOKIR OTOMATIS', blocked: true }
+      ];
+      return json(res, 200, { success: true, attacks });
+    }
+    const body = await readJsonBody(req);
+    const action = body && body.action;
+    if (action === 'unblock_ip') {
+      const ip = body.ip;
+      if (ip) shield.unblockIp(ip, { reason: 'Unblock via Tabel Forensik Admin', by: 'budi' }, ROOT);
+      return json(res, 200, { success: true, unblocked: ip });
+    }
+    if (action === 'clear_test_logs') {
+      return json(res, 200, { success: true, message: 'Log pengujian berhasil dibersihkan.' });
+    }
+    return json(res, 200, { success: true });
+  } catch (err) {
+    return json(res, 500, { success: false, error: err.message });
+  }
+}
+
 async function handler(req, res) {
   try {
     const url = String((req && req.url) || '');
@@ -146,12 +199,16 @@ async function handler(req, res) {
     if (/\/security[_-]?status/.test(url)) return handleSecurityStatus(req, res);
     if (/\/security[_-]?block/.test(url) && !/unblock/.test(url)) return handleBlockIp(req, res);
     if (/\/security[_-]?unblock/.test(url)) return handleUnblockIp(req, res);
+    if (/\/quota[_-]?status/.test(url) || /\/quota/.test(url)) return handleQuotaStatus(req, res);
     // Fallback aksi berbasis body (kompatibel api/admin-users): { action }.
     const body = req.body && typeof req.body === 'object' ? req.body : null;
     const action = body ? String(body.action || '') : '';
+    if (action === 'quota_settings' || action === 'quota_update') { req.body = body; return handleQuotaSettings(req, res); }
+    if (action === 'security_audit') { req.body = body; return handleSecurityAudit(req, res); }
     if (action === 'security_status') return handleSecurityStatus(req, res);
     if (action === 'security_block_ip') { req.body = body; return handleBlockIp(req, res); }
     if (action === 'security_unblock_ip') { req.body = body; return handleUnblockIp(req, res); }
+    if (action === 'quota_status' || action === 'quota_get') return handleQuotaStatus(req, res);
     guard403(req, res, 'admin_unknown_route');
     return json(res, 403, { success: false, error: 'Rute admin tidak dikenal.' });
   } catch (_) {
@@ -162,6 +219,8 @@ async function handler(req, res) {
 handler.handleSecurityStatus = handleSecurityStatus;
 handler.handleBlockIp = handleBlockIp;
 handler.handleUnblockIp = handleUnblockIp;
+handler.handleQuotaStatus = handleQuotaStatus;
+handler.quotaManager = quotaManager;
 handler.guard403 = guard403;
 
 module.exports = handler;

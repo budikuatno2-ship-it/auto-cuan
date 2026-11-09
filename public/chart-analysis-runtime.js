@@ -192,8 +192,16 @@
     if (!ticker && root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function') {
       ticker = root.UnifiedCockpit.getActiveTicker();
     }
-    if (!ticker && root._chartPageData && root._chartPageData.ticker) {
-      ticker = root._chartPageData.ticker;
+    if (!ticker) {
+      // BUG-V5-P0-009: the shared chart slot is only consulted for its ticker,
+      // and only through the identity guard, so an AI run can never be started
+      // for a ticker whose snapshot is no longer the newest write.
+      var guardApi = root.AutoCuanChartStateGuard;
+      var guard = root.AutoCuanChartGuard;
+      var active = guard && typeof guard.peek === 'function' ? guard.peek('CHART') : null;
+      if (active && active.ticker && guardApi && typeof guardApi.normalizeTicker === 'function') {
+        ticker = guardApi.normalizeTicker(active.ticker);
+      }
     }
     if (!ticker) {
       if (typeof showToast === 'function') showToast('Ketik ticker chart terlebih dahulu (misal: BBCA, BBRI).', 'warning');
