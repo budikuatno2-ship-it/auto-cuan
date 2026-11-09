@@ -68,8 +68,16 @@ jobs:
       - name: Smoke suite (required)
         run: npm run test:smoke
 
-      - name: V5 mandatory anti-fake controls (required)
-        run: node test/v5/run.js --no-write
+      # Only source/fixture-independent controls run as a required gate on a
+      # fresh checkout. Market snapshots, videos and audit manifests are stored
+      # outside Git and cannot be treated as present in GitHub Actions.
+      - name: V5 portable anti-fake controls (required)
+        run: node test/v5/run.js --no-write --only N1,N2,N3,N8,N9,N12,N13,N14,N15,N16,N17,N18,N19,N20,N21,N22
+
+      - name: V5 external-evidence controls (diagnostic, not a release PASS)
+        run: |
+          node test/v5/run.js --no-write --diagnostic --only N4,N5,N6,N7,N10,N11,N23,N24,N25
+          echo "External-evidence controls require production snapshots/manifests; SKIP is not PASS." >> "$GITHUB_STEP_SUMMARY"
 
       - name: V5 safety and runtime contracts (required)
         run: |
