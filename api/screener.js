@@ -38,6 +38,7 @@ const contract = require('../lib/market-data-contract.js');
 const screenerConfig = require('../lib/screener-config.js');
 const readiness = require('../lib/readiness-engine.js');
 const canonicalScreener = require('../lib/canonical-screener-source.js');
+const chartT1Policy = require('../lib/chart-t1-policy.js');
 
 const { DATA_STATUS, pickNumber, pickText, isKnown } = contract;
 const { MIN_RR_RATIO, recalculateRiskReward } = screenerConfig;
@@ -86,6 +87,37 @@ function wibDateString(date) {
     month: '2-digit',
     day: '2-digit'
   }).format(date || new Date());
+}
+
+/**
+ * Expected latest completed EOD trading date in WIB.
+ * Before 16:30 WIB on a weekday (or on weekends), the most recent completed
+ * session is the previous weekday (so 2026-11-24 data at 00:15 WIB on
+ * 2026-11-25 is FINAL_EOD / fresh, not false STALE).
+ */
+function expectedCompletedEodDate(nowInput) {
+  const d = nowInput instanceof Date ? nowInput : new Date(nowInput != null ? nowInput : Date.now());
+  const todayWib = wibDateString(d);
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(d);
+  const map = {};
+  for (const p of parts) {
+    if (p.type !== 'literal') map[p.type] = p.value;
+  }
+  const weekday = String(map.weekday || '').toLowerCase();
+  const hh = Number(map.hour || 0);
+  const mm = Number(map.minute || 0);
+  const wibMinutes = hh * 60 + mm;
+  const isWeekend = weekday.startsWith('sat') || weekday.startsWith('sun');
+  if (isWeekend || wibMinutes < (16 * 60 + 30)) {
+    return chartT1Policy.previousWeekday(todayWib) || todayWib;
+  }
+  return todayWib;
 }
 
 function getBacktestMap() {
@@ -290,9 +322,10 @@ function buildScreenerRow(raw, spec, backtestMap, origin) {
   // The row's own trade date wins over the file-level date: a file can be
   // rewritten at 2026-11-04 while the candidates inside describe 2026-11-03.
   const rowTradeDate = pickText(raw.trade_date, raw.market_date, raw.run_date) || origin.tradeDate;
+  const expectedDate = origin.expectedEodDate || origin.today;
   row.trade_date = rowTradeDate;
-  row.stale = isKnown(rowTradeDate) && isKnown(origin.today)
-    ? rowTradeDate !== origin.today
+  row.stale = isKnown(rowTradeDate) && isKnown(expectedDate)
+    ? rowTradeDate < expectedDate
     : null;
   row.is_stale = row.stale;
   row.freshness_label = row.stale === null ? null : (row.stale ? 'stale' : 'fresh');
@@ -410,8 +443,9 @@ function buildCategory(spec, backtestMap, today, now) {
 
   const tradeDate = pickText(doc.trade_date, doc.market_date, doc.run_date);
   base.trade_date = tradeDate;
+  const expectedEodDate = expectedCompletedEodDate(now);
   // The clock is injected into the readiness engine, never read inside it.
-  const origin = { file: useCanonical ? canonicalScreener.SNAPSHOT_REL : relFile, tradeDate, today, now };
+  const origin = { file: useCanonical ? canonicalScreener.SNAPSHOT_REL : relFile, tradeDate, today, expectedEodDate, now };
 
   const rawResults = Array.isArray(doc.results) ? doc.results : [];
   const rawRadar = Array.isArray(doc.radar)
@@ -456,9 +490,9 @@ function buildCategory(spec, backtestMap, today, now) {
   } else {
     base.data_status = DATA_STATUS.AVAILABLE;
   }
-  if (base.data_status !== DATA_STATUS.NOT_PUBLISHED && isKnown(tradeDate) && tradeDate !== today) {
+  if (base.data_status !== DATA_STATUS.NOT_PUBLISHED && isKnown(tradeDate) && tradeDate < expectedEodDate) {
     base.data_status = DATA_STATUS.STALE;
-    base.status_reason = base.status_reason || 'SOURCE_TRADE_DATE_IS_NOT_TODAY';
+    base.status_reason = base.status_reason || 'SOURCE_TRADE_DATE_IS_BEFORE_EXPECTED_EOD';
   }
 
   return { meta: base, rows };
@@ -638,4 +672,5 @@ module.exports = async function handler(req, res) {
 module.exports.buildScreenerPayload = buildScreenerPayload;
 module.exports.buildScreenerRow = buildScreenerRow;
 module.exports.deriveReadiness = deriveReadiness;
+module.exports.expectedCompletedEodDate = expectedCompletedEodDate;
 module.exports.CATEGORY_SPECS = CATEGORY_SPECS;

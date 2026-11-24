@@ -162,3 +162,19 @@ test('V6.5-6: Watchdog ignores stable long-uptime PM2 lifetime restarts', () => 
   });
   assert.equal(stableIssue, null);
 });
+
+test('V6.5-7: expectedCompletedEodDate treats post-midnight T-1 weekday as fresh & v4-f08 has no fake fallbacks', () => {
+  const screener = require('../api/screener');
+  // 2026-11-25 00:15 WIB = 2026-11-24T17:15:00Z -> expected EOD date is 2026-11-24
+  assert.equal(screener.expectedCompletedEodDate(new Date('2026-11-24T17:15:00.000Z')), '2026-11-24');
+  // 2026-11-25 17:00 WIB = 2026-11-25T10:00:00Z -> expected EOD date is 2026-11-25
+  assert.equal(screener.expectedCompletedEodDate(new Date('2026-11-25T10:00:00.000Z')), '2026-11-25');
+  // 2026-11-28 12:00 WIB (Saturday) -> previous weekday is 2026-11-27
+  assert.equal(screener.expectedCompletedEodDate(new Date('2026-11-28T05:00:00.000Z')), '2026-11-27');
+
+  const v4f08Src = fs.readFileSync(path.join(ROOT, 'public', 'v4-f08-runtime.js'), 'utf8');
+  assert.doesNotMatch(v4f08Src, /\/data\/top5-radar\.json/);
+  assert.doesNotMatch(v4f08Src, /winRatePct\s*:\s*75\.0/);
+  assert.doesNotMatch(v4f08Src, /change_pct \|\| 1\.5/);
+  assert.doesNotMatch(v4f08Src, /'87,5%'/);
+});

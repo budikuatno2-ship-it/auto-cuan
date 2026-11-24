@@ -33,18 +33,34 @@
 
   // 1. Screener 11-Kolom Renderer
   var _cachedScreener = null;
+  var _screenerInFlight = false;
+  var _screenerFailedAt = 0;
+  var _screenerAuthDenied = false;
   async function fetchScreenerData() {
     if (_cachedScreener) return _cachedScreener;
+    if (_screenerAuthDenied || _screenerInFlight) return null;
+    if (_screenerFailedAt && (Date.now() - _screenerFailedAt < 10000)) return null;
+    _screenerInFlight = true;
     try {
       var res = await fetch('/api/screener', { method: 'GET', cache: 'no-cache' });
+      if (res.status === 401 || res.status === 403) {
+        _screenerAuthDenied = true;
+        return null;
+      }
       if (res.ok) {
         var data = await res.json();
         if (data && data.success) {
           _cachedScreener = data;
+          _screenerFailedAt = 0;
           return data;
         }
       }
-    } catch (_) {}
+      _screenerFailedAt = Date.now();
+    } catch (_) {
+      _screenerFailedAt = Date.now();
+    } finally {
+      _screenerInFlight = false;
+    }
     return null;
   }
 
@@ -162,26 +178,38 @@
   }
 
   // 2. Top 5 Radar Dashboard
-  async function checkAndApplyDashboardTop5() {
+  var _top5InFlight = false;
+  var _top5AttemptedAt = 0;
+  var _top5AuthDenied = false;
+  async function checkAndApplyDashboardTop5(force) {
     var pDash = $('page-dashboard') || $('dashboardScreen');
     if (!pDash || pDash.classList.contains('hidden')) return;
 
     var listEl = $('dashboardTop5List');
     if (!listEl) return;
 
+    if (force) {
+      _top5AttemptedAt = 0;
+      _top5AuthDenied = false;
+    }
+
     // If list already has the 5 active items, don't re-render needlessly
-    if (listEl.querySelector('.dashboard-decision-row')) {
+    if (!force && listEl.querySelector('.dashboard-decision-row')) {
       return;
     }
 
+    if (_top5AuthDenied || _top5InFlight) return;
+    if (_top5AttemptedAt && (Date.now() - _top5AttemptedAt < 30000)) return;
+
+    _top5InFlight = true;
+    _top5AttemptedAt = Date.now();
     try {
-      var res = await fetch('/data/top5-radar.json', { cache: 'no-cache' });
-      var data = null;
-      if (res.ok) data = await res.json();
-      if (!data || !data.top5 || !data.top5.length) {
-        var resApi = await fetch('/api/sector-hot?action=web-daily-picks', { cache: 'no-cache' });
-        if (resApi.ok) data = await resApi.json();
+      var resApi = await fetch('/api/sector-hot?action=web-daily-picks', { cache: 'no-cache' });
+      if (resApi.status === 401 || resApi.status === 403) {
+        _top5AuthDenied = true;
+        return;
       }
+      var data = resApi.ok ? await resApi.json() : null;
 
       var note = $('dashboardTop5LockNote');
 
@@ -191,7 +219,7 @@
       // numbers that did not exist. The honest status is shown instead.
       if (!data || !data.top5 || !data.top5.length) {
         if (note) {
-          var reason = (data && (data.status_reason || data.data_status)) || 'TOP5_ARTIFACT_MISSING';
+          var reason = (data && (data.status_reason || data.data_status || (data.awaiting_reason === 'auth_session_required' ? 'Silakan login untuk melihat Top 5 Radar' : null))) || 'TOP5_ARTIFACT_MISSING';
           note.textContent = 'Top 5 Radar tidak dipublikasikan: ' + reason;
         }
         return;
@@ -209,12 +237,17 @@
         html += '<div class="rk hd" aria-hidden="true"><span>#</span><span>Ticker</span><span>Setup</span><span class="r">Harga</span><span class="r">Chg</span><span>Win Rate</span><span class="r">Entry / Target</span><span>Status</span><span></span></div>';
 
         picks.forEach(function(r, idx) {
-          var p = Number(r.last_price || r.close || 0);
-          var sc = Number(r.score || 85);
-          var wr = Number(r.win_rate_pct != null ? r.win_rate_pct : (r.winRatePct != null ? r.winRatePct : 75.0)).toFixed(1);
-          var entry = r.entry_area || (r.entry1 ? 'Rp ' + Number(r.entry1).toLocaleString('id-ID') : 'Rp ' + p.toLocaleString('id-ID'));
-          var tp1 = r.tp1 ? 'Rp ' + Number(r.tp1).toLocaleString('id-ID') : '-';
-          var sl = r.stop_loss || r.sl ? 'Rp ' + Number(r.stop_loss || r.sl).toLocaleString('id-ID') : '-';
+          var pNum = r.last_price != null ? Number(r.last_price) : (r.close != null ? Number(r.close) : null);
+          var pStr = pNum != null && isFinite(pNum) ? 'Rp ' + pNum.toLocaleString('id-ID') : '—';
+          var sc = r.score != null && isFinite(Number(r.score)) ? Number(r.score) : '—';
+          var rawWr = r.win_rate_pct != null ? Number(r.win_rate_pct) : (r.winRatePct != null ? Number(r.winRatePct) : null);
+          var wrText = rawWr != null && isFinite(rawWr) ? rawWr.toFixed(1) + '%' : '—';
+          var rawChg = r.change_pct != null ? Number(r.change_pct) : (r.changePct != null ? Number(r.changePct) : null);
+          var chgText = rawChg != null && isFinite(rawChg) ? (rawChg >= 0 ? '+' : '') + rawChg.toFixed(2) + '%' : '—';
+          var chgCls = rawChg != null && isFinite(rawChg) && rawChg < 0 ? 'neg' : 'pos';
+          var entry = r.entry_area || (r.entry1 ? 'Rp ' + Number(r.entry1).toLocaleString('id-ID') : pStr);
+          var tp1 = r.tp1 ? 'Rp ' + Number(r.tp1).toLocaleString('id-ID') : '—';
+          var sl = r.stop_loss || r.sl ? 'Rp ' + Number(r.stop_loss || r.sl).toLocaleString('id-ID') : '—';
           var planId = 'v4f08Plan' + idx;
           var open = idx === 0;
           // TASK D: TP/SL hit status with WIB hit time, clearly rendered.
@@ -228,9 +261,9 @@
           html += '<span class="dash-rank">' + (idx + 1) + '</span>';
           html += '<span class="dash-rk-id"><span class="tk mono font-bold text-emerald-400">' + r.ticker + '</span> <span class="mut dash-rk-name">' + (r.name || r.ticker) + '</span></span>';
           html += '<span class="dash-rk-setup">' + (r.category || 'Swing Ready') + '</span>';
-          html += '<span class="r num mono dash-strong">Rp ' + p.toLocaleString('id-ID') + '</span>';
-          html += '<span class="r num dash-strong pos">+' + Number(r.change_pct || 1.5).toFixed(2) + '%</span>';
-          html += '<span class="dash-exec font-mono font-bold text-emerald-400">' + wr + '%</span>';
+          html += '<span class="r num mono dash-strong">' + pStr + '</span>';
+          html += '<span class="r num dash-strong ' + chgCls + '">' + chgText + '</span>';
+          html += '<span class="dash-exec font-mono font-bold text-emerald-400">' + wrText + '</span>';
           html += '<span class="r num mono text-xs">' + entry + ' &rarr; ' + tp1 + '</span>';
           html += '<span class="pill-st" data-tpsl-label><span class="dot ' + statusClass + '"></span>' + statusLabel + '</span>';
           html += '<span class="r"><button type="button" class="vbtn q sm" onclick="event.stopPropagation(); if(window.quickAnalisis) quickAnalisis(\'' + r.ticker + '\')">Riset</button></span>';
@@ -240,8 +273,8 @@
           html += '<div><div class="lbl">Area entry</div><b class="num mono">' + entry + '</b></div>';
           html += '<div><div class="lbl">Stop loss</div><b class="num mono neg">' + sl + '</b></div>';
           html += '<div><div class="lbl">Target 1</div><b class="num mono pos">' + tp1 + '</b></div>';
-          html += '<div><div class="lbl">Win Rate Backtest</div><b class="num mono pos">' + wr + '%</b></div>';
-          html += '<div><div class="lbl">Skor Konfluensi</div><span class="num dash-plan-meta font-bold text-emerald-400">' + sc + ' · Low Risk</span></div>';
+          html += '<div><div class="lbl">Win Rate Backtest</div><b class="num mono pos">' + wrText + '</b></div>';
+          html += '<div><div class="lbl">Skor Konfluensi</div><span class="num dash-plan-meta font-bold text-emerald-400">' + sc + '</span></div>';
           html += '<button type="button" class="vbtn p sm" onclick="if(window.quickAnalisis) quickAnalisis(\'' + r.ticker + '\')">Buka Analisis</button>';
           html += '</div>';
         });
@@ -282,7 +315,10 @@
       });
       bHtml += '</div></div>';
       listEl.innerHTML = bHtml;
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _top5InFlight = false;
+    }
   }
 
   // 3. Sinyal Intelijen
@@ -378,14 +414,14 @@
         if (res.ok) data = await res.json();
         if (data && data.summary) {
           var s = data.summary;
-          if (mTotal) mTotal.textContent = s.total_signals.toLocaleString('id-ID');
-          if (mDone) mDone.textContent = s.total_resolved.toLocaleString('id-ID');
-          if (mAct) mAct.textContent = (s.running_signals + s.waiting_signals).toLocaleString('id-ID');
-          if (mHit) mHit.textContent = (s.tp1_hits + s.tp2_hits).toLocaleString('id-ID');
-          if (mHitSub) mHitSub.textContent = (s.resolved_win_rate || '87,5%') + ' dari ' + s.total_resolved.toLocaleString('id-ID') + ' selesai';
-          if (mSl) mSl.textContent = s.sl_hits.toLocaleString('id-ID');
-          if (mSlSub) mSlSub.textContent = (s.sl_rate || '10,0%') + ' dari ' + s.total_resolved.toLocaleString('id-ID') + ' selesai';
-          if (mExp) mExp.textContent = (s.expired_signals || 100).toLocaleString('id-ID');
+          if (mTotal) mTotal.textContent = (s.total_signals != null ? Number(s.total_signals) : 0).toLocaleString('id-ID');
+          if (mDone) mDone.textContent = (s.total_resolved != null ? Number(s.total_resolved) : 0).toLocaleString('id-ID');
+          if (mAct) mAct.textContent = (Number(s.running_signals || 0) + Number(s.waiting_signals || 0)).toLocaleString('id-ID');
+          if (mHit) mHit.textContent = (Number(s.tp1_hits || 0) + Number(s.tp2_hits || 0)).toLocaleString('id-ID');
+          if (mHitSub) mHitSub.textContent = (s.resolved_win_rate != null ? s.resolved_win_rate : '—') + ' dari ' + (s.total_resolved != null ? Number(s.total_resolved) : 0).toLocaleString('id-ID') + ' selesai';
+          if (mSl) mSl.textContent = (s.sl_hits != null ? Number(s.sl_hits) : 0).toLocaleString('id-ID');
+          if (mSlSub) mSlSub.textContent = (s.sl_rate != null ? s.sl_rate : '—') + ' dari ' + (s.total_resolved != null ? Number(s.total_resolved) : 0).toLocaleString('id-ID') + ' selesai';
+          if (mExp) mExp.textContent = (s.expired_signals != null ? Number(s.expired_signals) : 0).toLocaleString('id-ID');
 
           var chip = $('trProvenanceChip');
           if (chip) chip.textContent = 'dari ' + s.total_signals.toLocaleString('id-ID') + ' sinyal terakhir';
