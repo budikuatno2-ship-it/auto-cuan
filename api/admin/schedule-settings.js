@@ -28,6 +28,7 @@ const path = require('path');
 const { requireAdminSession, isSameOrigin } = require('../../lib/admin-session');
 const store = require('../../lib/admin-schedule-store');
 const engine = require('../../lib/admin-schedule-engine');
+const idxCalendar = require('../../lib/idx-trading-calendar');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -65,11 +66,12 @@ function describeReadFailure(result) {
  */
 function buildPublicDoc(doc, nowOpt) {
   const now = nowOpt instanceof Date ? nowOpt : new Date();
+  const holidaySet = typeof idxCalendar.getSeedHolidaySet === 'function' ? idxCalendar.getSeedHolidaySet() : new Set();
   const extra = {
     collisions: engine.detectCollisions(doc),
     nextRuns: store.JOB_CATALOG.reduce(function (acc, def) {
       const job = doc.jobs[def.key];
-      const runs = engine.computeNextRuns(job, now, 5);
+      const runs = engine.computeNextRuns(job, now, 5, { holidaySet });
       acc[def.key] = runs.map(function (d) { return engine.formatWibIso(d.toISOString()); });
       return acc;
     }, {}),

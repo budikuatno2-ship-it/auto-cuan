@@ -1060,6 +1060,54 @@ body {
           <span><b>Kontrak:</b> IDLE = tidak ada backlog terverifikasi (0 request provider). BLOCKED = cron mati (exit 126) / kuota tidak cukup / jeda admin. Status dihitung dari <span class="mono">data/backfill-status.json</span> + ledger worker, bukan teks UI.</span>
         </div>
       </section>
+
+      <section class="sheet" id="threeHorizonAdminPanel" style="margin-top:20px">
+        <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2>Three-Horizon Screener (SSOT Konfigurasi)</h2>
+            <span>Parameter horizon Potensi Besok (1–5H), Short Swing (3–10H), &amp; Swing (7–30H) · <span id="thVersionLabel" class="mono">Memuat…</span></span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="font-size:12px">Min R/R <input id="thMinRrInput" type="number" step="0.1" min="1.2" max="5" class="inp mono" style="width:70px;padding:4px 8px"></label>
+            <button class="btn sm p" type="button" onclick="saveThreeHorizonSettings()">Simpan Three-Horizon</button>
+          </div>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:760px">
+            <thead><tr><th>Horizon</th><th class="r">Lookback (Hari)</th><th class="r">Bobot Bandar</th><th class="r">Bobot Foreign</th><th class="r">Bobot Teknikal</th><th class="r">Bobot Volume</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><b>Potensi Besok</b> <span class="mut">(1–5H)</span></td>
+                <td class="r"><input id="thLookback_potensi_besok" type="number" min="5" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thW_bandar_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_foreign_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_technical_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_volume_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+              </tr>
+              <tr>
+                <td><b>Short Swing</b> <span class="mut">(3–10H)</span></td>
+                <td class="r"><input id="thLookback_short_swing" type="number" min="5" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thW_bandar_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_foreign_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_technical_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_volume_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+              </tr>
+              <tr>
+                <td><b>Swing</b> <span class="mut">(7–30H)</span></td>
+                <td class="r"><input id="thLookback_swing" type="number" min="5" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thW_bandar_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_foreign_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_technical_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_volume_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prov" style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <span><b>SSOT:</b> <span class="mono">/api/admin/three-horizon-settings</span> · kontrol versi (409 conflict guard) + log audit.</span>
+          <span id="threeHorizonSaveStatus" style="font-weight:600;color:var(--ac-brand,#10B981)"></span>
+        </div>
+      </section>
     </div>
 
     <!-- TAB 7: LOG AUDIT & KEAMANAN -->
@@ -1073,8 +1121,7 @@ body {
           <table class="tbl">
             <thead><tr><th>Waktu (WIB)</th><th>Aktor</th><th>Aksi</th><th>Target / Parameter</th></tr></thead>
             <tbody id="auditLogsTbody">
-              <tr><td class="num mut">04 Nov 2026, 10:14:00 WIB</td><td style="font-weight:600">budi</td><td>Akses Admin Console</td><td class="mono mut">/admin-console</td></tr>
-              <tr><td class="num mut">04 Nov 2026, 09:30:00 WIB</td><td style="font-weight:600">budi</td><td>Pemeriksaan Status Online</td><td class="mono mut">online_list</td></tr>
+              <tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Memuat log audit riil dari server…</td></tr>
             </tbody>
           </table>
         </div>
@@ -1189,46 +1236,7 @@ body {
               </tr>
             </thead>
             <tbody id="forensicAttackTbody">
-              <tr>
-                <td class="num mut">04 Nov 2026, 16:35:12 WIB</td>
-                <td class="mono font-bold">198.51.100.44</td>
-                <td><span class="st r">SQLi Probe</span></td>
-                <td class="mono mut">/api/quote?ticker=' OR 1=1--</td>
-                <td class="mut">sqlmap/1.7.2#stable</td>
-                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
-              </tr>
-              <tr>
-                <td class="num mut">04 Nov 2026, 16:32:05 WIB</td>
-                <td class="mono font-bold">203.0.113.88</td>
-                <td><span class="st r">Path Traversal</span></td>
-                <td class="mono mut">/data/../../etc/passwd</td>
-                <td class="mut">python-requests/2.31.0</td>
-                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
-              </tr>
-              <tr>
-                <td class="num mut">04 Nov 2026, 16:28:40 WIB</td>
-                <td class="mono font-bold">192.0.2.145</td>
-                <td><span class="st a">Aggressive Scanner</span></td>
-                <td class="mono mut">/admin-console.php</td>
-                <td class="mut">Nikto/2.1.6</td>
-                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
-              </tr>
-              <tr>
-                <td class="num mut">04 Nov 2026, 16:15:22 WIB</td>
-                <td class="mono font-bold">198.51.100.10</td>
-                <td><span class="st r">Brute Force Login</span></td>
-                <td class="mono mut">/api/login-user</td>
-                <td class="mut">Go-http-client/1.1</td>
-                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
-              </tr>
-              <tr>
-                <td class="num mut">04 Nov 2026, 15:50:18 WIB</td>
-                <td class="mono font-bold">203.0.113.19</td>
-                <td><span class="st a">Sensitive Probe</span></td>
-                <td class="mono mut">/.env</td>
-                <td class="mut">curl/7.88.1</td>
-                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
-              </tr>
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat data serangan riil dari server…</td></tr>
             </tbody>
           </table>
         </div>

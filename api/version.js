@@ -108,13 +108,13 @@ function collectMeta() {
 function buildPayload() {
   const meta = collectMeta();
   const versionLabel = (meta.commitSha && meta.branch)
-    ? 'v5-' + meta.branch + '-' + meta.commitShort
+    ? 'v6.5-' + meta.branch + '-' + meta.commitShort
     : 'unknown';
   return {
     success: true,
     status: 200,
     version: versionLabel,
-    release: 'Auto-Cuan IDX V5',
+    release: 'Auto-Cuan IDX V6.5',
     active: true,
     versionSource: meta.commitSha
       ? (process.env.GIT_COMMIT || process.env.GIT_SHA)

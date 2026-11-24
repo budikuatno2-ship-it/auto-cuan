@@ -45,7 +45,9 @@ var c10FileCache = null;
 try { c10FileCache = require('../lib/c10-json-file-cache'); } catch (_) { c10FileCache = null; }
 var clock = { now: function() { return new Date(); } };
 var { isValidIhsgCandle } = require('../lib/ihsg-validation');
-var { readCandleSeries } = require('../lib/local-market-subset-store');
+var localSubsetStore = require('../lib/local-market-subset-store');
+var readCandleSeries = localSubsetStore.readCandleSeries;
+var readForeignFlowSeries = localSubsetStore.readForeignFlowSeries || function() { return []; };
 // TASK J6: test-only seam. Production always uses the canonical reader above;
 // isolated tests may inject a stub so mocked upstream transport is exercised.
 var candleReader = readCandleSeries;
@@ -226,7 +228,14 @@ module.exports = async function handler(req, res) {
     var asOf = (req.query && req.query.as_of) || (req.body && req.body.as_of) || null;
     if (asOf && !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return res.status(400).json({ success: false, error: 'Invalid as_of' });
     var localSeries = candleReader(ticker, { asOf: asOf });
-    var localRevision = require('node:crypto').createHash('sha256').update(JSON.stringify(localSeries)).digest('hex');
+    var foreignFlow = [];
+    try {
+      if (localSeries && localSeries.source === 'sqlite_market_rows' && ticker !== 'IHSG') {
+        foreignFlow = readForeignFlowSeries(ticker, { asOf: asOf });
+      }
+    } catch (_) { foreignFlow = []; }
+    var ffSig = foreignFlow.length ? ('_' + foreignFlow.length + '_' + foreignFlow[foreignFlow.length - 1].time) : '_0';
+    var localRevision = require('node:crypto').createHash('sha256').update(JSON.stringify(localSeries) + ffSig).digest('hex');
     var cacheKey = ticker + '_' + cleanRange + '_' + (asOf || '') + '_' + ((req.query && req.query.interval) || '1d') + '_' + localRevision;
 
     var cached = cache[cacheKey];
@@ -244,7 +253,9 @@ module.exports = async function handler(req, res) {
     // Canonical SQLite wins even for short histories. No current-day or future
     // bars are reintroduced when T-1 filtering empties the local series.
     if (localSeries.source) {
-      cutoff = t1Policy.retainCompletedCandles(localSeries.candles, clock.now());
+      cutoff = t1Policy.retainCompletedCandles(localSeries.candles, clock.now(), {
+        allowTodayAfterClose: localSeries.source === 'sqlite_market_rows'
+      });
       candles = cutoff.candles;
       candleSource = localSeries.source === 'sqlite_market_rows' ? localSeries.source : 'Data Historis T-1';
     }
@@ -358,6 +369,19 @@ module.exports = async function handler(req, res) {
       }, ticker, cutoff && cutoff.metadata, 'CHART'));
     }
 
+    // IHSG volume scale normalization (flat-file shares ~35B vs Yahoo lots ~280M)
+    if (ticker === 'IHSG' && candles.length > 0) {
+      var hasLargeVol = candles.some(function(c) { return c.volume != null && Number(c.volume) >= 5e9; });
+      if (hasLargeVol) {
+        candles = candles.map(function(c) {
+          if (c.volume != null && Number(c.volume) > 0 && Number(c.volume) < 2e9) {
+            return Object.assign({}, c, { volume: Math.round(Number(c.volume) * 100) });
+          }
+          return c;
+        });
+      }
+    }
+
     // Calculate latest metrics
     var closePrices = candles.map(function(c) { return c.close; });
     var volumeArr = candles.map(function(c) { return c.volume; });
@@ -387,6 +411,7 @@ module.exports = async function handler(req, res) {
         volumeVsAvg20: calcVolumeRatio(volumeArr, latest.volume, 20)
       },
       candles: candles,
+      foreignFlow: foreignFlow,
       data_governance: evaluateDataGovernance(cutoff && cutoff.metadata && cutoff.metadata.actual_data_date, clock.now())
     }, ticker, cutoff && cutoff.metadata, 'CHART'), cutoff.metadata);
 

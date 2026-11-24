@@ -1139,6 +1139,12 @@ html.light #googleCompleteProfileModal input {
   color: #17211e !important;
   border-color: #d1d5db !important;
 }
+/* V6.5 Admin Schedule table fit — prevent Min-Sab checkbox clipping at 1440x900 */
+.admin-schedule-tbl { table-layout: fixed; width: 100%; min-width: 0; }
+.admin-schedule-tbl th, .admin-schedule-tbl td { padding: 8px 10px; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
+.admin-schedule-tbl th:nth-child(6), .admin-schedule-tbl td:nth-child(6) { white-space: nowrap; }
+.admin-schedule-tbl .schedule-legacy-group > td { padding: 0; }
+.admin-schedule-tbl .schedule-legacy-group table { table-layout: fixed; width: 100%; }
 </style>
 <div id="googleCompleteProfileModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="googleProfileModalTitle">
     <div class="w-full max-w-[420px] rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
@@ -1410,7 +1416,7 @@ html.light #googleCompleteProfileModal input {
                 </div>
             </div>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
-                <span class="header-status-chip" id="globalLiveRadarChip" title="Menunggu status data penutupan pasar." aria-label="Status data belum pasti."><span class="header-status-dot" id="globalLiveRadarDot" style="background:#38bdf8;box-shadow:none"></span><span id="globalLiveRadarText">Belum pasti</span><span id="globalLiveRadarTime"></span></span>
+                <span class="header-status-chip" id="globalLiveRadarChip" title="Memuat status data penutupan pasar." aria-label="Status data EOD."><span class="header-status-dot" id="globalLiveRadarDot" style="background:#38bdf8;box-shadow:none"></span><span id="globalLiveRadarText">EOD</span><span id="globalLiveRadarTime"></span></span>
                 <span class="header-status-chip safe">Safety ON</span>
                 <span class="header-status-chip warn">Manual Confirm</span>
                 <span class="header-status-chip">Watchlist ≠ BUY</span>
@@ -1423,8 +1429,8 @@ html.light #googleCompleteProfileModal input {
                     <span id="hud-quota-status" class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">NORMAL</span>
                 </div>
                 <div class="flex items-center space-x-1.5 border-l border-dark-600/40 pl-2">
-                    <span class="text-gray-400">HARD-LOCK:</span>
-                    <span id="hud-reserve-floor" class="text-amber-400 font-semibold">5,000 FLR (20:30 WIB)</span>
+                    <span class="text-gray-400">STOP BUFFER:</span>
+                    <span id="hud-reserve-floor" class="text-amber-400 font-semibold">—</span>
                 </div>
                 <div class="flex items-center space-x-1.5 border-l border-dark-600/40 pl-2">
                     <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -1520,7 +1526,7 @@ html.light #googleCompleteProfileModal input {
         </div>
         <div class="ph-act">
             <!-- Freshness now lives in the top bar; the hero badge stays for the shared status updater. -->
-            <span class="dash-badge" id="heroLiveRadarBadge" hidden title="Kesegaran data belum dapat dipastikan." aria-label="Belum pasti. Kesegaran data belum dapat dipastikan."><span class="header-status-dot" id="heroLiveRadarDot"></span><span id="heroLiveRadarText">Belum pasti</span></span>
+            <span class="dash-badge" id="heroLiveRadarBadge" hidden title="Status data EOD pasar." aria-label="EOD. Status data pasar."><span class="header-status-dot" id="heroLiveRadarDot"></span><span id="heroLiveRadarText">EOD</span></span>
             <span class="chip w">Konfirmasi manual wajib</span>
             <span id="approvedBadge" class="hidden chip b">Approved</span>
             <button type="button" class="vbtn" onclick="openAiApiKeyModal()" title="Kelola kunci AI milik Anda (BYOK)">Kredensial AI</button>
@@ -1948,7 +1954,13 @@ html.light #googleCompleteProfileModal input {
         <div class="ph rise scr-ph">
             <div>
                 <h1 class="page-title">Screener Saham</h1>
-                <p id="scrModeDesc">Swing 3&ndash;7 hari pada saham grup konglomerat. Klik baris untuk rencana dan bukti gate.</p>
+                <p id="scrModeDesc">Three-Horizon Screener riil dari SQLite: Potensi Besok (1–5H), Short Swing (3–10H), &amp; Swing (7–30H).</p>
+            </div>
+            <div class="segx n3 scr-three-horizon" id="threeHorizonTabs" role="group" aria-label="Pilih Horizon Screener">
+                <span class="ind" id="threeHzInd"></span>
+                <button type="button" id="hzBtnPotensiBesok" onclick="switchThreeHorizon('potensi_besok')" class="ac-segment" data-horizon="potensi_besok" aria-pressed="false">Potensi Besok (1–5H)</button>
+                <button type="button" id="hzBtnShortSwing" onclick="switchThreeHorizon('short_swing')" class="ac-segment is-active on" data-horizon="short_swing" aria-pressed="true">Short Swing (3–10H)</button>
+                <button type="button" id="hzBtnSwing" onclick="switchThreeHorizon('swing')" class="ac-segment" data-horizon="swing" aria-pressed="false">Swing (7–30H)</button>
             </div>
             <div class="segx n3 scr-modes hidden" style="display:none !important" role="group" aria-label="Mode screener" data-task-e-legacy-mode-switch="hidden"><span class="ind" id="scrTypeInd"></span>
                 <button type="button" onclick="switchScreenerType('konglo')" id="scrTypeKonglo" class="ac-segment is-active on" aria-pressed="true">Konglo</button>
@@ -3597,7 +3609,7 @@ html.light #googleCompleteProfileModal input {
         </div>
         <div class="tw">
           <table class="tbl admin-schedule-tbl" style="width:100%">
-            <thead><tr><th>Job</th><th>Jam WIB</th><th>Hari Aktif</th><th>5 Run Berikutnya</th><th>Deskripsi</th><th>ENABLED / Aktif</th><th class="r">Aksi</th></tr></thead>
+            <thead><tr><th style="width:19%">Job</th><th style="width:9%">JAM WIB</th><th style="width:21%">Hari Aktif</th><th style="width:19%">5 RUN BERIKUTNYA</th><th style="width:16%">DESKRIPSI</th><th style="width:10%;white-space:nowrap">ENABLED / AKTIF</th><th class="r" style="width:6%">Aksi</th></tr></thead>
             <tbody id="jobsPipelineTbody">
               <tr><td colspan="7" class="mut" style="text-align:center;padding:24px">Memuat status job dari scheduler durable…</td></tr>
             </tbody>
@@ -3606,6 +3618,54 @@ html.light #googleCompleteProfileModal input {
         <div class="prov" style="margin-top:12px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
           <span><b>Editor jadwal V6:</b> Perubahan UI → API → validasi server → persist atomik → scheduler baca config terbaru → next-run berubah → tahan restart/refresh/midnight. Default Broksum mulai 20:40 WIB (jeda +10 menit pasca-rilis 20:30 WIB, concurrency 10, editable di Admin Console).</span>
           <span id="scheduleSaveStatus" style="font-weight:600;color:var(--ac-brand,#10B981)"></span>
+        </div>
+      </section>
+
+      <section class="sheet" id="threeHorizonAdminPanel" style="margin-top:20px">
+        <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2>Three-Horizon Screener (SSOT Konfigurasi)</h2>
+            <span>Parameter horizon Potensi Besok (1–5H), Short Swing (3–10H), &amp; Swing (7–30H) · <span id="thVersionLabel" class="mono">Memuat…</span></span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="font-size:12px">Min R/R <input id="thMinRrInput" type="number" step="0.1" min="1.2" max="5" class="inp mono" style="width:70px;padding:4px 8px"></label>
+            <button class="btn sm p" type="button" onclick="saveThreeHorizonSettings()">Simpan Three-Horizon</button>
+          </div>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:760px">
+            <thead><tr><th>Horizon</th><th class="r">Lookback (Hari)</th><th class="r">Bobot Bandar</th><th class="r">Bobot Foreign</th><th class="r">Bobot Teknikal</th><th class="r">Bobot Volume</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><b>Potensi Besok</b> <span class="mut">(1–5H)</span></td>
+                <td class="r"><input id="thLookback_potensi_besok" type="number" min="5" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thW_bandar_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_foreign_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_technical_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_volume_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+              </tr>
+              <tr>
+                <td><b>Short Swing</b> <span class="mut">(3–10H)</span></td>
+                <td class="r"><input id="thLookback_short_swing" type="number" min="5" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thW_bandar_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_foreign_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_technical_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_volume_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+              </tr>
+              <tr>
+                <td><b>Swing</b> <span class="mut">(7–30H)</span></td>
+                <td class="r"><input id="thLookback_swing" type="number" min="5" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thW_bandar_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_foreign_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_technical_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_volume_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prov" style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <span><b>SSOT:</b> <span class="mono">/api/admin/three-horizon-settings</span> · kontrol versi (409 conflict guard) + log audit.</span>
+          <span id="threeHorizonSaveStatus" style="font-weight:600;color:var(--ac-brand,#10B981)"></span>
         </div>
       </section>
     </div>
@@ -3621,8 +3681,7 @@ html.light #googleCompleteProfileModal input {
           <table class="tbl">
             <thead><tr><th>Waktu (WIB)</th><th>Aktor</th><th>Aksi</th><th>Target / Parameter</th></tr></thead>
             <tbody id="auditLogsTbody">
-              <tr><td class="num mut">04 Nov 2026, 10:14:00 WIB</td><td style="font-weight:600">budi</td><td>Akses Admin Console</td><td class="mono mut">/admin-console</td></tr>
-              <tr><td class="num mut">04 Nov 2026, 09:30:00 WIB</td><td style="font-weight:600">budi</td><td>Pemeriksaan Status Online</td><td class="mono mut">online_list</td></tr>
+              <tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Memuat log audit riil dari server…</td></tr>
             </tbody>
           </table>
         </div>
@@ -3737,46 +3796,7 @@ html.light #googleCompleteProfileModal input {
               </tr>
             </thead>
             <tbody id="forensicAttackTbody">
-              <tr>
-                <td class="num mut">04 Nov 2026, 16:35:12 WIB</td>
-                <td class="mono font-bold">198.51.100.44</td>
-                <td><span class="st r">SQLi Probe</span></td>
-                <td class="mono mut">/api/quote?ticker=' OR 1=1--</td>
-                <td class="mut">sqlmap/1.7.2#stable</td>
-                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
-              </tr>
-              <tr>
-                <td class="num mut">04 Nov 2026, 16:32:05 WIB</td>
-                <td class="mono font-bold">203.0.113.88</td>
-                <td><span class="st r">Path Traversal</span></td>
-                <td class="mono mut">/data/../../etc/passwd</td>
-                <td class="mut">python-requests/2.31.0</td>
-                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
-              </tr>
-              <tr>
-                <td class="num mut">04 Nov 2026, 16:28:40 WIB</td>
-                <td class="mono font-bold">192.0.2.145</td>
-                <td><span class="st a">Aggressive Scanner</span></td>
-                <td class="mono mut">/admin-console.php</td>
-                <td class="mut">Nikto/2.1.6</td>
-                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
-              </tr>
-              <tr>
-                <td class="num mut">04 Nov 2026, 16:15:22 WIB</td>
-                <td class="mono font-bold">198.51.100.10</td>
-                <td><span class="st r">Brute Force Login</span></td>
-                <td class="mono mut">/api/login-user</td>
-                <td class="mut">Go-http-client/1.1</td>
-                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
-              </tr>
-              <tr>
-                <td class="num mut">04 Nov 2026, 15:50:18 WIB</td>
-                <td class="mono font-bold">203.0.113.19</td>
-                <td><span class="st a">Sensitive Probe</span></td>
-                <td class="mono mut">/.env</td>
-                <td class="mut">curl/7.88.1</td>
-                <td><span class="st r">DIBLOKIR OTOMATIS</span></td>
-              </tr>
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat data serangan riil dari server…</td></tr>
             </tbody>
           </table>
         </div>
@@ -3869,41 +3889,41 @@ html.light #googleCompleteProfileModal input {
                                 </div>
                                 <div class="text-sm sm:text-base font-bold text-[var(--ac-ink)] mb-3 flex items-center gap-2" id="v4f09BestMethodContainer">
                                     <span class="text-xs text-[var(--ac-2)] font-normal">Metode Pemenang:</span>
-                                    <span id="v4f09BestMethodName" class="text-emerald-300 font-semibold">Aliran Asing vs Domestik + Filter Laporan Keuangan Q2</span>
+                                    <span id="v4f09BestMethodName" class="text-emerald-300 font-semibold">Data belum tersedia</span>
                                 </div>
                                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                                     <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
                                         <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Win Rate</span>
-                                        <b id="v4f09WinRate" class="text-sm font-mono font-bold text-emerald-400">38,5%</b>
+                                        <b id="v4f09WinRate" class="text-sm font-mono font-bold text-emerald-400">&mdash;</b>
                                     </div>
                                     <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
                                         <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Profit Factor</span>
-                                        <b id="v4f09ProfitFactor" class="text-sm font-mono font-bold text-[var(--ac-ink)]">1,68</b>
+                                        <b id="v4f09ProfitFactor" class="text-sm font-mono font-bold text-[var(--ac-ink)]">&mdash;</b>
                                     </div>
                                     <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
                                         <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Expectancy</span>
-                                        <b id="v4f09Expectancy" class="text-sm font-mono font-bold text-emerald-400">+1,35%</b>
+                                        <b id="v4f09Expectancy" class="text-sm font-mono font-bold text-emerald-400">&mdash;</b>
                                     </div>
                                     <div class="p-2.5 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]">
                                         <span class="text-[var(--ac-2)] block text-[10px] uppercase font-medium">Sampel Trade</span>
-                                        <b id="v4f09TradesCount" class="text-sm font-mono font-bold text-[var(--ac-ink)]">26 trade</b>
+                                        <b id="v4f09TradesCount" class="text-sm font-mono font-bold text-[var(--ac-ink)]">&mdash;</b>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="ai-sec rise d0 mb-4">
                                 <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Rangkuman Kuantitatif</h3>
-                                <p id="anaAiSummary" class="text-sm leading-relaxed text-[var(--ac-ink)]">Memuat data teknikal riil...</p>
+                                <p id="anaAiSummary" class="text-sm leading-relaxed text-[var(--ac-ink)]">Data belum tersedia — pilih ticker atau klik tombol Jalankan Analisis AI.</p>
                             </div>
                             <div class="ai-sec rise d1 mb-4">
                                 <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Bukti dari data riil</h3>
                                 <ul id="anaAiEvidence" class="text-sm space-y-1.5 text-[var(--ac-ink)] pl-4 list-disc">
-                                    <li>Memuat matriks bukti teknikal...</li>
+                                    <li>Data teknikal akan muncul setelah seri candle dimuat.</li>
                                 </ul>
                             </div>
                             <div class="ai-sec rise d2 mb-4">
                                 <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Risiko & Batas Invalidasi</h3>
-                                <p id="anaAiRisk" class="text-sm leading-relaxed text-[var(--ac-warn-t)]">Memuat level invalidasi stop loss...</p>
+                                <p id="anaAiRisk" class="text-sm leading-relaxed text-[var(--ac-warn-t)]">&mdash;</p>
                             </div>
                             <div class="ai-sec rise d3">
                                 <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-1">Konteks yang dipakai</h3>
@@ -3912,33 +3932,33 @@ html.light #googleCompleteProfileModal input {
                             <div class="ai-sec rise d4 v3f08-matrix" id="v3f08Matrix" aria-label="Matriks angka tegas dari data riil">
                                 <div class="flex items-center justify-between mb-2">
                                     <h3 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-0">4 Kartu Rencana Eksekusi Presisi &middot; Matriks Angka Data Riil</h3>
-                                    <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-[var(--ac-raised)] text-emerald-400 border border-[var(--ac-hair)] font-bold">Rasio R:R (R/R): <span id="v3f08RR">Memuat&hellip;</span></span>
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-[var(--ac-raised)] text-emerald-400 border border-[var(--ac-hair)] font-bold">Rasio R:R (R/R): <span id="v3f08RR">&mdash;</span></span>
                                 </div>
                                 <div class="v3f08-grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px">
                                     <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
                                         <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Area Entry Ideal (Area Entry)</span>
-                                        <b id="v3f08Entry" class="v3f08-mono num text-sm text-[var(--ac-ink)]">Memuat&hellip;</b>
+                                        <b id="v3f08Entry" class="v3f08-mono num text-sm text-[var(--ac-ink)]">&mdash;</b>
                                     </div>
                                     <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
                                         <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Stop Loss (SL) &middot; SL + %risiko</span>
-                                        <b id="v3f08SL" class="v3f08-mono num text-sm text-rose-400">Memuat&hellip;</b>
+                                        <b id="v3f08SL" class="v3f08-mono num text-sm text-rose-400">&mdash;</b>
                                         <small id="v3f08Risk" class="v3f08-mono num mut text-xs text-rose-300 ml-1"></small>
                                     </div>
                                     <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
                                         <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Target Profit 1 (TP1)</span>
-                                        <b id="v3f08TP1" class="v3f08-mono num text-sm text-emerald-400">Memuat&hellip;</b>
+                                        <b id="v3f08TP1" class="v3f08-mono num text-sm text-emerald-400">&mdash;</b>
                                     </div>
                                     <div class="v3f08-cell p-3 rounded-lg bg-[var(--ac-raised)] border border-[var(--ac-hair)]" style="grid-column:span 6">
                                         <span class="lbl block text-[10px] uppercase text-[var(--ac-2)]">Target Profit 2 (TP2)</span>
-                                        <b id="v3f08TP2" class="v3f08-mono num text-sm text-emerald-400">Memuat&hellip;</b>
+                                        <b id="v3f08TP2" class="v3f08-mono num text-sm text-emerald-400">&mdash;</b>
                                     </div>
                                     <div class="v3f08-cell p-2.5 rounded-lg bg-[var(--ac-surface)] border border-[var(--ac-hair)]" style="grid-column:span 6">
                                         <span class="lbl block text-[10px] text-[var(--ac-2)]">Support terdekat</span>
-                                        <b id="v3f08Support" class="v3f08-mono num text-xs">Memuat&hellip;</b>
+                                        <b id="v3f08Support" class="v3f08-mono num text-xs">&mdash;</b>
                                     </div>
                                     <div class="v3f08-cell p-2.5 rounded-lg bg-[var(--ac-surface)] border border-[var(--ac-hair)]" style="grid-column:span 6">
                                         <span class="lbl block text-[10px] text-[var(--ac-2)]">Resistance terdekat</span>
-                                        <b id="v3f08Resistance" class="v3f08-mono num text-xs">Memuat&hellip;</b>
+                                        <b id="v3f08Resistance" class="v3f08-mono num text-xs">&mdash;</b>
                                     </div>
                                 </div>
                                 <h4 class="text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mt-4 mb-2">Tabel Matriks Angka Fibonacci Retracement & Extension (9 Baris Wajib) &middot; Swing High/Low Riil</h4>
@@ -3954,7 +3974,7 @@ html.light #googleCompleteProfileModal input {
                                             </tr>
                                         </thead>
                                         <tbody id="v3f08FiboBody" class="divide-y divide-[var(--ac-hair)]">
-                                            <tr><td colspan="5" class="py-3 px-3 text-center text-gray-500">Memuat level Fibonacci riil&hellip;</td></tr>
+                                            <tr><td colspan="5" class="py-3 px-3 text-center text-gray-500">Data Fibonacci belum tersedia</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -3982,23 +4002,23 @@ html.light #googleCompleteProfileModal input {
                     <aside class="sheet rounded-xl border border-[var(--ac-hair)] bg-[var(--ac-surface)]" style="padding:16px 20px" aria-label="Fakta ticker">
                         <div class="lbl text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider mb-3">Lembar fakta &middot; bar terakhir</div>
                         <div id="anaAiFactsList" class="space-y-2.5 text-sm">
-                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Harga Terakhir</span><b id="factLastPrice" class="num font-mono font-bold text-[var(--ac-ink)]">4.940</b></div>
-                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Perubahan</span><b id="factChange" class="num font-mono font-bold text-emerald-400">+40 (+0,82%)</b></div>
-                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Rentang Hari Ini</span><b id="factRange" class="num font-mono text-[var(--ac-ink)]">4.900 &ndash; 4.960</b></div>
-                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Volume</span><b id="factVolume" class="num font-mono text-[var(--ac-ink)]">842.100 lot</b></div>
-                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Flow Bandar</span><b id="factBandarFlow" class="num font-mono font-bold text-emerald-400">+18,4 M</b></div>
-                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Support Kunci</span><b id="factSupport" class="num font-mono text-[var(--ac-ink)]">4.880</b></div>
-                            <div class="fact flex justify-between py-1.5"><span>Status Tren</span><b id="factTrend" class="num font-semibold text-[var(--ac-ink)]">Netral &ndash; Uptrend</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Harga Terakhir</span><b id="factLastPrice" class="num font-mono font-bold text-[var(--ac-ink)]">&mdash;</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Perubahan</span><b id="factChange" class="num font-mono font-bold text-[var(--ac-ink)]">&mdash;</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Rentang Hari Ini</span><b id="factRange" class="num font-mono text-[var(--ac-ink)]">&mdash;</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Volume</span><b id="factVolume" class="num font-mono text-[var(--ac-ink)]">&mdash;</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Flow Bandar</span><b id="factBandarFlow" class="num font-mono font-bold text-[var(--ac-ink)]">&mdash;</b></div>
+                            <div class="fact flex justify-between py-1.5 border-b border-[var(--ac-hair)]"><span>Support Kunci</span><b id="factSupport" class="num font-mono text-[var(--ac-ink)]">&mdash;</b></div>
+                            <div class="fact flex justify-between py-1.5"><span>Status Tren</span><b id="factTrend" class="num font-semibold text-[var(--ac-ink)]">&mdash;</b></div>
                         </div>
                         <div id="v3f08Pillars" class="v3f08-panel" style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px;margin-top:12px" aria-label="Rincian Skor 4 Pilar">
                             <div class="lbl text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider" style="grid-column:span 12">Rincian Skor 4 Pilar</div>
-                            <div id="v3f08PillarList" style="grid-column:span 12;display:grid;gap:6px"><div class="fact">Memuat rincian skor&hellip;</div></div>
+                            <div id="v3f08PillarList" style="grid-column:span 12;display:grid;gap:6px"><div class="fact text-xs text-[var(--ac-2)]">Data belum tersedia</div></div>
                         </div>
                         <div id="v3f08Sizing" class="v3f08-panel" style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px;margin-top:12px" aria-label="Kalkulator Position Sizing">
                             <div class="lbl text-xs font-bold text-[var(--ac-2)] uppercase tracking-wider" style="grid-column:span 12">Kalkulator Position Sizing</div>
-                            <div style="grid-column:span 12" class="text-sm"><span>Position Sizing</span> &middot; <span id="v3f08SizeText" class="v3f08-mono num">Memuat&hellip;</span></div>
-                            <div style="grid-column:span 6"><span class="lbl">Lot</span><b id="v3f08Lots" class="v3f08-mono num">10</b></div>
-                            <div style="grid-column:span 6"><span class="lbl">Risiko (Rp)</span><b id="v3f08RiskRp" class="v3f08-mono num">Memuat&hellip;</b></div>
+                            <div style="grid-column:span 12" class="text-sm"><span>Position Sizing</span> &middot; <span id="v3f08SizeText" class="v3f08-mono num">&mdash;</span></div>
+                            <div style="grid-column:span 6"><span class="lbl">Lot</span><b id="v3f08Lots" class="v3f08-mono num">&mdash;</b></div>
+                            <div style="grid-column:span 6"><span class="lbl">Risiko (Rp)</span><b id="v3f08RiskRp" class="v3f08-mono num">&mdash;</b></div>
                         </div>
                     </aside>
                 </div>
@@ -8689,17 +8709,27 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
             }
             badge.setAttribute('data-freshness-state', status);
             var statesApi = typeof window !== 'undefined' ? window.AutoCuanStates : null;
-            var when = (usableTime && statesApi && typeof statesApi.formatWib === 'function') ? statesApi.formatWib(calcMs) : '';
-            // TASK I: never hardcode a calendar date. The canonical latest EOD
-            // session is the dataset's own trading date (dataDay), derived from
-            // the backend metadata / max(stock_daily_history). If the metadata
-            // carries an explicit canonical EOD timestamp, prefer it. Staleness
-            // is already decided above from dataDay vs today/yesterday.
-            var canonicalEodAt = meta.canonical_eod_at || meta.latest_eod_at || meta.data_as_of || null;
-            if (status === 'eod' && canonicalEodAt && Number.isFinite(new Date(canonicalEodAt).getTime())) {
-                var canonicalMs = new Date(canonicalEodAt).getTime();
-                if (statesApi && typeof statesApi.formatWib === 'function') when = statesApi.formatWib(canonicalMs);
+            var formatCalendarDate = function(dateStr) {
+                var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || '').slice(0, 10));
+                if (!m) return '';
+                var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                return Number(m[3]) + ' ' + (months[Number(m[2]) - 1] || m[2]) + ' ' + m[1];
+            };
+            var rawCal = meta.canonical_eod_at || meta.latest_eod_at || meta.data_as_of || null;
+            var rawTime = meta.updated_at || meta.last_updated_at || null;
+            var isDateOnly = !rawTime || /^\d{4}-\d{2}-\d{2}$/.test(String(rawTime)) || /T00:00:00(?:\.000)?Z$/.test(String(rawTime));
+            var when = '';
+            if (status === 'eod' && rawCal) {
+                when = formatCalendarDate(rawCal) || '';
+                if (!isDateOnly && statesApi && typeof statesApi.formatWib === 'function') {
+                    var parsedU = new Date(rawTime);
+                    if (Number.isFinite(parsedU.getTime())) when = statesApi.formatWib(parsedU.getTime());
+                }
+            } else if (usableTime) {
+                if (isDateOnly && rawCal) when = formatCalendarDate(rawCal);
+                else if (statesApi && typeof statesApi.formatWib === 'function') when = statesApi.formatWib(calcMs);
             }
+            if (status === 'eod') label = 'EOD';
             text.textContent = label;
             var stamp = document.getElementById('globalLiveRadarTime');
             if (stamp) stamp.textContent = when ? ' · ' + when : '';
@@ -15121,9 +15151,9 @@ async function loadSwingScreener(silent) {
             return;
         }
 
-        // Update meta
+        // Update meta (do not let legacy screener meta overwrite canonical EOD header chip)
         if (data.meta || (data.results && data.results.length > 0)) {
-            if (typeof updateGlobalLiveRadarStatus === 'function') updateGlobalLiveRadarStatus(data.meta || {});
+            if (typeof refreshCanonicalEodHeader === 'function') refreshCanonicalEodHeader();
             var m = data.meta || {};
             var realUniverse = m.universe_count || 52;
             var realScanned = m.scanned_count || (data.results ? data.results.length : 52);
@@ -15232,6 +15262,45 @@ async function loadSwingScreener(silent) {
     })();
     return _screenerInFlight;
 }
+
+var _activeThreeHorizon = 'short_swing';
+async function switchThreeHorizon(horizonKey) {
+    var key = ['potensi_besok', 'short_swing', 'swing'].indexOf(horizonKey) >= 0 ? horizonKey : 'short_swing';
+    _activeThreeHorizon = key;
+    document.querySelectorAll('#threeHorizonTabs [data-horizon]').forEach(function(btn) {
+        var active = btn.getAttribute('data-horizon') === key;
+        btn.classList.toggle('is-active', active);
+        btn.classList.toggle('on', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    var descEl = document.getElementById('scrModeDesc');
+    var labels = {
+        potensi_besok: 'Potensi Besok (1–5H) · Akumulasi & breakout jangka sangat pendek + fraksi tick IDX.',
+        short_swing: 'Short Swing (3–10H) · Momentum bandar & asing + R/R minimal 1,5x.',
+        swing: 'Swing (7–30H) · Tren struktural & swing support-resistance + R/R minimal 1,5x.'
+    };
+    if (descEl && labels[key]) descEl.textContent = labels[key];
+    try {
+        var r = await fetch('/api/screener?horizon=' + encodeURIComponent(key) + '&t=' + Date.now(), { credentials: 'same-origin' });
+        if (!r.ok) return;
+        var data = await r.json();
+        if (data && data.success && Array.isArray(data.results) && data.results.length > 0) {
+            _screenerCache = data;
+            var uEl = document.getElementById('screenerStatUniverse');
+            var sEl = document.getElementById('screenerStatScanned');
+            var pEl = document.getElementById('screenerStatPublished');
+            var fEl = document.getElementById('screenerStatFailed');
+            var hzObj = data.three_horizon && data.three_horizon[key];
+            if (uEl && hzObj && hzObj.universe_count != null) uEl.textContent = hzObj.universe_count;
+            if (sEl && hzObj && hzObj.evaluated_count != null) sEl.textContent = hzObj.evaluated_count;
+            if (pEl) pEl.textContent = data.results.length;
+            if (fEl) fEl.textContent = '0';
+            renderScreenerTable(data.results);
+            renderKgCardGrid(data.results);
+        }
+    } catch (_) {}
+}
+window.switchThreeHorizon = switchThreeHorizon;
 
 function filterScreener(filter) {
     _screenerFilter = filter;
@@ -18218,15 +18287,15 @@ function forceNormalizeTechnicalDOM(root) {
 <!-- F3: pure F1/F2 detectors bundled for the browser (in-house UMD build of
      lib/chart-core). Must load before the auto-patterns runtime. -->
 <script src="/chart-core-browser.js?v=20261115-f3"></script>
-<script src="/chart-workstation.js?v=20261105-v5p0"></script>
+<script src="/chart-workstation.js?v=v65-20261124"></script>
 <script src="/chart-drawing-tools.js?v=20261114-w2b-13b"></script>
 <script src="/b3-liquidity-badge.js?v=20261031-b3"></script>
 <script src="/candle-request-dedupe.js?v=20261120-task-e"></script>
 <script src="/b3-liquidity-inject.js?v=20261031-b3"></script>
-<script src="/market-feature-runtime.js?v=20261023-v11"></script>
+<script src="/market-feature-runtime.js?v=v65-20261124"></script>
 <!-- F3: wires the F1/F2 detectors into the live chart overlay pipeline. -->
 <script src="/chart-auto-patterns-runtime.js?v=20261115-f3"></script>
-<script src="/analisis-v2.js?v=20261023-v6"></script>
+<script src="/analisis-v2.js?v=v65-20261124"></script>
 <script src="/daytrade-runtime.js?v=20260818-v1"></script>
 
 <script>
@@ -18463,12 +18532,12 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/watchlist-runtime.js?v=20261022-v1"></script>
 <script src="/chart-viewer.js?v=20260905-v1"></script>
 <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
-<script src="/unified-cockpit-runtime.js?v=20261023-v2"></script>
+<script src="/unified-cockpit-runtime.js?v=v65-20261124"></script>
 <script src="/position-sizing-calculator.js?v=20260906-e1"></script>
 <script src="/signal-gate-transparency.js?v=20261022-v1"></script>
 <script src="/number-flow-runtime.js?v=20260929-keyboard-v1"></script>
 <script src="/data-primitives-runtime.js?v=20261007-w3"></script>
-<script src="/analisis-saham-runtime.js?v=20261023-v2"></script>
+<script src="/analisis-saham-runtime.js?v=v65-20261124"></script>
 <script src="/bandarmologi-runtime.js?v=20260928-spa1"></script>
 <script src="/portfolio-planner-v1.js?v=20260928-spa1"></script>
 <script src="/portfolio-command-center-model.js?v=20260928-spa1"></script>
@@ -18497,7 +18566,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/market-intelligence.js?v=20261022-v2"></script>
 <script src="/dashboard-v2.js?v=20261023-v2"></script>
 <script src="/ac-tape.js?v=20261022-v1"></script>
-<script src="/screener-v2.js?v=20261023-v3"></script>
+<script src="/screener-v2.js?v=v65-20261124"></script>
 <script>
 // Auto-initialize Market Breadth if on dashboard
 document.addEventListener('DOMContentLoaded', function() {

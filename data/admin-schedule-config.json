@@ -190,6 +190,35 @@
       "minConcurrency": 8,
       "maxConcurrency": 12
     },
+    "insider": {
+      "key": "insider",
+      "name": "Insider / KSEI Collection",
+      "category": "NIGHT",
+      "description": "Koleksi insider berjenjang (~455 req, concurrency 10, sebelum ranking, bukan weekend).",
+      "editable": true,
+      "lockedDefault": false,
+      "collisionCheck": false,
+      "marketDaysOnly": true,
+      "legacy_inactive": false,
+      "dependsOn": [],
+      "enabled": true,
+      "timeWIB": "20:50",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "retryWindowMinutes": 15,
+      "maxDurationSeconds": 1800,
+      "priority": 40,
+      "costClass": "MEDIUM",
+      "policy": null,
+      "concurrency": 10,
+      "minConcurrency": 8,
+      "maxConcurrency": 12
+    },
     "domestic-compile": {
       "key": "domestic-compile",
       "name": "Domestic Compilation",
@@ -359,35 +388,6 @@
       "maxDurationSeconds": 600,
       "priority": 70,
       "costClass": "ZERO_QUOTA"
-    },
-    "insider": {
-      "key": "insider",
-      "name": "Insider / KSEI Collection",
-      "category": "NIGHT",
-      "description": "Koleksi insider berjenjang (~455 req, concurrency 10, sebelum ranking, bukan weekend).",
-      "editable": true,
-      "lockedDefault": false,
-      "collisionCheck": false,
-      "marketDaysOnly": true,
-      "legacy_inactive": false,
-      "dependsOn": [],
-      "enabled": true,
-      "timeWIB": "20:50",
-      "days": [
-        1,
-        2,
-        3,
-        4,
-        5
-      ],
-      "retryWindowMinutes": 15,
-      "maxDurationSeconds": 1800,
-      "priority": 40,
-      "costClass": "MEDIUM",
-      "policy": null,
-      "concurrency": 10,
-      "minConcurrency": 8,
-      "maxConcurrency": 12
     },
     "fundamental": {
       "key": "fundamental",

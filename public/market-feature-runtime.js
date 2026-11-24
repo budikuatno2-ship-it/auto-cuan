@@ -549,9 +549,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var _th = acChartTheme(container);
 
     // Main chart: candlestick + MA
+    var _chartWidth = Math.max(container.clientWidth || (container.parentElement && container.parentElement.clientWidth) || 0, 320);
     var _axisFmt = /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30)$/i.test(String(ticker || '')) ? acNumFmt(2, 2) : acNumFmt(0, 0);
     var chart = LightweightCharts.createChart(container, {
-        width: container.clientWidth, height: dims.main,
+        width: _chartWidth, height: dims.main,
         layout: acChartLayout(_th),
         grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
@@ -1171,8 +1172,12 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var rsiChart = null;
     var bandarChart = null;
 
+    var _cwWidth = Math.max(container.clientWidth || (container.parentElement && container.parentElement.clientWidth) || 0, 320);
+    var _modeShowForeign = (_activeMode === 'investor' || _activeMode === 'pro') && !_isIndexChart && Array.isArray(options && options.foreignFlow) && options.foreignFlow.length > 0;
+    var _effectiveShowForeign = showForeign || _modeShowForeign;
+
     // FINAL POLISH TASK 1: non-price curves live in their own subpane.
-    if ((showLPM || showForeign || showCMF) && ws && candles.length >= 5) {
+    if ((showLPM || _effectiveShowForeign || showCMF) && ws && candles.length >= 5) {
         var bandarContainer = document.getElementById(chartId + '_bandar_container');
         if (!bandarContainer) {
             bandarContainer = document.createElement('div');
@@ -1183,7 +1188,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
         bandarContainer.style.display = 'block';
         // FIX 1: real numeric legend from the canonical foreign-flow series.
-        var _ffSeries = showForeign ? ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow) : [];
+        var _ffSeries = _effectiveShowForeign ? ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow) : [];
         var _ffLast = _ffSeries.length ? Number(_ffSeries[_ffSeries.length - 1].value) : null;
         var _bandarLegend = 'BANDAR METRICS (sub-pane, bukan harga)';
         if (_ffLast != null && isFinite(_ffLast)) {
@@ -1191,7 +1196,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
         bandarContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#94a3b8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _bandarLegend + '</div>';
         bandarChart = LightweightCharts.createChart(bandarContainer, {
-            width: container.clientWidth,
+            width: _cwWidth,
             height: 80,
             layout: acChartLayout(_th),
             grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
@@ -1205,10 +1210,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             var sLpm = bandarChart.addLineSeries({ color: '#10b981', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'LPM' });
             sLpm.setData(ws.calculateLPMSeries(candles));
         }
-        if (showForeign) {
+        if (_effectiveShowForeign) {
             var sForeign = bandarChart.addLineSeries({ color: '#3b82f6', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Foreign Flow', priceScaleId: 'foreign_scale' });
-            bandarChart.priceScale('foreign_scale').applyOptions({ scaleMargins: { top: 0.15, bottom: 0.1 } });
-            sForeign.setData(ws.calculateForeignFlowCumulative(candles));
+            try { bandarChart.priceScale('foreign_scale').applyOptions({ scaleMargins: { top: 0.15, bottom: 0.1 } }); } catch (_) {}
+            sForeign.setData(_ffSeries);
         }
         if (showCMF) {
             var sCmf = bandarChart.addLineSeries({ color: '#f97316', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Money Flow' });
@@ -1248,7 +1253,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         if (_macdLast != null && isFinite(_macdLast)) _oscLegend += ' · MACD ' + _macdLast.toFixed(2) + ' / Signal ' + (_sigLast != null && isFinite(_sigLast) ? _sigLast.toFixed(2) : '—');
         oscContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#94a3b8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _oscLegend + '</div>';
         oscChart = LightweightCharts.createChart(oscContainer, {
-            width: container.clientWidth,
+            width: _cwWidth,
             height: 90,
             layout: acChartLayout(_th),
             grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
@@ -1281,11 +1286,49 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         if (existingOsc) existingOsc.style.display = 'none';
     }
 
+    var showOBV = ((_activeMode === 'investor' || _activeMode === 'pro') || (wsState && wsState.isLayerActive('obv'))) && !_isIndexChart;
+    var obvChart = null;
+    if (showOBV && ws && typeof ws.calculateOBV === 'function' && candles.length >= 5) {
+        var obvContainer = document.getElementById(chartId + '_obv_container');
+        if (!obvContainer) {
+            obvContainer = document.createElement('div');
+            obvContainer.id = chartId + '_obv_container';
+            obvContainer.className = 'relative w-full rounded-lg overflow-hidden border border-dark-700/60 bg-[#0b0e14]';
+            obvContainer.style.height = '75px';
+            subpanelsWrapper.appendChild(obvContainer);
+        }
+        obvContainer.style.display = 'block';
+        var _obvSeriesData = ws.calculateOBV(candles);
+        var _obvLast = _obvSeriesData.length ? Number(_obvSeriesData[_obvSeriesData.length - 1].value) : null;
+        var _obvLegend = 'OBV (On-Balance Volume)';
+        if (_obvLast != null && isFinite(_obvLast) && ws.formatIndonesianVolumeCompact) {
+            _obvLegend += ' · ' + ws.formatIndonesianVolumeCompact(_obvLast);
+        }
+        obvContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#a78bfa; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _obvLegend + '</div>';
+        obvChart = LightweightCharts.createChart(obvContainer, {
+            width: _cwWidth,
+            height: 75,
+            layout: acChartLayout(_th),
+            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.15, bottom: 0.1 } },
+            timeScale: { visible: false },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+        });
+        var sObv = obvChart.addLineSeries({ color: '#a78bfa', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'OBV' });
+        sObv.setData(_obvSeriesData);
+        obvChart.timeScale().fitContent();
+    } else {
+        var existingObv = document.getElementById(chartId + '_obv_container');
+        if (existingObv) existingObv.style.display = 'none';
+    }
+
     if (showIntensity && ws && candles.length >= 5) {
         intensityContainer.style.display = 'block';
         intensityContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#c084fc; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">INTENSITY (Aktivitas Bandar)</div>';
         intensityChart = LightweightCharts.createChart(intensityContainer, {
-            width: container.clientWidth,
+            width: _cwWidth,
             height: 65,
             layout: acChartLayout(_th),
             grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
@@ -1306,7 +1349,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         rotationContainer.style.display = 'block';
         rotationContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#34d399; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">VOLUME ROTATION (Akumulasi / Distribusi / Transisi)</div>';
         rotationChart = LightweightCharts.createChart(rotationContainer, {
-            width: container.clientWidth,
+            width: _cwWidth,
             height: 65,
             layout: acChartLayout(_th),
             grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
@@ -1333,6 +1376,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         try {
             if (intensityChart) intensityChart.timeScale().setVisibleLogicalRange(range);
             if (rotationChart) rotationChart.timeScale().setVisibleLogicalRange(range);
+            if (obvChart) obvChart.timeScale().setVisibleLogicalRange(range);
             if (rsiChart) rsiChart.timeScale().setVisibleLogicalRange(range);
             if (bandarChart) bandarChart.timeScale().setVisibleLogicalRange(range);
             if (oscChart) oscChart.timeScale().setVisibleLogicalRange(range);

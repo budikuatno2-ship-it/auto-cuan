@@ -104,7 +104,10 @@ function buildChartResponse(ticker, now, opts) {
 
   if (!series.source) return unavailable('no_storage_file', null, 404);
   // OHLCV remains exactly as stored. No inferred split, range or replacement.
-  const clean = series.candles.filter(c => c.time < jakartaToday);
+  const cutoff = t1Policy.retainCompletedCandles(series.candles, now, {
+    allowTodayAfterClose: series.source === 'sqlite_market_rows'
+  });
+  const clean = cutoff.candles;
 
   // Semua bar habis tersaring / berkas kosong => UNAVAILABLE dengan tanggal sah
   // terakhir (bila pernah ada). TIDAK ada bar pengganti.

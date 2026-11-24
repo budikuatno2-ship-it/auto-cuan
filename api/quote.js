@@ -1034,7 +1034,9 @@ async function fetchYahooQuote(ticker) {
   // and any future-dated provider row before latest/pivot/MA/RSI/fibonacci are
   // derived. Without this, /api/quote reports an intraday price while the chart
   // on the same page reports the T-1 close — the "harga ngaco" mismatch.
-  var cutoff = t1Policy.retainCompletedCandles(candles, new Date());
+  var cutoff = t1Policy.retainCompletedCandles(candles, new Date(), {
+    allowTodayAfterClose: localSeries && localSeries.source === 'sqlite_market_rows'
+  });
   candles = cutoff.candles;
 
   if (candles.length === 0) {

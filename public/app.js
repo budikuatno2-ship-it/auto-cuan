@@ -171,19 +171,19 @@
       var bt = d.backtest;
       if (bt) {
         setText('v4f09BestMethodName', bt.bestMethodName || 'Metode Multi-Indikator Kuantitatif');
-        setText('v4f09WinRate', (bt.winRatePct != null ? bt.winRatePct.toFixed(1).replace('.', ',') : '50,0') + '%');
-        setText('v4f09ProfitFactor', bt.profitFactor != null ? bt.profitFactor.toFixed(2).replace('.', ',') : '1,50');
-        var exp = bt.expectancyPct != null ? bt.expectancyPct : 0;
-        setText('v4f09Expectancy', (exp > 0 ? '+' : '') + exp.toFixed(2).replace('.', ',') + '%');
+        setText('v4f09WinRate', (bt.winRatePct != null ? bt.winRatePct.toFixed(1).replace('.', ',') : '—') + (bt.winRatePct != null ? '%' : ''));
+        setText('v4f09ProfitFactor', bt.profitFactor != null ? bt.profitFactor.toFixed(2).replace('.', ',') : '—');
+        var exp = bt.expectancyPct != null ? bt.expectancyPct : null;
+        setText('v4f09Expectancy', exp != null ? ((exp > 0 ? '+' : '') + exp.toFixed(2).replace('.', ',') + '%') : '—');
         setText('v4f09HorizonBadge', 'Horizon ' + (bt.bestBrokerHorizon || '5H'));
-        setText('v4f09TradesCount', (bt.tradesCount != null ? bt.tradesCount : 20) + ' trade');
+        setText('v4f09TradesCount', bt.tradesCount != null ? (bt.tradesCount + ' trade') : '—');
       } else {
-        setText('v4f09BestMethodName', isIndex ? 'Breakout Ayunan Zig-Zag + LPM + RSI Wilder RMA' : 'Aliran Asing vs Domestik + Filter Fundamental');
-        setText('v4f09WinRate', isIndex ? '60,0%' : '52,4%');
-        setText('v4f09ProfitFactor', '1,85');
-        setText('v4f09Expectancy', '+1,20%');
-        setText('v4f09HorizonBadge', 'Horizon 5H');
-        setText('v4f09TradesCount', '24 trade');
+        setText('v4f09BestMethodName', 'Data backtest belum tersedia');
+        setText('v4f09WinRate', '—');
+        setText('v4f09ProfitFactor', '—');
+        setText('v4f09Expectancy', '—');
+        setText('v4f09HorizonBadge', '—');
+        setText('v4f09TradesCount', '—');
       }
     } catch (_) {}
 
@@ -263,10 +263,12 @@
       if (bFlow) {
         if (isIndex) {
           if (bFlow.parentElement && bFlow.parentElement.querySelector('span')) {
-            bFlow.parentElement.querySelector('span').textContent = 'Turnover Bursa';
+            bFlow.parentElement.querySelector('span').textContent = 'Status Indeks';
           }
-          bFlow.textContent = 'Rp 12,1 T';
-          bFlow.className = 'num font-mono font-bold text-emerald-400';
+          if (!bFlow.textContent || bFlow.textContent === '4.940' || bFlow.textContent === '+18,4 M' || bFlow.textContent === '—') {
+            bFlow.textContent = 'Data indeks BEI';
+            bFlow.className = 'num font-mono font-bold text-gray-300';
+          }
         } else {
           if (bFlow.parentElement && bFlow.parentElement.querySelector('span')) {
             bFlow.parentElement.querySelector('span').textContent = 'Flow Bandar';

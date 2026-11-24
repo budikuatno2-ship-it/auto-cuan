@@ -1952,43 +1952,9 @@
   // ===== FINANCIAL STATEMENTS & FUNDAMENTAL CONTROLLER (CANVAS REDESIGN V2) =====
   // F1: metadata jujur — BRPT Q2 2026 nyata di disk; 958 emiten lain jujur kosong.
   var FINANCIAL_META = {
-    BRPT: {
-      real: true, name: 'Barito Pacific Tbk', sector: 'Basic Materials', bvps: '—', cap: 'Rp 135,5 T', capNote: 'snapshot IDX · 29 Sep 2026', sh: '93,75 M',
-      prov: [
-        { k: 'Periode terbaru', v: 'Q2 2026' },
-        { k: 'Sumber', v: 'Laporan keuangan emiten' },
-        { k: 'Free float', v: '22,33% · kepemilikan IDX 30 Sep 2026' },
-        { k: 'Diimpor', v: '—' }
-      ],
-      warn: null
-    },
-    BBCA: {
-      real: true, name: 'Bank Central Asia Tbk', sector: 'Perbankan', bvps: 'Rp 2.372', cap: 'Rp 1.263,5 T', capNote: '#1 di IDX', sh: '123,2 M', px: 'Rp 10.250',
-      prov: [
-        { k: 'Periode', v: 'Q2 2026 (diaudit)' },
-        { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
-        { k: 'Sumber market cap', v: 'Harga penutupan Rp 10.250' },
-        { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
-      ]
-    },
-    BBRI: {
-      real: true, name: 'Bank Rakyat Indonesia Tbk', sector: 'Perbankan', bvps: 'Rp 2.242', cap: 'Rp 730,5 T', capNote: '', sh: '151,6 M', px: 'Rp 4.820',
-      prov: [
-        { k: 'Periode', v: 'Q2 2026 (diaudit)' },
-        { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
-        { k: 'Sumber market cap', v: 'Harga penutupan Rp 4.820' },
-        { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
-      ]
-    },
-    BMRI: {
-      real: true, name: 'Bank Mandiri Tbk', sector: 'Perbankan', bvps: 'Rp 4.824', cap: 'Rp 639,3 T', capNote: '', sh: '93,3 M', px: 'Rp 6.850',
-      prov: [
-        { k: 'Periode', v: 'Q2 2026 (diaudit)' },
-        { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
-        { k: 'Sumber market cap', v: 'Harga penutupan Rp 6.850' },
-        { k: 'Diverifikasi', v: '15 Okt 2026, 09.20 WIB' }
-      ]
-    },
+    BBCA: null,
+    BBRI: null,
+    BMRI: null,
     GOTO: null
   };
 
