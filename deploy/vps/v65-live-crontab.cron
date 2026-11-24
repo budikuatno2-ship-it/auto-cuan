@@ -1,0 +1,28 @@
+# BEGIN AUTO-CUAN V6.5 LIVE PRODUCTION SCHEDULE
+# Timezone: Asia/Jakarta (WIB = UTC+7). Semua jam di bawah adalah WIB.
+CRON_TZ=Asia/Jakarta
+TZ=Asia/Jakarta
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/ubuntu/.local/node-v22/bin
+HOME=/home/ubuntu
+MAILTO=""
+
+# ---- V6.5 SINGLE DISPATCHER (Admin-config driven; every 5 minutes; PRODUCTION) ----
+*/5 * * * * JOB_USES_QUOTA=0 AUTO_CUAN_DISPATCHER_REALM=PRODUCTION /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh v6-single-dispatcher 300 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/scripts/v6-single-dispatcher-cron.cjs
+
+# ---- ORACLE ALWAYS FREE KEEPALIVE (:12 each hour, 0 quota) ----
+12 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh keepalive 300 bash /home/ubuntu/auto-cuan/deploy/vps/run-keepalive.sh
+
+# ---- INTRADAY TOP 20 MONITOR (ZERO_QUOTA Yahoo; Mon-Thu & Fri session windows) ----
+5,20,35,50 9-11 * * 1-4 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh intraday-top20-monitor 240 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-intraday-top20-monitor.js
+35,50 13 * * 1-4 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh intraday-top20-monitor 240 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-intraday-top20-monitor.js
+5,20,35,50 14-15 * * 1-4 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh intraday-top20-monitor 240 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-intraday-top20-monitor.js
+5,20,35,50 9-11 * * 5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh intraday-top20-monitor 240 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-intraday-top20-monitor.js
+5,20,35,50 14-15 * * 5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh intraday-top20-monitor 240 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-intraday-top20-monitor.js
+
+# ---- LOCAL CATCHUP & WATCHDOG + SECURITY MONITOR (ZERO_QUOTA) ----
+15 0 * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh catchup-0015 600 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/catchup-missing-dates.js
+*/5 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh watchdog 300 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/watchdog.js
+*/5 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh security-monitor 300 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/security-monitor.js
+
+# END AUTO-CUAN V6.5 LIVE PRODUCTION SCHEDULE

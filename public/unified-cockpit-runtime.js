@@ -358,33 +358,50 @@
           var fBandar = byId('factBandarFlow');
           if (fBandar) {
             if (fBandar.parentElement && fBandar.parentElement.querySelector('span')) {
-              fBandar.parentElement.querySelector('span').textContent = 'Turnover Bursa';
+              fBandar.parentElement.querySelector('span').textContent = 'Status Indeks';
             }
-            fBandar.textContent = 'Rp 12,1 T';
-            fBandar.className = 'num font-mono font-bold text-emerald-400';
+            fBandar.textContent = lastC && lastC.volume != null ? (Number(lastC.volume).toLocaleString('id-ID') + ' sh') : 'Data belum tersedia';
+            fBandar.className = 'num font-mono font-bold text-sky-400';
           }
           var szEl = byId('v3f08Sizing');
           if (szEl) szEl.style.display = 'none';
-        } else if (data.metrics) {
+        } else {
           var fBandar = byId('factBandarFlow');
-          if (fBandar && data.metrics.bandarAccumulation != null) {
+          if (fBandar) {
             if (fBandar.parentElement && fBandar.parentElement.querySelector('span')) {
               fBandar.parentElement.querySelector('span').textContent = 'Flow Bandar';
             }
-            var bFlow = Number(data.metrics.bandarAccumulation);
-            var bSign = bFlow > 0 ? '+' : (bFlow < 0 ? '\u2212' : '');
-            fBandar.textContent = bSign + Math.abs(bFlow).toLocaleString('id-ID');
-            fBandar.className = 'num font-mono font-bold ' + (bFlow > 0 ? 'text-emerald-400' : (bFlow < 0 ? 'text-rose-400' : 'text-gray-400'));
+            var latestFf = Array.isArray(data.foreignFlow) && data.foreignFlow.length ? data.foreignFlow[data.foreignFlow.length - 1] : null;
+            var rawFlow = (data.metrics && data.metrics.bandarAccumulation != null)
+              ? Number(data.metrics.bandarAccumulation)
+              : (latestFf && latestFf.foreign_net != null ? Number(latestFf.foreign_net) : null);
+            if (rawFlow != null && Number.isFinite(rawFlow)) {
+              var bSign = rawFlow > 0 ? '+' : (rawFlow < 0 ? '\u2212' : '');
+              var absF = Math.abs(rawFlow);
+              var flowDisp = absF >= 1e12 ? (absF / 1e12).toFixed(2).replace('.', ',') + ' T'
+                : absF >= 1e9 ? (absF / 1e9).toFixed(2).replace('.', ',') + ' M'
+                : absF >= 1e6 ? (absF / 1e6).toFixed(1).replace('.', ',') + ' Jt'
+                : Math.round(absF).toLocaleString('id-ID');
+              fBandar.textContent = bSign + 'Rp ' + flowDisp;
+              fBandar.className = 'num font-mono font-bold ' + (rawFlow > 0 ? 'text-emerald-400' : (rawFlow < 0 ? 'text-rose-400' : 'text-gray-400'));
+            } else {
+              fBandar.textContent = 'Data belum tersedia';
+              fBandar.className = 'num font-mono text-gray-400';
+            }
           }
           var szEl2 = byId('v3f08Sizing');
           if (szEl2) szEl2.style.display = '';
           var fSup = byId('factSupport');
-          if (fSup && data.metrics.support != null) {
-            fSup.textContent = Number(data.metrics.support).toLocaleString('id-ID');
+          if (fSup) {
+            var supVal = (data.metrics && data.metrics.support != null) ? Number(data.metrics.support)
+              : (data.candles.length >= 20 ? Math.min.apply(null, data.candles.slice(-20).map(function(c) { return Number(c.low || c.close); }).filter(Boolean)) : null);
+            fSup.textContent = (supVal != null && Number.isFinite(supVal) && supVal > 0) ? Math.round(supVal).toLocaleString('id-ID') : 'Data belum tersedia';
           }
           var fTr = byId('factTrend');
-          if (fTr && data.metrics.trend) {
-            fTr.textContent = data.metrics.trend;
+          if (fTr) {
+            var trText = (data.metrics && data.metrics.trend) ? data.metrics.trend
+              : (data.metrics && data.metrics.ma20 && closePrice ? (closePrice >= data.metrics.ma20 ? 'Bullish (Di atas MA20)' : 'Bearish (Di bawah MA20)') : 'Data belum tersedia');
+            fTr.textContent = trText;
           }
         }
       }
@@ -396,9 +413,9 @@
 
       if (loadLwc) await loadLwc();
       if (renderLwc) {
-        await renderLwc(chartId, data.candles, data.metrics || null, safeTicker, { variant: 'page' });
+        await renderLwc(chartId, data.candles, data.metrics || null, safeTicker, Object.assign({}, options || {}, { variant: 'page', foreignFlow: data.foreignFlow || null }));
         if (root.AutoCuanChartWorkstation && typeof root.AutoCuanChartWorkstation.attach === 'function') {
-          root.AutoCuanChartWorkstation.attach(chartId, data.candles, data.metrics || null, safeTicker, options);
+          root.AutoCuanChartWorkstation.attach(chartId, data.candles, data.metrics || null, safeTicker, Object.assign({}, options || {}, { foreignFlow: data.foreignFlow || null }));
         }
         if (options && options.preset && root.AutoCuanChartWorkstation && typeof root.AutoCuanChartWorkstation.applyPreset === 'function') {
           root.AutoCuanChartWorkstation.applyPreset(chartId, options.preset);

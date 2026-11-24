@@ -891,6 +891,24 @@
     return results;
   }
 
+  function calculateOBV(candles) {
+    if (!candles || candles.length === 0) return [];
+    var obv = 0;
+    var out = [];
+    for (var i = 0; i < candles.length; i++) {
+      var c = candles[i];
+      var close = Number(c && c.close || 0);
+      var prev = i > 0 ? Number(candles[i - 1] && candles[i - 1].close || close) : close;
+      var vol = Number(c && c.volume || 0);
+      if (i > 0 && Number.isFinite(vol)) {
+        if (close > prev) obv += vol;
+        else if (close < prev) obv -= vol;
+      }
+      out.push({ time: c.time, value: obv });
+    }
+    return out;
+  }
+
   function calculateForeignFlowCumulative(candles, foreignFlow) {
     if (!candles || candles.length === 0) return [];
     var mapByDate = Object.create(null);
@@ -3876,6 +3894,7 @@
     calculateMACD: calculateMACD,
     calculateTradingPlan: calculateTradingPlan,
     calculateCMF: calculateCMF,
+    calculateOBV: calculateOBV,
     calculateForeignFlowCumulative: calculateForeignFlowCumulative,
     calculateIntensityHistogram: calculateIntensityHistogram,
     calculateVolumeRotation: calculateVolumeRotation,

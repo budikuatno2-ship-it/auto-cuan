@@ -49,7 +49,7 @@ if (payload.commitSha !== null) {
 
 assert(typeof payload.version === 'string' && payload.version.length > 0, 'version is a non-empty string');
 assert(
-  payload.version === 'unknown' || /^v5-/.test(payload.version),
+  payload.version === 'unknown' || /^v6\.5-/.test(payload.version),
   "version is the honest 'unknown' label or derives from real commit metadata (got: " + payload.version + ')'
 );
 

@@ -593,7 +593,8 @@ module.exports = async function handler(req, res) {
   try {
     const payload = buildScreenerPayload();
     const query = (req && req.query) || {};
-    const category = String(query.category || query.tab || query.type || '').toLowerCase();
+    const horizonParam = String(query.horizon || '').toLowerCase().trim();
+    const category = horizonParam || String(query.category || query.tab || query.type || '').toLowerCase();
 
     let filtered = payload.results;
     if (category.includes('konglo') && !category.includes('non')) {
@@ -604,10 +605,20 @@ module.exports = async function handler(req, res) {
       filtered = payload.daytrade;
     }
 
+    const canonicalThreeHorizon = canonicalScreener.getCanonicalThreeHorizon ? canonicalScreener.getCanonicalThreeHorizon() : null;
     const responseData = Object.assign({}, payload, {
       count: filtered.length,
-      results: filtered
+      results: filtered,
+      ...(canonicalThreeHorizon ? { three_horizon: canonicalThreeHorizon } : {})
     });
+
+    if (category && canonicalThreeHorizon && canonicalThreeHorizon[category]) {
+      const hz = canonicalThreeHorizon[category];
+      responseData.horizon = category;
+      responseData.results = Array.isArray(hz.top20) ? hz.top20 : [];
+      responseData.top5 = Array.isArray(hz.top5) ? hz.top5 : responseData.results.slice(0, 5);
+      responseData.count = responseData.results.length;
+    }
 
     if (res && typeof res.setHeader === 'function') {
       res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');

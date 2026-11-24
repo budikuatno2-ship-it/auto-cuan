@@ -200,7 +200,9 @@ function classifyPm2Proc(proc) {
   const restarts = Number(env.unstable_restarts != null ? env.unstable_restarts : proc.unstable_restarts);
   const restartTime = Number(env.restart_time != null ? env.restart_time : proc.restart_time);
   if (status === 'online') {
-    const loop = (Number.isFinite(restarts) && restarts > 3) || (Number.isFinite(restartTime) && restartTime > 10);
+    const pmUptime = env.pm_uptime != null ? Number(env.pm_uptime) : (proc.pm_uptime != null ? Number(proc.pm_uptime) : NaN);
+    const hasStableUptime = Number.isFinite(pmUptime) && (Date.now() - pmUptime) >= 30 * 60 * 1000;
+    const loop = (Number.isFinite(restarts) && restarts > 3) || (!hasStableUptime && Number.isFinite(restartTime) && restartTime > 10);
     if (loop) {
       return {
         key: 'pm2:' + name + ':restart-loop',
@@ -366,6 +368,54 @@ function readDiskStats() {
   return { diskUsedPct, memFreePct };
 }
 
+const DISABLED_LEGACY_ALIAS_JOBS = new Set([
+  'daytrade-producer',
+  'daytrade-fastwatcher',
+  'fastwatcher',
+  'fastwatcher-1555',
+  'coordinated-pipeline',
+  'hourly-confirmation',
+  'broksum-1945',
+  'broksum-retry-2045',
+  'screeners-preflight-2125',
+  'domestic-compile-2025',
+  'domestic-compile-final-2110',
+  'bandarmologi-intel-2114',
+  'evening-brief-1700',
+  'morning-brief-0600',
+  'insider-tiered-2200',
+  'fundamental-refresh-2220',
+  'quota-burn-night-2245',
+  'quota-burn-0015',
+  'quota-burn-day',
+  'quota-burn-weekend',
+  'quota-burn-weekend-late'
+]);
+
+function readDisabledScheduleKeys() {
+  const disabled = new Set();
+  let cfg = null;
+  try {
+    const cfgPath = process.env.ADMIN_SCHEDULE_CONFIG_PATH || path.join(ROOT, 'data', 'admin-schedule-config.json');
+    cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+  } catch (_) {
+    cfg = null;
+  }
+  const jobs = cfg && cfg.jobs && typeof cfg.jobs === 'object' ? cfg.jobs : null;
+  if (jobs) {
+    for (const [key, job] of Object.entries(jobs)) {
+      if (job && (job.enabled === false || job.legacy_inactive === true)) {
+        disabled.add(key);
+      }
+    }
+    if (jobs.telegram && jobs.telegram.enabled === false) {
+      disabled.add('afternoon-recap');
+      disabled.add('telegram');
+    }
+  }
+  return disabled;
+}
+
 function evaluateAll(opts) {
   const o = opts || {};
   const nowMs = o.now != null ? new Date(o.now).getTime() : Date.now();
@@ -374,10 +424,11 @@ function evaluateAll(opts) {
 
   // (a) heartbeat
   let heartbeats = o.heartbeats;
-  if (!Array.isArray(heartbeats)) {
-    const isProbe = (n) => /(-probe|-test|^p2-|-canary|-f\d+|\d{4})$/.test(String(n || ''));
+  if (!Array.isArray(o.heartbeats)) {
+    const disabledKeys = readDisabledScheduleKeys();
+    const isProbe = (n) => /(-probe|-test|^p2-|-canary|-f\d+)$/.test(String(n || ''));
     heartbeats = listHeartbeats()
-      .filter((n) => !isProbe(n))
+      .filter((n) => !isProbe(n) && !disabledKeys.has(n) && !DISABLED_LEGACY_ALIAS_JOBS.has(n))
       .map((n) => readHeartbeat(n))
       .filter(Boolean);
   }

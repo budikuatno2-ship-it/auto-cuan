@@ -31,6 +31,12 @@
       }
 
       // Authorized!
+      var stateNote = document.getElementById('adminConsoleStateNote');
+      if (stateNote) {
+        stateNote.style.display = 'none';
+        stateNote.textContent = '';
+        stateNote.setAttribute('data-state', 'ready');
+      }
       var unauth = document.getElementById('unauthorizedScreen');
       if (unauth) unauth.style.display = 'none';
       var mainContent = document.getElementById('adminMainContent');
@@ -40,6 +46,7 @@
 
       applyStats(data);
       loadOnlineList();
+      if (typeof root.loadThreeHorizonSettings === 'function') root.loadThreeHorizonSettings();
       startAutoRefresh();
     } catch (_) {
       showUnauthorized();
@@ -47,6 +54,12 @@
   }
 
   function showUnauthorized() {
+    var stateNote = document.getElementById('adminConsoleStateNote');
+    if (stateNote) {
+      stateNote.style.display = 'none';
+      stateNote.textContent = '';
+      stateNote.setAttribute('data-state', 'unauthorized');
+    }
     var mainContent = document.getElementById('adminMainContent');
     if (mainContent) mainContent.style.display = 'none';
     var unauth = document.getElementById('unauthorizedScreen');
@@ -255,7 +268,14 @@
     }
     if (idx === 1) loadOnlineList();
     if (idx === 3) loadUsersList();
-    if (idx === 6) { root.refreshDataHealth(); loadJobsPipeline(); loadSchedulerBackfill(); loadCompletenessMeta(); root.refreshBackfillForecast(); }
+    if (idx === 6) {
+      root.refreshDataHealth();
+      loadJobsPipeline();
+      loadSchedulerBackfill();
+      loadCompletenessMeta();
+      root.refreshBackfillForecast();
+      if (typeof root.loadThreeHorizonSettings === 'function') root.loadThreeHorizonSettings();
+    }
     if (idx === 7) loadAuditLogs();
     if (idx === 8) root.refreshSecurityPanel();
   };
@@ -784,10 +804,13 @@
   }
   root.formatNextRunWib = formatNextRunWib;
 
-  function nextRunsPreview(line, nextRuns, count) {
+  function nextRunsPreview(line, nextRuns, count, isEnabled) {
+    if (isEnabled === false && (!nextRuns || !nextRuns.length)) {
+      return '<span class="mut">Nonaktif (tidak dijadwalkan)</span>';
+    }
     if (!nextRuns || !nextRuns.length) return '<span class="mut">Jadwal tidak tersedia</span>';
     var human = nextRuns.map(formatNextRunWib);
-    return '<span class="mono" style="font-size:11px" title="' + escapeHtml(human.join('\n')) + '">' +
+    return '<span class="mono" style="font-size:11px;white-space:normal;line-height:1.45" title="' + escapeHtml(human.join('\n')) + '">' +
       escapeHtml(human.slice(0, count || 5).join(' · ')) + '</span>';
   }
 
@@ -833,25 +856,25 @@
           '<td style="font-weight:600">' + escapeHtml(j.name) + '<span class="mut" style="display:block;font-size:11px">' + escapeHtml(j.category) + ' · ' + escapeHtml(j.costClass) + '</span></td>' +
           '<td class="mono mut" data-role="schedule-time-display">' + escapeHtml(time24) + ' WIB</td>' +
           '<td class="mut" style="font-size:11px">' + escapeHtml((j.days || []).length ? (j.days || []).map(function(d){return DAY_LABELS[Number(d)];}).join(',') : 'Setiap hari') + '</td>' +
-          '<td>' + nextRunsPreview(null, next) + '</td>' +
+          '<td>' + nextRunsPreview(null, next, 5, j.enabled) + '</td>' +
           '<td style="' + descStyle + '">' + escapeHtml(j.description || '') + '</td>' +
           '<td><span class="st ' + cls2 + '">' + (j.enabled ? 'Aktif' : 'Nonaktif') + '</span></td>' +
           '<td class="r"><button class="btn sm" disabled title="Job legacy/monitoring tidak diedit dari console.">Terkunci</button></td>' +
         '</tr>';
       }
 
-      var daysChk = [0,1,2,3,4,5,6].map(function(d) {
+      var daysChk = '<div style="display:flex;flex-wrap:wrap;gap:3px 6px;min-width:168px">' + [0,1,2,3,4,5,6].map(function(d) {
         var on = daySet(j.days)[d] === true;
-        return '<label style="margin-right:4px;font-size:11px" title="' + DAY_LABELS[d] + '">' +
+        return '<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;white-space:nowrap" title="' + DAY_LABELS[d] + '">' +
           '<input type="checkbox" data-job="' + escapeHtml(j.key) + '" data-day="' + d + '"' + (on ? ' checked' : '') + ' onchange="onScheduleDayToggle(this)"> ' + DAY_LABELS[d] + '</label>';
-      }).join('');
+      }).join('') + '</div>';
 
       return '<tr data-schedule-row="' + escapeHtml(j.key) + '">' +
         '<td style="font-weight:600">' + escapeHtml(j.name) +
           '<span class="mut" style="display:block;font-size:11px">' + escapeHtml(j.key) + (locked ? ' · default 20:40; override Admin dipertahankan' : '') + '</span></td>' +
         '<td><input type="text" inputmode="numeric" data-role="schedule-time" data-job="' + escapeHtml(j.key) + '" value="' + escapeHtml(time24) + '" pattern="^([01]\\d|2[0-3]):[0-5]\\d$" maxlength="5" placeholder="HH:MM" title="Jam WIB format 24 jam (HH:MM)" style="width:72px;font-family:monospace" onchange="onScheduleTimeChange(this)"></td>' +
-        '<td style="min-width:150px">' + daysChk + '</td>' +
-        '<td>' + nextRunsPreview(null, next) + '</td>' +
+        '<td style="min-width:168px">' + daysChk + '</td>' +
+        '<td>' + nextRunsPreview(null, next, 5, j.enabled) + '</td>' +
         '<td style="max-width:260px;' + descStyle + '"><span class="mut" style="font-size:11px;' + descStyle + '">' + escapeHtml(j.description || '') + '</span>' +
           '<span style="display:block;font-size:11px;color:var(--ac-warn,#F59E0B);' + descStyle + '">' + scheduleConflictTip(cfg, j.key) + '</span></td>' +
         '<td>' +
@@ -1509,14 +1532,8 @@
     });
   };
 
-  // FASE V4-F04: Handler Forensik Serangan & Pemblokiran Bot/IP
-  var MOCK_FORENSIC_ATTACKS = [
-    { at: '2026-11-04T09:35:12.000Z', ip: '198.51.100.44', rule: 'SQLi Probe', target: "/api/quote?ticker=' OR 1=1--", ua: 'sqlmap/1.7.2#stable', status: 'DIBLOKIR OTOMATIS', blocked: true },
-    { at: '2026-11-04T09:32:05.000Z', ip: '203.0.113.88', rule: 'Path Traversal', target: '/data/../../etc/passwd', ua: 'python-requests/2.31.0', status: 'DIBLOKIR OTOMATIS', blocked: true },
-    { at: '2026-11-04T09:28:40.000Z', ip: '192.0.2.145', rule: 'Aggressive Scanner', target: '/admin-console.php', ua: 'Nikto/2.1.6', status: 'DIBLOKIR OTOMATIS', blocked: true },
-    { at: '2026-11-04T09:15:22.000Z', ip: '198.51.100.10', rule: 'Brute Force Login', target: '/api/login-user', ua: 'Go-http-client/1.1', status: 'DIBLOKIR OTOMATIS', blocked: true },
-    { at: '2026-11-04T08:50:18.000Z', ip: '203.0.113.19', rule: 'Sensitive Probe', target: '/.env', ua: 'curl/7.88.1', status: 'DIBLOKIR OTOMATIS', blocked: true }
-  ];
+  // FASE V6.5: Tabel Forensik Serangan & Pemblokiran Bot/IP — 100% dari server
+  var lastLoadedForensicAttacks = [];
 
   root.loadForensicAttackTable = async function() {
     var tb = document.getElementById('forensicAttackTbody');
@@ -1526,12 +1543,14 @@
       if (res.ok) {
         var data = await res.json().catch(function() { return {}; });
         if (data && data.success && Array.isArray(data.attacks)) {
-          renderForensicAttackRows(data.attacks);
+          lastLoadedForensicAttacks = data.attacks;
+          renderForensicAttackRows(lastLoadedForensicAttacks);
           return;
         }
       }
     } catch (_) {}
-    renderForensicAttackRows(MOCK_FORENSIC_ATTACKS);
+    lastLoadedForensicAttacks = [];
+    renderForensicAttackRows([]);
   };
   root.refreshForensicAttackTable = root.loadForensicAttackTable;
 
@@ -1544,10 +1563,11 @@
     }
     tb.innerHTML = attacks.map(function(item) {
       var badgeClass = item.blocked ? 'r' : 'g';
+      var rule = String(item.rule || 'Malicious Ingress');
       return '<tr>' +
         '<td class="num mut">' + escapeHtml(formatAuditTimeWib(item.at)) + '</td>' +
         '<td class="mono font-bold">' + escapeHtml(item.ip || '—') + '</td>' +
-        '<td><span class="st ' + (item.rule.includes('Probe') || item.rule.includes('Traversal') ? 'r' : 'a') + '">' + escapeHtml(item.rule || 'Malicious Ingress') + '</span></td>' +
+        '<td><span class="st ' + (rule.indexOf('Probe') >= 0 || rule.indexOf('Traversal') >= 0 ? 'r' : 'a') + '">' + escapeHtml(rule) + '</span></td>' +
         '<td class="mono mut">' + escapeHtml(item.target || '/') + '</td>' +
         '<td class="mut">' + escapeHtml(item.ua || 'Unknown Scanner') + '</td>' +
         '<td><span class="st ' + badgeClass + '">' + escapeHtml(item.status || (item.blocked ? 'DIBLOKIR OTOMATIS' : 'DIBUKA')) + '</span></td>' +
@@ -1558,41 +1578,117 @@
   root.unblockForensicIpPrompt = function(targetIp) {
     var ip = targetIp;
     if (!ip) {
-      ip = window.prompt ? window.prompt('Masukkan Alamat IP yang akan dibuka blokirnya:', '198.51.100.44') : '198.51.100.44';
+      ip = window.prompt ? window.prompt('Masukkan Alamat IP yang akan dibuka blokirnya:', '') : '';
     }
     if (!ip) return;
     ip = String(ip).trim();
-    // Update local mock
-    for (var i = 0; i < MOCK_FORENSIC_ATTACKS.length; i++) {
-      if (MOCK_FORENSIC_ATTACKS[i].ip === ip) {
-        MOCK_FORENSIC_ATTACKS[i].blocked = false;
-        MOCK_FORENSIC_ATTACKS[i].status = 'DIBUKA (UNBLOCKED)';
-      }
-    }
-    renderForensicAttackRows(MOCK_FORENSIC_ATTACKS);
-    // Send unblock to API
     fetch('/api/admin/security-audit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'unblock_ip', ip: ip, reason: 'Unblock via Tabel Forensik Admin' })
-    }).catch(function() {});
+    }).then(function() { return root.loadForensicAttackTable(); }).catch(function() {});
     recordAuditLog('budi', 'Unblock IP Forensik ' + ip, 'Buka blokir dari Tabel Forensik Serangan');
     if (typeof alert === 'function' && !window.__AUTOCUAN_TEST__) {
-      alert('Alamat IP ' + ip + ' berhasil dibuka blokirnya.');
+      alert('Permintaan buka blokir IP ' + ip + ' telah dikirim ke server.');
     }
   };
 
   root.clearForensicAttackLogs = function() {
-    MOCK_FORENSIC_ATTACKS = [];
-    renderForensicAttackRows(MOCK_FORENSIC_ATTACKS);
     fetch('/api/admin/security-audit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'clear_test_logs' })
-    }).catch(function() {});
-    recordAuditLog('budi', 'Bersihkan Log Forensik', 'Reset log pengujian simulasi serangan');
+    }).then(function() { return root.loadForensicAttackTable(); }).catch(function() {});
+    recordAuditLog('budi', 'Bersihkan Log Forensik', 'Reset log pengujian serangan di server');
     if (typeof alert === 'function' && !window.__AUTOCUAN_TEST__) {
-      alert('Seluruh log pengujian serangan berhasil dibersihkan.');
+      alert('Permintaan pembersihan log serangan telah dikirim.');
+    }
+  };
+
+  // ── V6.5 Three-Horizon Screener SSOT Configuration ──────────────────────
+  var threeHorizonState = { config: null };
+
+  function renderThreeHorizonPanel(cfg) {
+    if (!cfg || !cfg.horizons) return;
+    var verEl = document.getElementById('thVersionLabel');
+    if (verEl) verEl.textContent = 'v' + (cfg.version || 1) + (cfg.updatedBy ? ' · ' + cfg.updatedBy : '');
+    var minRrEl = document.getElementById('thMinRrInput');
+    if (minRrEl) minRrEl.value = cfg.minRr != null ? cfg.minRr : 1.5;
+    ['potensi_besok', 'short_swing', 'swing'].forEach(function(k) {
+      var h = cfg.horizons[k];
+      if (!h) return;
+      var lb = document.getElementById('thLookback_' + k);
+      if (lb) lb.value = h.lookbackDays != null ? h.lookbackDays : '';
+      var w = h.weights || {};
+      ['bandar', 'foreign', 'technical', 'volume'].forEach(function(p) {
+        var el = document.getElementById('thW_' + p + '_' + k);
+        if (el) el.value = w[p] != null ? w[p] : '';
+      });
+    });
+  }
+
+  root.loadThreeHorizonSettings = async function() {
+    var st = document.getElementById('threeHorizonSaveStatus');
+    try {
+      var res = await fetch('/api/admin/three-horizon-settings', { method: 'GET', headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return;
+      var data = await res.json().catch(function() { return {}; });
+      if (data && data.success && data.config) {
+        threeHorizonState.config = data.config;
+        renderThreeHorizonPanel(data.config);
+      }
+    } catch (_) {
+      if (st) st.textContent = 'Gagal memuat konfigurasi Three-Horizon.';
+    }
+  };
+
+  root.saveThreeHorizonSettings = async function() {
+    var st = document.getElementById('threeHorizonSaveStatus');
+    var cfg = threeHorizonState.config;
+    if (!cfg) { if (st) st.textContent = 'Konfigurasi Three-Horizon belum termuat.'; return; }
+    var patchHorizons = {};
+    ['potensi_besok', 'short_swing', 'swing'].forEach(function(k) {
+      var lbEl = document.getElementById('thLookback_' + k);
+      var wB = Number((document.getElementById('thW_bandar_' + k) || {}).value || 0);
+      var wF = Number((document.getElementById('thW_foreign_' + k) || {}).value || 0);
+      var wT = Number((document.getElementById('thW_technical_' + k) || {}).value || 0);
+      var wV = Number((document.getElementById('thW_volume_' + k) || {}).value || 0);
+      patchHorizons[k] = {
+        lookbackDays: Number(lbEl ? lbEl.value : 30),
+        weights: { bandar: wB, foreign: wF, technical: wT, volume: wV }
+      };
+    });
+    var minRr = Number((document.getElementById('thMinRrInput') || {}).value || 1.5);
+    var reason = 'Update Three-Horizon SSOT via Admin Console';
+    if (!window.__AUTOCUAN_TEST__ && typeof window.prompt === 'function') {
+      var inputReason = window.prompt('Alasan perubahan konfigurasi Three-Horizon Screener (min 3 karakter):', reason);
+      if (!inputReason || inputReason.trim().length < 3) {
+        if (st) st.textContent = 'Dibatalkan (alasan wajib diisi).';
+        return;
+      }
+      reason = inputReason.trim();
+    }
+    if (st) st.textContent = 'Menyimpan Three-Horizon SSOT…';
+    try {
+      var res = await fetch('/api/admin/three-horizon-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ version: cfg.version, reason: reason, patch: { minRr: minRr, horizons: patchHorizons } })
+      });
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && data.success) {
+        threeHorizonState.config = data.config;
+        renderThreeHorizonPanel(data.config);
+        if (st) { st.style.color = 'var(--ac-brand,#10B981)'; st.textContent = 'Tersimpan · v' + data.config.version; }
+        recordAuditLog('budi', 'Simpan Three-Horizon SSOT', reason);
+      } else if (res.status === 409) {
+        if (data && data.config) { threeHorizonState.config = data.config; renderThreeHorizonPanel(data.config); }
+        if (st) { st.style.color = 'var(--ac-warn,#F59E0B)'; st.textContent = 'Konflik versi (409) — konfigurasi dimuat ulang.'; }
+      } else {
+        if (st) { st.style.color = 'var(--ac-warn,#F59E0B)'; st.textContent = 'Gagal: ' + ((data && data.error) || ('HTTP ' + res.status)); }
+      }
+    } catch (_) {
+      if (st) { st.style.color = 'var(--ac-warn,#F59E0B)'; st.textContent = 'Gagal terhubung ke server.'; }
     }
   };
 
@@ -1686,6 +1782,7 @@
     verifyAdminAuth();
     root.loadFinancialPublicationPanel();
     root.refreshBackfillForecast();
+    root.loadThreeHorizonSettings();
   };
 
   // Auto-init on standalone admin page

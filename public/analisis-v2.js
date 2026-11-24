@@ -71,14 +71,29 @@
     return String((b && b.textContent) || '').trim().toUpperCase();
   }
 
+  function snapIdxTick(v, dir) {
+    var num = n(v);
+    if (!num) return null;
+    var tp = root.AutoCuanTradePlan;
+    if (tp) {
+      if (dir === 'up' && typeof tp.roundUpToIdxTick === 'function') return tp.roundUpToIdxTick(num);
+      if (dir === 'down' && typeof tp.roundDownToIdxTick === 'function') return tp.roundDownToIdxTick(num);
+      if (typeof tp.roundToIdxTick === 'function') return tp.roundToIdxTick(num);
+    }
+    return Math.round(num);
+  }
+
   // Server levels from one screener row, through the app's own normaliser.
   // REQ-11 & REQ-12: Validasi keselarasan plan screener dengan tanggal/quote aktif.
   // Jangan gunakan plan usang tanpa tanggal jelas atau jika harga entry menyimpang jauh dari quote/candle terkini.
   function levelsOf(row, currentClose) {
     if (!row) return null;
     var l = typeof root.normalizeDisplayLevels === 'function' ? root.normalizeDisplayLevels(row) || {} : {};
-    var e1 = n(l.e1 || row.entry1 || row.entry_high), e2 = n(l.e2 || row.entry2 || row.entry_low);
-    var sl = n(l.sl || row.stop_loss || row.sl), t1 = n(l.t1 || row.tp1), t2 = n(l.t2 || row.tp2);
+    var e1 = snapIdxTick(l.e1 || row.entry1 || row.entry_high, 'nearest');
+    var e2 = snapIdxTick(l.e2 || row.entry2 || row.entry_low, 'down');
+    var sl = snapIdxTick(l.sl || row.stop_loss || row.sl, 'down');
+    var t1 = snapIdxTick(l.t1 || row.tp1, 'up');
+    var t2 = snapIdxTick(l.t2 || row.tp2, 'up');
     if (!e1 || !sl || !t1) return null;
 
     var planDate = row.date || row.as_of_date || row.trade_date || row.created_at || null;
@@ -233,34 +248,35 @@
       // Returning null makes the caller render an explicit "belum tersedia".
       return null;
     }
+    var snappedEntry = snapIdxTick(lastClose, 'nearest');
     if (hz === 'scalp') {
       return {
-        entry: lastClose,
-        sl: Math.round(lastClose - 1.2 * atr),
-        tp1: Math.round(lastClose + 1.5 * atr),
-        tp2: Math.round(lastClose + 2.5 * atr),
-        lo: Math.round(lastClose - 0.4 * atr),
-        hi: Math.round(lastClose + 0.2 * atr),
+        entry: snappedEntry,
+        sl: snapIdxTick(lastClose - 1.2 * atr, 'down'),
+        tp1: snapIdxTick(lastClose + 1.5 * atr, 'up'),
+        tp2: snapIdxTick(lastClose + 2.5 * atr, 'up'),
+        lo: snapIdxTick(lastClose - 0.4 * atr, 'down'),
+        hi: snapIdxTick(lastClose + 0.2 * atr, 'up'),
         source: 'Deterministik Scalping ATR-14'
       };
     } else if (hz === 'inv') {
       return {
-        entry: lastClose,
-        sl: Math.round(lastClose - 3.5 * atr),
-        tp1: Math.round(lastClose + 6.0 * atr),
-        tp2: Math.round(lastClose + 10.0 * atr),
-        lo: Math.round(lastClose - 1.0 * atr),
-        hi: lastClose,
+        entry: snappedEntry,
+        sl: snapIdxTick(lastClose - 3.5 * atr, 'down'),
+        tp1: snapIdxTick(lastClose + 6.0 * atr, 'up'),
+        tp2: snapIdxTick(lastClose + 10.0 * atr, 'up'),
+        lo: snapIdxTick(lastClose - 1.0 * atr, 'down'),
+        hi: snappedEntry,
         source: 'Deterministik Nilai Wajar Investor'
       };
     } else {
       return {
-        entry: lastClose,
-        sl: Math.round(lastClose - 2.0 * atr),
-        tp1: Math.round(lastClose + 3.0 * atr),
-        tp2: Math.round(lastClose + 5.0 * atr),
-        lo: Math.round(lastClose - 0.6 * atr),
-        hi: Math.round(lastClose + 0.4 * atr),
+        entry: snappedEntry,
+        sl: snapIdxTick(lastClose - 2.0 * atr, 'down'),
+        tp1: snapIdxTick(lastClose + 3.0 * atr, 'up'),
+        tp2: snapIdxTick(lastClose + 5.0 * atr, 'up'),
+        lo: snapIdxTick(lastClose - 0.6 * atr, 'down'),
+        hi: snapIdxTick(lastClose + 0.4 * atr, 'up'),
         source: 'Deterministik Swing ATR-14'
       };
     }

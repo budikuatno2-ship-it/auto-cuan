@@ -94,6 +94,20 @@ function parseArgs(argv = process.argv.slice(2)) {
 async function main(argv = process.argv.slice(2)) {
   initEnv();
   const options = parseArgs(argv);
+  if (options.send === true) {
+    try {
+      const scheduleStore = require('../lib/admin-schedule-store');
+      const sched = scheduleStore.get();
+      const tgJob = sched && sched.ok && sched.doc && sched.doc.jobs && sched.doc.jobs.telegram;
+      if (!tgJob || tgJob.enabled !== true) {
+        const blocked = { sent: false, skipped: true, reason: 'ADMIN_TELEGRAM_DISABLED', total_signals: 0 };
+        console.log('SKIPPED_ADMIN_TELEGRAM_DISABLED: Telegram switch is OFF in Admin Console');
+        return blocked;
+      }
+    } catch (_) {
+      return { sent: false, skipped: true, reason: 'ADMIN_TELEGRAM_CHECK_FAILED', total_signals: 0 };
+    }
+  }
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

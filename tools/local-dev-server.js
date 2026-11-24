@@ -14,6 +14,22 @@ const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
 const API_DIR = path.join(ROOT_DIR, 'api');
 const DATA_DIR = path.join(ROOT_DIR, 'data');
 
+const API_LATENCY_WINDOW = [];
+const API_LATENCY_MAX_SAMPLES = 200;
+function recordApiLatency(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return;
+  API_LATENCY_WINDOW.push(ms);
+  if (API_LATENCY_WINDOW.length > API_LATENCY_MAX_SAMPLES) {
+    API_LATENCY_WINDOW.shift();
+  }
+  const sorted = API_LATENCY_WINDOW.slice().sort((a, b) => a - b);
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * 0.95) - 1));
+  global.__AUTOCUAN_API_LATENCY_P95__ = Math.round(sorted[idx] * 10) / 10;
+}
+function getApiP95Ms() {
+  return Number.isFinite(global.__AUTOCUAN_API_LATENCY_P95__) ? global.__AUTOCUAN_API_LATENCY_P95__ : null;
+}
+
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return;
   try {
@@ -812,34 +828,72 @@ const server = http.createServer(async (req, res) => {
     return res.end(html);
   }
 
+    function readCanonicalDbStatus() {
+      const { DatabaseSync } = require('node:sqlite');
+      const fsMod = require('node:fs');
+      const candidates = [process.env.AUTO_CUAN_MARKET_DB,
+        '/home/ubuntu/auto-cuan-data/market.sqlite',
+        path.join(__dirname, '..', 'data', 'market.sqlite')].filter(Boolean);
+      const dbPath = candidates.find(x => fsMod.existsSync(x));
+      if (!dbPath) return { ok: false, error: 'DB_UNAVAILABLE', maxDate: null, updatedAt: null };
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const db = new DatabaseSync(dbPath, { readOnly: true });
+        try {
+          try { db.exec('PRAGMA busy_timeout=15000;'); } catch (_) {}
+          const row = db.prepare("SELECT max(json_extract(row_json, '$.trade_date')) AS max_date FROM market_rows WHERE table_name = 'stock_daily_history'").get();
+          const u = db.prepare("SELECT max(json_extract(row_json, '$.updated_at')) AS updated_at FROM market_rows WHERE table_name = 'stock_daily_history'").get();
+          const qc = db.prepare('PRAGMA quick_check').get();
+          const maxDate = row && row.max_date ? String(row.max_date).slice(0, 10) : null;
+          const updatedAt = u && u.updated_at ? String(u.updated_at) : null;
+          const quickOk = qc && (qc.quick_check === 'ok' || Object.values(qc)[0] === 'ok');
+          return { ok: Boolean(maxDate && quickOk), db_ok: Boolean(quickOk), maxDate, updatedAt };
+        } catch (err) {
+          if (attempt === 1) return { ok: false, error: String((err && err.message) || err), db_ok: false, maxDate: null, updatedAt: null };
+        } finally {
+          try { db.close(); } catch (_) {}
+        }
+      }
+      return { ok: false, db_ok: false, maxDate: null, updatedAt: null };
+    }
+
     // FINAL CLEAN 5-FILE WAVE / FIX 2: canonical EOD date from the read-only
     // market.sqlite stock_daily_history max(trade_date). No provider call.
     if (pathname === '/api/market/eod-status') {
       try {
-        const { DatabaseSync } = require('node:sqlite');
-        const fsMod = require('node:fs');
-        const candidates = [process.env.AUTO_CUAN_MARKET_DB,
-          path.join(__dirname, '..', 'data', 'market.sqlite'),
-          '/home/ubuntu/auto-cuan-data/market.sqlite'].filter(Boolean);
-        const dbPath = candidates.find(x => fsMod.existsSync(x));
-        if (!dbPath) return res.status(200).json({ success: false, error: 'DB_UNAVAILABLE' });
-        const db = new DatabaseSync(dbPath, { readOnly: true });
-        let row;
-        try {
-          row = db.prepare("SELECT max(json_extract(row_json, '$.trade_date')) AS max_date FROM market_rows WHERE table_name = 'stock_daily_history'").get();
-        } finally { db.close(); }
-        const maxDate = row && row.max_date ? String(row.max_date).slice(0, 10) : null;
-        var updatedAt = null;
-        try {
-          var u = db.prepare("SELECT max(json_extract(row_json, '$.updated_at')) AS updated_at FROM market_rows WHERE table_name = 'stock_daily_history'").get();
-          updatedAt = u && u.updated_at ? String(u.updated_at) : null;
-        } catch (_) {}
-        return res.status(200).json({ success: !!maxDate, canonical_eod_at: maxDate, data_as_of: maxDate, updated_at: updatedAt, source: 'stock_daily_history.max_trade_date' });
+        const st = readCanonicalDbStatus();
+        if (!st.maxDate && st.error) return res.status(200).json({ success: false, error: st.error });
+        return res.status(200).json({ success: !!st.maxDate, canonical_eod_at: st.maxDate, data_as_of: st.maxDate, updated_at: st.updatedAt, source: 'stock_daily_history.max_trade_date' });
       } catch (e) {
         return res.status(200).json({ success: false, error: String((e && e.message) || e) });
       }
     }
+
+    if (pathname === '/api/health') {
+      const st = readCanonicalDbStatus();
+      const secretPresent = Boolean(process.env.SESSION_SECRET && String(process.env.SESSION_SECRET).trim().length >= 16);
+      const p95 = getApiP95Ms();
+      const healthy = Boolean(st.db_ok && secretPresent);
+      return res.status(healthy ? 200 : 503).json({
+        ok: healthy,
+        success: healthy,
+        release: 'Auto-Cuan IDX V6.5',
+        status: healthy ? 'NORMAL' : 'DEGRADED',
+        api_p95_ms: p95,
+        SESSION_SECRET_PRESENT: secretPresent,
+        db_ok: Boolean(st.db_ok),
+        max_trade_date: st.maxDate,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     if (pathname.startsWith('/api/')) {
+    const _apiStartNs = process.hrtime.bigint();
+    res.once('finish', () => {
+      try {
+        const elapsedMs = Number(process.hrtime.bigint() - _apiStartNs) / 1e6;
+        recordApiLatency(elapsedMs);
+      } catch (_) {}
+    });
     let endpointName = pathname.slice('/api/'.length).replace(/\.js$/, '');
 
     // V6 (W2a / 13A): /api/whats-new/ack -> whats-new?sub=ack. The generic

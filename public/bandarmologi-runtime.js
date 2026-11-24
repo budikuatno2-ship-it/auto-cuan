@@ -4630,7 +4630,7 @@
     html += '    <div class="gw" id="insiderGraphSvgWrap">';
     html += renderCanvasInsiderGraph(insiderSelectedNode || 'BBCA');
     html += '    </div>';
-    html += '    <div class="prov"><span>Tata letak tetap (bukan simulasi fisika) agar posisi simpul sama di setiap kunjungan.</span><span class="chip i" data-v6-insider-source="true">Data kepemilikan & aktivitas insider · Per 20 Nov 2026</span></div>';
+    html += '    <div class="prov"><span>Tata letak tetap (bukan simulasi fisika) agar posisi simpul sama di setiap kunjungan. Relasi lain yang belum tercatat ditandai tidak diketahui.</span><span class="chip i" data-v6-insider-source="true">Data kepemilikan &amp; aktivitas insider IDX</span></div>';
     html += '  </section>';
 
     // Right: Detail Entitas (flex: 1 1 320px)
@@ -4641,9 +4641,8 @@
 
     // 3. BOTTOM SECTION: SHAREHOLDER ROSTER TABLE
     html += '<div class="grid grid-cols-12 gap-4" id="insiderBentoBottomRow" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:16px">';
-    html += '<div class="grid grid-cols-12 gap-4" id="insiderBentoBottomRow" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:16px">';
     html += '  <section class="sheet rise d3" id="insiderRosterSection" data-v3f10-ksei="true" style="flex:999 1 580px;min-width:320px">';
-    html += '    <div class="sec-h" style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:15px;font-weight:700">Daftar Pemegang Saham · <span id="rosterTickerDisplay">' + escapeHtml(ticker) + '</span></h2><span id="insiderRosterCountBadge" class="chip i" style="font-size:11px" data-v6-insider-source="true">Data kepemilikan & aktivitas insider · Per 20 Nov 2026</span></div>';
+    html += '    <div class="sec-h" style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:15px;font-weight:700">Daftar Pemegang Saham · <span id="rosterTickerDisplay">' + escapeHtml(ticker) + '</span></h2><span id="insiderRosterCountBadge" class="chip i" style="font-size:11px" data-v6-insider-source="true">Data kepemilikan &amp; aktivitas insider IDX</span></div>';
     html += '    <input type="hidden" id="insiderRosterTickerInput" value="' + escapeHtml(ticker) + '">';
     html += '    <div class="tw" style="overflow-x:auto">';
     html += '      <table class="tbl" data-v3f10-ksei-table="true" style="min-width:860px">';

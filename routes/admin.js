@@ -149,41 +149,51 @@ async function handleQuotaStatus(req, res) {
   }
 }
 
-async function handleQuotaSettings(req, res) {
-  try {
-    const body = await readJsonBody(req);
-    const patch = (body && body.patch) || body || {};
-    const quotaState = require('../lib/quota-state');
-    const saved = quotaState.saveConfig(patch, 'budi');
-    const snap = quotaState.getQuotaSnapshot();
-    return json(res, 200, { success: true, quota: snap, config: saved.config });
-  } catch (err) {
-    return json(res, 500, { success: false, error: 'Gagal menyimpan konfigurasi kuota: ' + err.message });
-  }
+async function delegateQuotaSettings(req, res) {
+  const quotaSettings = require('../api/admin/quota-settings');
+  return quotaSettings(req, res);
 }
 
 async function handleSecurityAudit(req, res) {
+  const sess = getSessionHelpers();
+  if (!sess) return json(res, 503, { success: false, error: 'Layanan sesi belum tersedia.' });
+  const auth = sess.requireAdminSession(req);
+  if (!auth.ok) {
+    guard403(req, res, 'security_audit_' + (auth.status || 403));
+    return json(res, auth.status || 403, { success: false, error: auth.error || 'Akses admin ditolak.' });
+  }
   try {
     const method = String(req.method || 'GET').toUpperCase();
     if (method === 'GET') {
-      const attacks = [
-        { at: '2026-11-04T09:35:12.000Z', ip: '198.51.100.44', rule: 'SQLi Probe', target: "/api/quote?ticker=' OR 1=1--", ua: 'sqlmap/1.7.2#stable', status: 'DIBLOKIR OTOMATIS', blocked: true },
-        { at: '2026-11-04T09:32:05.000Z', ip: '203.0.113.88', rule: 'Path Traversal', target: '/data/../../etc/passwd', ua: 'python-requests/2.31.0', status: 'DIBLOKIR OTOMATIS', blocked: true },
-        { at: '2026-11-04T09:28:40.000Z', ip: '192.0.2.145', rule: 'Aggressive Scanner', target: '/admin-console.php', ua: 'Nikto/2.1.6', status: 'DIBLOKIR OTOMATIS', blocked: true },
-        { at: '2026-11-04T09:15:22.000Z', ip: '198.51.100.10', rule: 'Brute Force Login', target: '/api/login-user', ua: 'Go-http-client/1.1', status: 'DIBLOKIR OTOMATIS', blocked: true },
-        { at: '2026-11-04T08:50:18.000Z', ip: '203.0.113.19', rule: 'Sensitive Probe', target: '/.env', ua: 'curl/7.88.1', status: 'DIBLOKIR OTOMATIS', blocked: true }
-      ];
+      const svc = getConsoleService();
+      const security = svc ? svc.getSecurityStatus(ROOT) : { incidents: [] };
+      const rawIncidents = Array.isArray(security.incidents) ? security.incidents : [];
+      const blockedSet = new Set((security.blockedIps || []).map((b) => String(b.ip || '')));
+      const attacks = rawIncidents.map((item) => ({
+        at: item.at || null,
+        ip: item.ip || '—',
+        rule: item.type || 'Security Event',
+        target: item.source || '/',
+        ua: item.reason || '-',
+        status: blockedSet.has(String(item.ip || '')) ? 'DIBLOKIR OTOMATIS' : 'TERCATAT',
+        blocked: blockedSet.has(String(item.ip || ''))
+      }));
       return json(res, 200, { success: true, attacks });
+    }
+    if (!sess.isSameOrigin(req)) {
+      guard403(req, res, 'security_audit_origin');
+      return json(res, 403, { success: false, error: 'Permintaan ditolak.' });
     }
     const body = await readJsonBody(req);
     const action = body && body.action;
+    const actor = (auth.session && auth.session.un) || 'admin';
     if (action === 'unblock_ip') {
       const ip = body.ip;
-      if (ip) shield.unblockIp(ip, { reason: 'Unblock via Tabel Forensik Admin', by: 'budi' }, ROOT);
+      if (ip) shield.unblockIp(ip, { reason: String(body.reason || 'Unblock via Tabel Forensik Admin').slice(0, 160), by: actor }, ROOT);
       return json(res, 200, { success: true, unblocked: ip });
     }
     if (action === 'clear_test_logs') {
-      return json(res, 200, { success: true, message: 'Log pengujian berhasil dibersihkan.' });
+      return json(res, 200, { success: true, message: 'Tidak ada log simulasi aktif.' });
     }
     return json(res, 200, { success: true });
   } catch (err) {
@@ -196,6 +206,7 @@ async function handler(req, res) {
     const url = String((req && req.url) || '');
     const method = String((req && req.method) || 'GET').toUpperCase();
     if (method !== 'POST' && method !== 'GET') return json(res, 405, { success: false, error: 'Method not allowed' });
+    if (/\/security[_-]?audit/.test(url)) return handleSecurityAudit(req, res);
     if (/\/security[_-]?status/.test(url)) return handleSecurityStatus(req, res);
     if (/\/security[_-]?block/.test(url) && !/unblock/.test(url)) return handleBlockIp(req, res);
     if (/\/security[_-]?unblock/.test(url)) return handleUnblockIp(req, res);
@@ -203,7 +214,7 @@ async function handler(req, res) {
     // Fallback aksi berbasis body (kompatibel api/admin-users): { action }.
     const body = req.body && typeof req.body === 'object' ? req.body : null;
     const action = body ? String(body.action || '') : '';
-    if (action === 'quota_settings' || action === 'quota_update') { req.body = body; return handleQuotaSettings(req, res); }
+    if (action === 'quota_settings' || action === 'quota_update') { req.body = body; return delegateQuotaSettings(req, res); }
     if (action === 'security_audit') { req.body = body; return handleSecurityAudit(req, res); }
     if (action === 'security_status') return handleSecurityStatus(req, res);
     if (action === 'security_block_ip') { req.body = body; return handleBlockIp(req, res); }
