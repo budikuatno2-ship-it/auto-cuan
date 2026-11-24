@@ -400,6 +400,7 @@ function run(options = {}) {
       lookback_days: hCfg.lookbackDays,
       weights: hCfg.weights,
       top20: enrichedTop20,
+      picks: enrichedTop20,
       top5: enrichedTop20.slice(0, Math.min(5, enrichedTop20.length))
     });
   }
@@ -426,8 +427,13 @@ function run(options = {}) {
 
   const screenerLatestDoc = {
     trade_date: maxTradeDate,
+    market_date: maxTradeDate,
     calculated_at: generatedAt,
     generated_by: 'tools/regenerate-local-snapshots.js',
+    source_dates: {
+      daytrade: maxTradeDate,
+      eod: maxTradeDate
+    },
     swing: primaryHorizon.top20,
     swing_non_konglo: horizonSnapshots.swing.top20,
     nk: horizonSnapshots.swing.top20,
@@ -445,10 +451,23 @@ function run(options = {}) {
     groups: sectorGroups
   };
 
+  const top5RadarDoc = primaryHorizon.top5.length > 0 ? {
+    trade_date: maxTradeDate,
+    market_date: maxTradeDate,
+    generated_at: generatedAt,
+    data_status: 'AVAILABLE',
+    publication_blocked: false,
+    top5: primaryHorizon.top5,
+    picks: primaryHorizon.top5
+  } : null;
+
   if (!options.dryRun) {
     atomicWriteJson(path.join(ROOT, 'data', 'three-horizon-latest.json'), threeHorizonDoc);
     atomicWriteJson(path.join(ROOT, 'data', 'screener-latest.json'), screenerLatestDoc);
     atomicWriteJson(path.join(ROOT, 'data', 'sector-hot-latest.json'), sectorHotDoc);
+    if (top5RadarDoc) {
+      atomicWriteJson(path.join(ROOT, 'data', 'top5-radar.json'), top5RadarDoc);
+    }
 
     // Sync ONLY derived snapshot tables in VpsMarketStore (never raw history/broksum/insiders)
     if (!options.skipSqliteSync) {
