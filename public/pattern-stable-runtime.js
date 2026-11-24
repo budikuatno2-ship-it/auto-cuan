@@ -383,10 +383,13 @@
       return '<div class="ps-levels">' + html + '</div>';
     }
 
+    // FIX 4: the canonical API now embeds the real daily candles on every row.
+    // The renderer draws the inline SVG from those candles; no empty placeholder
+    // box is emitted when a row carries a valid pattern but no geometry.
     function figureHtml(row) {
       var svg = '';
       try { svg = Visual.buildPatternSvg(row, { width: 420, height: 208 }); } catch (_) { svg = ''; }
-      if (!svg) return '<div class="ps-figure"><div class="ps-figure-empty">Bentuk pola belum bisa digambar dari data harian yang tersedia.</div></div>';
+      if (!svg) return '';
       return '<div class="ps-figure">' + svg + '</div>';
     }
 
@@ -520,14 +523,17 @@
                 confirmation: p.confirmation,
                 tp1: p.tp1,
                 tp2: p.tp2,
-                invalidation: p.sl,
+                invalidation: p.invalidation != null ? p.invalidation : p.sl,
                 currentPrice: p.currentPrice,
                 prz: p.prz
               },
               classicPatterns: [{ label: p.pattern, bias: p.bias, confidence: (p.confidence / 100), reason: 'Formasi aktif ' + p.pattern }],
-              context: { ticker: p.ticker, timeframe: '1D', dataDate: p.dataDate },
+              // FIX 4: real canonical candles make the inline SVG drawable.
+              context: { ticker: p.ticker, timeframe: '1D', dataDate: p.dataDate, candles: p.candles || [] },
               dataDate: p.dataDate,
-              currentPrice: p.currentPrice
+              currentPrice: p.currentPrice,
+              data_source: p.data_source,
+              as_of: p.as_of
             };
           });
           state.total = radarData.total_scanned || radarData.count || state.rows.length;

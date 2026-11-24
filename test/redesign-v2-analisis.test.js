@@ -49,12 +49,17 @@ test('default view is about six months and double-click returns to it', () => {
   assert.match(runtime, /container\.addEventListener\('dblclick', function\(\) \{ try \{ chart\.timeScale\(\)\.setVisibleLogicalRange\(_defaultRange\);/);
 });
 
-test('toolbar offers Satu layar and the price-scale buttons', () => {
+test('toolbar offers one Layar Penuh, Fit Semua and the price-scale buttons', () => {
   const bar = workstation.renderToolbarHtml('c1');
   assert.match(bar, /AutoCuanChartWorkstation\.toggleOneScreen\('c1'\)/);
+  assert.match(bar, /Layar Penuh/);
+  assert.ok(!/Satu layar/.test(bar), 'duplicate "Satu layar" button removed');
+  assert.match(bar, /AutoCuanChartWorkstation\.fitAll\('c1'\)/);
+  assert.match(bar, /Fit Semua/);
   ['out', 'in', 'auto'].forEach((d) => assert.match(bar, new RegExp("AutoCuanChartWorkstation\\.scalePrice\\('c1', '" + d + "'\\)")));
   assert.match(bar, /aria-label="Pilih Preset Chart"/);
   assert.match(bar, /id="c1_layer_badge"/);
   assert.equal(typeof workstation.scalePrice, 'function');
   assert.equal(typeof workstation.toggleOneScreen, 'function');
+  assert.equal(typeof workstation.fitAll, 'function');
 });

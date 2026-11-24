@@ -138,6 +138,31 @@
     return text;
   }
 
+
+  // BUG 4: one canonical ordering invariant shared by the model and the
+  // browser hardening wrapper. Bullish: Invalidasi < PRZ/Harga < Konfirmasi
+  // Naik < Target1 <= Target2; bearish is the exact inverse.
+  function canonicalLevelOrder(values, direction) {
+    var confirmation = finite(values && values.confirmation);
+    var invalidation = finite(values && values.invalidation);
+    var tp1 = finite(values && values.tp1);
+    var tp2 = finite(values && values.tp2);
+    var przLow = finite(values && values.przLow);
+    var przHigh = finite(values && values.przHigh);
+    if ([confirmation, invalidation, tp1, tp2].some(function (v) { return v == null; })) return false;
+    var low = Math.min(przLow, przHigh), high = Math.max(przLow, przHigh);
+    var przOk = przLow == null || przHigh == null ||
+      (direction === 'bullish' ? (invalidation < low && high < confirmation)
+                                : (invalidation > high && low > confirmation));
+    if (direction === 'bullish') {
+      return przOk && invalidation < confirmation && confirmation < tp1 && tp1 <= tp2;
+    }
+    if (direction === 'bearish') {
+      return przOk && invalidation > confirmation && confirmation > tp1 && tp1 >= tp2;
+    }
+    return false;
+  }
+
   function evaluateAbcdLevels(values, direction) {
     var current = finite(values && values.current);
     var confirmation = finite(values && values.confirmation);
@@ -148,12 +173,11 @@
     if ([current, confirmation, invalidation, tp1, tp2].some(function (value) { return value == null; })) {
       return { actionable:false, reason:'incomplete_levels' };
     }
+    if (!canonicalLevelOrder(values, direction)) reasons.push('inconsistent_level_order');
     if (direction === 'bullish') {
-      if (!(invalidation < confirmation && tp1 > confirmation && tp2 >= tp1)) reasons.push('inconsistent_level_order');
       if (current <= invalidation) reasons.push('invalidation_reached');
       if (current >= tp1) reasons.push('target_already_reached');
     } else if (direction === 'bearish') {
-      if (!(invalidation > confirmation && tp1 < confirmation && tp2 <= tp1)) reasons.push('inconsistent_level_order');
       if (current >= invalidation) reasons.push('invalidation_reached');
       if (current <= tp1) reasons.push('target_already_reached');
     }
@@ -316,6 +340,7 @@
     directionsCompatible:directionsCompatible,
     normalizeLevelLabel:normalizeLevelLabel,
     evaluateAbcdLevels:evaluateAbcdLevels,
+    canonicalLevelOrder:canonicalLevelOrder,
     patternDirection:patternDirection,
     evaluateRow:evaluateRow,
     statusText:statusText,

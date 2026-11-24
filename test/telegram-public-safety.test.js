@@ -42,7 +42,15 @@ function safeCandidate(overrides) {
     entry_status: 'IN_ENTRY_AREA',
     entry_status_label: 'Entry area',
     signal_action_label: 'Watchlist',
-    telegram_verdict: 'Watchlist — tunggu konfirmasi.'
+    telegram_verdict: 'Watchlist — tunggu konfirmasi.',
+    // M-P1e (2026-11-15): full readiness-evidence set. The safety gate routes
+    // through the readiness engine, which is fail-closed on missing evidence —
+    // without these the gate rejects for DATA_NOT_AVAILABLE/VOLUME_UNKNOWN
+    // (missing fixture), not for any safety reason under test.
+    data_status: 'AVAILABLE',
+    volume_today: 1200,
+    avg_volume_20d: 1000,
+    liquidity_idr: 20000000000
   }, overrides || {});
 }
 

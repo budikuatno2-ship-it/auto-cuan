@@ -93,8 +93,11 @@ const action = '#screenerTableBody [data-ticker="BBCA"] .ac-screener-result-acti
 const visibleRows = () => page.$$eval('#screenerTableBody tr[data-ticker]', els=>els.map(el=>el.dataset.ticker));
 test('D3 390 coarse controls reach touch height and mobile form typography',async()=>{
  await page.setViewport({width:390,height:900}); await (await page.createCDPSession()).send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1}); await pause(350);
- const g=await page.evaluate(()=>({coarse:matchMedia('(pointer:coarse)').matches,modes:[...document.querySelectorAll('#scrTypeKonglo,#scrTypeNonKonglo,#scrTypeDayTrade')].map(el=>el.getBoundingClientRect().height),forms:[...document.querySelectorAll('#page-screener select,#page-screener input:not([type=checkbox])')].filter(el=>el.getClientRects().length).map(el=>({id:el.id,height:el.getBoundingClientRect().height,font:getComputedStyle(el).fontSize}))}));
- record('MOBILE_CONTROLS',g);assert.ok(g.coarse);assert.ok(g.modes.every(h=>h>=43.9));assert.ok(g.forms.every(el=>el.height>=43.9&&parseFloat(el.font)>=16));
+ // TASK E: the legacy three-way mode switch is intentionally hidden from the
+ // UI (owner directive). Assert it is NOT rendered, and that the remaining
+ // interactive form controls still meet touch-target sizing.
+ const g=await page.evaluate(()=>({coarse:matchMedia('(pointer:coarse)').matches,modeSwitchHidden:(()=>{const w=document.querySelector('.scr-modes');return !w||w.getBoundingClientRect().height===0;})(),forms:[...document.querySelectorAll('#page-screener select,#page-screener input:not([type=checkbox])')].filter(el=>el.getClientRects().length).map(el=>({id:el.id,height:el.getBoundingClientRect().height,font:getComputedStyle(el).fontSize}))}));
+ record('MOBILE_CONTROLS',g);assert.ok(g.coarse);assert.ok(g.modeSwitchHidden);assert.ok(g.forms.every(el=>el.height>=43.9&&parseFloat(el.font)>=16));
 });
 test('D3 result detail action is reachable with Tab and Enter restores focus',async()=>{
  await page.focus('#kgTickerSearch');let reached=false;for(let i=0;i<35;i++){await page.keyboard.press('Tab');if(await page.evaluate(()=>document.activeElement.matches('.ac-screener-result-action'))){reached=true;break;}}
@@ -113,10 +116,10 @@ test('D3 every enum option has human presentation and original filter values',as
 });
 for(const [theme,width,touch] of [['light',320,true],['light',390,true],['dark',390,true],['light',768,true],['light',1024,true],['light',1440,false],['dark',1440,false],['light',1920,false]])test(`D3 matrix ${theme} ${width}`,async()=>{
  await page.setViewport({width,height:900}); await (await page.createCDPSession()).send('Emulation.setTouchEmulationEnabled',{enabled:touch,maxTouchPoints:1}); await page.evaluate(theme=>applyAppTheme(theme),theme);await pause(350);
- const g=await page.evaluate(()=>({width:innerWidth,overflow:document.documentElement.scrollWidth,modes:[...document.querySelectorAll('#scrTypeKonglo,#scrTypeNonKonglo,#scrTypeDayTrade')].map(el=>({height:el.getBoundingClientRect().height,left:el.getBoundingClientRect().left,right:el.getBoundingClientRect().right,pressed:el.getAttribute('aria-pressed')})),forms:[...document.querySelectorAll('#page-screener select,#page-screener input:not([type=checkbox])')].filter(el=>el.getClientRects().length).map(el=>({id:el.id,height:el.getBoundingClientRect().height,font:parseFloat(getComputedStyle(el).fontSize),left:el.getBoundingClientRect().left,right:el.getBoundingClientRect().right,label:el.getAttribute('aria-label')||document.querySelector('label[for="'+el.id+'"]')?.innerText}))}));
- assert.ok(g.overflow<=width+1,JSON.stringify(g));assert.ok(g.forms.every(el=>el.left>=0&&el.right<=width+1&&el.label));assert.deepEqual(g.modes.map(el=>el.pressed),['true','false','false']);
- if(touch){assert.ok(g.modes.every(el=>el.height>=43.9));assert.ok(g.forms.every(el=>el.height>=43.9&&el.font>=16));}else assert.ok(g.modes.every(el=>el.height<=40));
- assert.ok(g.modes.every((el,i)=>!i||el.left>=g.modes[i-1].right));assert.deepEqual(await visibleRows(),['BBCA','TLKM','ASII']);
+ const g=await page.evaluate(()=>({width:innerWidth,overflow:document.documentElement.scrollWidth,modeSwitchHidden:(()=>{const w=document.querySelector('.scr-modes');return !w||w.getBoundingClientRect().height===0;})(),kongloPaneVisible:(()=>{const p=document.getElementById('screenerKongloPane');return !!p&&p.getBoundingClientRect().height>0;})(),forms:[...document.querySelectorAll('#page-screener select,#page-screener input:not([type=checkbox])')].filter(el=>el.getClientRects().length).map(el=>({id:el.id,height:el.getBoundingClientRect().height,font:parseFloat(getComputedStyle(el).fontSize),left:el.getBoundingClientRect().left,right:el.getBoundingClientRect().right,label:el.getAttribute('aria-label')||document.querySelector('label[for="'+el.id+'"]')?.innerText}))}));
+ assert.ok(g.overflow<=width+1,JSON.stringify(g));assert.ok(g.forms.every(el=>el.left>=0&&el.right<=width+1&&el.label));assert.ok(g.modeSwitchHidden);assert.ok(g.kongloPaneVisible);
+ if(touch){assert.ok(g.forms.every(el=>el.height>=43.9&&el.font>=16));}
+ assert.deepEqual(await visibleRows(),['BBCA','TLKM','ASII']);
  await page.focus(action);await page.keyboard.press('Space');await pause(100);
  const detail=width>=1280?'#screenerDetailPaneContent':'#scrDetailContent';assert.match(await page.$eval(detail,el=>el.innerText),/BBCA/);
  if(width<1280){await page.keyboard.press('Escape');}else await page.click('#screenerDetailPane button');

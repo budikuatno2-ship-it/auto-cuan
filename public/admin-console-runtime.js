@@ -106,11 +106,16 @@
     if (data.quota) {
       var q = data.quota;
       var el = document.getElementById('statQuotaNum');
-      if (el) el.innerHTML = fmtId(q.used) + '<span class="mut" style="font-size:14px;font-weight:600"> / ' + fmtId(q.limit) + '</span>';
+      var usedDisp = q.usageKnown === false || q.used == null ? '—' : fmtId(q.used);
+      var limitDisp = q.limitKnown === false || q.limit == null ? '—' : fmtId(q.limit);
+      if (el) el.innerHTML = usedDisp + '<span class="mut" style="font-size:14px;font-weight:600"> / ' + limitDisp + '</span>';
       var bar = document.getElementById('statQuotaBar');
       if (bar) bar.style.width = (q.pct || 0) + '%';
       var rem = document.getElementById('statQuotaRemain');
-      if (rem) rem.textContent = 'Sisa hari ini: ' + fmtId(q.remaining != null ? q.remaining : Math.max(0, (q.limit || 0) - (q.used || 0))) + ' · Reset ' + (q.reset || '00:00 WIB');
+      // V6 (Subtask C): remaining unknown = UNKNOWN, never (limit||0)-(used||0).
+      var remVal = q.remaining != null ? fmtId(q.remaining) : 'UNKNOWN';
+      if (q.remaining == null && q.limitKnown === false) remVal = 'UNKNOWN (batas tidak terverifikasi)';
+      if (rem) rem.textContent = 'Sisa hari ini: ' + remVal + ' · Reset ' + (q.reset || '00:00 WIB');
       var sync = document.getElementById('statQuotaSync');
       if (sync) sync.textContent = 'Sinkron upstream: ' + fmtWib(q.updatedAt) + (q.upstreamUsedToday != null ? ' · upstream ' + fmtId(q.upstreamUsedToday) : '');
       var plan = document.getElementById('statQuotaPlan');
@@ -121,7 +126,10 @@
       var drift = document.getElementById('quotaDriftWarn');
       if (drift) {
         var showDrift = q.driftDetected === true;
-        var lowPkg = Number(q.limit) <= 1000;
+        // V6 AUDIT FIX: q.limit must be a valid known number > 0.
+        // If q.limit is null, 0, or unknown, it must NOT trigger false "paket turun ke 0 req/hari"!
+        var hasValidLimit = q.limit != null && Number.isFinite(Number(q.limit)) && Number(q.limit) > 0;
+        var lowPkg = hasValidLimit && Number(q.limit) <= 1000;
         drift.style.display = (showDrift || lowPkg) ? 'block' : 'none';
         if (showDrift) drift.textContent = 'Peringatan drift: lokal ' + fmtId(q.localUsedToday) + ' vs upstream ' + fmtId(q.upstreamUsedToday) + ' — dipakai nilai konservatif.';
         else if (lowPkg) drift.textContent = 'Peringatan: paket turun ke ' + fmtId(q.limit) + ' req/hari — hemat kuota hingga perpanjangan.';
@@ -149,9 +157,9 @@
         var staleMap = { 120: 1, 180: 2, 0: 0 };
         var st2 = document.getElementById('qf-staleThreshold');
         var stVal = document.getElementById('qf-staleVal');
-        var thr = (q.staleThresholdMinutes != null ? q.staleThresholdMinutes : cfg.staleThresholdMinutes);
+        var thr = (q.staleThresholdMinutes != null ? q.staleThresholdMinutes : (cfg && cfg.staleThresholdMinutes != null ? cfg.staleThresholdMinutes : 120));
         if (st2 && staleMap[thr] != null) st2.value = staleMap[thr];
-        if (stVal) stVal.textContent = (!thr || thr === 0) ? 'mati (0)' : (thr + ' mnt');
+        if (stVal) stVal.textContent = (!thr || thr === 0 || thr === '0') ? 'mati (0)' : (thr + ' mnt');
         var setT = function(id, v) { var e = document.getElementById(id); if (e) e.checked = (v === true); };
         setT('qf-toggle-lowQuota', cfg.lowQuotaMode === true || q.lowQuotaMode === true);
         var tm = q.telegramMute || {};
@@ -160,14 +168,37 @@
         setT('qf-toggle-muteNonCritical', tm.nonCritical === true || cfg.telegramMuteNonCritical === true);
         setT('qf-toggle-preflight', (q.dynamicPreflightGate !== false) && (cfg.dynamicPreflightGate !== false));
         setT('qf-toggle-backfillRemainder', cfg.holidayBackfillRemainder !== false);
+
+        // Throughput & failure tolerance knobs
+        setQF('qf-concurrency', cfg.concurrency != null ? cfg.concurrency : (q.concurrency != null ? q.concurrency : 2));
+        setQF('qf-rateLimit', cfg.rateLimit != null ? cfg.rateLimit : (q.rateLimit != null ? q.rateLimit : 5));
+        setQF('qf-retryCount', cfg.retryCount != null ? cfg.retryCount : (q.retryCount != null ? q.retryCount : 3));
+        setQF('qf-backoffBaseMs', cfg.backoffBaseMs != null ? cfg.backoffBaseMs : (q.backoffBaseMs != null ? q.backoffBaseMs : 1000));
+        var po = cfg.priorityOrder || q.priorityOrder;
+        if (po) setQF('qf-priorityOrder', Array.isArray(po) ? po.join(', ') : po);
+
+        // Emergency kill-switch and paused services
+        setT('qf-killSwitch', cfg.killSwitch === true || q.killSwitch === true);
+        var ps = cfg.pausedServices || q.pausedServices || {};
+        setT('qf-pause-backfill', ps.backfill === true || ps.all === true);
+        setT('qf-pause-broksum', ps.broksum === true || ps['broksum-ALL'] === true || ps.all === true);
+        setT('qf-pause-foreign', ps.foreign === true || ps['broksum-Foreign'] === true || ps.all === true);
+        setT('qf-pause-insider', ps.insider === true || ps['insider-tiered'] === true || ps.all === true);
+        setT('qf-pause-candles', ps.candles === true || ps.all === true);
+        setT('qf-pause-financial', ps.financial === true || ps.all === true);
+
         renderQfStatus(q);
+        if (data.auditHistory) renderQuotaAuditHistory(data.auditHistory);
+        else loadQuotaAuditHistory();
       } catch (_) {}
     }
     if (data.datasets) renderFinancialCensus(data.datasets);
     if (data.online_summary) {
       var s = data.online_summary;
+      var usersActive = document.getElementById('statUsersActive');
+      if (usersActive) usersActive.textContent = (s.active_7d != null ? s.active_7d : (s.today != null ? s.today : (s.idle_7d != null ? s.idle_7d : '—')));
       var nowEl = document.getElementById('statOnlineNow');
-      if (nowEl) nowEl.textContent = s.online_now;
+      if (nowEl) nowEl.textContent = (s.online_now != null ? s.online_now : '—');
       var onNowEl = document.getElementById('onSummaryNow');
       if (onNowEl) onNowEl.textContent = s.online_now;
       var on15m = document.getElementById('onSummary15m');
@@ -177,7 +208,30 @@
       var onIdle = document.getElementById('onSummaryIdle7d');
       if (onIdle) onIdle.textContent = s.idle_7d;
       var tabOn = document.getElementById('tabOnlineCount');
-      if (tabOn) tabOn.textContent = s.online_now;
+      if (tabOn) tabOn.textContent = (s.online_now != null ? s.online_now : '0');
+    } else {
+      // V6: telemetry absent -> UNKNOWN, never fabricated counts.
+      var usersActive = document.getElementById('statUsersActive');
+      if (usersActive) usersActive.textContent = 'UNKNOWN';
+      var nowEl = document.getElementById('statOnlineNow');
+      if (nowEl) nowEl.textContent = '—';
+    }
+    // V6: service status + p95 latency from telemetry only, never hardcoded.
+    var svc = document.getElementById('statServiceStatus');
+    var svcLat = document.getElementById('statServiceLatency');
+    if (data.operational && typeof data.operational === 'object') {
+      var opOk = data.operational.ok === true;
+      if (svc) {
+        svc.className = 'st ' + (opOk ? 'g' : 'a');
+        svc.textContent = opOk ? 'NORMAL' : 'DEGRADED';
+      }
+      if (svcLat) {
+        var latency = data.operational.api_p95_ms != null ? data.operational.api_p95_ms : (data.operational.latency != null ? data.operational.latency : null);
+        svcLat.textContent = latency != null ? ('API p95: ' + latency + ' ms') : 'API p95: —';
+      }
+    } else {
+      if (svc) { svc.className = 'st a'; svc.textContent = 'UNKNOWN'; }
+      if (svcLat) svcLat.textContent = 'API p95: —';
     }
     if (data.data_health) {
       renderDataHealth(data.data_health);
@@ -201,7 +255,7 @@
     }
     if (idx === 1) loadOnlineList();
     if (idx === 3) loadUsersList();
-    if (idx === 6) { root.refreshDataHealth(); loadJobsPipeline(); loadCompletenessMeta(); }
+    if (idx === 6) { root.refreshDataHealth(); loadJobsPipeline(); loadSchedulerBackfill(); loadCompletenessMeta(); root.refreshBackfillForecast(); }
     if (idx === 7) loadAuditLogs();
     if (idx === 8) root.refreshSecurityPanel();
   };
@@ -457,47 +511,102 @@
   function fmtNum(n) {
     try { return Number(n).toLocaleString('id-ID'); } catch (_) { return String(n); }
   }
+  function fcRow(text) {
+    return '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">' + escapeHtml(text) + '</td></tr>';
+  }
+  function setForecastUnavailable(reason) {
+    var rem = document.getElementById('fcRemaining');
+    var fin = document.getElementById('fcFinish');
+    var exp = document.getElementById('fcExpiry');
+    var st = document.getElementById('fcStatus');
+    var cap = document.getElementById('fcCapacity');
+    var tb = document.getElementById('forecastTbody');
+    if (rem) rem.textContent = '—';
+    if (fin) fin.textContent = '—';
+    if (exp) exp.textContent = '—';
+    if (st) { st.textContent = reason || 'Data tidak tersedia'; st.style.color = 'var(--ac-muted)'; }
+    if (cap) cap.textContent = 'Kapasitas: data tidak tersedia.';
+    if (tb) tb.innerHTML = fcRow(reason || 'Data tidak tersedia');
+  }
   function renderBackfillForecast(fc) {
     var rem = document.getElementById('fcRemaining');
     var fin = document.getElementById('fcFinish');
     var exp = document.getElementById('fcExpiry');
     var st = document.getElementById('fcStatus');
+    var cap = document.getElementById('fcCapacity');
     var tb = document.getElementById('forecastTbody');
-    if (!fc) {
-      if (tb) tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Forecast belum tersedia.</td></tr>';
+    if (!fc || typeof fc !== 'object') { setForecastUnavailable('Data tidak tersedia'); return; }
+
+    var remaining = Number(fc.remainingRequests);
+    var hasQueue = Number.isFinite(remaining) && remaining > 0;
+    var daily = Array.isArray(fc.dailyTable) ? fc.dailyTable : [];
+
+    // Capacity is ALWAYS derived from the forecast payload — never hardcoded in UI.
+    if (cap) {
+      var cp = fc.capacityPerDay || {};
+      var parts = [];
+      if (Number.isFinite(Number(cp.weekday))) parts.push('hari kerja ' + fmtNum(cp.weekday) + ' req/hari');
+      if (Number.isFinite(Number(cp.weekend))) parts.push('akhir pekan ' + fmtNum(cp.weekend) + ' req/hari');
+      cap.textContent = parts.length ? ('Kapasitas: ' + parts.join(', ') + '.') : 'Kapasitas: data tidak tersedia.';
+    }
+
+    if (!hasQueue && daily.length === 0) {
+      if (rem) rem.textContent = '0 request';
+      if (fin) fin.textContent = '—';
+      if (exp) exp.textContent = (fc.planExpiresAt || '').slice(0, 10) || '—';
+      if (st) { st.textContent = 'Tidak ada antrean backfill'; st.style.color = 'var(--ac-brand)'; }
+      if (tb) tb.innerHTML = fcRow('Tidak ada antrean backfill');
       return;
     }
-    if (rem) rem.textContent = fmtNum(fc.remainingRequests) + ' request';
+
+    if (rem) rem.textContent = (Number.isFinite(remaining) ? fmtNum(remaining) : '—') + ' request';
     if (fin) fin.textContent = fc.finishDate || '—';
     if (exp) exp.textContent = (fc.planExpiresAt || '').slice(0, 10) || '—';
     if (st) {
-      st.textContent = fc.finishesBeforeExpiry ? 'Selesai sebelum batas paket' : 'Melewati batas paket';
-      st.style.color = fc.finishesBeforeExpiry ? 'var(--ac-brand)' : 'var(--ac-warn)';
+      if (fc.finishesBeforeExpiry === true) { st.textContent = 'Selesai sebelum batas paket'; st.style.color = 'var(--ac-brand)'; }
+      else if (fc.finishesBeforeExpiry === false) { st.textContent = 'Melewati batas paket'; st.style.color = 'var(--ac-warn)'; }
+      else { st.textContent = 'Estimasi belum tersedia'; st.style.color = 'var(--ac-muted)'; }
     }
-    if (tb && Array.isArray(fc.dailyTable)) {
-      tb.innerHTML = fc.dailyTable.map(function(r) {
+    if (tb) {
+      if (!daily.length) tb.innerHTML = fcRow('Data tidak tersedia');
+      else tb.innerHTML = daily.map(function(r) {
         return '<tr><td class="num">' + escapeHtml(r.date) + '</td><td class="mut">' + escapeHtml(r.weekday) + '</td><td class="r num">' + fmtNum(r.capacity) + '</td><td class="r num">' + fmtNum(r.burn) + '</td><td class="r num">' + fmtNum(r.remainingAfter) + '</td><td>' + (r.done ? '<span class="st g">Selesai</span>' : '<span class="st a">Berjalan</span>') + '</td></tr>';
       }).join('');
     }
   }
   root.refreshBackfillForecast = async function() {
     var tb = document.getElementById('forecastTbody');
-    if (tb) tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat…</td></tr>';
+    if (tb) tb.innerHTML = fcRow('Memuat forecast…');
+    var controller = (typeof AbortController === 'function') ? new AbortController() : null;
+    var timer = null;
+    var settled = false;
+    var finish = function() {
+      if (settled) return;
+      settled = true;
+      if (timer != null) clearTimeout(timer);
+    };
+    if (controller && typeof setTimeout === 'function') {
+      timer = setTimeout(function() { try { controller.abort(); } catch (_) {} }, 8000);
+    }
     try {
       var res = await fetch('/api/admin-users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'backfill_forecast' })
+        body: JSON.stringify({ action: 'backfill_forecast' }),
+        signal: controller ? controller.signal : undefined
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json().catch(function() { return {}; });
+      finish();
       if (data && data.success && data.forecast) renderBackfillForecast(data.forecast);
-      else if (tb) tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Forecast belum tersedia.</td></tr>';
+      else setForecastUnavailable('Data tidak tersedia');
     } catch (_) {
-      if (tb) tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Gagal memuat forecast.</td></tr>';
+      finish();
+      setForecastUnavailable('Data tidak tersedia');
     }
   };
   root.renderBackfillForecast = renderBackfillForecast;
+  root.setForecastUnavailable = setForecastUnavailable;
 
   // Confirmation Dialog
   function promptAction(opts) {
@@ -610,29 +719,380 @@
       return '<tr><td style="font-weight:600">' + escapeHtml(d.name) + '</td><td class="num mut">' + escapeHtml(d.last_success) + '</td><td class="mut">' + escapeHtml(d.schedule) + '</td><td><span class="st ' + cls + '">' + escapeHtml(d.status_label) + '</span></td></tr>';
     }).join('');
   }
-  function renderJobsPipeline(jobs) {
-    var tb = document.getElementById('jobsPipelineTbody');
-    if (!tb) return;
-    if (!jobs || !jobs.length) { tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Belum ada heartbeat job.</td></tr>'; return; }
-    tb.innerHTML = jobs.map(function(j) {
-      var cls = j.status_code === 'ok' ? 'g' : (j.status_code === 'warn' ? 'a' : 'r');
-      var lbl = j.status || '—';
-      return '<tr><td class="mono" style="font-weight:600">' + escapeHtml(j.name) + '</td><td class="mut">' + escapeHtml(j.schedule) + '</td><td class="num mut">' + escapeHtml(j.last_run) + '</td><td class="r num">' + escapeHtml(j.duration) + (j.requests ? ' · ' + escapeHtml(String(j.requests)) + ' req' : '') + '</td><td><span class="st ' + cls + '">' + escapeHtml(lbl) + '</span></td><td class="r"><button class="btn sm" disabled title="Job berjalan otomatis via cron. Pemicu manual dinonaktifkan demi keamanan kuota API.">Otomatis</button></td></tr>';
-    }).join('');
+
+  // ── V6 (Subtask D): Admin Schedule Editor ─────────────────────────────────
+  // Fungsi renderJobsPipeline dijadikan editor jadwal fungsional (jam/hari/
+  // enable), bukan tombol "Otomatis" disabled. Sumber kebenaran adalah
+  // /api/admin/schedule-settings (GET/PUT) — bukan teks label cron statis.
+  var scheduleState = { config: null, dirty: {} };
+
+  var DAY_LABELS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+  /**
+   * TASK 6 LOCAL: deterministic 24-hour WIB formatter for the JAM WIB column.
+   * Accepts HH:MM, ISO timestamps, and legacy 12-hour strings.
+   * Never emits locale-dependent 12-hour markers.
+   */
+  function formatWib24h(value) {
+    if (value == null || value === '') return '—';
+    var s = String(value).trim();
+    var m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+    if (m) {
+      var h = Number(m[1]);
+      var min = Number(m[2]);
+      var mer = (m[3] || '').toUpperCase();
+      if (mer === 'PM' && h < 12) h += 12;
+      else if (mer === 'AM' && h === 12) h = 0;
+      if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
+        return String(h).padStart(2, '0') + ':' + String(min).padStart(2, '0');
+      }
+    }
+    var iso = s.match(/T(\d{2}):(\d{2})(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?$/);
+    if (iso) {
+      var ih = Number(iso[1]);
+      var im = Number(iso[2]);
+      if (ih >= 0 && ih <= 23 && im >= 0 && im <= 59) {
+        return String(ih).padStart(2, '0') + ':' + String(im).padStart(2, '0');
+      }
+    }
+    return '—';
   }
+  root.formatWib24h = formatWib24h;
+
+  function daySet(arr) {
+    var s = {};
+    (arr || []).forEach(function(d) { s[Number(d)] = true; });
+    return s;
+  }
+
+  var WIB_DAY_LABELS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  var WIB_MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+  /**
+   * FIX 6: render an ISO WIB next-run as human text, e.g. "Sen 23 Nov, 20:40 WIB".
+   * Input is engine.formatWibIso output: YYYY-MM-DDTHH:mm:00+07:00.
+   * Never emits ISO and never emits an em dash for a populated run.
+   */
+  function formatNextRunWib(value) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(String(value || ''));
+    if (!m) return String(value || '');
+    var y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    var hh = Number(m[4]), mm = Number(m[5]);
+    var dt = new Date(Date.UTC(y, mo - 1, d));
+    var label = WIB_DAY_LABELS[dt.getUTCDay()] + ' ' + d + ' ' + WIB_MONTH_LABELS[mo - 1];
+    return label + ', ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ' WIB';
+  }
+  root.formatNextRunWib = formatNextRunWib;
+
+  function nextRunsPreview(line, nextRuns, count) {
+    if (!nextRuns || !nextRuns.length) return '<span class="mut">Jadwal tidak tersedia</span>';
+    var human = nextRuns.map(formatNextRunWib);
+    return '<span class="mono" style="font-size:11px" title="' + escapeHtml(human.join('\n')) + '">' +
+      escapeHtml(human.slice(0, count || 5).join(' · ')) + '</span>';
+  }
+
+  function scheduleConflictTip(config, key) {
+    const collisions = (config && config.collisions) || [];
+    const badges = [];
+    for (const c of collisions) {
+      if (c.jobA === key) badges.push('⚠ bentrok dgn <b>' + escapeHtml(c.jobB) + '</b> (' + escapeHtml(c.bTime) + ')');
+      if (c.jobB === key) badges.push('⚠ bentrok dgn <b>' + escapeHtml(c.jobA) + '</b> (' + escapeHtml(c.aTime) + ')');
+    }
+    return badges.join(' · ');
+  }
+
+  function renderJobsPipeline(cfg) {
+    var tb = document.getElementById('jobsPipelineTbody');
+    var ver = document.getElementById('schVersioneLabel');
+    var nowLabel = document.getElementById('schNowWib');
+    if (!tb) return;
+
+    if (ver) ver.textContent = cfg ? ('v' + cfg.version + (cfg.updatedBy ? ' · ' + escapeHtml(cfg.updatedBy) : '')) : 'Memuat…';
+    if (nowLabel) nowLabel.textContent = cfg ? ('WIB ' + escapeHtml(cfg.nowWIB || '')) : '';
+
+    if (!cfg || !Array.isArray(cfg.jobs) || !cfg.jobs.length) {
+      tb.innerHTML = '<tr><td colspan="7" class="mut" style="text-align:center;padding:24px">Jadwal scheduler belum tersedia (butuh sesi admin).</td></tr>';
+      return;
+    }
+
+    var isLegacyRow = function(j) {
+      return j.legacy_inactive === true || j.category === 'LEGACY' || j.key === 'coordinated-pipeline';
+    };
+    var activeJobs = cfg.jobs.filter(function(j) { return !isLegacyRow(j); });
+    var legacyJobs = cfg.jobs.filter(isLegacyRow);
+    var renderJobRow = function(j) {
+      var editable = j.editable === true;
+      var next = (cfg.nextRuns && cfg.nextRuns[j.key]) || [];
+      var locked = j.lockedDefault === true;
+      var time24 = formatWib24h(j.timeWIB);
+      var descStyle = 'white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.35';
+
+      if (!editable) {
+        var cls2 = j.enabled ? 'g' : 'a';
+        return '<tr>' +
+          '<td style="font-weight:600">' + escapeHtml(j.name) + '<span class="mut" style="display:block;font-size:11px">' + escapeHtml(j.category) + ' · ' + escapeHtml(j.costClass) + '</span></td>' +
+          '<td class="mono mut" data-role="schedule-time-display">' + escapeHtml(time24) + ' WIB</td>' +
+          '<td class="mut" style="font-size:11px">' + escapeHtml((j.days || []).length ? (j.days || []).map(function(d){return DAY_LABELS[Number(d)];}).join(',') : 'Setiap hari') + '</td>' +
+          '<td>' + nextRunsPreview(null, next) + '</td>' +
+          '<td style="' + descStyle + '">' + escapeHtml(j.description || '') + '</td>' +
+          '<td><span class="st ' + cls2 + '">' + (j.enabled ? 'Aktif' : 'Nonaktif') + '</span></td>' +
+          '<td class="r"><button class="btn sm" disabled title="Job legacy/monitoring tidak diedit dari console.">Terkunci</button></td>' +
+        '</tr>';
+      }
+
+      var daysChk = [0,1,2,3,4,5,6].map(function(d) {
+        var on = daySet(j.days)[d] === true;
+        return '<label style="margin-right:4px;font-size:11px" title="' + DAY_LABELS[d] + '">' +
+          '<input type="checkbox" data-job="' + escapeHtml(j.key) + '" data-day="' + d + '"' + (on ? ' checked' : '') + ' onchange="onScheduleDayToggle(this)"> ' + DAY_LABELS[d] + '</label>';
+      }).join('');
+
+      return '<tr data-schedule-row="' + escapeHtml(j.key) + '">' +
+        '<td style="font-weight:600">' + escapeHtml(j.name) +
+          '<span class="mut" style="display:block;font-size:11px">' + escapeHtml(j.key) + (locked ? ' · default 20:40; override Admin dipertahankan' : '') + '</span></td>' +
+        '<td><input type="text" inputmode="numeric" data-role="schedule-time" data-job="' + escapeHtml(j.key) + '" value="' + escapeHtml(time24) + '" pattern="^([01]\\d|2[0-3]):[0-5]\\d$" maxlength="5" placeholder="HH:MM" title="Jam WIB format 24 jam (HH:MM)" style="width:72px;font-family:monospace" onchange="onScheduleTimeChange(this)"></td>' +
+        '<td style="min-width:150px">' + daysChk + '</td>' +
+        '<td>' + nextRunsPreview(null, next) + '</td>' +
+        '<td style="max-width:260px;' + descStyle + '"><span class="mut" style="font-size:11px;' + descStyle + '">' + escapeHtml(j.description || '') + '</span>' +
+          '<span style="display:block;font-size:11px;color:var(--ac-warn,#F59E0B);' + descStyle + '">' + scheduleConflictTip(cfg, j.key) + '</span></td>' +
+        '<td>' +
+          '<select data-job="' + escapeHtml(j.key) + '" style="width:76px" onchange="onScheduleEnableChange(this)">' +
+            '<option value="1"' + (j.enabled ? ' selected' : '') + '>Aktif</option>' +
+            '<option value="0"' + (!j.enabled ? ' selected' : '') + '>Nonaktif</option>' +
+          '</select>' +
+        '</td>' +
+        '<td class="r"><button class="btn sm" data-save-job="' + escapeHtml(j.key) + '" onclick="saveScheduleJob(\'' + escapeHtml(j.key) + '\')">Simpan</button></td>' +
+      '</tr>';
+    };
+
+    var html = activeJobs.map(renderJobRow).join('');
+    if (legacyJobs.length) {
+      html += '<tr class="schedule-legacy-group"><td colspan="7" style="padding:0;border:0">' +
+        '<details style="margin:6px 0 0">' +
+        '<summary style="cursor:pointer;font-size:11px;font-weight:600;color:var(--ac-2,#94a3b8);padding:6px 8px">' +
+        'Job Legacy / Kompatibilitas (Nonaktif) — ' + legacyJobs.length + ' job</summary>' +
+        '<table class="tbl" style="width:100%;margin-top:4px"><tbody>' +
+        legacyJobs.map(renderJobRow).join('') +
+        '</tbody></table></details></td></tr>';
+    }
+    tb.innerHTML = html;
+  }
+
+  function collectScheduleRow(jobKey) {
+    var row = document.querySelector('[data-schedule-row="' + jobKey + '"]');
+    if (!row) return null;
+    var timeEl = row.querySelector('input[data-role="schedule-time"][data-job="' + jobKey + '"]');
+    var days = [];
+    row.querySelectorAll('input[type="checkbox"][data-job="' + jobKey + '"]').forEach(function(cb) {
+      if (cb.checked) days.push(Number(cb.getAttribute('data-day')));
+    });
+    var sel = row.querySelector('select[data-job="' + jobKey + '"]');
+    if (!timeEl || !sel) return null;
+    var p = { timeWIB: timeEl.value, days: days, enabled: sel.value === '1' };
+    if (!/^\d{2}:\d{2}$/.test(p.timeWIB)) return null;
+    return p;
+  }
+
+  function stampScheduleStatus(text, ok) {
+    var el = document.getElementById('scheduleSaveStatus');
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.color = ok === false ? 'var(--ac-warn,#F59E0B)' : 'var(--ac-brand,#10B981)';
+  }
+
+  root.onScheduleTimeChange = function(input) {
+    if (!input || !input.getAttribute) return;
+    var key = input.getAttribute('data-job');
+    if (key) scheduleState.dirty[key] = true;
+  };
+  root.onScheduleDayToggle = function(cb) {
+    if (!cb || !cb.getAttribute) return;
+    var key = cb.getAttribute('data-job');
+    if (key) scheduleState.dirty[key] = true;
+  };
+  root.onScheduleEnableChange = function(sel) {
+    if (!sel || !sel.getAttribute) return;
+    var key = sel.getAttribute('data-job');
+    if (key) scheduleState.dirty[key] = true;
+  };
+
+  root.saveScheduleJob = async function(jobKey) {
+    var patchData = collectScheduleRow(jobKey);
+    if (!patchData) { stampScheduleStatus('Baris tidak ditemukan.', false); return; }
+    var cfg = scheduleState.config;
+    if (!cfg) { stampScheduleStatus('Konfigurasi belum termuat.', false); return; }
+    var reason = 'Ubah jadwal ' + jobKey + ' via Admin Console';
+    var isTest = Boolean(window.__AUTOCUAN_TEST__);
+    if (!isTest && typeof window.prompt === 'function') {
+      var typed = window.prompt('Ketik JADWAL untuk menyimpan perubahan jadwal ' + jobKey + ':');
+      if ((typed || '').trim().toUpperCase() !== 'JADWAL') { stampScheduleStatus('Dibatalkan.', false); return; }
+      var userReason = window.prompt('Alasan perubahan (wajib):');
+      if (userReason && userReason.trim().length >= 3) reason = userReason.trim();
+    }
+    stampScheduleStatus('Menyimpan ' + jobKey + '…', true);
+    try {
+      var res = await fetch('/api/admin/schedule-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patch: { jobs: (function(){ var o = {}; o[jobKey] = patchData; return o; })() },
+          reason: reason,
+          version: cfg.version
+        })
+      });
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && (data.success || data.ok)) {
+        scheduleState.dirty = {};
+        stampScheduleStatus('Tersimpan (readback OK) · versi ' + data.version + '.', true);
+        if (data.config) { scheduleState.config = data.config; renderJobsPipeline(data.config); }
+        recordAuditLog((window.__AUTOCUAN_PREVIEW_USER__ && window.__AUTOCUAN_PREVIEW_USER__.username) || 'budi', 'Simpan Jadwal ' + jobKey, versionlessReason(reason));
+      } else if (res.status === 409 && data && data.code === 'SCHEDULE_COLLISION') {
+        stampScheduleStatus('DITOLAK bentrok jadwal: ' + ((data.collisions || []).map(function(c){ return c.jobA + ' vs ' + c.jobB; }).join('; ') || 'overlap'), false);
+        if (data.config) { scheduleState.config = data.config; renderJobsPipeline(data.config); }
+      } else if (res.status === 409 && data && data.code === 'LEGACY_DUPLICATE') {
+        // V6 Subtask F: patch would duplicate an ACTIVE legacy executor (cron/PM2).
+        stampScheduleStatus('DITOLAK duplikasi executor lama: ' + ((data.legacyDuplicates || []).map(function(d){ return d.job + ' @ ' + d.timeWIB + ' vs ' + d.executors.join(', '); }).join('; ') || 'legacy ACTIVE') + ' — cutover butuh approval.', false);
+        if (data.config) { scheduleState.config = data.config; renderJobsPipeline(data.config); }
+      } else if (res.status === 409) {
+        stampScheduleStatus('Konflik versi — konfigurasi berubah di tempat lain. Muat ulang lalu simpan kembali.', false);
+      } else if (res.status === 400) {
+        stampScheduleStatus('Ditolak (validasi server): ' + ((data && data.error) || 'patch tidak valid'), false);
+      } else if (res.status === 401 || res.status === 403) {
+        stampScheduleStatus('Ditolak: ' + ((data && data.error) || 'butuh sesi admin / origin sama.'), false);
+      } else {
+        stampScheduleStatus('Gagal (HTTP ' + res.status + '): ' + ((data && data.error) || 'terjadi kesalahan.'), false);
+      }
+    } catch (_) { stampScheduleStatus('Gagal terhubung ke server (network).', false); }
+  };
+
+  function versionlessReason(r) { return String(r || '').replace(/^Ubah jadwal [a-z0-9_-]+ via Admin Console/i, 'Ubah jadwal').slice(0, 60); }
+
   async function loadJobsPipeline() {
     var tb = document.getElementById('jobsPipelineTbody');
-    if (tb) tb.innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat status job dari heartbeat…</td></tr>';
+    if (tb) tb.innerHTML = '<tr><td colspan="7" class="mut" style="text-align:center;padding:24px">Memuat status job & jadwal dari scheduler durable…</td></tr>';
+    // V6 (Subtask D): jadwal dibaca dari endpoint terotorisasi (bukan label cron).
     try {
-      var res = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'admin_console_stats' }) });
-      if (!res.ok) return;
-      var data = await res.json().catch(function() { return {}; });
-      if (data && data.success) {
-        if (data.datasets) renderDatasetFreshness(data.datasets);
-        if (data.jobs) renderJobsPipeline(data.jobs);
+      var res = await fetch('/api/admin/schedule-settings', { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      if (res.ok) {
+        var data = await res.json().catch(function() { return {}; });
+        if (data && data.success && data.config) {
+          scheduleState.config = data.config;
+          renderJobsPipeline(data.config);
+        }
+      } else {
+        if (tb) tb.innerHTML = '<tr><td colspan="7" class="mut" style="text-align:center;padding:24px">Butuh sesi admin untuk mengedit jadwal scheduler.</td></tr>';
       }
-    } catch (_) {}
+    } catch (_) {
+      if (tb) tb.innerHTML = '<tr><td colspan="7" class="mut" style="text-align:center;padding:24px">Gagal memuat jadwal scheduler.</td></tr>';
+    }
   }
+  root.renderJobsPipeline = renderJobsPipeline;
+
+  // ── V6 (W5): Scheduler & Backfill EFFECTIVE readback panel ────────────────
+  function sbBadgeClass(lastStatus) {
+    if (lastStatus === 'IDLE') return 'g';
+    if (lastStatus === 'RUNNING') return 'a';
+    if (lastStatus === 'BLOCKED') return 'r';
+    return 'a';
+  }
+
+  function sbRow(label, value) {
+    return '<tr><td class="mut" style="width:220px">' + escapeHtml(label) + '</td><td class="mono">' + escapeHtml(value == null ? '—' : String(value)) + '</td></tr>';
+  }
+
+  function renderSchedulerBackfill(status) {
+    var badge = document.getElementById('sbBadge');
+    var reason = document.getElementById('sbReason');
+    var tb = document.getElementById('sbDetailTbody');
+    var src = document.getElementById('sbReadbackSource');
+    if (!badge || !tb) return;
+    if (!status) {
+      badge.className = 'st a';
+      badge.textContent = 'TIDAK TERSEDIA';
+      if (reason) reason.textContent = 'Butuh sesi admin untuk membaca status scheduler efektif.';
+      tb.innerHTML = '<tr><td colspan="2" class="mut" style="text-align:center;padding:20px">Status tidak tersedia.</td></tr>';
+      return;
+    }
+    var bf = status.backfill || {};
+    var lastStatus = bf.last_status || 'UNKNOWN';
+    badge.className = 'st ' + sbBadgeClass(lastStatus);
+    badge.textContent = lastStatus + (status.readback_ok ? '' : ' (readback belum OK)');
+    if (reason) reason.textContent = bf.reason || '—';
+    if (src) src.textContent = status.readback_source || '—';
+
+    var ex = status.executor || {};
+    var q = status.quota_observed || {};
+    var queue = status.queue || {};
+    var perMonth = queue.per_month_pending || {};
+    var perMonthStr = Object.keys(perMonth).sort().map(function(k) { return k + ':' + perMonth[k]; }).join(', ') || '—';
+
+    tb.innerHTML = [
+      sbRow('Status backfill (mentah)', bf.status),
+      sbRow('Alasan', bf.reason),
+      sbRow('Request terkirim', bf.requests_sent),
+      sbRow('Provider scan', bf.provider_scan ? 'YA' : 'TIDAK'),
+      sbRow('Terakhir dicek', bf.last_checked_at),
+      sbRow('Cek berikutnya', bf.next_check_at),
+      sbRow('Aritmetika kuota', bf.arithmetic),
+      sbRow('Executor owner', ex.owner),
+      sbRow('Last attempt', ex.last_attempt),
+      sbRow('Last success', ex.last_success),
+      sbRow('Last error', ex.last_error),
+      sbRow('Run ID', ex.run_id),
+      sbRow('Requests used (ledger)', ex.requests_used),
+      sbRow('Antrean terverifikasi', queue.verified_count),
+      sbRow('Pending per bulan', perMonthStr),
+      sbRow('Kuota sisa (observed)', q.remaining),
+      sbRow('Kuota limit (observed)', q.limit),
+      sbRow('Plan expiry', q.plan_expiry),
+      sbRow('Readback OK', status.readback_ok ? 'YA' : 'TIDAK'),
+      sbRow('Saved original (store)', (status.saved_original || {}).store_path)
+    ].join('');
+  }
+
+  async function loadSchedulerBackfill() {
+    var tb = document.getElementById('sbDetailTbody');
+    if (tb) tb.innerHTML = '<tr><td colspan="2" class="mut" style="text-align:center;padding:20px">Memuat status scheduler efektif…</td></tr>';
+    try {
+      var res = await fetch('/api/admin/scheduler-status', { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      if (res.ok) {
+        var data = await res.json().catch(function() { return {}; });
+        if (data && data.success && data.status) { renderSchedulerBackfill(data.status); return; }
+      }
+      renderSchedulerBackfill(null);
+    } catch (_) { renderSchedulerBackfill(null); }
+  }
+  root.loadSchedulerBackfill = loadSchedulerBackfill;
+
+  function sbStamp(text, ok) {
+    var el = document.getElementById('sbActionStatus');
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.color = ok === false ? 'var(--ac-warn,#F59E0B)' : 'var(--ac-brand,#10B981)';
+  }
+
+  async function sbTriggerBackfill(paused, label) {
+    sbStamp(label + '…', true);
+    try {
+      var res = await fetch('/api/admin/quota-backfill-trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: label, paused: paused })
+      });
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && data.success) {
+        var st = (data.decision && data.decision.status) || data.status || 'OK';
+        sbStamp(label + ' → ' + st + ' (request=' + (data.requestsSent != null ? data.requestsSent : 0) + ')', true);
+        loadSchedulerBackfill();
+      } else {
+        sbStamp(label + ' gagal: ' + ((data && data.error) || ('HTTP ' + res.status)), false);
+      }
+    } catch (_) { sbStamp(label + ' gagal (network).', false); }
+  }
+
+  root.sbPauseBackfill = function() { return sbTriggerBackfill(true, 'Jeda Backfill'); };
+  root.sbResumeBackfill = function() { return sbTriggerBackfill(false, 'Lanjutkan Backfill'); };
+  root.sbRetryBackfill = function() { return sbTriggerBackfill(false, 'Retry Backfill'); };
+
   async function loadCompletenessMeta() {
     try {
       var res = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'backfill_forecast' }) });
@@ -720,6 +1180,44 @@
     } catch (_) {}
   }
   root.renderQfStatus = renderQfStatus;
+
+  function renderQuotaAuditHistory(logs) {
+    try {
+      var tb = document.getElementById('quota-audit-history-tbody');
+      if (!tb) return;
+      if (!Array.isArray(logs) || logs.length === 0) {
+        tb.innerHTML = '<tr><td colspan="4" class="mut" style="text-align:center;padding:16px">Belum ada catatan mutasi pengaturan kuota.</td></tr>';
+        return;
+      }
+      tb.innerHTML = logs.map(function(item) {
+        var timeStr = item.timestampWIB || (item.timestampIso ? fmtWib(item.timestampIso) : '—');
+        var actor = escapeHtml(item.actor || 'admin');
+        var reason = escapeHtml(item.reason || 'Pembaruan konfigurasi kuota');
+        var diffSummary = '';
+        if (Array.isArray(item.diff) && item.diff.length > 0) {
+          diffSummary = item.diff.map(function(d) {
+            return '<span class="mono" style="font-size:11px">' + escapeHtml(d.field) + ': ' + escapeHtml(JSON.stringify(d.previous)) + ' &rarr; <b>' + escapeHtml(JSON.stringify(d.next)) + '</b></span>';
+          }).join('<br>');
+        } else {
+          diffSummary = '<span class="mut mono" style="font-size:11px">v' + item.version + ' tersimpan</span>';
+        }
+        return '<tr><td class="mono mut" style="font-size:12px">' + timeStr + '</td><td class="font-bold">' + actor + '</td><td style="font-size:13px">' + reason + '</td><td>' + diffSummary + '</td></tr>';
+      }).join('');
+    } catch (_) {}
+  }
+  root.renderQuotaAuditHistory = renderQuotaAuditHistory;
+
+  async function loadQuotaAuditHistory() {
+    try {
+      var res = await fetch('/api/admin/quota-settings');
+      if (res.ok) {
+        var data = await res.json().catch(function() { return {}; });
+        if (data && data.auditHistory) renderQuotaAuditHistory(data.auditHistory);
+      }
+    } catch (_) {}
+  }
+  root.loadQuotaAuditHistory = loadQuotaAuditHistory;
+
   function qfPost(action, body) {
     return fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ action: action }, body || {})) });
   }
@@ -803,7 +1301,7 @@
     var st = document.getElementById('quotaSaveStatus');
     var num = function(id) { var e = document.getElementById(id); if (!e || e.value === '') return null; var v = Number(e.value); return Number.isFinite(v) ? v : null; };
     var patch = {};
-    var m1 = num('qf-maxQuota'); if (m1 != null) patch.maxQuota = m1;
+    var m1 = num('qf-maxQuota'); if (m1 != null) { patch.configuredOperatingCap = m1; patch.dailyLimitOverride = m1; }
     var m2 = num('qf-weekdayBackfill'); if (m2 != null) patch.weekdayBackfillLimit = m2;
     var m3 = num('qf-weekendBackfill'); if (m3 != null) patch.weekendBackfillLimit = m3;
     var m4 = num('qf-reserveFloor'); if (m4 != null) { patch.reserveFloorWeekday = m4; patch.reserveFloorWeekdayDaytime = m4; patch.reserveFloorWeekdayNight = m4; }
@@ -819,6 +1317,30 @@
     var pf = tg('qf-toggle-preflight'); if (pf != null) patch.dynamicPreflightGate = pf;
     var br = tg('qf-toggle-backfillRemainder'); if (br != null) patch.holidayBackfillRemainder = br;
 
+    // Throughput & failure tolerance
+    var conc = num('qf-concurrency'); if (conc != null) patch.concurrency = conc;
+    var rl = num('qf-rateLimit'); if (rl != null) patch.rateLimit = rl;
+    var rc = num('qf-retryCount'); if (rc != null) patch.retryCount = rc;
+    var bo = num('qf-backoffBaseMs'); if (bo != null) patch.backoffBaseMs = bo;
+
+    var poEl = document.getElementById('qf-priorityOrder');
+    if (poEl && poEl.value) {
+      patch.priorityOrder = poEl.value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+
+    // Kill switch & paused services
+    var ks = tg('qf-killSwitch');
+    if (ks != null) patch.killSwitch = ks;
+
+    patch.pausedServices = {
+      backfill: Boolean(tg('qf-pause-backfill')),
+      broksum: Boolean(tg('qf-pause-broksum')),
+      foreign: Boolean(tg('qf-pause-foreign')),
+      insider: Boolean(tg('qf-pause-insider')),
+      candles: Boolean(tg('qf-pause-candles')),
+      financial: Boolean(tg('qf-pause-financial'))
+    };
+
     if (!Object.keys(patch).length) { if (st) st.textContent = 'Tidak ada perubahan.'; return; }
 
     var isTest = Boolean(window.__AUTOCUAN_TEST__ || (opts && opts.skipPrompt));
@@ -832,51 +1354,54 @@
     }
 
     try {
-      // 1. Simpan via /api/admin/quota-settings (atau fallback /api/admin-users)
+      // V6 (Subtask C): hanya SATU endpoint mutasi terotorisasi. HTTP non-2xx
+      // (404/403/409/500) adalah error nyata — TIDAK ada fallback /api/admin-users
+      // yang menyembunyikan 404, dan TIDAK ada jalur "remaining=(limit||0)-(used||0)".
       var res = await fetch('/api/admin/quota-settings', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ patch: patch, reason: reason })
-      }).catch(function() {
-        return fetch('/api/admin-users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'quota_update', patch: patch, reason: reason })
-        });
       });
       var data = await res.json().catch(function() { return {}; });
       if (res.ok && data && (data.success || data.ok)) {
-        if (st) st.textContent = 'Pengaturan kuota berhasil disimpan ke server.';
+        if (st) st.textContent = 'Pengaturan kuota berhasil disimpan ke server (verifikasi readback OK).';
         recordAuditLog('budi', 'Simpan Pengaturan Kuota', reason.slice(0, 60));
-        if (data.quota) applyStats({ quota: data.quota });
-      } else if (st) st.textContent = 'Gagal: ' + ((data && data.error) || res.status);
-    } catch (_) { if (st) st.textContent = 'Gagal terhubung ke server.'; }
-    return;
-    try {
-      var res = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'quota_update', patch: patch }) });
-      var data = await res.json().catch(function() { return {}; });
-      if (res.ok && data && data.success) {
-        if (st) st.textContent = 'Tersimpan · batas baru ' + (data.quota ? data.quota.limit : '') + (data.queued ? ' · antrean 00:00:01 WIB dibuat.' : '.');
-        recordAuditLog('budi', 'Ubah konfigurasi kuota', reason.slice(0, 60));
-        applyStats({ quota: data.quota });
-      } else if (st) st.textContent = 'Gagal: ' + ((data && data.error) || res.status);
-    } catch (_) { if (st) st.textContent = 'Gagal terhubung.'; }
+        if (data.config) applyStats({ quota: data.config });
+        else if (data.quota) applyStats({ quota: data.quota });
+        loadQuotaAuditHistory();
+      } else if (res.status === 409) {
+        if (st) st.textContent = 'Konflik versi: konfigurasi berubah dari tempat lain. Muat ulang lalu simpan kembali.';
+      } else if (res.status === 401 || res.status === 403) {
+        if (st) st.textContent = 'Ditolak: ' + ((data && data.error) || 'butuh sesi admin / origin sama.');
+      } else if (st) st.textContent = 'Gagal (HTTP ' + res.status + '): ' + ((data && data.error) || 'terjadi kesalahan.');
+    } catch (_) { if (st) st.textContent = 'Gagal terhubung ke server (network).'; }
   };
   // S2: Tab Keamanan dan Audit — banner + metrik 24 jam + log insiden + Block/Unblock IP.
   function renderSecurityPanel(sec) {
     if (!sec) return;
+    // Fail-closed: no telemetry => UNKNOWN/UNAVAILABLE, never "Aman"/"Berih".
+    // "Aman" is only claimable with a real incident count + telemetry.
+    var hasData = sec.available === true;
+    var statusText = hasData ? (sec.status === "WASPADA" ? "WASPADA" : "AMAN") : "UNAVAILABLE";
+    var statusClass = hasData ? (sec.status === "WASPADA" ? "a" : "g") : "x";
+
     var badge = document.getElementById("tabSecBadge");
-    if (badge) { badge.textContent = sec.status === "WASPADA" ? "WASPADA" : "Aman"; badge.className = "st " + (sec.status === "WASPADA" ? "a" : "g"); }
+    if (badge) { badge.textContent = statusText; badge.className = "st " + statusClass; }
+
     var banner = document.getElementById("secBanner");
     var bannerText = document.getElementById("secBannerText");
     if (banner && bannerText) {
-      bannerText.textContent = sec.banner || sec.statusLabel || "Aman";
+      bannerText.textContent = hasData
+        ? (sec.banner || sec.statusLabel || (sec.status === "WASPADA" ? "WASPADA" : "Aman — telemetri tersedia"))
+        : "Keamanan tidak tersedia (telemetri/incident count tidak ditemukan)";
       banner.style.display = "flex";
     }
+
     var sb = document.getElementById("secStatusBadge");
-    if (sb) { sb.textContent = sec.status === "WASPADA" ? "WASPADA" : "Aman"; sb.className = "st " + (sec.status === "WASPADA" ? "a" : "g"); }
+    if (sb) { sb.textContent = statusText; sb.className = "st " + statusClass; }
+
     var sl = document.getElementById("secStatusLabel");
-    if (sl) sl.textContent = sec.statusLabel || sec.banner || "";
+    if (sl) sl.textContent = hasData ? (sec.statusLabel || sec.banner || "") : "Data keamanan tidak tersedia.";
     var up = document.getElementById("secUpdatedAt");
     if (up) up.textContent = "Diperbarui: " + fmtWib(sec.updatedAt) + " · real-time";
     var m = sec.metrics24h || {};
@@ -961,9 +1486,26 @@
   root.triggerBackfillNow = function() {
     promptAction({
       title: 'Picu Backfill Sekarang?',
-      body: 'Antrean backfill akan dikejar sesuai kapasitas kuota hari ini. Tercatat di log audit.',
+      body: 'Pemicu backfill akan dikirim ke worker consumer (staging/fixture). Tercatat di log audit + ledger worker.',
       word: 'BACKFILL',
-      action: function(reason) { recordAuditLog('budi', 'Picu backfill', reason); root.refreshBackfillForecast(); }
+      action: function(reason) {
+        recordAuditLog('budi', 'Picu backfill', reason);
+        try {
+          fetch('/api/admin/quota-backfill-trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason || 'manual-backfill' })
+          }).then(function(res) { return res.json().catch(function() { return {}; }); })
+            .then(function(data) {
+              var st = document.getElementById('quotaSaveStatus');
+              if (st) st.textContent = (data && data.success) ? ('Backfill dikirim ke worker; ' + (data.processed != null ? data.processed + ' diproses.' : 'antre.')) : ('Gagal: ' + ((data && data.error) || 'unknown'));
+              root.refreshBackfillForecast();
+            })
+            .catch(function() { root.refreshBackfillForecast(); });
+        } catch (_) {
+          root.refreshBackfillForecast();
+        }
+      }
     });
   };
 
@@ -1054,8 +1596,96 @@
     }
   };
 
+  // ── TASK C: Financial publication windows + incomplete issuer list ────────
+  var FP_DEADLINES = {
+    Q1: '30 Apr', Q2: '31 Jul', Q3: '31 Oct', Q4: '31 Jan (un-audited)', FY: '31 Mar (audited FY)'
+  };
+  function fpEscape(v) {
+    var amp = "&amp;";
+    var lt = "&lt;";
+    var gt = "&gt;";
+    var quot = "&quot;";
+    var apos = "&#39;";
+    var map = {};
+    map[38] = amp; map[60] = lt; map[62] = gt;
+    map[34] = quot; map[39] = apos;
+    return String(v == null ? "—" : v).replace(/[&<>"']/g, function(c) {
+      return map[c.charCodeAt(0)] || c;
+    });
+  }
+  root.loadFinancialPublicationPanel = async function() {
+    var status = document.getElementById('fpActionStatus');
+    try {
+      var res = await fetch('/api/admin/financial-publication?view=status', { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      if (!data || data.success !== true) throw new Error('RESPONSE_NOT_SUCCESS');
+      var w = data.fetch_windows || {};
+      var ver = document.getElementById('fpWindowVersion');
+      if (ver) ver.textContent = 'v' + (w.version == null ? '—' : w.version);
+      var wtb = document.getElementById('fpWindowsTbody');
+      if (wtb) {
+        var periods = w.periods || {};
+        var rows = ['Q1', 'Q2', 'Q3', 'Q4', 'FY'].map(function(p) {
+          var r = periods[p] || {};
+          var win = r.startDay && r.endDay ? ('05–15 → ' + String(r.startDay).padStart(2, '0') + '–' + String(r.endDay).padStart(2, '0')) : '—';
+          return '<tr><td class="mono">' + p + '</td><td>' + FP_DEADLINES[p] + '</td><td class="mono">' + fpEscape(win) + '</td><td class="st g">ACTIVE</td></tr>';
+        });
+        wtb.innerHTML = rows.join('');
+      }
+      var inc = data.incomplete_issuers || {};
+      var cnt = document.getElementById('fpIncompleteCount');
+      if (cnt) cnt.textContent = (inc.count == null ? '—' : inc.count) + ' issuer-period';
+      var itb = document.getElementById('fpIncompleteTbody');
+      if (itb) {
+        var entries = inc.entries || [];
+        if (!entries.length) {
+          itb.innerHTML = '<tr><td colspan="8" class="mut" style="text-align:center;padding:20px">Tidak ada issuer incomplete.</td></tr>';
+        } else {
+          itb.innerHTML = entries.map(function(e) {
+            var key = fpEscape(e.ticker) + '|' + fpEscape(e.fiscal_year) + '|' + fpEscape(e.period);
+            return '<tr>' +
+              '<td class="mono">' + fpEscape(e.ticker) + '</td>' +
+              '<td class="num">' + fpEscape(e.fiscal_year) + '</td>' +
+              '<td class="mono">' + fpEscape(e.period) + '</td>' +
+              '<td><span class="st a">' + fpEscape(e.status) + '</span></td>' +
+              '<td class="mono">' + fpEscape(e.source) + '</td>' +
+              '<td class="mono">' + fpEscape(e.as_of) + '</td>' +
+              '<td>' + fpEscape(e.reason) + '</td>' +
+              '<td class="r"><button class="btn sm" data-fp-fetch="' + key + '" onclick="fpManualFetch(this)">Fetch (Mock)</button></td>' +
+              '</tr>';
+          }).join('');
+        }
+      }
+      if (status) status.textContent = 'Dimuatan: ' + new Date().toLocaleTimeString('id-ID');
+    } catch (err) {
+      if (status) status.textContent = 'Gagal memuat: ' + (err && err.message ? err.message : 'unknown');
+    }
+  };
+  root.fpManualFetch = async function(btn) {
+    var status = document.getElementById('fpActionStatus');
+    var parts = String(btn && btn.getAttribute('data-fp-fetch') || '').split('|');
+    if (parts.length !== 3) return;
+    if (status) status.textContent = 'Menjalankan manual fetch (MOCK, 0 provider call)…';
+    try {
+      var res = await fetch('/api/admin/financial-publication', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ action: 'manual_fetch', ticker: parts[0], fiscal_year: Number(parts[1]), period: parts[2] })
+      });
+      var data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || ('HTTP ' + res.status));
+      if (status) status.textContent = 'Selesai: ' + data.outcome + ' · http=' + data.httpRequests + ' · billed=' + data.billedUnits;
+      await root.loadFinancialPublicationPanel();
+    } catch (err) {
+      if (status) status.textContent = 'Gagal: ' + (err && err.message ? err.message : 'unknown');
+    }
+  };
+
   root.initAdminConsole = function() {
     verifyAdminAuth();
+    root.loadFinancialPublicationPanel();
+    root.refreshBackfillForecast();
   };
 
   // Auto-init on standalone admin page

@@ -15668,3 +15668,106 @@ html.is-dark .mm-eye { filter: drop-shadow(0 0 10px rgba(72,199,151,.28)) drop-s
   .mm-eye, .mm-lid, .mm.talk .mm-mouth, .mm-eye.hop { animation: none !important; }
   .mm-body, .mm-bub { transition: none; }
 }
+
+/* ==========================================================================
+   M-P1b Chart Workstation drawer: compact categorized layout.
+   Desktop: side panel with INTERNAL scroll; the chart canvas keeps its size
+   and is never pushed down the page by drawer content.
+   Mobile: collapsible sheet, closable, 44px touch targets, no horizontal
+   overflow, never permanently full-height.
+   ========================================================================== */
+.cw-drawer {
+  max-height: min(60vh, 520px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cw-drawer[hidden],
+.cw-drawer.hidden { display: none; }
+.cw-drawer-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  padding-bottom: 12px;
+  scrollbar-width: thin;
+}
+.cw-drawer-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.cw-drawer-scroll::-webkit-scrollbar-track { background: #0b0e14; }
+.cw-drawer-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+
+/* Collapsible categories */
+.cw-drawer-cat {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  margin: 0 0 8px 0;
+  background: rgba(15, 20, 28, 0.6);
+  overflow: hidden;
+}
+.cw-drawer-cat-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  min-height: 44px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  background: rgba(21, 27, 38, 0.8);
+}
+.cw-drawer-cat-summary::-webkit-details-marker { display: none; }
+.cw-drawer-cat-summary::after {
+  content: '\25BE';
+  color: #64748b;
+  font-size: 12px;
+  margin-left: auto;
+}
+.cw-drawer-cat[open] .cw-drawer-cat-summary::after { transform: rotate(180deg); }
+.cw-drawer-cat-title {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #e2e8f0;
+}
+.cw-drawer-cat-count {
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  color: #64748b;
+  margin-left: auto;
+  margin-right: 8px;
+}
+.cw-drawer-cat-body { padding-top: 8px; }
+
+/* Per-item rows: active-state visibility + 44px touch target */
+.cw-layer-row {
+  min-height: 40px;
+  border-radius: 8px;
+  transition: background-color 120ms ease;
+}
+.cw-layer-row.active {
+  background: rgba(16, 185, 129, 0.08);
+  box-shadow: inset 2px 0 0 #10b981;
+}
+.cw-layer-row.active > div > div > span { color: #f1f5f9; }
+
+/* Drawing tool buttons */
+.cw-tool-btn { min-height: 36px; }
+.cw-tool-btn.on {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #34d399;
+  font-weight: 700;
+}
+
+/* Mobile: sheet, closable, never permanently full-height */
+@media (max-width: 640px) {
+  .cw-drawer { max-height: 72vh; }
+  .cw-drawer-head { flex-wrap: wrap; gap: 8px; }
+  .cw-drawer-head > div:last-child { flex-wrap: wrap; }
+  .cw-drawer-head button { min-height: 44px; padding: 8px 12px; }
+  .cw-drawer-cat-summary { min-height: 44px; padding: 10px 12px; }
+  .cw-layer-row { min-height: 44px; }
+  .cw-drawer-scroll { padding-left: 12px; padding-right: 12px; }
+  .cw-drawer-cat-body { padding-left: 12px; padding-right: 12px; }
+}

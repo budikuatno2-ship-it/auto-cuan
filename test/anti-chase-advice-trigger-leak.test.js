@@ -83,6 +83,14 @@ test('BUG-027: candidatePassesPublicTelegramSafetyGate allows candidate with "ja
   const candidate = baseCandidate();
   const verdict = idx.deriveSignalVerdict(candidate);
   Object.assign(candidate, verdict);
+  // M-P1e (2026-11-15): the safety gate routes through the readiness engine,
+  // which is fail-closed on missing evidence. Declare the full evidence set the
+  // engine requires (data_status AVAILABLE + measured volume/liquidity) so the
+  // test targets the ADVICE-LEAK regression, not missing-fixture rejections.
+  candidate.data_status = 'AVAILABLE';
+  candidate.volume_today = 1200;
+  candidate.avg_volume_20d = 1000;
+  candidate.liquidity_idr = 500000000;
 
   const passes = candidatePassesPublicTelegramSafetyGate(candidate);
   assert.equal(passes, true, 'candidate with "jangan chase" advice should pass telegram safety gate');

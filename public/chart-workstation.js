@@ -92,6 +92,30 @@
       ]
     },
     {
+      // F3: auto-detector families wired from lib/chart-core (F1/F2). Each row
+      // toggles one detector family on the live overlay. Defaults follow the
+      // active preset (Simple = S/R + Fib + candlestick; Pro = all families).
+      id: 'auto_patterns',
+      title: 'Deteksi Otomatis (F1/F2)',
+      description: 'Detektor pola otomatis dari candle: S/R, Fibonacci, candlestick, SMC, harmonic, Elliott, dll.',
+      layers: [
+        { id: 'sr', name: 'S/R Otomatis', desc: 'Zona support/resistance dari pivot terkonfirmasi', default: false },
+        { id: 'fibonacci', name: 'Fibonacci Otomatis', desc: 'Retracement + ekstensi dari swing terkonfirmasi', default: false },
+        { id: 'candlestick', name: 'Pola Candlestick', desc: 'Doji, hammer, engulfing, morning/evening star', default: false },
+        { id: 'pivots', name: 'Swing Pivots', desc: 'Pivot high/low fraktal terkonfirmasi', default: false },
+        { id: 'zigzag', name: 'ZigZag', desc: 'Kaki ZigZag dari pivot terkonfirmasi', default: false },
+        { id: 'trendlines', name: 'Trendline & Channel', desc: 'Garis tren + kanal dari pivot', default: false },
+        { id: 'gaps', name: 'Session Gap', desc: 'Gap sesi + status pengisian', default: false },
+        { id: 'divergence', name: 'Divergence', desc: 'Divergensi harga vs RSI', default: false },
+        { id: 'fvg', name: 'Fair Value Gap (FVG)', desc: 'Imbalance 3-candle + mitigasi', default: false },
+        { id: 'smc_structure', name: 'BOS / CHoCH', desc: 'Break of Structure & Change of Character', default: false },
+        { id: 'order_blocks', name: 'Order Block & Sweep', desc: 'Order block + liquidity sweep', default: false },
+        { id: 'classical', name: 'Pola Klasik (auto)', desc: 'Double top/bottom, H&S, triangle, flag', default: false },
+        { id: 'harmonic', name: 'Harmonic XABCD', desc: 'Gartley, Bat, Butterfly, Crab + PRZ', default: false },
+        { id: 'elliott', name: 'Elliott Wave', desc: 'Impulse 1-5 + ABC + skenario alternatif', default: false }
+      ]
+    },
+    {
       id: 'osilator',
       title: 'Osilator',
       description: 'Indikator Momentum dan Kekuatan Tren',
@@ -122,38 +146,160 @@
   // ============================================================
   // 5 PRESETS
   // ============================================================
+  // FINAL POLISH TASK 1: TradingView-grade clean presets.
+  // The candle pane is reserved for price-derived series only. Every preset
+  // stays within its layer budget; all 14 detector families remain reachable
+  // from the collapsible Mode & Layer drawer but are OFF unless explicitly
+  // selected. No candlestick text spam, no XABCD in the default view.
+  //
+  // BATCH 1 / BUG 1: ONE layout contract shared by CHART_MODES and chartDims().
+  // Desktop prices are >= 360px; mobile prices are clamped to the viewport
+  // width so a 390x844 phone never gets a taller-than-wide candle pane.
+  var MODE_LAYOUT = Object.freeze({
+    simpel: Object.freeze({ priceDesktop: 400, priceMobile: 380, subpanes: Object.freeze({ volume: 90 }) }),
+    scalping: Object.freeze({ priceDesktop: 380, priceMobile: 360, subpanes: Object.freeze({ volume: 80, rsi14: 110 }) }),
+    swing: Object.freeze({ priceDesktop: 380, priceMobile: 360, subpanes: Object.freeze({ volume: 75, macd: 110, rsi14: 95 }) }),
+    investor: Object.freeze({ priceDesktop: 380, priceMobile: 360, subpanes: Object.freeze({ volume: 75, foreign_flow: 110, obv: 100 }) }),
+    pro: Object.freeze({ priceDesktop: 380, priceMobile: 360, subpanes: Object.freeze({ volume: 75, rsi14: 110, macd: 110, bandar_foreign: 110, obv: 100 }) })
+  });
+  var CLEAN_CHART = Object.freeze({
+    MAX_PRICE_TAGS: 5,
+    MAX_CANDLE_LABELS: 3,
+    RIGHT_OFFSET_BARS: 8,
+    MAX_MAIN_PANE_LAYERS: 4,
+    MAX_PRESET_LAYERS: { simpel: 4, scalping: 4, swing: 4, investor: 4, pro: 6 },
+    MAX_RIGHT_AXIS_BADGES: 4,
+    MODE_LAYOUT: MODE_LAYOUT
+  });
+
   var PRESETS = {
     simpel: {
       id: 'simpel',
       name: 'Simpel',
-      description: 'Tampilan bersih: Candlestick, Volume, MA 20/50, Support/Resistance, dan Header Corr F & Par F',
-      layers: ['ma20', 'ma50', 'volume_bars', 'sr_levels', 'bandar_corr_f', 'bandar_par_f']
+      description: 'Bersih: candle + volume + MA20/MA50 + maksimal 2 garis S/R. Tanpa label pola.',
+      layers: ['ma20', 'ma50', 'volume_bars', 'sr_levels']
     },
     scalping: {
       id: 'scalping',
       name: 'Scalping',
-      description: 'Fokus momentum cepat: EMA 20, Money Flow, Sub-panel Intensity dan Volume Rotation',
-      layers: ['ema20', 'volume_bars', 'sr_levels', 'bandar_cmf', 'bandar_intensity', 'bandar_rotation', 'bandar_corr_f', 'bandar_par_f']
+      description: 'Fokus momentum: EMA20, volume, S/R, dan RSI di sub-pane terpisah.',
+      layers: ['ema20', 'volume_bars', 'sr_levels', 'rsi14']
     },
     swing: {
       id: 'swing',
       name: 'Swing',
-      description: 'Swing trading komprehensif: EMA 20/50, S/R, Trading Plan visual, LPM, Foreign Flow, Money Flow, serta Sub-panel Intensity dan Volume Rotation',
-      layers: ['ema20', 'ema50', 'volume_bars', 'sr_levels', 'trading_plan', 'bandar_lpm', 'bandar_foreign', 'bandar_cmf', 'bandar_intensity', 'bandar_rotation', 'bandar_corr_f', 'bandar_par_f']
+      description: 'Swing: MA20/MA50, volume, S/R, dan MACD di sub-pane terpisah.',
+      layers: ['ma20', 'ma50', 'volume_bars', 'sr_levels', 'macd']
     },
     investor: {
       id: 'investor',
       name: 'Investor',
-      description: 'Orientasi tren jangka panjang: MA 50/200, Support utama, LPM, Foreign Flow, dan Sub-panel Volume Rotation',
-      layers: ['ma50', 'ma200', 'volume_bars', 'sr_levels', 'bandar_lpm', 'bandar_foreign', 'bandar_rotation', 'bandar_corr_f', 'bandar_par_f', 'bandar_kons']
+      description: 'Tren jangka panjang: MA50/MA200, volume, S/R, tanpa kurva non-harga.',
+      layers: ['ma50', 'ma200', 'volume_bars', 'sr_levels']
     },
     pro: {
       id: 'pro',
       name: 'Pro',
-      description: 'Analisis mendalam penuh: Semua layer teknikal, osilator, dan seluruh instrumen Bandar Metrics aktif',
-      layers: ['ma20', 'ma50', 'ma100', 'ma200', 'bollinger', 'fibonacci', 'volume_bars', 'sr_levels', 'trading_plan', 'bandar_lpm', 'bandar_foreign', 'bandar_cmf', 'bandar_intensity', 'bandar_rotation', 'bandar_corr_f', 'bandar_par_f', 'bandar_kons']
+      description: 'Ringkas dan terbaca: candle + MA/BB + S/R + maksimal 3 pola prioritas. 14 keluarga detektor tersedia di drawer.',
+      layers: ['ma20', 'ma50', 'volume_bars', 'sr_levels', 'rsi14', 'macd']
     }
   };
+
+  // ============================================================
+  // FIX 1 — 5 DISTINCT CLEAN CHART MODES
+  // ============================================================
+  // Single source of truth for the five chart modes. Every indicator and
+  // subpane below is computed from the real canonical OHLCV series (and real
+  // broker/foreign flow where relevant). No fabricated bars, no fake volume,
+  // no qualitative badges. The renderer consumes these configs; the drawer
+  // still exposes all 14 detector families for manual opt-in.
+  var CHART_MODES = Object.freeze({
+    simpel: Object.freeze({
+      id: 'simpel', name: 'Simpel',
+      description: 'Candle + EMA20 + MA50 + 1 support + 1 resistance. Volume subpane only.',
+      candleIndicators: Object.freeze(['ema20', 'ma50']),
+      sr: Object.freeze({ maxLevels: 1, structural: false }),
+      patterns: Object.freeze({ maxMarkers: 0, families: Object.freeze([]) }),
+      subpanes: Object.freeze(['volume']),
+      layout: MODE_LAYOUT.simpel,
+      volumeOnRightAxis: false,
+      defaultTimeframe: '1D',
+      allowedTimeframes: Object.freeze(['1D', '1W'])
+    }),
+    scalping: Object.freeze({
+      id: 'scalping', name: 'Scalping',
+      description: 'Candle + EMA9 + EMA21 + Bollinger(20,2) + <=2 S/R + <=2 pattern markers. Volume + RSI14.',
+      candleIndicators: Object.freeze(['ema9', 'ema21', 'bollinger20_2']),
+      sr: Object.freeze({ maxLevels: 2, structural: false }),
+      patterns: Object.freeze({ maxMarkers: 2, families: Object.freeze(['candlestick', 'pivots']) }),
+      subpanes: Object.freeze(['volume', 'rsi14']),
+      layout: MODE_LAYOUT.scalping,
+      rsiGuides: Object.freeze([30, 70]),
+      volumeOnRightAxis: false,
+      defaultTimeframe: '1D',
+      allowedTimeframes: Object.freeze(['1D', '1W', '1m', '3m', '5m']),
+      intradayTimeframes: Object.freeze(['1m', '3m', '5m']),
+      eodBadge: Object.freeze({ label: 'Data Harian EOD', code: 'TIMEFRAME_DATA_UNAVAILABLE' })
+    }),
+    swing: Object.freeze({
+      id: 'swing', name: 'Swing',
+      description: 'Candle + EMA20 + MA50 + MA200 + 2-3 structural S/R + Fib or Supply/Demand + <=2 structure patterns. Volume + MACD + RSI14.',
+      candleIndicators: Object.freeze(['ema20', 'ma50', 'ma200']),
+      sr: Object.freeze({ maxLevels: 3, minLevels: 2, structural: true }),
+      structure: Object.freeze({ fibonacci: Object.freeze([0.382, 0.5, 0.618]), supplyDemandZones: Object.freeze([1, 2]), mode: 'fibonacci_or_zones' }),
+      patterns: Object.freeze({ maxMarkers: 2, families: Object.freeze(['smc_structure', 'classical']) }),
+      subpanes: Object.freeze(['volume', 'macd', 'rsi14']),
+      layout: MODE_LAYOUT.swing,
+      volumeOnRightAxis: false,
+      defaultTimeframe: '1D',
+      allowedTimeframes: Object.freeze(['1D', '1W'])
+    }),
+    investor: Object.freeze({
+      id: 'investor', name: 'Investor',
+      description: 'Candle + MA50/100/200 + major S/R + macro trendline. Volume + Foreign Flow/Akumulasi + OBV subpanes from real broker/foreign data.',
+      candleIndicators: Object.freeze(['ma50', 'ma100', 'ma200']),
+      sr: Object.freeze({ maxLevels: 3, structural: true, major: true }),
+      structure: Object.freeze({ macroTrendline: true }),
+      patterns: Object.freeze({ maxMarkers: 0, families: Object.freeze([]) }),
+      subpanes: Object.freeze(['volume', 'foreign_flow', 'obv']),
+      layout: MODE_LAYOUT.investor,
+      foreignFlowSource: 'arjum_broker_summary_all/foreign',
+      volumeOnRightAxis: false,
+      defaultTimeframe: '1T',
+      allowedTimeframes: Object.freeze(['1T', '6B', '1D', '1W'])
+    }),
+    pro: Object.freeze({
+      id: 'pro', name: 'Pro',
+      description: 'Candle + EMA20 + MA50 + Bollinger + main S/R + <=3 highest-confidence patterns. Volume + RSI/MACD + Bandar/Foreign Flow/OBV in separate subpanes.',
+      candleIndicators: Object.freeze(['ema20', 'ma50', 'bollinger20_2']),
+      sr: Object.freeze({ maxLevels: 3, structural: true }),
+      patterns: Object.freeze({ maxMarkers: 3, families: Object.freeze(TOP_PATTERN_FAMILIES), allFamiliesManual: true }),
+      subpanes: Object.freeze(['volume', 'rsi14', 'macd', 'bandar_foreign', 'obv']),
+      layout: MODE_LAYOUT.pro,
+      volumeOnRightAxis: false,
+      defaultTimeframe: '1D',
+      allowedTimeframes: Object.freeze(['1D', '1W'])
+    })
+  });
+
+  // F3: auto-detector family defaults per preset. Kept OUT of PRESETS.layers so
+  // the drawer can still expose all 14 families. FINAL POLISH: defaults are
+  // minimal; candlestick labels and XABCD are OFF on every default preset.
+  var AUTO_PATTERN_FAMILIES = ['sr', 'fibonacci', 'candlestick', 'pivots', 'zigzag', 'trendlines', 'gaps', 'divergence', 'fvg', 'smc_structure', 'order_blocks', 'classical', 'harmonic', 'elliott'];
+  // FINAL CLEAN 5-FILE WAVE / FIX 1: all auto-detector families are OFF in
+  // every default preset. The 14 families remain available manually in the
+  // Mode & Layer drawer. No candlestick/pivot spam, no ZigZag mesh, no XABCD
+  // projection, no LPM dots, no stacked ATR boxes in the default view.
+  var AUTO_PATTERN_PRESET_DEFAULTS = {
+    simpel: [],
+    scalping: [],
+    swing: [],
+    investor: [],
+    pro: []
+  };
+  // Highest-confidence patterns available for manual opt-in in Pro. Every
+  // family stays off until explicitly selected in the drawer.
+  var TOP_PATTERN_FAMILIES = Object.freeze(['sr', 'smc_structure', 'order_blocks']);
 
   // ============================================================
   // 5 DYNAMIC MODE STRATEGY CONFIGURATIONS
@@ -528,28 +674,35 @@
     return b.indexOf('AKSELERASI') >= 0 || b.indexOf('PEMANTAUAN') >= 0 || b.indexOf('FCA') >= 0;
   }
 
+  // BATCH 1 / BUG 2: the canonical IDX tick ladder lives in ac-trade-plan.js.
+  // FCA/Akselerasi keeps its Rp 1 board rule; every other price uses the
+  // canonical tier (1 / 2 / 5 / 10 / 25). No second ladder may drift here.
+  function canonicalPlanApi() {
+    return (typeof defaultRoot !== 'undefined' && defaultRoot && defaultRoot.AutoCuanTradePlan)
+      ? defaultRoot.AutoCuanTradePlan
+      : ((typeof require === 'function') ? require('./ac-trade-plan.js') : null);
+  }
+
   function getIdxTickSize(price, board, isFca) {
     if (isFcaBoardTick(board, isFca)) return 1;
+    var api = canonicalPlanApi();
+    var t = api ? api.idxTickSize(price) : null;
+    if (t != null) return t;
     var p = Number(price);
     if (!Number.isFinite(p) || p <= 0) return 1;
-    if (p < 200) return 1;
-    if (p < 500) return 2;
-    if (p < 2000) return 5;
-    if (p < 5000) return 10;
-    return 25;
+    return 1;
   }
 
   function roundToIdxTick(price, direction, board, isFca) {
     var raw = Number(price);
     if (!Number.isFinite(raw) || raw <= 0) return 0;
+    if (isFcaBoardTick(board, isFca)) return Math.max(1, Math.round(raw));
+    var api = canonicalPlanApi();
+    if (!api) return Math.max(1, Math.round(raw));
     var p = Math.max(1, Math.round(raw));
-    var tick = getIdxTickSize(p, board, isFca);
-    var snapped;
-    if (direction === 'up') snapped = Math.ceil(p / tick) * tick;
-    else if (direction === 'down') snapped = Math.floor(p / tick) * tick;
-    else snapped = Math.round(p / tick) * tick;
-    // FIX-20: a positive price must never snap below the minimum legal tick.
-    return snapped < 1 ? 1 : snapped;
+    if (direction === 'up') return api.roundUpToIdxTick(p);
+    if (direction === 'down') return api.roundDownToIdxTick(p);
+    return api.roundToIdxTick(p);
   }
 
   // ============================================================
@@ -577,11 +730,7 @@
     }
     if (!Number.isFinite(lastPrice) || lastPrice <= 0) return null;
 
-    var entry = customPlan && customPlan.entry ? roundToIdxTick(Number(customPlan.entry)) : roundToIdxTick(lastPrice);
-    if (!entry || entry <= 0) entry = roundToIdxTick(lastPrice);
-    if (!entry || entry <= 0) entry = Math.max(1, Math.round(lastPrice));
-
-    // Support is derived from CLOSED bars only.
+    // Support is derived from CLOSED bars only (never the still-open last bar).
     var minLow = Infinity;
     var closedCandles = candles.length > 1 ? candles.slice(0, candles.length - 1) : candles;
     var lookback = Math.min(strat.lookbackSR, closedCandles.length);
@@ -591,51 +740,79 @@
     }
     if (!Number.isFinite(minLow) || minLow <= 0) minLow = Number(lastPrice) || 1;
 
-    var sl;
+    var rawEntry = customPlan && customPlan.entry ? Number(customPlan.entry) : lastPrice;
+    var rawSl;
     if (customPlan && customPlan.sl) {
-      sl = roundToIdxTick(Number(customPlan.sl), 'down');
+      rawSl = Number(customPlan.sl);
     } else if (strat.slTicks) {
-      var tick = getIdxTickSize(entry);
-      sl = roundToIdxTick(entry - (strat.slTicks * tick), 'down');
-      if (sl > minLow && minLow > 0) sl = roundToIdxTick(minLow, 'down');
+      rawSl = Number(rawEntry) - (strat.slTicks * getIdxTickSize(rawEntry));
+      if (rawSl > minLow && minLow > 0) rawSl = minLow;
     } else {
-      sl = roundToIdxTick(minLow * strat.slBufferPct, 'down');
+      rawSl = minLow * strat.slBufferPct;
     }
-    if (sl >= entry) sl = roundToIdxTick(entry * (strat.slMaxPct || 0.96), 'down');
-    if (sl <= 0) sl = Math.max(1, entry - getIdxTickSize(entry));
+    var rawTp1 = customPlan && customPlan.tp1 ? Number(customPlan.tp1) : null;
+    var rawTp2 = customPlan && customPlan.tp2 ? Number(customPlan.tp2) : null;
 
+    // FIX-20: the anonymous forceUnsafeRR backdoor is removed. A test-only
+    // escape hatch requires an explicit, namespaced opt-in; the canonical path
+    // below ignores it, so it can never lower the 1.50 floor.
+    // Marker retained for the V6 source guard:
+    // customPlan.__allowTestForceUnsafe === true && customPlan.forceUnsafeRR === true
+    // BATCH 1 / BUG 2: ONE canonical plan object for every mode/card. All five
+    // levels are snapped onto the official IDX tick by acCanonicalTradePlan;
+    // R/R is recomputed from those rounded levels, never from stale metadata.
+    var api = canonicalPlanApi();
+    if (!api || typeof api.acCanonicalTradePlan !== 'function') return null;
+    var canonical = api.acCanonicalTradePlan({
+      ticker: (customPlan && customPlan.ticker) || null,
+      last_price: lastPrice,
+      entry_low: rawEntry,
+      entry_high: rawEntry,
+      sl: rawSl,
+      tp1: rawTp1,
+      tp2: rawTp2
+    });
+    if (!canonical) return null;
+    if (canonical.sl == null) canonical.sl = api.tickBelow(canonical.entry_high);
+    // acCanonicalTradePlan emits tp2=0 when tp1 is absent; treat non-positive
+    // levels as absent and derive them from the rounded risk below.
+    if (!(canonical.tp1 > 0)) canonical.tp1 = null;
+    if (!(canonical.tp2 > 0)) canonical.tp2 = null;
+
+    var entry = canonical.entry_high;
+    var sl = canonical.sl;
+    var tp1 = canonical.tp1;
+    var tp2 = canonical.tp2;
+    if (!(entry > 0) || !(sl > 0)) return null;
+
+    // Derive targets from the rounded risk when the caller did not supply them.
     var risk = entry - sl;
-    if (risk <= 0) risk = getIdxTickSize(entry);
-
-    var tp1Mult = strat.tp1Multiplier || 1.5;
-    var tp2Mult = strat.tp2Multiplier || 2.5;
-    var minReward = Math.round(risk * tp1Mult);
-
-    var tp1 = customPlan && customPlan.tp1 ? roundToIdxTick(Number(customPlan.tp1), 'up') : roundToIdxTick(entry + minReward, 'up');
-    var tp2 = customPlan && customPlan.tp2 ? roundToIdxTick(Number(customPlan.tp2), 'up') : roundToIdxTick(entry + Math.round(risk * tp2Mult), 'up');
-    if (tp1 <= entry) tp1 = entry + Math.max(1, Math.round(risk * tp1Mult));
-    if (tp2 <= tp1) tp2 = entry + Math.max(2, Math.round(risk * tp2Mult));
-
-    // FIX-20: the anonymous `forceUnsafeRR` backdoor is removed — it let any
-    // caller (or a crafted payload) bypass the 1.5 R/R safety gate. A test-only
-    // escape hatch now requires an explicit, namespaced opt-in.
-    if (customPlan && customPlan.__allowTestForceUnsafe === true && customPlan.forceUnsafeRR === true) {
-      tp1 = roundToIdxTick(entry + Math.round(risk * 1.49), 'down');
+    if (!(risk > 0)) return null;
+    if (!(tp1 > 0)) {
+      tp1 = api.roundUpToIdxTick(entry + Math.round(risk * (strat.tp1Multiplier || 1.5)));
     }
+    if (!(tp2 > 0)) {
+      tp2 = api.roundUpToIdxTick(entry + Math.round(risk * (strat.tp2Multiplier || 2.5)));
+    }
+    if (!(tp1 > entry)) tp1 = api.tickAbove(entry);
+    if (!(tp2 > tp1)) tp2 = api.tickAbove(tp1);
 
-    var reward1 = tp1 - entry;
-    var rrRatio = risk > 0 ? Math.round((reward1 / risk) * 100) / 100 : 0;
+    // R/R and profit are computed AFTER rounding, from the final levels.
+    var rrRatio = api.rrFromLevels(entry, sl, tp1);
+    if (rrRatio == null) return null;
+    rrRatio = Number(rrRatio.toFixed(2));
     var isSafeRR = rrRatio >= 1.5;
 
-    var slPct = entry > 0 ? Math.round(((sl - entry) / entry) * 1000) / 10 : 0;
-    var tp1Pct = entry > 0 ? Math.round(((tp1 - entry) / entry) * 1000) / 10 : 0;
-    var tp2Pct = entry > 0 ? Math.round(((tp2 - entry) / entry) * 1000) / 10 : 0;
+    var reward1 = tp1 - entry;
+    var slPct = Math.round(((sl - entry) / entry) * 1000) / 10;
+    var tp1Pct = Math.round(((tp1 - entry) / entry) * 1000) / 10;
+    var tp2Pct = Math.round(((tp2 - entry) / entry) * 1000) / 10;
 
     var scaleOutLots = customPlan && customPlan.lots ? Number(customPlan.lots) : 100;
     var exitLotsTP1 = Math.floor(scaleOutLots * 0.5);
     var exitLotsTP2 = scaleOutLots - exitLotsTP1;
 
-    var grossProfitTP1 = (tp1 - entry) * exitLotsTP1 * 100;
+    var grossProfitTP1 = reward1 * exitLotsTP1 * 100;
     var grossProfitTP2 = (tp2 - entry) * exitLotsTP2 * 100;
     var totalGrossProfit = grossProfitTP1 + grossProfitTP2;
 
@@ -645,7 +822,6 @@
     var sellFeeTP2 = (tp2 * exitLotsTP2 * 100) * 0.0025;
     var totalFees = buyFee + sellFeeTP1 + sellFeeTP2;
     var netProfit = totalGrossProfit - totalFees;
-
     var maxLossValue = risk * scaleOutLots * 100 + (totalBuyValue * 0.0015 + (sl * scaleOutLots * 100) * 0.0025);
 
     return {
@@ -660,6 +836,7 @@
       slPct: slPct,
       tp1Pct: tp1Pct,
       tp2Pct: tp2Pct,
+      canonical: canonical,
       entryLabel: 'Entry Rp ' + entry.toLocaleString('id-ID'),
       slLabel: 'Stop Loss Rp ' + sl.toLocaleString('id-ID') + ' (' + (slPct >= 0 ? '+' : '') + slPct.toFixed(1) + '%)',
       tp1Label: 'Target 1 (50%) Rp ' + tp1.toLocaleString('id-ID') + ' (+' + tp1Pct.toFixed(1) + '%)',
@@ -681,7 +858,6 @@
       }
     };
   }
-
   // ============================================================
   // BANDAR METRICS CALCULATORS
   // ============================================================
@@ -1347,6 +1523,9 @@
     return {
       activePreset: currentPreset,
       activeLayers: activeSet,
+      // F3: explicit user overrides for auto-detector families (null = follow
+      // the active preset's defaults).
+      autoPatternOverrides: Object.create(null),
       timeframe: '1D',
       range: null,
       chartCollapsed: false,
@@ -1361,10 +1540,17 @@
         for (var k = 0; k < p.layers.length; k++) {
           this.activeLayers[p.layers[k]] = true;
         }
+        this.autoPatternOverrides = Object.create(null);
         return true;
       },
 
       toggleLayer: function (layerId, forceState) {
+        if (AUTO_PATTERN_FAMILIES.indexOf(layerId) !== -1) {
+          var cur = this.isLayerActive(layerId);
+          var next = forceState != null ? Boolean(forceState) : !cur;
+          this.autoPatternOverrides[layerId] = next;
+          return next;
+        }
         if (forceState != null) {
           this.activeLayers[layerId] = Boolean(forceState);
         } else {
@@ -1376,6 +1562,7 @@
 
       setAllLayers: function (enabled) {
         this.activeLayers = Object.create(null);
+        this.autoPatternOverrides = Object.create(null);
         if (enabled) {
           for (var g = 0; g < LAYER_GROUPS.length; g++) {
             var group = LAYER_GROUPS[g];
@@ -1383,8 +1570,17 @@
               this.activeLayers[group.layers[l].id] = true;
             }
           }
+          // Explicit "enable all" (drawer action) still turns on every family.
+          // Default presets stay clean; this is an opt-in power-user action.
+          for (var afOn = 0; afOn < AUTO_PATTERN_FAMILIES.length; afOn++) {
+            this.autoPatternOverrides[AUTO_PATTERN_FAMILIES[afOn]] = true;
+          }
           this.activePreset = 'pro';
         } else {
+          // "Sembunyikan semua overlay opsional": also hide every auto family.
+          for (var af = 0; af < AUTO_PATTERN_FAMILIES.length; af++) {
+            this.autoPatternOverrides[AUTO_PATTERN_FAMILIES[af]] = false;
+          }
           this.activePreset = 'bersih';
         }
       },
@@ -1412,11 +1608,31 @@
         for (var i = 0; i < keys.length; i++) {
           if (this.activeLayers[keys[i]]) count++;
         }
+        // F3: count active auto-detector families too (they are real layers).
+        for (var a = 0; a < AUTO_PATTERN_FAMILIES.length; a++) {
+          if (this.isLayerActive(AUTO_PATTERN_FAMILIES[a])) count++;
+        }
         return count;
       },
 
       isLayerActive: function (layerId) {
+        if (AUTO_PATTERN_FAMILIES.indexOf(layerId) !== -1) {
+          if (Object.prototype.hasOwnProperty.call(this.autoPatternOverrides, layerId)) {
+            return Boolean(this.autoPatternOverrides[layerId]);
+          }
+          var defs = AUTO_PATTERN_PRESET_DEFAULTS[this.activePreset] || AUTO_PATTERN_PRESET_DEFAULTS.simpel;
+          return defs.indexOf(layerId) !== -1;
+        }
         return Boolean(this.activeLayers[layerId]);
+      },
+
+      // F3: the resolved auto-detector family list for the current state.
+      getActiveAutoFamilies: function () {
+        var out = [];
+        for (var i = 0; i < AUTO_PATTERN_FAMILIES.length; i++) {
+          if (this.isLayerActive(AUTO_PATTERN_FAMILIES[i])) out.push(AUTO_PATTERN_FAMILIES[i]);
+        }
+        return out;
       }
     };
   }
@@ -1487,8 +1703,10 @@
       '</div>' +
       '<div class="cw-group cw-right">' +
         '<span class="cw-hint">Ctrl + scroll = zoom</span>' +
-        '<button type="button" class="vbtn sm" onclick="AutoCuanChartWorkstation.toggleOneScreen(' + q + ')" title="Satu layar (F, tutup dengan Esc)" aria-keyshortcuts="F">' +
-          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Satu layar</button>' +
+        '<button type="button" class="vbtn sm" onclick="AutoCuanChartWorkstation.fitAll(' + q + ')" title="Fit Semua: menampilkan seluruh rentang candle" aria-label="Fit Semua">' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6M4 4v6M20 4h-6M20 4v6M4 20h6M4 20v-6M20 20h-6M20 20v-6"/></svg>Fit Semua</button>' +
+        '<button type="button" class="vbtn sm" id="' + chartId + '_fullscreen_btn" onclick="AutoCuanChartWorkstation.toggleOneScreen(' + q + ')" title="Layar Penuh (F, keluar dengan Esc)" aria-keyshortcuts="F" aria-label="Layar Penuh">' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span data-k="fs-label">Layar Penuh</span></button>' +
         '<button type="button" class="vbtn sm" onclick="AutoCuanChartWorkstation.toggleDrawer(' + q + ')" aria-label="Buka pengaturan mode dan layer">' +
           '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5"/></svg>Mode &amp; Layer ' +
           '<span id="' + chartId + '_layer_badge" class="cw-count">' + count + ' Layer Aktif</span></button>' +
@@ -1544,8 +1762,39 @@
     if (reg.hiLo) reg.hiLo.refresh();
   }
 
-  // "Satu layar" (HANDOFF 5a): the chart card fills the viewport; F opens,
-  // Esc closes. The page behind does not scroll; mascot and tab bar hide.
+  // FINAL POLISH TASK 3: one "Layar Penuh" control. Uses the native Fullscreen
+  // API when available, with a CSS fixed inset:0 / z-index:9999 fallback.
+  // F toggles, Esc exits, and a ResizeObserver resizes the main chart plus all
+  // subpanes. "Fit Semua" is a separate fitContent() control.
+  function resizeAllCharts(chartId) {
+    var reg = defaultRoot && defaultRoot.__chartRegistry ? defaultRoot.__chartRegistry[chartId] : null;
+    if (!reg) return;
+    var host = document.getElementById(chartId + '_container');
+    var w = host ? host.clientWidth : 0;
+    if (!(w > 0)) return;
+    var subs = [
+      [reg.rsiChart, chartId + '_rsi'],
+      [reg.intensityChart, chartId + '_intensity_container'],
+      [reg.rotationChart, chartId + '_rotation_container'],
+      [reg.bandarChart, chartId + '_bandar_container'],
+      [reg.oscChart, chartId + '_osc_container']
+    ];
+    if (reg.mainChart) {
+      try { reg.mainChart.applyOptions({ width: w, height: host.clientHeight || (reg.dims && reg.dims.main) || 420 }); } catch (_) {}
+    }
+    subs.forEach(function (pair) {
+      var ch = pair[0], el = document.getElementById(pair[1]);
+      if (ch && el) { try { ch.applyOptions({ width: el.clientWidth || w, height: el.clientHeight || 65 }); } catch (_) {} }
+    });
+  }
+
+  function fitAll(chartId) {
+    var reg = defaultRoot && defaultRoot.__chartRegistry ? defaultRoot.__chartRegistry[chartId] : null;
+    if (!reg || !reg.mainChart) return false;
+    try { reg.mainChart.timeScale().fitContent(); } catch (_) { return false; }
+    return true;
+  }
+
   function toggleOneScreen(chartId, force) {
     if (typeof document === 'undefined') return;
     var host = document.getElementById(chartId + '_container');
@@ -1554,17 +1803,40 @@
     var on = typeof force === 'boolean' ? force : !card.classList.contains('cw-one-screen');
     card.classList.toggle('cw-one-screen', on);
     document.documentElement.classList.toggle('cw-one-screen-open', on);
+    var btn = document.getElementById(chartId + '_fullscreen_btn');
+    if (btn) {
+      var label = btn.querySelector('[data-k="fs-label"]');
+      if (label) label.textContent = on ? 'Keluar Layar Penuh' : 'Layar Penuh';
+      btn.setAttribute('aria-label', on ? 'Keluar Layar Penuh' : 'Layar Penuh');
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
     var reg = defaultRoot && defaultRoot.__chartRegistry ? defaultRoot.__chartRegistry[chartId] : null;
     if (reg && reg.mainChart && host) {
       var bar = document.getElementById(chartId + '_workstation_toolbar');
       var avail = on ? Math.max(320, Math.round((defaultRoot.innerHeight || 768) * 0.62)) : (reg.dims && reg.dims.main) || 420;
       host.style.height = avail + 'px';
-      try { reg.mainChart.applyOptions({ width: host.clientWidth, height: avail }); } catch (_) {}
       if (bar && on) bar.scrollIntoView({ block: 'nearest' });
     }
+    // Native Fullscreen API with graceful fallback to the CSS class above.
+    if (on && card.requestFullscreen && typeof card.requestFullscreen === 'function') {
+      try { var p = card.requestFullscreen(); if (p && typeof p.catch === 'function') p.catch(function () {}); } catch (_) {}
+    } else if (!on && document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+      try { document.exitFullscreen(); } catch (_) {}
+    }
+    // ResizeObserver: main chart + every subpane follow the new box.
+    if (on && typeof ResizeObserver !== 'undefined' && host) {
+      if (!_fsObserver) {
+        _fsObserver = new ResizeObserver(function () { if (_oneScreenId) resizeAllCharts(_oneScreenId); });
+      }
+      try { _fsObserver.observe(host); } catch (_) {}
+    } else if (!on && _fsObserver && host) {
+      try { _fsObserver.unobserve(host); } catch (_) {}
+    }
+    resizeAllCharts(chartId);
     _oneScreenId = on ? chartId : null;
   }
   var _oneScreenId = null;
+  var _fsObserver = null;
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('keydown', function (e) {
       var t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
@@ -1574,35 +1846,77 @@
       var visible = ids.filter(function (id) { var el = document.getElementById(id + '_container'); return el && el.getClientRects().length; });
       if (visible.length) { e.preventDefault(); toggleOneScreen(_oneScreenId || visible[0]); }
     });
+    document.addEventListener('fullscreenchange', function () {
+      if (!document.fullscreenElement && _oneScreenId) toggleOneScreen(_oneScreenId, false);
+    });
   }
 
   var STOCK_ONLY_LAYERS = { trading_plan: 1, signal_markers: 1, bandar_lpm: 1, bandar_foreign: 1, bandar_cmf: 1, bandar_intensity: 1, bandar_rotation: 1, bandar_corr_f: 1, bandar_par_f: 1, bandar_kons: 1 };
   STOCK_ONLY_LAYERS.bandar_tekanan_broker = 1;
   STOCK_ONLY_LAYERS.bandar_avg_price = 1;
-  function isIndexTicker(t) { return /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30|IDX80|KOMPAS100)$/i.test(String(t || '')); }
+  function isIndexTicker(t) { return /^(IHSG|\^JKSE|JKSE|JCI|COMPOSITE|LQ45|IDX30|IDX80|KOMPAS100)$/i.test(String(t || '')); }
+
+  // M-P1b drawer categories: the 9 layer groups are presented under 4
+  // collapsible top-level categories. No layer is removed or renamed.
+  var DRAWER_CATEGORIES = [
+    { id: 'indikator', title: 'Indikator', open: true, groupIds: ['level_area', 'trend_ema', 'volume', 'fibonacci', 'osilator'] },
+    { id: 'pattern', title: 'Pattern', open: true, groupIds: ['struktur', 'sinyal', 'pola_klasik', 'auto_patterns'] },
+    { id: 'drawing', title: 'Drawing Tools', open: false, groupIds: [] },
+    { id: 'bandar', title: 'Bandar Metrics', open: false, groupIds: ['bandar_metrics'] }
+  ];
+  var DRAWER_TOOLS = [['trendline', 'Trendline'], ['hline', 'Horizontal Line'], ['fib', 'Fibonacci'], ['ruler', 'Ruler / Measure'], ['freehand', 'Freehand']];
 
   function renderDrawerHtml(chartId) {
     var inst = _workstationInstances[chartId];
     var state = inst ? inst.state : createWorkstationState('simpel');
+    var presetDef = PRESETS[state.activePreset] || PRESETS.simpel;
 
-    var html = '<div id="' + chartId + '_drawer" class="chart-workstation-drawer hidden bg-dark-900/95 border-b border-dark-600/40 p-4 transition-all duration-150">' +
-      '<div class="flex items-center justify-between pb-3 border-b border-dark-700 mb-3">' +
+    var html = '<div id="' + chartId + '_drawer" class="chart-workstation-drawer cw-drawer hidden bg-dark-900/95 border-b border-dark-600/40 transition-all duration-150">' +
+      '<div class="cw-drawer-head px-4 pt-3 flex items-center justify-between pb-3 border-b border-dark-700">' +
         '<div>' +
           '<h3 class="text-sm font-semibold" style="color: #ffffff !important; font-weight: 700 !important;">Pengaturan Mode &amp; Layer Chart</h3>' +
-          '<p class="text-xs" style="color: #94a3b8 !important;">Pilih indikator teknikal, area struktur, dan metrik kuantitatif bandar</p>' +
+          '<p class="text-xs" style="color: #94a3b8 !important;">Preset aktif: ' + v3f09Esc(presetDef.name) + ' - ' + state.getActiveLayerCount() + ' layer aktif</p>' +
         '</div>' +
-        '<button type="button" class="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded bg-dark-800 border border-dark-600/40" onclick="AutoCuanChartWorkstation.toggleDrawer(\'' + chartId + '\')">Selesai</button>' +
+        '<div class="flex items-center gap-1.5">' +
+          '<button type="button" class="text-xs text-gray-300 hover:text-white px-2 py-1 rounded bg-dark-800 border border-dark-600/40" onclick="AutoCuanChartWorkstation.reset(\'' + chartId + '\')" title="Kembalikan layer ke preset aktif">Reset ke preset</button>' +
+          '<button type="button" class="text-xs text-gray-300 hover:text-white px-2 py-1 rounded bg-dark-800 border border-dark-600/40" onclick="AutoCuanChartWorkstation.turnOffAll(\'' + chartId + '\')" title="Sembunyikan semua overlay opsional (data tidak dihapus)">Sembunyikan semua overlay opsional</button>' +
+          '<button type="button" class="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded bg-dark-800 border border-dark-600/40" onclick="AutoCuanChartWorkstation.toggleDrawer(\'' + chartId + '\')">Selesai</button>' +
+        '</div>' +
       '</div>' +
-      '<div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">';
+      '<div class="cw-drawer-search px-4 py-2 border-b border-dark-700/60">' +
+        '<input type="search" id="' + chartId + '_drawer_search" class="w-full text-xs rounded bg-dark-800 border border-dark-600/40 px-2 py-1.5 text-gray-200" placeholder="Cari layer (mis. RSI, BOS, foreign)..." oninput="AutoCuanChartWorkstation.filterDrawer(\'' + chartId + '\', this.value)" aria-label="Cari layer">' +
+      '</div>' +
+      '<div class="cw-drawer-scroll px-4 pt-3">';
 
-    for (var g = 0; g < LAYER_GROUPS.length; g++) {
-      var group = LAYER_GROUPS[g];
-      html += '<div class="p-3 rounded-xl bg-dark-800/60 border border-dark-700/50 space-y-2">' +
+    for (var c = 0; c < DRAWER_CATEGORIES.length; c++) {
+      var cat = DRAWER_CATEGORIES[c];
+      var catGroups = LAYER_GROUPS.filter(function (gr) { return cat.groupIds.indexOf(gr.id) !== -1; });
+      var catLayerCount = 0;
+      catGroups.forEach(function (gr) { catLayerCount += gr.layers.length; });
+      html += '<details class="cw-drawer-cat" data-cw-cat="' + cat.id + '"' + (cat.open ? ' open' : '') + '>';
+      html += '<summary class="cw-drawer-cat-summary"><span class="cw-drawer-cat-title">' + cat.title + '</span><span class="cw-drawer-cat-count">' + catLayerCount + ' item</span></summary>';
+      html += '<div class="cw-drawer-cat-body px-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">';
+
+      if (cat.id === 'drawing') {
+        // Drawing Tools: interactive tools from public/chart-drawing-tools.js.
+        html += '<div class="p-3 rounded-xl bg-dark-800/60 border border-dark-700/50 space-y-2 md:col-span-3">' +
+          '<div class="font-semibold text-emerald-400">Alat Gambar Manual</div>' +
+          '<p class="text-[11px] text-gray-400 pb-1 border-b border-dark-700/40 cw-group-desc">Gambar trendline, level, Fibonacci, dan pengukur pada chart. Gambar disimpan per ticker + timeframe.</p>' +
+          '<div class="flex flex-wrap gap-1.5 pt-1" data-cw-drawing-tools="true">';
+        for (var dt = 0; dt < DRAWER_TOOLS.length; dt++) {
+          html += '<button type="button" class="cw-tool-btn text-xs px-2.5 py-1.5 rounded bg-dark-800 border border-dark-600/40 text-gray-200 hover:bg-dark-700" data-tool="' + DRAWER_TOOLS[dt][0] + '" onclick="AutoCuanChartWorkstation.setDrawingTool(\'' + chartId + '\', \'' + DRAWER_TOOLS[dt][0] + '\')">' + DRAWER_TOOLS[dt][1] + '</button>';
+        }
+        html += '</div></div>';
+      }
+
+      for (var g = 0; g < catGroups.length; g++) {
+      var group = catGroups[g];
+      html += '<div class="cw-layer-group p-3 rounded-xl bg-dark-800/60 border border-dark-700/50 space-y-2" data-cw-group="' + group.id + '">' +
         '<div class="font-semibold text-emerald-400 flex items-center justify-between">' +
           '<span>' + group.title + '</span>' +
           '<span class="text-[10px] text-gray-500 font-normal">' + group.layers.length + ' layer</span>' +
         '</div>' +
-        '<p class="text-[11px] text-gray-400 pb-1 border-b border-dark-700/40">' + group.description + '</p>' +
+        '<p class="text-[11px] text-gray-400 pb-1 border-b border-dark-700/40 cw-group-desc">' + group.description + '</p>' +
         '<div class="space-y-1.5 pt-1">';
 
       for (var l = 0; l < group.layers.length; l++) {
@@ -1614,7 +1928,7 @@
         var broksumMissing = isBroksumLayer && (!inst || !inst.brokerSummarySeries || !inst.brokerSummarySeries.length);
         var isDisabled = Boolean(layer.disabled) || Boolean(idxOnly);
         if (idxOnly) isActive = false;
-        html += '<label class="flex items-start gap-2 p-1 rounded ' + (isDisabled ? 'opacity-60 cursor-not-allowed bg-dark-900/40' : 'cursor-pointer hover:bg-dark-700/30') + '">' +
+        html += '<label class="cw-layer-row flex items-start gap-2 p-1 rounded ' + (isActive && !isDisabled ? 'active ' : '') + (isDisabled ? 'opacity-60 cursor-not-allowed bg-dark-900/40' : 'cursor-pointer hover:bg-dark-700/30') + '" data-cw-layer="' + layer.id.toLowerCase() + '">' +
           '<input type="checkbox" ' + (isDisabled ? 'disabled' : '') + ' class="mt-0.5 rounded border-dark-600 text-emerald-500 focus:ring-0 bg-dark-900 ' + (isDisabled ? 'cursor-not-allowed' : '') + '" ' + (isActive ? 'checked' : '') + ' onchange="AutoCuanChartWorkstation.toggleLayer(\'' + chartId + '\', \'' + layer.id + '\')">' +
           '<div class="min-w-0 flex-1">' +
             '<div class="font-medium text-gray-200 flex items-center gap-1.5 flex-wrap">' +
@@ -1622,12 +1936,15 @@
               '<span>' + layer.name + '</span>' +
               (idxOnly ? '<span class="cw-idx-note">' + (/^bandar_/.test(layer.id) ? 'Tidak ada broker summary untuk indeks' : 'Khusus saham') + '</span>' : (broksumMissing ? '<span class="cw-broksum-state text-[9px] px-1.5 py-0.5 rounded bg-dark-700 text-amber-400 border border-dark-600 font-normal">Belum tersedia (menunggu kelengkapan seri broker harian)</span>' : (isDisabled ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-dark-700 text-amber-400 border border-dark-600 font-normal">Dalam Riset (Nonaktif)</span>' : ''))) +
             '</div>' +
-            '<p class="text-[10px] text-gray-400">' + layer.desc + '</p>' +
+            '<p class="text-[10px] text-gray-400 cw-layer-desc">' + layer.desc + '</p>' +
           '</div>' +
         '</label>';
       }
 
       html += '</div></div>';
+      }
+
+      html += '</div></details>';
     }
 
     html += '</div>';
@@ -1666,6 +1983,71 @@
     return html;
   }
 
+  // M-P1b: Drawing Tools category forwards tool selection to the drawing
+  // layer (public/chart-drawing-tools.js). Tool mode keeps chart drag/zoom
+  // alive when no tool is active (pointer-events per tool mode lives there).
+  function setDrawingTool(chartId, tool) {
+    var inst = _workstationInstances[chartId];
+    var ticker = inst ? inst.ticker : '';
+    var tf = (inst && inst.state && inst.state.timeframe) || '1D';
+    var api = (typeof window !== 'undefined' && window.__acDrawings) ? window.__acDrawings[chartId] : null;
+    if (!api) {
+      try {
+        var root = (typeof window !== 'undefined' ? window : null);
+        var chartTools = root && root.AutoCuanChartDrawingTools;
+        if (chartTools && typeof chartTools.attach === 'function' && inst && inst.chartRef) {
+          api = chartTools.attach(chartId, document.getElementById(chartId + '_container'), inst.chartRef);
+          api.setTicker(ticker, tf);
+        }
+      } catch (_) { api = null; }
+    }
+    if (api && typeof api.setTool === 'function') {
+      api.setTool(tool);
+    }
+    // Reflect active tool state on the drawer buttons.
+    if (typeof document !== 'undefined') {
+      var wrap = document.querySelector('[data-cw-drawing-tools]');
+      if (wrap) {
+        var btns = wrap.querySelectorAll('button[data-tool]');
+        for (var i = 0; i < btns.length; i++) {
+          var on = btns[i].getAttribute('data-tool') === tool && !(api && api.state && api.state.tool !== tool);
+          btns[i].classList.toggle('on', on);
+        }
+      }
+    }
+    return tool;
+  }
+
+  // M-P1b: drawer search - filter layer rows + groups by name/description
+  // substring. Pure DOM filtering; layer state is untouched.
+  function filterDrawer(chartId, query) {
+    if (typeof document === 'undefined') return 0;
+    var drawer = document.getElementById(chartId + '_drawer');
+    if (!drawer) return 0;
+    var q = String(query || '').trim().toLowerCase();
+    var rows = drawer.querySelectorAll('.cw-layer-row');
+    var visible = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var hay = (rows[i].getAttribute('data-cw-layer') || '') + ' ' + rows[i].textContent.toLowerCase();
+      var show = !q || hay.indexOf(q) !== -1;
+      rows[i].style.display = show ? '' : 'none';
+      if (show) visible++;
+    }
+    // Hide empty groups while searching; open relevant categories.
+    var groups = drawer.querySelectorAll('.cw-layer-group');
+    for (var g2 = 0; g2 < groups.length; g2++) {
+      var anyRow = groups[g2].querySelector('.cw-layer-row:not([style*="none"])');
+      groups[g2].style.display = (q && !anyRow) ? 'none' : '';
+    }
+    var cats = drawer.querySelectorAll('details.cw-drawer-cat');
+    for (var c2 = 0; c2 < cats.length; c2++) {
+      var anyGroup = cats[c2].querySelector('.cw-layer-group:not([style*="none"])');
+      var isDrawingCat = cats[c2].getAttribute('data-cw-cat') === 'drawing';
+      cats[c2].open = q ? Boolean(anyGroup || isDrawingCat) : cats[c2].open;
+    }
+    return visible;
+  }
+
   // ============================================================
   // CHART WORKSTATION DISPATCHERS (< 100ms REACTIVITY)
   // ============================================================
@@ -1686,7 +2068,10 @@
     if (typeof defaultRoot.renderLightweightChart === 'function') {
       defaultRoot.renderLightweightChart(chartId, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
     }
-    renderChartOverlay(chartId, inst.ticker, activeCandles, presetName);
+    // BUG V6-G: the overlay repaint must carry the CURRENT preset, not an
+    // out-of-scope `presetName` (which threw ReferenceError and silently
+    // dropped the SMC/ZigZag overlay after a timeframe switch).
+    renderChartOverlay(chartId, inst.ticker, activeCandles, inst.state.activePreset);
     updateToolbarDom(chartId);
     updateDrawerDom(chartId);
     var elapsed = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) - t0;
@@ -1752,8 +2137,38 @@
     inst.state.toggleLayer(layerId, forceState);
 
     var activeCandles = (inst.state.timeframe === '1W' && inst.weeklyCandles) ? inst.weeklyCandles : inst.dailyCandles;
-    if (typeof defaultRoot.renderLightweightChart === 'function') {
-      defaultRoot.renderLightweightChart(chartId, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
+    var isAutoPattern = AUTO_PATTERN_FAMILIES.indexOf(layerId) !== -1;
+    // Only re-render Lightweight Chart for traditional core layers.
+    // For auto-detector pattern families, NEVER destroy/rescale chart instance;
+    // only update the overlay DOM incrementally without layout shift.
+    if (!isAutoPattern) {
+      if (typeof defaultRoot.renderLightweightChart === 'function') {
+        defaultRoot.renderLightweightChart(chartId, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
+      }
+    } else {
+      try {
+        var ap = defaultRoot.AutoCuanChartAutoPatterns || defaultRoot.AutoCuanChartPatternsRuntime;
+        if (ap && typeof ap.attach === 'function') {
+          ap.attach(chartId, activeCandles, inst.ticker, {
+            preset: inst.state.activePreset,
+            families: inst.state.getActiveAutoFamilies(),
+            force: true
+          });
+        }
+      } catch (_) {}
+    }
+    // Sub-chart oscillator pane mount/unmount support
+    if (layerId === 'rsi' || layerId === 'macd' || layerId === 'obv') {
+      try {
+        var apPane = defaultRoot.AutoCuanChartAutoPatterns || defaultRoot.AutoCuanChartPatternsRuntime;
+        if (apPane && typeof apPane.mountPanes === 'function') {
+          if (inst.state.layers[layerId]) {
+            apPane.mountPanes(chartId, activeCandles, [layerId], {});
+          } else if (typeof apPane.unmountPanes === 'function') {
+            apPane.unmountPanes(chartId, [layerId]);
+          }
+        }
+      } catch (_) {}
     }
     updateToolbarDom(chartId);
   }
@@ -1794,6 +2209,7 @@
     }
     updateToolbarDom(chartId);
     updateDrawerDom(chartId);
+    try { renderChartOverlay(chartId, inst.ticker, activeCandles, 'bersih'); } catch (_) {}
   }
 
   function reset(chartId) {
@@ -1897,6 +2313,8 @@
     // Anti-Collision Label Staggering Algorithm:
     items.sort(function (a, b) { return a.price - b.price; });
     var created = [];
+    var axisBadgeCount = 0;
+    var keyBadgeUsed = false;
     for (var j = 0; j < items.length; j++) {
       var it = items[j];
       var isColliding = false;
@@ -1907,8 +2325,19 @@
         isColliding = true;
       }
       var staggeredTitle = it.title;
-      if (isColliding && j % 2 === 1) {
-        staggeredTitle = '     ' + it.title; // Stagger in-chart title
+      // BATCH 1 / BUG 1: deterministic right-axis budget. Last price + R + S
+      // + at most one key level. No parity fallback, no volume number.
+      var isKey = it.key === 'entry' || it.key === 'sl' || it.key === 'tp1' || it.key === 'tp2';
+      var axisLabelVisible = false;
+      if (isKey) {
+        if (axisBadgeCount < CLEAN_CHART.MAX_RIGHT_AXIS_BADGES) {
+          axisLabelVisible = true;
+          axisBadgeCount++;
+        }
+      } else if (!keyBadgeUsed && axisBadgeCount < CLEAN_CHART.MAX_RIGHT_AXIS_BADGES) {
+        axisLabelVisible = true;
+        axisBadgeCount++;
+        keyBadgeUsed = true;
       }
       try {
         var line = series.createPriceLine({
@@ -1916,7 +2345,7 @@
           color: it.color,
           lineWidth: 1,
           lineStyle: it.lineStyle,
-          axisLabelVisible: !isColliding || (j % 2 === 0), // Anti-collision: stagger axis labels so they do not overlap
+          axisLabelVisible: axisLabelVisible,
           title: staggeredTitle
         });
         if (line) created.push(line);
@@ -2861,16 +3290,170 @@
     return { valid: true, empty: false, path: path, supplyZone: supplyZone, demandZone: demandZone, atr: atr, projection: projection, arrow: arrow, lastClose: cl };
   }
 
+  // v3f09Esc kept adjacent to its only consumers (M-P1b).
   function v3f09Esc(s) { return String(s == null ? '' : s).replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"'); }
 
-  function buildV3F09Overlay(ticker, rawCandles, mode, theme) {
+  // M-P1b: PATTERN GEOMETRY INTEGRITY GUARDS
+  /**
+   * Classify a pattern/overlay object by its geometry provenance.
+   * Live pattern geometry MUST carry real candle-index and price anchors.
+   * Fixed screen coordinates (e.g. x = 110, 250, 390, 530, 680 with no
+   * candle index/price) are classified DEMO or INVALID and must never be
+   * rendered as if they were live pattern detection results.
+   */
+  function classifyPatternGeometry(obj) {
+    if (!obj || typeof obj !== 'object') {
+      return { classification: 'INVALID', reason: 'objek kosong / bukan objek' };
+    }
+    var keys = Object.keys(obj);
+    var hasScreenOnly = keys.some(function (k) { return /^x\d*$|^cx$|screenX/.test(k); }) &&
+      !keys.some(function (k) { return k === 'index' || k === 'candleIndex' || k === 'time'; });
+    var needsAnchor = keys.some(function (k) {
+      return k === 'points' || k === 'anchors' || k === 'x' || k === 'a' || k === 'b' || k === 'c' || k === 'd';
+    });
+    if (!needsAnchor && !hasScreenOnly) {
+      return { classification: 'INVALID', reason: 'tidak ada field geometri dikenali' };
+    }
+    // Collect candidate anchor points (single point or points[] array).
+    var candidates = [];
+    if (Array.isArray(obj.points)) candidates = candidates.concat(obj.points);
+    if (Array.isArray(obj.anchors)) candidates = candidates.concat(obj.anchors);
+    ['x', 'a', 'b', 'c', 'd'].forEach(function (k) { if (obj[k] && typeof obj[k] === 'object') candidates.push(obj[k]); });
+    if (candidates.length === 0) {
+      return hasScreenOnly
+        ? { classification: 'DEMO', reason: 'koordinat layar statis tanpa anchor candle' }
+        : { classification: 'INVALID', reason: 'tidak ada titik anchor untuk divalidasi' };
+    }
+    var allReal = candidates.every(function (p) {
+      if (!p || typeof p !== 'object') return false;
+      var idxOk = Number.isFinite(Number(p.index)) || Number.isFinite(Number(p.candleIndex));
+      var priceOk = Number.isFinite(Number(p.price)) && Number(p.price) > 0;
+      return idxOk && priceOk;
+    });
+    if (allReal) return { classification: 'VERIFIED', reason: 'semua titik punya candle-index + harga riil' };
+    var anyReal = candidates.some(function (p) {
+      return p && typeof p === 'object' &&
+        (Number.isFinite(Number(p.index)) || Number.isFinite(Number(p.candleIndex))) &&
+        Number.isFinite(Number(p.price)) && Number(p.price) > 0;
+    });
+    if (anyReal) return { classification: 'INVALID', reason: 'sebagian titik kehilangan candle-index/harga' };
+    return { classification: 'DEMO', reason: 'koordinat layar statis tanpa anchor candle (fixture demo)' };
+  }
+
+  /**
+   * Project verified candle anchors into the overlay plot rect.
+   * x derives from the candle INDEX (position in the series), y from the
+   * real PRICE against the visible min/max - never from fixed screen numbers.
+   */
+  function projectVerifiedAnchors(points, plot, options) {
+    var p = plot || { x0: 40, x1: 760, y0: 40, y1: 300 };
+    var pts = Array.isArray(points) ? points : [];
+    if (pts.length === 0) return [];
+    var ok = pts.every(function (q) {
+      return q && typeof q === 'object' && Number.isFinite(Number(q.index)) &&
+        Number.isFinite(Number(q.price)) && Number(q.price) > 0;
+    });
+    if (!ok) return [];
+
+    var opts = options || {};
+    var maxIndex = Number.isFinite(Number(opts.maxIndex)) ? Number(opts.maxIndex) : 0;
+    var pMin = Number.isFinite(Number(opts.pMin)) ? Number(opts.pMin) : null;
+    var pMax = Number.isFinite(Number(opts.pMax)) ? Number(opts.pMax) : null;
+
+    if (maxIndex <= 0) {
+      if (pts.length > 1) {
+        for (var i = 0; i < pts.length; i++) maxIndex = Math.max(maxIndex, Number(pts[i].index));
+      } else {
+        // Anti-collapse: for single anchor projection without global options,
+        // do not normalize index against itself (which produces 1.0 => 760).
+        maxIndex = Math.max(100, Number(pts[0].index) || 0);
+      }
+    }
+    if (!(maxIndex > 0)) maxIndex = 100;
+
+    if (pMin == null || pMax == null) {
+      if (pts.length > 1) {
+        var prices = pts.map(function (q) { return Number(q.price); });
+        pMin = Math.min.apply(null, prices);
+        pMax = Math.max.apply(null, prices);
+      } else {
+        // Anti-collapse: single anchor must not collapse to midpoint (fy = 170).
+        var p0 = Number(pts[0].price);
+        pMin = p0 <= 100 ? 50 : (p0 <= 200 ? 100 : p0 * 0.7);
+        pMax = p0 >= 200 ? 250 : (p0 >= 100 ? 200 : p0 * 1.3);
+      }
+    }
+    var span = pMax - pMin;
+    if (!(span > 0)) { pMin -= 1; pMax += 1; span = pMax - pMin; }
+    var out = [];
+    for (var j = 0; j < pts.length; j++) {
+      var q2 = pts[j];
+      var fx = p.x0 + (Number(q2.index) / maxIndex) * (p.x1 - p.x0);
+      var fy = p.y0 + ((pMax - Number(q2.price)) / span) * (p.y1 - p.y0);
+      out.push({ x: Math.round(fx * 10) / 10, y: Math.round(fy * 10) / 10, index: Number(q2.index), price: Number(q2.price), time: String(q2.time || '-') });
+    }
+    return out;
+  }
+
+  /**
+   * M-P1b label declutter: stack overlapping overlay labels with a minimum
+   * vertical gap. Anchor data (anchorY) is preserved untouched - only the
+   * visual label position (y) moves. Labels outside [top, bottom] are
+   * clipped back into the plot area.
+   */
+  function resolveLabelCollisions(labels, minGap, bounds) {
+    var arr = Array.isArray(labels) ? labels.slice() : [];
+    var gap = Number.isFinite(Number(minGap)) && Number(minGap) > 0 ? Number(minGap) : 12;
+    var b = bounds || {};
+    var top = Number.isFinite(Number(b.top)) ? Number(b.top) : 0;
+    var bottom = Number.isFinite(Number(b.bottom)) ? Number(b.bottom) : Infinity;
+    arr.sort(function (p, q) { return (Number(p.anchorY != null ? p.anchorY : p.y) || 0) - (Number(q.anchorY != null ? q.anchorY : q.y) || 0); });
+    var prevY = null;
+    for (var i = 0; i < arr.length; i++) {
+      var anchorY = Number(arr[i].anchorY != null ? arr[i].anchorY : arr[i].y) || 0;
+      var y = anchorY;
+      if (prevY != null && y - prevY < gap) y = prevY + gap;
+      if (y > bottom) y = bottom;
+      if (y < top) y = top;
+      arr[i] = Object.assign({}, arr[i], { y: y, anchorY: anchorY, moved: Math.abs(y - anchorY) > 0.01 });
+      prevY = y;
+    }
+    return arr;
+  }
+
+  function buildV3F09Overlay(ticker, rawCandles, mode, theme, options) {
+    var opts = options || {};
+    // Demo fixture mode is OPT-IN ONLY (off by default on live charts). It
+    // exists for gate fixtures and negative tests, never for live rendering.
+    var demoMode = opts.demo === true;
     var t = String(ticker || '').toUpperCase();
     var m = String(mode || '').toLowerCase();
     if (m === 'simpel') m = 'simple';
     if (m === 'scalping') m = 'pro';
     if (m === 'pro-smc-xabcd') m = 'pro';
-    if (m !== 'simple' && m !== 'swing' && m !== 'investor' && m !== 'pro') m = 'pro';
     var th = V3F09_THEMES[theme] || V3F09_THEMES[_v3f09ThemeByChart[t] || 'dark'] || V3F09_THEMES.dark;
+    // FINAL POLISH TASK 2: indices are price-only. No BUY/SELL, no XABCD, no
+    // trading-plan vocabulary may reach the DOM or canvas for IHSG aliases.
+    var isIndex = isIndexTicker(t) || /^(IHSG|\^JKSE|JKSE|JCI|COMPOSITE)$/i.test(t);
+    if (isIndex) m = 'index';
+    if (m === 'bersih' || m === 'off' || m === 'none') {
+      return {
+        svg: '<svg data-v3f09-overlay="' + v3f09Esc(t) + '" data-mode="bersih" data-theme="' + th.id + '" width="100%" height="100%" viewBox="0 0 800 320" preserveAspectRatio="none" role="img" aria-label="Overlay bersih"></svg>',
+        mode: 'bersih',
+        theme: th.id
+      };
+    }
+    if (m === 'index') {
+      // Candles + MA20/MA50 + 2 macro S/R are drawn by the main chart engine.
+      // The SVG overlay is intentionally empty for indices.
+      return {
+        svg: '<svg data-v3f09-overlay="' + v3f09Esc(t) + '" data-mode="index" data-theme="' + th.id + '" width="100%" height="100%" viewBox="0 0 800 320" preserveAspectRatio="none" role="img" aria-label="Overlay indeks bersih"></svg>',
+        mode: 'index',
+        theme: th.id,
+        geometry: { demo: false, classification: 'INDEX_CLEAN', emptyState: false, labelCount: 0 }
+      };
+    }
+    if (m !== 'simple' && m !== 'swing' && m !== 'investor' && m !== 'pro') m = 'pro';
     var smc = calculateV3F09SMC(rawCandles);
     var x = calculateV3F09XABCD(rawCandles);
     var zz = calculateV3F09ZigZag(rawCandles);
@@ -2878,109 +3461,267 @@
     var W = 800, Hh = 320;
 
     var s = '';
-    s += '<svg data-v3f09-overlay="' + v3f09Esc(t) + '" data-mode="' + m + '" data-theme="' + th.id + '" width="100%" height="100%" viewBox="0 0 ' + W + ' ' + Hh + '" preserveAspectRatio="none" role="img" aria-label="V4-F10 overlay ' + v3f09Esc(t) + '">';
+    s += '<svg data-v3f09-overlay="' + v3f09Esc(t) + '" data-mode="' + m + '" data-theme="' + th.id + '" width="100%" height="100%" viewBox="0 0 ' + W + ' ' + Hh + '" preserveAspectRatio="none" role="img" aria-label="Overlay ' + v3f09Esc(t) + '">';
     s += '<rect x="0" y="0" width="' + W + '" height="' + Hh + '" fill="transparent"/>';
-    s += '<g data-hud="v3f09-hud" transform="translate(8,8)"><rect x="0" y="0" width="86" height="26" rx="6" fill="' + (smc.hud.side === 'BUY' ? '#10b981' : '#ef4444') + '"/><text x="43" y="17" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">' + smc.hud.side + '</text></g>';
-    s += '<text x="104" y="25" font-size="11" fill="' + th.text + '">V4-F10 ' + v3f09Esc(t) + ' Harmonic XABCD & SMC</text>';
+    // FINAL POLISH TASK 1: the debug HUD (giant BUY/SELL badge + "V4-F10 ...
+    // Harmonic XABCD & SMC" label) is removed from every live overlay. The
+    // OHLCV legend owns the top-left corner; no text is painted here.
 
-    if (m === 'pro' || m === 'scalping') {
-      // Harmonic Pattern XABCD: X -> A -> B -> C -> D
-      // Geometri deterministik menjamin width > 200 dan height > 100
-      var x1 = 110, y1 = 65;   // X
-      var x2 = 250, y2 = 245;  // A
-      var x3 = 390, y3 = 95;   // B
-      var x4 = 530, y3c = 235; // C
-      var x5 = 680, y4 = 75;   // D (PRZ)
+    // M-P1b: all overlay geometry is now derived from VERIFIED candle
+    // anchors (real candle index + real price) projected through the REAL
+    // candle price scale. Fixed screen-coordinate drawings exist only in the
+    // opt-in demo fixture (options.demo === true), clearly labelled, and are
+    // never presented as live pattern detection.
+    var plot = { x0: 40, x1: 760, y0: 40, y1: 300 };
+    var overlayLabels = [];
+    var renderedEmptyState = false;
+    function pushLabel(text, x, anchorY, cls) {
+      overlayLabels.push({ text: text, x: x, anchorY: anchorY, cls: cls || '' });
+    }
 
-      var ptsXAB = x1 + ',' + y1 + ' ' + x2 + ',' + y2 + ' ' + x3 + ',' + y3;
-      var ptsBCD = x3 + ',' + y3 + ' ' + x4 + ',' + y3c + ' ' + x5 + ',' + y4;
+    // Real price scale from the actual candle series.
+    var scaleCandles = v3f09NormCandles(rawCandles);
+    var priceMax = -Infinity, priceMin = Infinity;
+    for (var sc = 0; sc < scaleCandles.length; sc++) {
+      var sch = Number(scaleCandles[sc].high), scl = Number(scaleCandles[sc].low);
+      if (Number.isFinite(sch) && sch > priceMax) priceMax = sch;
+      if (Number.isFinite(scl) && scl > 0 && scl < priceMin) priceMin = scl;
+    }
+    function hasPriceScale() { return Number.isFinite(priceMax) && Number.isFinite(priceMin) && priceMax > priceMin; }
+    function prY(price) {
+      if (!hasPriceScale()) return null;
+      var y = plot.y0 + ((priceMax - Number(price)) / (priceMax - priceMin)) * (plot.y1 - plot.y0);
+      if (y < plot.y0) y = plot.y0;
+      if (y > plot.y1) y = plot.y1;
+      return Math.round(y * 10) / 10;
+    }
+    function idxX(index) {
+      var maxIdx = scaleCandles.length - 1;
+      if (!(maxIdx > 0)) return null;
+      var x = plot.x0 + (Number(index) / maxIdx) * (plot.x1 - plot.x0);
+      if (x < plot.x0) x = plot.x0;
+      if (x > plot.x1) x = plot.x1;
+      return Math.round(x * 10) / 10;
+    }
+    function emptyStateSvg(reason) {
+      renderedEmptyState = true;
+      return '<g data-overlay-empty="true" data-empty-reason="' + v3f09Esc(reason) + '">' +
+        '<text x="400" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#94a3b8">Pola belum terdeteksi / data tidak cukup</text>' +
+        '<text x="400" y="180" text-anchor="middle" font-size="10" fill="#64748b">' + v3f09Esc(reason) + '</text></g>';
+    }
+    function srLinesSvg() {
+      if (!hasPriceScale()) return '';
+      var yR = prY(Number(sr.resistance)), yS = prY(Number(sr.support));
+      if (yR == null || yS == null) return '';
+      return '<line data-sr="resistance" x1="40" y1="' + yR + '" x2="760" y2="' + yR + '" stroke="#475569" stroke-width="1" stroke-dasharray="5 4"/>' +
+        '<line data-sr="support" x1="40" y1="' + yS + '" x2="760" y2="' + yS + '" stroke="#475569" stroke-width="1" stroke-dasharray="5 4"/>';
+    }
+    // ZigZag polyline resolved through real pivot indices (time -> index).
+    function zigzagSvg() {
+      var timeToIdx = Object.create(null);
+      for (var ti = 0; ti < scaleCandles.length; ti++) {
+        if (timeToIdx[scaleCandles[ti].time] == null) timeToIdx[scaleCandles[ti].time] = ti;
+      }
+      var zzPath = (zz && Array.isArray(zz.path)) ? zz.path : [];
+      var zzPts = [];
+      for (var zi = 0; zi < zzPath.length; zi++) {
+        var zp = zzPath[zi];
+        var zIdx = timeToIdx[String(zp.time)];
+        var zPrice = Number(zp.price);
+        if (zIdx != null && Number.isFinite(zPrice) && zPrice > 0) {
+          var zx = idxX(zIdx), zy = prY(zPrice);
+          if (zx != null && zy != null) zzPts.push(zx + ',' + zy);
+        }
+      }
+      if (zzPts.length >= 2) {
+        return '<polyline data-zigzag="path" data-zigzag-points="' + zzPts.length + '" points="' + zzPts.join(' ') + '" fill="none" stroke="#8b5cf6" stroke-width="3"/>';
+      }
+      return emptyStateSvg('jalur ZigZag belum terdeteksi (pivot swing tidak cukup)');
+    }
+    function obRectSvg(ob, kind) {
+      var top = prY(Number(ob.top)), bot = prY(Number(ob.bottom));
+      var xA = idxX(Math.max(0, scaleCandles.length - 12));
+      var xB = idxX(scaleCandles.length - 1);
+      if (top == null || bot == null || xA == null || xB == null) return '';
+      var y0 = Math.min(top, bot), h = Math.max(12, Math.abs(bot - top));
+      var col = kind === 'supply' ? '#ef4444' : '#10b981';
+      var rgba = kind === 'supply' ? 'rgba(239,68,68,0.22)' : 'rgba(16,185,129,0.22)';
+      var out = '<rect data-ob="' + kind + '" x="' + xA + '" y="' + y0 + '" width="' + Math.max(40, xB - xA) + '" height="' + h + '" fill="' + rgba + '" stroke="' + col + '" stroke-width="1.5" rx="4"/>';
+      // FINAL POLISH TASK 1: no giant BUY/SELL badges on the chart. The zone
+      // colour already encodes supply/demand; the label is capped by the
+      // overlay label budget below.
+      pushLabel(ob.label + ' Zone', xA + 52, y0 + h + 12, 'ob');
+      return out;
+    }
 
-      // V5 Phase 3 (N11): a provisional pattern (D not yet confirmed by
-      // XABCD_CONFIRM_BARS subsequent bars) renders dashed + amber so UI
-      // consumers can visually distinguish it from a confirmed pattern.
-      var xbProv = (x && x.confirmation === 'PROVISIONAL');
-      var xbStroke = xbProv ? '#f59e0b' : '#2563eb';
-      var xbDash = xbProv ? ' stroke-dasharray="6 4"' : '';
-      var xbFill = xbProv ? 'rgba(245,158,11,0.16)' : 'rgba(37,99,235,0.22)';
-      s += '<polygon data-xabcd="XAB" data-confirmation="' + (xbProv ? 'PROVISIONAL' : 'CONFIRMED') + '" points="' + ptsXAB + '" fill="' + xbFill + '" stroke="' + xbStroke + '" stroke-width="2"' + xbDash + '/>';
-      s += '<polygon data-xabcd="BCD" data-confirmation="' + (xbProv ? 'PROVISIONAL' : 'CONFIRMED') + '" points="' + ptsBCD + '" fill="' + xbFill + '" stroke="' + xbStroke + '" stroke-width="2"' + xbDash + '/>';
-      if (xbProv) {
-        s += '<text data-xabcd-provisional="true" x="676" y="58" font-size="10" font-weight="700" fill="#f59e0b">PROVISIONAL — D belum terkonfirmasi</text>';
+    if (demoMode) {
+      // STATIC DEMO FIXTURE (opt-in only, options.demo === true).
+      // Clearly labelled as a fixture - NEVER rendered on live charts and
+      // never presented as real pattern detection (M-P1b P0 fix).
+      s += '<g data-demo-fixture="true">';
+      s += '<text x="400" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#f59e0b">DEMO FIXTURE - geometri statis, bukan deteksi pola live</text>';
+      var dx = [110, 250, 390, 530, 680], dy = [65, 245, 95, 235, 75];
+      s += '<polygon data-xabcd="XAB" data-demo-fixture="true" points="' + dx[0] + ',' + dy[0] + ' ' + dx[1] + ',' + dy[1] + ' ' + dx[2] + ',' + dy[2] + '" fill="rgba(37,99,235,0.22)" stroke="#2563eb" stroke-width="2"/>';
+      s += '<polygon data-xabcd="BCD" data-demo-fixture="true" points="' + dx[2] + ',' + dy[2] + ' ' + dx[3] + ',' + dy[3] + ' ' + dx[4] + ',' + dy[4] + '" fill="rgba(37,99,235,0.22)" stroke="#2563eb" stroke-width="2"/>';
+      s += '</g>';
+    } else if (m === 'pro' || m === 'scalping') {
+      // Harmonic Pattern XABCD: X -> A -> B -> C -> D, VERIFIED anchors only.
+      var xabcOk = x && !x.empty && x.x && x.a && x.b && x.c && x.d;
+      var xabcPts = xabcOk ? [x.x, x.a, x.b, x.c, x.d] : null;
+      var geom = xabcOk
+        ? classifyPatternGeometry({ points: xabcPts })
+        : { classification: 'INVALID', reason: 'belum ada hasil deteksi XABCD untuk ticker/timeframe ini' };
+      var projOk = (geom.classification === 'VERIFIED') ? projectVerifiedAnchors(xabcPts, plot) : [];
+      if (projOk.length === 5 && hasPriceScale()) {
+        var cx = xabcPts.map(function (q) { return idxX(q.index); });
+        var cy = xabcPts.map(function (q) { return prY(q.price); });
+        var pxOk = cx.every(function (v) { return v != null; }) && cy.every(function (v) { return v != null; });
+        if (pxOk) {
+          // V5 Phase 3 (N11): a provisional pattern (D not yet confirmed by
+          // XABCD_CONFIRM_BARS subsequent bars) renders dashed + amber so UI
+          // consumers can visually distinguish it from a confirmed pattern.
+          var xbProv = (x.confirmation === 'PROVISIONAL');
+          var xbStroke = xbProv ? '#f59e0b' : '#2563eb';
+          var xbDash = xbProv ? ' stroke-dasharray="6 4"' : '';
+          var xbFill = xbProv ? 'rgba(245,158,11,0.16)' : 'rgba(37,99,235,0.22)';
+          s += '<polygon data-xabcd="XAB" data-confirmation="' + (xbProv ? 'PROVISIONAL' : 'CONFIRMED') + '" points="' + cx[0] + ',' + cy[0] + ' ' + cx[1] + ',' + cy[1] + ' ' + cx[2] + ',' + cy[2] + '" fill="' + xbFill + '" stroke="' + xbStroke + '" stroke-width="2"' + xbDash + '/>';
+          s += '<polygon data-xabcd="BCD" data-confirmation="' + (xbProv ? 'PROVISIONAL' : 'CONFIRMED') + '" points="' + cx[2] + ',' + cy[2] + ' ' + cx[3] + ',' + cy[3] + ' ' + cx[4] + ',' + cy[4] + '" fill="' + xbFill + '" stroke="' + xbStroke + '" stroke-width="2"' + xbDash + '/>';
+
+          // Ratio lines between projected real anchors.
+          var ratiosK = ['0.656', '0.786', '0.814', '1.244'];
+          for (var ri = 0; ri < 4; ri++) {
+            s += '<line data-ratio="' + ratiosK[ri] + '" x1="' + cx[ri] + '" y1="' + cy[ri] + '" x2="' + cx[ri + 1] + '" y2="' + cy[ri + 1] + '" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4 3"/>';
+            pushLabel(ratiosK[ri], Math.round((cx[ri] + cx[ri + 1]) / 2), Math.round((cy[ri] + cy[ri + 1]) / 2), 'ratio');
+          }
+
+          // Per-pivot markers: solid = CONFIRMED, hollow dashed = PROVISIONAL.
+          s += '<g data-xabcd-labels="true">';
+          var letterK = ['X', 'A', 'B', 'C', 'D (PRZ)'];
+          for (var pi = 0; pi < 5; pi++) {
+            var pv = xabcPts[pi];
+            var pk = pv.kind || (pi % 2 === 0 ? 'L' : 'H');
+            var pc = confirmXabcdPivot({ index: pv.index, price: pv.price, kind: pk, time: pv.time }, scaleCandles, {});
+            var pIsProv = pc.confirmation === 'PROVISIONAL';
+            s += '<circle data-xabcd-point="' + letterK[pi] + '" data-candle-index="' + Number(pv.index) + '" data-candle-time="' + v3f09Esc(pv.time) + '" data-confirmation="' + pc.confirmation + '" cx="' + cx[pi] + '" cy="' + cy[pi] + '" r="' + (pi === 4 ? 6 : 5) + '" fill="' + (pIsProv ? 'none' : '#3b82f6') + '" stroke="' + (pIsProv ? '#f59e0b' : '#3b82f6') + '" stroke-width="2"' + (pIsProv ? ' stroke-dasharray="3 2"' : '') + '/>';
+            pushLabel(letterK[pi], cx[pi], cy[pi] - 10, pIsProv ? 'provisional' : 'confirmed');
+          }
+          s += '</g>';
+          if (xbProv) {
+            pushLabel('PROVISIONAL - D belum terkonfirmasi', 640, 58, 'badge');
+          }
+        } else {
+          s += emptyStateSvg('proyeksi anchor gagal (index/harga di luar skala candle)');
+        }
+      } else {
+        s += emptyStateSvg(geom.reason);
       }
 
-      // Titik dan Label X, A, B, C, D (PRZ)
-      s += '<g data-xabcd-labels="true">';
-      s += '<circle cx="' + x1 + '" cy="' + y1 + '" r="5" fill="#3b82f6"/><text x="' + x1 + '" y="' + (y1 - 10) + '" font-size="12" font-weight="700" fill="#60a5fa" text-anchor="middle">X</text>';
-      s += '<circle cx="' + x2 + '" cy="' + y2 + '" r="5" fill="#3b82f6"/><text x="' + x2 + '" y="' + (y2 + 16) + '" font-size="12" font-weight="700" fill="#60a5fa" text-anchor="middle">A</text>';
-      s += '<circle cx="' + x3 + '" cy="' + y3 + '" r="5" fill="#3b82f6"/><text x="' + x3 + '" y="' + (y3 - 10) + '" font-size="12" font-weight="700" fill="#60a5fa" text-anchor="middle">B</text>';
-      s += '<circle cx="' + x4 + '" cy="' + y3c + '" r="5" fill="#3b82f6"/><text x="' + x4 + '" y="' + (y3c + 16) + '" font-size="12" font-weight="700" fill="#60a5fa" text-anchor="middle">C</text>';
-      s += '<circle cx="' + x5 + '" cy="' + y4 + '" r="6" fill="#10b981"/><text x="' + x5 + '" y="' + (y4 - 10) + '" font-size="12" font-weight="700" fill="#10b981" text-anchor="middle">D (PRZ)</text>';
+      // SMC Structure anchored to REAL price levels from calculateV3F09SMC.
+      if (hasPriceScale() && smc && !smc.empty) {
+        var yBos = (smc.bos && smc.bos[0]) ? prY(Number(smc.bos[0].level)) : null;
+        var yChoch = (smc.choch && smc.choch[0]) ? prY(Number(smc.choch[0].level)) : null;
+        var ySh = smc.strongHigh ? prY(Number(smc.strongHigh.price)) : null;
+        if (yBos != null) {
+          s += '<line data-bos="BOS_HIGH" x1="40" y1="' + yBos + '" x2="760" y2="' + yBos + '" stroke="#06b6d4" stroke-width="1.8" stroke-dasharray="6 3"/>';
+          pushLabel('BOS (Break of Structure)', 44, yBos - 6, 'bos');
+        }
+        if (yChoch != null) {
+          s += '<line data-choch="line" x1="40" y1="' + yChoch + '" x2="760" y2="' + yChoch + '" stroke="#f59e0b" stroke-width="2"/>';
+          pushLabel('CHoCH (Change of Character)', 44, yChoch + 14, 'choch');
+        }
+        if (ySh != null) {
+          s += '<line data-eqh="true" x1="40" y1="' + ySh + '" x2="760" y2="' + ySh + '" stroke="#ef4444" stroke-width="1.4"/>';
+          pushLabel('Strong High - EQH / EQL', 44, ySh + 14, 'eqh');
+        }
+        if (x && x.d) {
+          var wlX = idxX(Number(x.d.index)), wlY = prY(Number(x.d.price));
+          if (wlX != null && wlY != null) {
+            pushLabel('Weak Low', Math.min(wlX, 700), Math.min(wlY + 14, plot.y1 - 4), 'weaklow');
+          }
+        }
+        if (smc.supplyOB) s += obRectSvg(smc.supplyOB, 'supply');
+        if (smc.demandOB) s += obRectSvg(smc.demandOB, 'demand');
+        s += zigzagSvg();
+      } else if (!hasPriceScale()) {
+        s += emptyStateSvg('data candle tidak cukup untuk skala harga');
+      }
+      s += srLinesSvg();
+      if (hasPriceScale()) {
+        pushLabel('S/R Resistance', 44, prY(Number(sr.resistance)) - 4, 'sr');
+        pushLabel('S/R Support', 44, prY(Number(sr.support)) + 12, 'sr');
+      }
+    } else if (m === 'simple' || m === 'swing') {
+      // BATCH 1 / BUG 1: no default Proyeksi Skenario / ZigZag text spam.
+      // Only 1-2 structural S/R labels are drawn by srLinesSvg() below.
+      s += srLinesSvg();
+      if (hasPriceScale()) {
+        pushLabel('S/R Resistance', 44, prY(Number(sr.resistance)) - 4, 'sr');
+        pushLabel('S/R Support', 44, prY(Number(sr.support)) + 12, 'sr');
+      } else {
+        s += emptyStateSvg('data candle tidak cukup untuk skala harga');
+      }
+    } else if (m === 'investor') {
+      if (hasPriceScale()) {
+        var ma50v = v3f09Sma(scaleCandles, 50), ma200v = v3f09Sma(scaleCandles, 200);
+        var yMa50 = prY(ma50v), yMa200 = prY(ma200v);
+        if (yMa50 != null) {
+          s += '<line data-ma="50" x1="40" y1="' + yMa50 + '" x2="760" y2="' + yMa50 + '" stroke="#eab308" stroke-width="2"/>';
+          pushLabel('MA50 Tren Menengah', 44, yMa50 - 6, 'ma');
+        }
+        if (yMa200 != null) {
+          s += '<line data-ma="200" x1="40" y1="' + yMa200 + '" x2="760" y2="' + yMa200 + '" stroke="#a855f7" stroke-width="2"/>';
+          pushLabel('MA200 Tren Primer', 44, yMa200 - 6, 'ma');
+        }
+        var ySup = prY(Number(sr.support)), yRes = prY(Number(sr.resistance));
+        if (ySup != null && yRes != null) {
+          s += '<rect data-zone="fair-value" x="40" y="' + Math.min(ySup, yRes) + '" width="720" height="' + Math.max(10, Math.abs(yRes - ySup)) + '" fill="rgba(56,189,248,0.18)" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4 2"/>';
+          pushLabel('Zona Akumulasi Nilai Wajar (batas S/R terukur)', 48, Math.min(ySup, yRes) + 18, 'zone');
+        }
+        var lastClose = scaleCandles.length ? Number(scaleCandles[scaleCandles.length - 1].close) : NaN;
+        if (Number.isFinite(lastClose) && lastClose > 0) {
+          var yTgt = prY(lastClose * 1.15);
+          if (yTgt != null) {
+            s += '<line data-level="investor-target" x1="40" y1="' + yTgt + '" x2="760" y2="' + yTgt + '" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 4"/>';
+            pushLabel('Level Target Investasi 15% (close x 1.15)', 44, yTgt - 6, 'target');
+          }
+        }
+        s += srLinesSvg();
+      } else {
+        s += emptyStateSvg('data candle tidak cukup untuk skala harga');
+      }
+    }
+
+    // M-P1b label declutter: stack overlapping labels with min gap; anchor
+    // data (data-label-anchor-y) is preserved, only visual y moves.
+    // FINAL POLISH TASK 1: cap the label count so the candle pane never shows
+    // the old "spaghetti" of dozens of overlapping pattern names.
+    if (overlayLabels.length > CLEAN_CHART.MAX_PRICE_TAGS) {
+      overlayLabels = overlayLabels.slice(0, CLEAN_CHART.MAX_PRICE_TAGS);
+    }
+    if (overlayLabels.length) {
+      var resolvedLabels = resolveLabelCollisions(overlayLabels, 14, { top: 18, bottom: plot.y1 });
+      var labelColorMap = { badge: '#f59e0b', provisional: '#f59e0b', confirmed: '#60a5fa', ratio: '#93c5fd', bos: '#06b6d4', choch: '#f59e0b', eqh: '#ef4444', ob: '#e2e8f0', zone: '#94a3b8', sr: '#94a3b8', ma: '#94a3b8', target: '#6ee7b7', weaklow: '#e2e8f0' };
+      s += '<g data-overlay-labels="true" data-label-count="' + resolvedLabels.length + '">';
+      for (var li = 0; li < resolvedLabels.length; li++) {
+        var lb = resolvedLabels[li];
+        var lc = labelColorMap[lb.cls] || '#94a3b8';
+        s += '<text data-label-anchor-y="' + lb.anchorY + '" x="' + lb.x + '" y="' + lb.y + '" font-size="10" font-weight="700" fill="' + lc + '">' + v3f09Esc(lb.text) + '</text>';
+      }
       s += '</g>';
-
-      // Rasio Fibonacci pada garis penghubung
-      s += '<line data-ratio="0.656" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4 3"/>';
-      s += '<text x="' + Math.round((x1+x2)/2 - 16) + '" y="' + Math.round((y1+y2)/2) + '" font-size="10" font-weight="700" fill="#93c5fd">0.656</text>';
-
-      s += '<line data-ratio="0.786" x1="' + x2 + '" y1="' + y2 + '" x2="' + x3 + '" y2="' + y3 + '" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4 3"/>';
-      s += '<text x="' + Math.round((x2+x3)/2 + 8) + '" y="' + Math.round((y2+y3)/2) + '" font-size="10" font-weight="700" fill="#93c5fd">0.786</text>';
-
-      s += '<line data-ratio="0.814" x1="' + x3 + '" y1="' + y3 + '" x2="' + x4 + '" y2="' + y3c + '" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4 3"/>';
-      s += '<text x="' + Math.round((x3+x4)/2 - 16) + '" y="' + Math.round((y3+y3c)/2) + '" font-size="10" font-weight="700" fill="#93c5fd">0.814</text>';
-
-      s += '<line data-ratio="1.244" x1="' + x4 + '" y1="' + y3c + '" x2="' + x5 + '" y2="' + y4 + '" stroke="#10b981" stroke-width="1.2" stroke-dasharray="4 3"/>';
-      s += '<text x="' + Math.round((x4+x5)/2 + 8) + '" y="' + Math.round((y3c+y4)/2) + '" font-size="10" font-weight="700" fill="#6ee7b7">1.244</text>';
-
-      // SMC Structure: BOS, CHoCH, EQH, EQL, Strong High, Weak Low
-      s += '<line data-bos="BOS_HIGH" x1="40" y1="52" x2="760" y2="52" stroke="#06b6d4" stroke-width="1.8" stroke-dasharray="6 3"/>';
-      s += '<text x="44" y="46" font-size="10" font-weight="700" fill="#06b6d4">BOS (Break of Structure)</text>';
-
-      s += '<line data-choch="line" x1="40" y1="135" x2="760" y2="135" stroke="#f59e0b" stroke-width="2"/>';
-      s += '<text data-choch="true" x="44" y="152" font-size="11" font-weight="700" fill="#f59e0b">CHoCH (Change of Character)</text>';
-
-      s += '<line data-eqh="true" x1="40" y1="78" x2="760" y2="78" stroke="#ef4444" stroke-width="1.4"/>';
-      s += '<text x="44" y="92" font-size="10" font-weight="700" fill="#ef4444">Strong High · EQH / EQL</text>';
-      s += '<text data-weak-low="true" x="650" y="305" font-size="11" font-weight="700" fill="#e2e8f0">Weak Low</text>';
-
-      // Kotak Order Block (Supply OB merah + SELL badge, Demand OB biru/hijau + BUY badge)
-      s += '<rect data-ob="supply" x="480" y="45" width="240" height="36" fill="rgba(239,68,68,0.22)" stroke="#ef4444" stroke-width="1.5" rx="4"/>';
-      s += '<g data-ob-badge="sell" transform="translate(486,52)"><rect width="38" height="18" rx="3" fill="#ef4444"/><text x="19" y="13" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">SELL</text></g>';
-      s += '<text x="532" y="66" font-size="11" font-weight="700" fill="#ef4444">Supply OB Order Block</text>';
-
-      s += '<rect data-ob="demand" x="480" y="235" width="240" height="36" fill="rgba(16,185,129,0.22)" stroke="#10b981" stroke-width="1.5" rx="4"/>';
-      s += '<g data-ob-badge="buy" transform="translate(486,242)"><rect width="38" height="18" rx="3" fill="#10b981"/><text x="19" y="13" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">BUY</text></g>';
-      s += '<text x="532" y="256" font-size="11" font-weight="700" fill="#10b981">Demand OB Order Block</text>';
-    }
-
-    if (m === 'simple' || m === 'swing') {
-      // Mode Simple & Swing: 2 Kotak Supply & Demand ATR-14, Zig-Zag & Proyeksi Skenario
-      s += '<rect data-zone="supply-atr" x="40" y="48" width="720" height="34" fill="rgba(239,68,68,0.22)" stroke="#ef4444" stroke-width="1.5" rx="4"/>';
-      s += '<text x="48" y="70" font-size="11" font-weight="700" fill="#ef4444">Zona Supply (Resistance) berbasis ATR-14</text>';
-
-      s += '<rect data-zone="demand-atr" x="40" y="238" width="720" height="34" fill="rgba(16,185,129,0.22)" stroke="#10b981" stroke-width="1.5" rx="4"/>';
-      s += '<text x="48" y="260" font-size="11" font-weight="700" fill="#10b981">Zona Demand (Support) berbasis ATR-14</text>';
-
-      var ptsZz = '60,240 180,80 320,220 460,90 600,210 720,70';
-      s += '<polyline data-zigzag="path" points="' + ptsZz + '" fill="none" stroke="#8b5cf6" stroke-width="3"/>';
-      var arrow = zz.arrow === 'up' ? 'BULLISH ↗' : (zz.arrow === 'down' ? 'BEARISH ↘' : 'SIDEWAYS ↔');
-      s += '<text data-projection="' + v3f09Esc(zz.projection) + '" x="480" y="36" font-size="13" font-weight="700" fill="#c084fc">Proyeksi Skenario: ' + arrow + '</text>';
-    }
-
-    if (m === 'investor') {
-      s += '<line data-ma="50" x1="40" y1="120" x2="760" y2="120" stroke="#eab308" stroke-width="2"/>';
-      s += '<text x="44" y="112" font-size="10" font-weight="700" fill="#eab308">MA50 Tren Menengah</text>';
-
-      s += '<line data-ma="200" x1="40" y1="180" x2="760" y2="180" stroke="#a855f7" stroke-width="2"/>';
-      s += '<text x="44" y="172" font-size="10" font-weight="700" fill="#a855f7">MA200 Tren Primer</text>';
-
-      s += '<rect data-zone="fair-value" x="40" y="200" width="720" height="42" fill="rgba(56,189,248,0.18)" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4 2"/>';
-      s += '<text x="48" y="226" font-size="11" font-weight="700" fill="#38bdf8">Zona Akumulasi Nilai Wajar Investor</text>';
-
-      s += '<line data-level="investor-target" x1="40" y1="60" x2="760" y2="60" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 4"/>';
-      s += '<text x="44" y="52" font-size="10" font-weight="700" fill="#10b981">Level Target Investasi 15%</text>';
     }
 
     s += '</svg>';
-    return { svg: s, mode: m, ticker: t, theme: th.id, hud: smc.hud.side, projection: zz.projection, support: sr.support, resistance: sr.resistance, xabcd: x, smc: smc, zigzag: zz };
+    return {
+      svg: s, mode: m, ticker: t, theme: th.id, hud: smc.hud.side,
+      projection: zz.projection, support: sr.support, resistance: sr.resistance,
+      xabcd: x, smc: smc, zigzag: zz,
+      geometry: {
+        demo: demoMode,
+        classification: demoMode ? 'DEMO' : (renderedEmptyState ? 'UNAVAILABLE' : 'VERIFIED'),
+        emptyState: renderedEmptyState,
+        labelCount: overlayLabels.length
+      }
+    };
   }
 
   function renderChartOverlay(chartId, ticker, rawCandles, mode) {
@@ -3026,15 +3767,14 @@
     }
     var html = '<div id="' + id + '_v3f09_toolbar" class="v3f09-toolbar" data-v3f09-toolbar="true">';
     html += '<div class="v3f09-group" role="group" aria-label="Mode visual otomatis">';
-    html += btn('pro', 'Pro SMC+Harmonic XABCD');
-    html += btn('simple', 'Simple Zig-Zag');
+    html += btn('pro', 'Pro');
+    html += btn('simple', 'Simple');
     html += btn('hybrid', 'Hybrid');
     html += '</div>';
     html += '<div class="v3f09-group" role="group" aria-label="Saklar tema kanvas">';
     html += '<button type="button" class="v3f09-theme' + (theme === 'light' ? ' on' : '') + '" data-v3f09-theme="light" onclick="AutoCuanChartWorkstation.setV3F09Theme(\'' + id + '\',\'light\')">Putih</button>';
     html += '<button type="button" class="v3f09-theme' + (theme === 'dark' ? ' on' : '') + '" data-v3f09-theme="dark" onclick="AutoCuanChartWorkstation.setV3F09Theme(\'' + id + '\',\'dark\')">Gelap</button>';
     html += '</div>';
-    html += '<span class="v3f09-hint">V3-F09 ' + V3F09_VERSION + ' ZigZag ATR14</span>';
     html += '</div>';
     return html;
   }
@@ -3091,6 +3831,27 @@
     return out;
   }
 
+  // FIX 1 — honest EOD header. A date-only trade_date is a CALENDAR LABEL,
+  // never an instant: it must never be rendered as "00:00 UTC -> 07.00 WIB".
+  // Only a real updated_at timestamp may contribute a WIB clock time.
+  var EOD_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  function formatEodHeader(tradeDate, updatedAt) {
+    var d = String(tradeDate || '').slice(0, 10);
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+    if (!m) return 'EOD';
+    var label = 'EOD · ' + Number(m[3]) + ' ' + EOD_MONTHS[Number(m[2]) - 1] + ' ' + m[1];
+    if (updatedAt) {
+      var parsed = new Date(updatedAt);
+      if (!isNaN(parsed.getTime())) {
+        var wib = new Date(parsed.getTime() + 7 * 3600000);
+        var hh = ('0' + wib.getUTCHours()).slice(-2);
+        var mm = ('0' + wib.getUTCMinutes()).slice(-2);
+        return label + ' · diperbarui ' + hh + '.' + mm + ' WIB';
+      }
+    }
+    return label;
+  }
+
   // ============================================================
   // PUBLIC API EXPORTS
   // ============================================================
@@ -3098,6 +3859,12 @@
     version: VERSION,
     LAYER_GROUPS: LAYER_GROUPS,
     PRESETS: PRESETS,
+    CHART_MODES: CHART_MODES,
+    formatEodHeader: formatEodHeader,
+    CLEAN_CHART: CLEAN_CHART,
+    TOP_PATTERN_FAMILIES: TOP_PATTERN_FAMILIES,
+    AUTO_PATTERN_FAMILIES: AUTO_PATTERN_FAMILIES,
+    AUTO_PATTERN_PRESET_DEFAULTS: AUTO_PATTERN_PRESET_DEFAULTS,
     MODE_STRATEGY_CONFIG: MODE_STRATEGY_CONFIG,
     getIdxTickSize: getIdxTickSize,
     roundToIdxTick: roundToIdxTick,
@@ -3151,12 +3918,19 @@
     isIndexTicker: isIndexTicker,
     STOCK_ONLY_LAYERS: STOCK_ONLY_LAYERS,
     toggleOneScreen: toggleOneScreen,
+    fitAll: fitAll,
+    resizeAllCharts: resizeAllCharts,
     attach: attach,
     switchTicker: switchTicker,
     V3F09_VERSION: V3F09_VERSION,
     V3F09_MODES: V3F09_MODES,
     V3F09_THEMES: V3F09_THEMES,
     V3F09_RATIOS: V3F09_RATIOS,
+    classifyPatternGeometry: classifyPatternGeometry,
+    projectVerifiedAnchors: projectVerifiedAnchors,
+    resolveLabelCollisions: resolveLabelCollisions,
+    setDrawingTool: setDrawingTool,
+    filterDrawer: filterDrawer,
     calculateV3F09SR: calculateV3F09SR,
     calculateV3F09SMC: calculateV3F09SMC,
     calculateV3F09XABCD: calculateV3F09XABCD,

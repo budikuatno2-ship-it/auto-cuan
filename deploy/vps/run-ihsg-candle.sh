@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# B5 (2026-10-20): standalone IHSG benchmark fetch (1 Arjum request/day).
+# B5 (2026-10-20): standalone IHSG benchmark fetch.
+# V6: Yahoo ^JKSE first (0 Arjum quota); Arjum only if CANDLE_ALLOW_ARJUM_FALLBACK=1.
 #
 # The IHSG bar is the anchor for market-regime / breadth, so it must not depend
 # on the 962-stock candle pass (which can bail out on a failed cross-check).

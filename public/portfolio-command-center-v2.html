@@ -148,6 +148,9 @@
       if (bootSettled) throw new Error('Boot dibatalkan.');
       var parsed = new DOMParser().parseFromString(html, 'text/html');
       Array.prototype.forEach.call(parsed.body.querySelectorAll('script'), function (node) { node.remove(); });
+      // W7 P1: the fetched shell may already carry a #portfolioV2Loader. Strip it
+      // before appending LOADER_HTML so the document never has a duplicate id.
+      Array.prototype.forEach.call(parsed.body.querySelectorAll('#portfolioV2Loader'), function (node) { node.remove(); });
       document.body.innerHTML = parsed.body.innerHTML + LOADER_HTML;
       return criticalAssets.reduce(function (promise, src) {
         return promise.then(function () { return loadScript(src, ASSET_TIMEOUT_MS); });

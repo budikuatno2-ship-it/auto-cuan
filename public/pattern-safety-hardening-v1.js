@@ -44,6 +44,31 @@
     return bullish ? 'bullish' : 'bearish';
   }
 
+
+  // BUG 4: one canonical ordering invariant shared by the model and the
+  // browser hardening wrapper. Bullish: Invalidasi < PRZ/Harga < Konfirmasi
+  // Naik < Target1 <= Target2; bearish is the exact inverse.
+  function canonicalLevelOrder(values, direction) {
+    var confirmation = safeFinite(values && values.confirmation);
+    var invalidation = safeFinite(values && values.invalidation);
+    var tp1 = safeFinite(values && values.tp1);
+    var tp2 = safeFinite(values && values.tp2);
+    var przLow = safeFinite(values && values.przLow);
+    var przHigh = safeFinite(values && values.przHigh);
+    if ([confirmation, invalidation, tp1, tp2].some(function (v) { return v == null; })) return false;
+    var low = Math.min(przLow, przHigh), high = Math.max(przLow, przHigh);
+    var przOk = przLow == null || przHigh == null ||
+      (direction === 'bullish' ? (invalidation < low && high < confirmation)
+                                : (invalidation > high && low > confirmation));
+    if (direction === 'bullish') {
+      return przOk && invalidation < confirmation && confirmation < tp1 && tp1 <= tp2;
+    }
+    if (direction === 'bearish') {
+      return przOk && invalidation > confirmation && confirmation > tp1 && tp1 >= tp2;
+    }
+    return false;
+  }
+
   function evaluateAbcdLevels(values, direction) {
     var current = safeFinite(values && values.current);
     var confirmation = safeFinite(values && values.confirmation);
@@ -56,12 +81,11 @@
       return { actionable:false, reason:'incomplete_levels', reasons:['incomplete_levels'] };
     }
 
+    if (!canonicalLevelOrder(values, direction)) reasons.push('inconsistent_level_order');
     if (direction === 'bullish') {
-      if (!(invalidation < confirmation && tp1 > confirmation && tp2 >= tp1)) reasons.push('inconsistent_level_order');
       if (current <= invalidation) reasons.push('invalidation_reached');
       if (current >= tp1) reasons.push('target_already_reached');
     } else if (direction === 'bearish') {
-      if (!(invalidation > confirmation && tp1 < confirmation && tp2 <= tp1)) reasons.push('inconsistent_level_order');
       if (current >= invalidation) reasons.push('invalidation_reached');
       if (current <= tp1) reasons.push('target_already_reached');
     }
@@ -132,6 +156,7 @@
     api.finite = safeFinite;
     api.tradePlanDirection = tradePlanDirection;
     api.evaluateAbcdLevels = evaluateAbcdLevels;
+    api.canonicalLevelOrder = canonicalLevelOrder;
     api.evaluateRow = function (row, plan) { return evaluateRowWith(api, row, plan); };
     api.__missingValueHardeningVersion = VERSION;
     return api;

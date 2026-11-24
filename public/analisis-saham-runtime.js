@@ -125,7 +125,9 @@
     { k: 'v', l: 'Vol vs 7H', r: true },
     { k: 'f1', l: 'Asing terakhir', r: true },
     { k: 'f3', l: 'Asing 3H', r: true },
-    { k: 's', l: 'Skor', r: true }
+    { k: 's', l: 'Skor', r: true },
+    // TASK D: TP/SL monitoring status with WIB hit time on Ranking surface.
+    { k: 'tp_sl_status', l: 'Status TP/SL', r: false }
   ];
   root.RANKING_COLUMNS_V2 = RANKING_COLUMNS_V2;
 
@@ -198,6 +200,7 @@
       s = (sVal == null) ? null : Math.min(99, Math.max(15, Math.round(sVal)));
     }
 
+    var val = (p != null && v != null) ? (p * v) : (row.value != null ? Number(row.value) : 0);
     return {
       t: t, ticker: t,
       p: p, last_price: p,
@@ -208,6 +211,7 @@
       f1: f1, foreign_net_today: f1,
       f3: f3, foreign_net_3d: f3,
       s: s, score: s,
+      val: val,
       as_of: row.as_of_trade_date || row.as_of || null,
       raw: row
     };
@@ -336,6 +340,11 @@
         ? '<td class="r num">—</td>'
         : '<td class="r"><span class="score"><i><b style="width:' + row.s + '%;animation-delay:' + (idx * 30) + 'ms"></b></i><b class="num">' + row.s + '</b></span></td>';
       html += scoreHtml;
+      // TASK D: TP/SL status cell — AKTIF/PANTAU, KENA TP1/TP2/SL + WIB hit time.
+      var tpSlStatus = String(row.tp_sl_status || 'AKTIF');
+      var tpSlLabel = String(row.tp_sl_label || (tpSlStatus === 'AKTIF' ? 'AKTIF/PANTAU' : tpSlStatus));
+      var tpSlColor = tpSlStatus === 'KENA SL' ? 'neg' : ((tpSlStatus === 'KENA TP1' || tpSlStatus === 'KENA TP2') ? 'pos' : 'mut');
+      html += '<td class="' + tpSlColor + '" data-tpsl-status="' + escapeHtml(tpSlStatus) + '">' + escapeHtml(tpSlLabel) + '</td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
@@ -372,6 +381,11 @@
 
   root.setRankingPreset = function (idx) {
     rankingState.preset = idx;
+    // REQ-17: When 'Nilai Transaksi' preset (idx 1) is clicked, sort by transaction value (val = p * v)
+    if (idx === 1) {
+      rankingState.sortKey = 'val';
+      rankingState.sortDirection = 'desc';
+    }
     var ind = byId('rankingPresetInd');
     if (ind) ind.className = 'ind k' + idx;
     for (var i = 0; i < 7; i++) {
@@ -614,8 +628,17 @@
     var pHeader = byId('analisisChartHeader');
     var pSubtabWrap = byId('analisisChartSubtabWrap');
     var isAnalisisChartTab = (parentTab === 'analisis-chart');
-    if (pHeader) pHeader.style.display = 'block';
-    if (pSubtabWrap) pSubtabWrap.style.display = 'flex';
+    // TASK E — duplicate-header root cause.
+    // The full ticker header + sub-tab strip is only needed on issuer-research
+    // lenses (Analisis AI / Chart Workstation). Market-wide lenses (Sinyal
+    // Intelijen, Broker Hunter, Insider, Ranking, Financial, Struktur Pasar,
+    // Pattern Radar, Bandarmologi) already have their own page header and must
+    // not re-render the "BBCA [Likuid] | Analisis AI | Chart Workstation | ..."
+    // bar. This is a render decision in switchAnalisisTab (not a CSS hide), so
+    // no duplicate DOM/fetch work is triggered for those lenses.
+    var needsTickerHeader = (parentTab === 'analisis-chart' || parentTab === 'bandarmologi');
+    if (pHeader) pHeader.style.display = needsTickerHeader ? 'block' : 'none';
+    if (pSubtabWrap) pSubtabWrap.style.display = needsTickerHeader ? 'flex' : 'none';
     document.querySelectorAll('#analisisChartSubtabWrap .analisis-subtab').forEach(function (btn) {
       var sub = btn.dataset ? btn.dataset.subtab : (btn.getAttribute ? btn.getAttribute('data-subtab') : null);
       if (!sub) return;
@@ -1940,7 +1963,7 @@
       warn: null
     },
     BBCA: {
-      name: 'Bank Central Asia Tbk', sector: 'Perbankan', bvps: 'Rp 2.372', cap: 'Rp 1.263,5 T', capNote: '#1 di IDX', sh: '123,2 M', px: 'Rp 10.250',
+      real: true, name: 'Bank Central Asia Tbk', sector: 'Perbankan', bvps: 'Rp 2.372', cap: 'Rp 1.263,5 T', capNote: '#1 di IDX', sh: '123,2 M', px: 'Rp 10.250',
       prov: [
         { k: 'Periode', v: 'Q2 2026 (diaudit)' },
         { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
@@ -1949,7 +1972,7 @@
       ]
     },
     BBRI: {
-      name: 'Bank Rakyat Indonesia Tbk', sector: 'Perbankan', bvps: 'Rp 2.242', cap: 'Rp 730,5 T', capNote: '', sh: '151,6 M', px: 'Rp 4.820',
+      real: true, name: 'Bank Rakyat Indonesia Tbk', sector: 'Perbankan', bvps: 'Rp 2.242', cap: 'Rp 730,5 T', capNote: '', sh: '151,6 M', px: 'Rp 4.820',
       prov: [
         { k: 'Periode', v: 'Q2 2026 (diaudit)' },
         { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
@@ -1958,7 +1981,7 @@
       ]
     },
     BMRI: {
-      name: 'Bank Mandiri Tbk', sector: 'Perbankan', bvps: 'Rp 4.824', cap: 'Rp 639,3 T', capNote: '', sh: '93,3 M', px: 'Rp 6.850',
+      real: true, name: 'Bank Mandiri Tbk', sector: 'Perbankan', bvps: 'Rp 4.824', cap: 'Rp 639,3 T', capNote: '', sh: '93,3 M', px: 'Rp 6.850',
       prov: [
         { k: 'Periode', v: 'Q2 2026 (diaudit)' },
         { k: 'Sumber fundamental', v: 'Laporan keuangan · keterbukaan IDX' },
@@ -2144,6 +2167,11 @@
     return {
       per: per,
       hist: P.hist,
+      // Subtask J: this model is GENERATED locally from a per-ticker seed
+      // (revenue, opex ratio, growth, sine noise). It is not a financial
+      // statement. Callers must label it as sample data, never as an official
+      // report.
+      provenance: 'SYNTHETIC_SAMPLE',
       tabs: [
         {
           t: 'Laba Rugi', def: 'ni',
@@ -2229,6 +2257,7 @@
     };
     return {
       per: per,
+      provenance: 'SERVER_SNAPSHOT',
       tabs: [
         { t: 'Laba Rugi', def: 'Laba Bersih Periode Berjalan', rows: conv(src.income_statement ? src.income_statement.rows : (src.rows || [])) },
         { t: 'Neraca', def: 'Total Aset', rows: conv(src.balance_sheet ? src.balance_sheet.rows : []) },
@@ -2272,6 +2301,9 @@
       };
       return {
         per: per,
+        // Hand-transcribed BRPT figures baked into the bundle, not read from
+        // the server snapshot. Honest label, not "laporan emiten lengkap".
+        provenance: 'HARDCODED_BRPT',
         tabs: [
           { t: 'Laba Rugi', def: 'Laba Bersih Periode Berjalan', rows: conv(src.income_statement) },
           { t: 'Neraca', def: 'Total Aset', rows: conv(src.balance_sheet) },
@@ -2404,10 +2436,22 @@
       if (tBadge) tBadge.textContent = ticker;
       var cName = byId('financialCompanyName');
       if (cName) cName.textContent = 'PT ' + ticker + ' Tbk';
+      // Subtask J: the sector used to be hardcoded to '· Teknologi' for EVERY
+      // ticker without a FINANCIAL_META entry, so an unknown issuer was
+      // silently labelled a technology company. Show the real sector when the
+      // snapshot has one, otherwise show nothing rather than invent one.
       var cSec = byId('financialSectorName');
-      if (cSec) cSec.textContent = '· Teknologi';
+      if (cSec) cSec.textContent = (f && f.sector) ? '· ' + f.sector : '';
       var cCov = byId('financialCoverageBadge');
       if (cCov) { cCov.textContent = 'Tidak tersedia · 0/4'; cCov.className = 'chip'; }
+      // Subtask J: this early return used to leave #finSrcChip at its static
+      // HTML default ("Data server"), which told the user a server-backed
+      // dataset was behind an empty panel. State the absence explicitly.
+      var emptyChip = byId('finSrcChip');
+      if (emptyChip) {
+        emptyChip.textContent = 'Data tidak tersedia';
+        emptyChip.className = 'chip';
+      }
       return;
     }
 
@@ -2424,42 +2468,89 @@
     var cSec = byId('financialSectorName');
     if (cSec) cSec.textContent = '· ' + meta.sector;
 
+    // Subtask J: the snapshot sheet used to print FINANCIAL_META's hardcoded
+    // bvps/cap/shares/px strings unconditionally. Those literals contradict the
+    // live snapshot for the very same ticker — e.g. BBCA showed "Rp 2.372" BVPS
+    // and "Rp 1.263,5 T" market cap while /api/quote?action=financial-snapshot
+    // returned book_value_per_share=null, market_cap=null, data_available=false.
+    // A number the server says is unknown must render "—", never a stale
+    // bundle literal that looks authoritative. Real values always win.
     var pbvVal = byId('financialPbvVal');
     var pbvNote = byId('financialPbvNote');
-    if (pbvVal) pbvVal.textContent = meta.real ? '—' : (ticker === 'BBCA' ? '4,32×' : (ticker === 'BBRI' ? '2,15×' : '1,42×'));
-    if (pbvNote) pbvNote.textContent = meta.real ? 'butuh Total Ekuitas, kosong di sumber' : 'rerata 8 kuartal 4,12×';
+    if (pbvVal) {
+      pbvVal.textContent = researchHasNumber(f.pbv)
+        ? researchNumber(f.pbv, 2) + '×'
+        : '—';
+    }
+    if (pbvNote) {
+      pbvNote.textContent = researchHasNumber(f.pbv)
+        ? (f.fundamental_period ? 'Periode ' + f.fundamental_period : 'Dari snapshot server')
+        : 'butuh Total Ekuitas, kosong di sumber';
+    }
 
     var bvpsVal = byId('financialBvpsVal');
-    if (bvpsVal) bvpsVal.textContent = meta.bvps;
+    if (bvpsVal) {
+      bvpsVal.textContent = researchHasNumber(f.book_value_per_share) ? researchIdr(f.book_value_per_share) : '—';
+    }
     var capVal = byId('financialCapVal');
-    if (capVal) capVal.textContent = meta.cap;
+    if (capVal) {
+      capVal.textContent = researchHasNumber(f.market_cap) ? researchIdr(f.market_cap) : '—';
+    }
     var capNote = byId('financialCapNote');
-    if (capNote) capNote.textContent = meta.capNote || 'snapshot IDX';
+    if (capNote) {
+      capNote.textContent = f.market_cap_source
+        ? (f.market_cap_as_of ? f.market_cap_source + ' · ' + f.market_cap_as_of : f.market_cap_source)
+        : 'Belum tersedia';
+    }
     var shVal = byId('financialSharesVal');
-    if (shVal) shVal.textContent = meta.sh;
+    if (shVal) {
+      shVal.textContent = researchHasNumber(f.shares_outstanding) ? researchCompact(f.shares_outstanding) : '—';
+    }
+
+    // Subtask J: the coverage badge and the completeness chips below both used
+    // to print literals keyed off `meta.real` ('Data Sebagian · 2/4 kategori
+    // lengkap', '4/4 pos'), so a ticker whose statements are mostly null still
+    // advertised itself as largely complete. Both now count the model's real
+    // cells: a category counts as complete only when EVERY data row in it
+    // carries at least one number.
+    var _finModel = null;
+    try { _finModel = getFinancialModel(ticker, financialState.fr || 0); } catch (_) { _finModel = null; }
+    var _finTabs = (_finModel && _finModel.tabs) || [];
+    var _catNames = ['Laba Rugi', 'Neraca', 'Arus Kas', 'Rasio'];
+    var _catStats = _catNames.map(function (cName, idx) {
+      var tabRows = (_finTabs[idx] && _finTabs[idx].rows) || [];
+      var dataRows = tabRows.filter(function (r) { return !r.g && Array.isArray(r.vals); });
+      var totalPos = dataRows.length;
+      var filledPos = dataRows.filter(function (r) {
+        return r.vals.some(function (v) { return v !== null && v !== undefined && Number.isFinite(Number(v)); });
+      }).length;
+      return { name: cName, total: totalPos, filled: filledPos, complete: totalPos > 0 && filledPos === totalPos };
+    });
+    var _completeCats = _catStats.filter(function (c) { return c.complete; }).length;
 
     var covBadge = byId('financialCoverageBadge');
     if (covBadge) {
-      if (meta.real) {
-        covBadge.textContent = 'Data Sebagian · 2/4 kategori lengkap';
+      if (_completeCats >= _catNames.length && _completeCats > 0) {
+        covBadge.textContent = 'Data Lengkap · ' + _completeCats + '/' + _catNames.length + ' kategori lengkap';
+        covBadge.className = 'chip b';
+      } else if (_completeCats > 0 || _catStats.some(function (c) { return c.filled > 0; })) {
+        covBadge.textContent = 'Data Sebagian · ' + _completeCats + '/' + _catNames.length + ' kategori lengkap';
         covBadge.className = 'chip w';
       } else {
-        covBadge.textContent = 'Data Lengkap · 4/4';
-        covBadge.className = 'chip b';
+        covBadge.textContent = 'Tidak tersedia · 0/' + _catNames.length;
+        covBadge.className = 'chip';
       }
     }
 
-    // Completeness chips
+    // Completeness chips — driven by the same real per-category counts.
     var cmplContainer = byId('financialCategoryCompleteness');
     if (cmplContainer) {
-      var catNames = ['Laba Rugi', 'Neraca', 'Arus Kas', 'Rasio'];
-      var isReal = meta.real;
-      cmplContainer.innerHTML = catNames.map(function(cName, idx) {
-        var isPartial = isReal && (idx === 1 || idx === 3);
+      cmplContainer.innerHTML = _catStats.map(function (c) {
+        var isPartial = !c.complete;
         var icon = isPartial ? '!' : '✓';
         var cls = isPartial ? 'p' : '';
-        var n = isReal ? (idx === 1 ? '3/6 pos' : (idx === 3 ? '1/2 pos' : '4/4 pos')) : '4/4 pos';
-        return '<span class="' + cls + '"><i aria-hidden="true">' + icon + '</i>' + cName + '<em>' + n + '</em></span>';
+        var n = c.total > 0 ? (c.filled + '/' + c.total + ' pos') : 'tidak ada data';
+        return '<span class="' + cls + '"><i aria-hidden="true">' + icon + '</i>' + c.name + '<em>' + n + '</em></span>';
       }).join('');
     }
 
@@ -2614,8 +2705,23 @@
     if (footFreq) footFreq.textContent = fr === 0 ? 'Kuartalan' : 'Tahunan';
     var srcChip = byId('finSrcChip');
     if (srcChip) {
-      srcChip.textContent = meta.real ? 'Data server' : 'Data contoh';
-      srcChip.className = 'chip ' + (meta.real ? 'b' : 'i');
+      // Subtask J: the chip used to read 'Laporan emiten lengkap' / 'Data
+      // terverifikasi' purely from the hardcoded FINANCIAL_META flag, while the
+      // table below could be filled by getSampleFsData() — numbers generated
+      // locally from a per-ticker seed. Claiming an official report for
+      // generated data is exactly the "badge data contoh menyamar resmi" the
+      // audit forbids, so the label now follows the model's REAL provenance.
+      var prov = model && model.provenance;
+      if (prov === 'SERVER_SNAPSHOT') {
+        srcChip.textContent = 'Laporan emiten (snapshot server)';
+        srcChip.className = 'chip b';
+      } else if (prov === 'HARDCODED_BRPT') {
+        srcChip.textContent = 'Data terkurasi · belum dari snapshot server';
+        srcChip.className = 'chip w';
+      } else {
+        srcChip.textContent = 'DATA CONTOH · bukan laporan resmi';
+        srcChip.className = 'chip w';
+      }
     }
 
     // Render Trend Summary Cards & Bar Chart with HTML Overlay (§5c)
@@ -3140,15 +3246,33 @@
       var pctStr = r.percentage_formatted || (pct != null ? pct.toFixed(2) + '%' : '-');
       if (pctStr === '—' || pctStr === '-') pctStr = '-';
 
-      html += '<tr class="border-b border-slate-800/80 hover:bg-slate-800/40 transition">';
-      html += '  <td colspan="4" class="p-2.5">';
-      html += '    <div class="flex items-center justify-between gap-2">';
-      html += '      <span class="font-semibold text-slate-100 text-xs truncate" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>';
-      html += '      <span class="font-mono text-emerald-400 font-bold text-xs tabular-nums shrink-0">' + escapeHtml(pctStr) + '</span>';
+      var isCtrl = Boolean(r.is_controller || r.isController || (r.category && r.category.toLowerCase().includes('pengendali')) || (i === 0 && pct && pct >= 50));
+      var ctrlBadge = isCtrl ? '<span style="color:#fbbf24;font-weight:700;font-size:10px;background:rgba(251,191,36,0.12);padding:1px 5px;border-radius:4px;border:1px solid rgba(251,191,36,0.25)">Pengendali</span>' : '';
+      // Subtask J: as_of and source are REQUIRED roster columns. They used to be
+      // computed into `asOfText` and then never rendered at all, while `srcText`
+      // silently defaulted to 'KSEI' and the date to '30 Sep 2026' — so an
+      // insider-activity row (whose real clock is its own transaction date) was
+      // stamped with the ownership snapshot's date and source. Both now come
+      // from the row; a genuinely missing value renders "—" instead of a guess.
+      var asOfText = r.as_of || r.asOf || r.per_tanggal || r.last_date || null;
+      var srcText = r.source || null;
+
+      html += '<tr class="border-b border-slate-800/80 hover:bg-slate-800/40 transition" style="border-bottom:1px solid var(--ac-hair);">';
+      html += '  <td colspan="4" style="padding:8px 10px;">';
+      html += '    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">';
+      html += '      <div style="display:flex;align-items:center;gap:6px;min-width:0">';
+      html += '        <span style="font-weight:600;color:var(--ac-ink);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>';
+      html += '        ' + ctrlBadge;
+      html += '      </div>';
+      html += '      <span style="font-family:monospace;font-weight:700;color:var(--ac-brand);font-size:12px;flex-shrink:0;">' + escapeHtml(pctStr) + '</span>';
       html += '    </div>';
-      html += '    <div class="flex items-center justify-between gap-2 mt-1 text-[11px]">';
-      html += '      <span class="text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded text-[10px] border border-slate-700/50 truncate max-w-[65%]">' + escapeHtml(cat) + '</span>';
-      html += '      <span class="font-mono text-slate-300 tabular-nums shrink-0 text-[11px]">' + (shares > 0 ? Number(shares).toLocaleString('id-ID') + ' lbr' : '-') + '</span>';
+      html += '    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:3px;font-size:10.5px;color:var(--ac-muted);">';
+      html += '      <span>' + escapeHtml(cat) + (srcText ? ' · ' + escapeHtml(srcText) : '') + '</span>';
+      html += '      <span style="font-family:monospace;color:var(--ac-ink);">' + (shares > 0 ? Number(shares).toLocaleString('id-ID') + ' lbr' : '—') + '</span>';
+      html += '    </div>';
+      html += '    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:2px;font-size:10px;color:var(--ac-muted);">';
+      html += '      <span>Per tanggal</span>';
+      html += '      <span style="font-family:monospace;">' + escapeHtml(asOfText || '—') + '</span>';
       html += '    </div>';
       html += '  </td>';
       html += '</tr>';
@@ -3883,14 +4007,32 @@
       var sIncChip = byId('msDetailIncompleteChip');
       if (sIncChip) sIncChip.style.display = !hasFf ? 'inline-flex' : 'none';
       var sSource = byId('msDetailSource');
-      if (sSource) sSource.textContent = 'KSEI · 30 Sep 2026';
+      if (sSource) sSource.textContent = row.free_float_source || 'KSEI · 30 Sep 2026';
       var isHsc = row.hsc_flag === true;
       var isNoHsc = row.hsc_flag === false;
-      var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : 'Belum diketahui');
+      var hS = isHsc ? 'HSC aktif' : (isNoHsc ? 'Tidak HSC' : '— / Belum dievaluasi');
       var sHscDot = byId('msDetailHscDot');
       if (sHscDot) sHscDot.className = 'dot ' + (isHsc ? 'a' : (isNoHsc ? 'g' : 'm'));
       var sHscText = byId('msDetailHscText');
       if (sHscText) sHscText.textContent = hS;
+
+      // REQ-20: Rekonsiliasi Free Float KSEI vs IDX
+      var ffKseiVal = row.free_float_ksei != null ? Number(row.free_float_ksei).toFixed(2).replace('.', ',') + '%' : (hasFf ? ffS : '—');
+      var ffIdxVal = row.free_float_idx != null ? Number(row.free_float_idx).toFixed(2).replace('.', ',') + '%' : '—';
+      var sKseiEl = byId('msDetailFfKseiVal');
+      if (sKseiEl) sKseiEl.textContent = ffKseiVal;
+      var sIdxEl = byId('msDetailFfIdxVal');
+      if (sIdxEl) sIdxEl.textContent = ffIdxVal;
+      var sReconcileNote = byId('msDetailReconciliationNote');
+      if (sReconcileNote) {
+        if (row.reconciliation_note) {
+          sReconcileNote.textContent = row.reconciliation_note;
+        } else if (row.free_float_ksei != null && row.free_float_idx != null && row.free_float_ksei !== row.free_float_idx) {
+          sReconcileNote.textContent = 'Perbedaan pencatatan: KSEI mencatat ' + ffKseiVal + ' (scripless), IDX menetapkan ' + ffIdxVal + ' (Peraturan I-A).';
+        } else {
+          sReconcileNote.textContent = 'Sumber resmi: KSEI kepemilikan scripless & Keterbukaan Informasi Bursa Efek Indonesia.';
+        }
+      }
 
       // Controller
       var topInv = null;

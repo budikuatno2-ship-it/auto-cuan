@@ -128,7 +128,15 @@ function row(overrides) {
     freshness_timestamp: nowIso,
     calculated_at: nowIso,
     price_date: today,
-    price_freshness_status: 'FRESH'
+    price_freshness_status: 'FRESH',
+    // M-P1e (2026-11-15): readiness evidence — the public safety gate routes
+    // through the fail-closed readiness engine; without data_status/volume/
+    // liquidity evidence rows drop with "public safety gate failed" (missing
+    // fixture), not the dedupe/ticker-passing behavior under test.
+    data_status: 'AVAILABLE',
+    volume_today: 1200,
+    avg_volume_20d: 1000,
+    liquidity_idr: 5000000000
   }, overrides || {});
 }
 

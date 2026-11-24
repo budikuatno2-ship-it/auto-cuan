@@ -80,18 +80,61 @@ module.exports = async function handler(req, res) {
       }
     });
 
+    // REQ-32: Fallback to local forensic security events if database events are empty.
+    // Security events are loaded INDEPENDENTLY via securityGuard.loadSecurityDashboard().
+    // The authoritative availability/reason come from that result. This endpoint must
+    // NOT overwrite `available`/`reason` with a fabricated "available: true, reason: null".
+    // Local VPS audit data can still surface as a provenance note, but only labeled as
+    // a local forensic snapshot — never as "Bersih (0 insiden)" evidence of an incident
+    // count that was never queried.
+    const securityAvailable = security.available === true;
+    let events = Array.isArray(security.events) && security.events.length > 0 ? security.events : [];
+    let vpsAuditNote = null;
+
+    if (events.length === 0) {
+      let vpsData = null;
+      try {
+        const fsMod = require('fs');
+        const pathMod = require('path');
+        const vpsAuditPath = pathMod.join(__dirname, '..', 'data', 'security', 'vps-audit.json');
+        if (fsMod.existsSync(vpsAuditPath)) {
+          vpsData = JSON.parse(fsMod.readFileSync(vpsAuditPath, 'utf8'));
+        }
+      } catch (_) {}
+
+      if (vpsData) {
+        // Local forensic snapshot exists, but it is NOT a live incident feed and it does
+        // not carry a real incident count from the security_events table.
+        vpsAuditNote = {
+          source: 'data/security/vps-audit.json',
+          at: vpsData.at || vpsData.timestamp || null,
+          kind: 'VPS_FIREWALL_AUDIT_SNAPSHOT',
+          note:
+            'Snapshot audit UFW/fail2ban lokal tersedia. Ini bukan feed insiden realtime ' +
+            'dan tidak memuat incident count — status keamanan ditampilkan sebagai ' +
+            (securityAvailable ? 'AVAILABLE' : 'UNAVAILABLE') + '.'
+        };
+      }
+    }
+
+    const publicStatus = securityGuard.getPublicStatus();
+
     return res.status(200).json({
       success: true,
       loginLogs,
       searchLogs,
       aiAnalysisLogs,
       aiUsageLogs,
-      securityEvents: security.events,
+      securityEvents: events,
       securitySummary: security.summary,
-      securityStatus: Object.assign(
-        securityGuard.getPublicStatus(),
-        { available: security.available, reason: security.reason }
-      ),
+      vpsAuditNote: vpsAuditNote,
+      // Preserve the authoritative availability from the security dashboard result.
+      securityStatus: Object.assign({}, publicStatus, {
+        available: securityAvailable,
+        reason: securityAvailable ? null : (security.reason || 'unavailable'),
+        telemetry_available: securityAvailable,
+        status: securityAvailable ? (publicStatus.enabled ? 'AVAILABLE' : 'UNAVAILABLE') : 'UNAVAILABLE'
+      }),
       summary: {
         totalLogins,
         totalSearches,

@@ -13,6 +13,7 @@
  */
 const store = require('../../lib/local-market-subset-store');
 const profiler = require('../../lib/liquidity-profiler');
+const { InstitutionalMath, QuantitativePrecisionEngine } = require('../../lib/quantitative-precision-engine');
 
 const RETRA = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
 const RETRA_LABELS = ['0,0%', '23,6%', '38,2%', '50,0%', '61,8%', '78,6%', '100,0%'];
@@ -58,13 +59,13 @@ function fmtRp(n) {
 function fmtPct1(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return null;
-  return v.toFixed(1).replace('.', ',') + '%';
+  return InstitutionalMath.safeDecimal(v, 1).toFixed(1).replace('.', ',') + '%';
 }
 
 function fmtX1(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return null;
-  return v.toFixed(1).replace('.', ',') + 'x';
+  return InstitutionalMath.safeDecimal(v, 1).toFixed(1).replace('.', ',') + 'x';
 }
 
 function atr14(candles) {
@@ -250,7 +251,7 @@ function computeMatrix(rawTicker) {
       label: 'Arus Asing',
       score: foreignNet == null ? null : clampScore(50 + (foreignNet > 0 ? 20 : foreignNet < 0 ? -15 : 0)),
       display: foreignNet == null ? null : fmtFlow(foreignNet),
-      note: foreignNet == null ? 'Data asing belum tersedia' : 'Net asing sesi terakhir'
+      note: foreignNet == null ? QuantitativePrecisionEngine.dataDeficientToken('foreign_flow') : 'Net asing sesi terakhir'
     }
   ];
 
@@ -367,7 +368,8 @@ async function handler(req, res) {
         return res.end(JSON.stringify({ success: false, error: mx.error }));
       }
       const kind = classify(message);
-      const reply = buildReply(kind, mx);
+      let reply = buildReply(kind, mx);
+      reply = QuantitativePrecisionEngine.sanitizeLLMResponse(reply);
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');

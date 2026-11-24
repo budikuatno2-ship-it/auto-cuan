@@ -45,6 +45,7 @@ const { DATA_STATUS, pickNumber, pickText, numberOrNull } = contract;
 
 const ROOT = path.resolve(__dirname, '..');
 const BACKTEST_FILE = path.join(ROOT, 'bukti-verifikasi-final', 'backtest-individual-964.json');
+const liveLedger = require('../lib/track-record-live-ledger.js');
 
 /** Minimum trade count for a win rate to count as a qualification (see N23). */
 const MIN_WIN_RATE_SAMPLE = 10;
@@ -60,11 +61,20 @@ let _cachedTrackRecord = null;
 
 function readBacktestFile() {
   try {
-    const parsed = JSON.parse(fs.readFileSync(BACKTEST_FILE, 'utf8'));
-    return parsed && typeof parsed === 'object' ? parsed : null;
+    const reader = require('../lib/track-record-reader.js');
+    const res = reader.loadBacktestData(BACKTEST_FILE);
+    return res && res.success ? res.data : null;
   } catch (_) {
     return null;
   }
+}
+
+/**
+ * Independent live signal ledger read (telegram_daily_picks shape).
+ * Never fabricates empty stats: a missing/corrupt ledger is reported honestly.
+ */
+function readLiveLedger() {
+  return liveLedger.loadLiveLedger();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -257,14 +267,28 @@ function buildSignalRow(row, index) {
 function buildTrackRecordPayload() {
   if (_cachedTrackRecord) return _cachedTrackRecord;
 
+  // Independent live signal ledger is the authoritative track-record source.
+  // If present, it wins over backtest statistics (which carry no per-trade
+  // outcome and therefore cannot express WAITING/ENTERED/TP/SL/EXPIRED).
+  const liveRes = readLiveLedger();
+  if (liveRes && liveRes.success && Array.isArray(liveRes.data) && liveRes.data.length > 0) {
+    _cachedTrackRecord = liveLedger.buildLiveTrackRecord(liveRes.data);
+    return _cachedTrackRecord;
+  }
+
+  // Backtest statistics act only as a residual baseline for per-ticker strategy
+  // metrics. No per-trade ledger -> lifecycle fields remain null.
   const file = readBacktestFile();
   const rows = file && Array.isArray(file.tickers) ? file.tickers.filter((r) => r && typeof r === 'object') : [];
   const meta = (file && file.metadata) || {};
 
   if (rows.length === 0) {
+    // Honest failure: no live ledger AND no readable backtest file. Never
+    // fabricate empty statistics and pretend they are a real record.
     _cachedTrackRecord = {
       success: false,
-      error: 'BACKTEST_FILE_UNREADABLE',
+      error: liveRes && liveRes.error ? liveRes.error : 'BACKTEST_FILE_UNREADABLE',
+      error_code: liveRes && liveRes.errorCode ? liveRes.errorCode : 'ENOENT',
       data_status: DATA_STATUS.SOURCE_UNAVAILABLE,
       trade_date: null,
       as_of: null,

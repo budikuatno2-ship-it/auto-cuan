@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0e14">
+  <title>Admin Ownership & HSC Import | Auto-Cuan V6</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0e14;
+      --panel: #111722;
+      --panel-2: #151d2a;
+      --border: #263244;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --green: #34d399;
+      --green-dark: #059669;
+      --red: #f87171;
+      --amber: #fbbf24;
+      --blue: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top right, rgba(16,185,129,.10), transparent 32rem), var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .wrap { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 56px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 42px; height: 42px; border-radius: 14px;
+      display: grid; place-items: center;
+      background: linear-gradient(145deg, #10b981, #047857);
+      color: #03120d; font-weight: 900; box-shadow: 0 12px 35px rgba(16,185,129,.18);
+    }
+    h1 { margin: 0; font-size: clamp(20px, 4vw, 26px); }
+    .subtitle { margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .back {
+      color: #cbd5e1; text-decoration: none; border: 1px solid var(--border);
+      padding: 9px 12px; border-radius: 10px; font-size: 13px; background: rgba(17,23,34,.72);
+    }
+    .panel {
+      background: rgba(17,23,34,.92); border: 1px solid var(--border); border-radius: 18px;
+      padding: 22px; box-shadow: 0 20px 70px rgba(0,0,0,.22); margin-bottom: 20px;
+    }
+    .notice {
+      display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid rgba(96,165,250,.22); background: rgba(59,130,246,.07); color: #bfdbfe;
+      font-size: 13px; line-height: 1.55; margin-bottom: 18px;
+    }
+    label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .help { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 6px 0 14px; }
+    .form-row { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .form-group { flex: 1; min-width: 220px; }
+    select, input[type="text"] {
+      width: 100%; border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; background: var(--panel-2); color: var(--text); font-size: 13px;
+    }
+    input[type="file"] {
+      display: block; width: 100%; border: 1px dashed #3a4a61; border-radius: 12px;
+      padding: 14px; background: var(--panel-2); color: #dbeafe; margin-bottom: 16px;
+    }
+    textarea {
+      width: 100%; min-height: 240px; resize: vertical; border-radius: 12px;
+      border: 1px solid var(--border); background: #0d131d; color: #d1fae5;
+      padding: 14px; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      outline: none;
+    }
+    textarea:focus { border-color: var(--green-dark); box-shadow: 0 0 0 3px rgba(16,185,129,.10); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+    button {
+      appearance: none; border: 0; border-radius: 11px; padding: 11px 18px;
+      font-weight: 800; cursor: pointer; transition: transform .12s ease, opacity .12s ease;
+      font-size: 13px;
+    }
+    button:active:not(:disabled) { transform: scale(.98); }
+    button:disabled { cursor: not-allowed; opacity: .42; }
+    .primary { background: var(--green); color: #032017; }
+    .secondary { background: #263244; color: #e2e8f0; }
+    .danger { background: rgba(248,113,113,.15); color: #fecaca; border: 1px solid rgba(248,113,113,.3); }
+    .status { display: none; margin-top: 18px; border-radius: 14px; padding: 16px; font-size: 13px; line-height: 1.55; }
+    .status.show { display: block; }
+    .status.loading { color: #bfdbfe; background: rgba(59,130,246,.08); border: 1px solid rgba(96,165,250,.22); }
+    .status.success { color: #bbf7d0; background: rgba(16,185,129,.08); border: 1px solid rgba(52,211,153,.24); }
+    .status.error { color: #fecaca; background: rgba(239,68,68,.08); border: 1px solid rgba(248,113,113,.24); }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 14px; }
+    .metric { padding: 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border); }
+    .metric span { display: block; color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+    .metric strong { display: block; color: #f8fafc; font-size: 18px; }
+    .table-box { overflow-x: auto; margin-top: 16px; border-radius: 12px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+    th { background: #151d2a; padding: 10px 12px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text); }
+    tr:last-child td { border-bottom: none; }
+    .chip { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+    .chip-green { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+    .chip-amber { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .chip-neutral { background: rgba(148,163,184,0.15); color: #cbd5e1; border: 1px solid rgba(148,163,184,0.3); }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">AC</div>
+        <div>
+          <h1>Upload & Import Ownership / HSC</h1>
+          <div class="subtitle">Panel Administrasi Auto-Cuan V6 · Sesi login Budi diperlukan</div>
+        </div>
+      </div>
+      <div>
+        <a class="back" href="/admin-console.html">← Admin Console</a>
+        <a class="back" href="/analisis-saham?tab=market-structure" style="margin-left:8px">Buka Struktur Pasar</a>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="notice">
+        <span>🛡️</span>
+        <div>
+          <strong>Alur Aman Bertransaksi (Preview &rarr; Verifikasi &rarr; Apply &rarr; Rollback):</strong>
+          Upload data tidak langsung mengubah data operasional. Lakukan <em>Pratinjau & Validasi</em> terlebih dahulu untuk memeriksa rekonsiliasi format (angka Indonesia, % Free Float, pengendali), lalu klik <em>Terapkan Perubahan (Apply)</em>. Snapshot otomatis dibuat untuk proteksi rollback kapan saja.
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="dataTypeSelect">Jenis Data</label>
+          <select id="dataTypeSelect">
+            <option value="ownership" selected>1. Daftar Pemegang Saham / Ownership Roster (JSON / CSV)</option>
+            <option value="hsc">2. Status HSC & Rekonsiliasi Free Float IDX (JSON / CSV)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="fileFormatSelect">Format File</label>
+          <select id="fileFormatSelect">
+            <option value="auto" selected>Otomatis (Deteksi JSON / CSV)</option>
+            <option value="json">JSON format</option>
+            <option value="csv">CSV format (Koma / Titik Koma)</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="fileInput">Pilih Berkas</label>
+      <input type="file" id="fileInput" accept=".json,.csv,.txt">
+
+      <label for="rawTextarea">Atau Tempel Konten Teks Mentah (JSON / CSV)</label>
+      <div class="help">Mendukung format desimal Indonesia (koma maupun titik), simbol %, dan angka ribuan (titik/koma).</div>
+      <textarea id="rawTextarea" placeholder='Contoh CSV:
+ticker, investor_name, shares, percentage, category, is_controller, as_of, source, free_float_ksei, free_float_idx
+BBCA, "PT DWIMURIA INVESTAMA ANDALAN", 67729950000, 54.94, Corporate, 1, 2026-09-30, KSEI, 41.82, 41.82'></textarea>
+
+      <div class="actions">
+        <button type="button" class="primary" id="btnPreview" onclick="handlePreview()">1. Pratinjau & Validasi</button>
+        <button type="button" class="secondary" id="btnApply" onclick="handleApply()" disabled>2. Terapkan Perubahan (Apply)</button>
+        <button type="button" class="secondary" id="btnClear" onclick="handleClear()">Bersihkan</button>
+      </div>
+
+      <div id="statusBox" class="status"></div>
+
+      <!-- Preview Summary Box -->
+      <div id="summaryPanel" style="display:none; margin-top:20px;">
+        <h3 style="margin:0 0 8px; font-size:15px; color:var(--green);">Ringkasan Hasil Validasi</h3>
+        <div class="metrics">
+          <div class="metric"><span>Valid</span><strong id="metricValid" style="color:var(--green)">0</strong></div>
+          <div class="metric"><span>Tidak Valid</span><strong id="metricInvalid" style="color:var(--red)">0</strong></div>
+          <div class="metric"><span>Baru (Added)</span><strong id="metricAdded" style="color:var(--blue)">0</strong></div>
+          <div class="metric"><span>Diperbarui</span><strong id="metricUpdated" style="color:var(--amber)">0</strong></div>
+          <div class="metric"><span>Sama (Unchanged)</span><strong id="metricUnchanged">0</strong></div>
+        </div>
+
+        <div id="errorDetailsBox" style="display:none; margin-top:14px; padding:12px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:10px; font-size:12px;"></div>
+
+        <h4 style="margin:16px 0 8px; font-size:13px; color:var(--text);">Sampel Data Pratinjau (5 Baris Pertama)</h4>
+        <div class="table-box">
+          <table id="previewTable">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Nama / Sektor</th>
+                <th>Free Float KSEI</th>
+                <th>Free Float IDX</th>
+                <th>Status HSC</th>
+                <th>Jml Investor</th>
+              </tr>
+            </thead>
+            <tbody id="previewTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rollback & Backup History Section -->
+    <section class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div>
+          <h2 style="margin:0; font-size:17px;">Riwayat Impor & Mekanisme Rollback</h2>
+          <div class="subtitle">Snapshot otomatis tersimpan sebelum setiap aksi impor diterapkan.</div>
+        </div>
+        <button type="button" class="secondary" onclick="loadBackupHistory()" style="padding:7px 12px; font-size:12px;">Muat Ulang Riwayat</button>
+      </div>
+
+      <div class="table-box">
+        <table>
+          <thead>
+            <tr>
+              <th>ID Backup</th>
+              <th>Waktu Pencadangan</th>
+              <th>Aktor</th>
+              <th>Jumlah Emiten</th>
+              <th>Ukuran</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="backupTbody">
+            <tr><td colspan="6" style="text-align:center; color:var(--muted)">Memuat riwayat snapshot...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    var currentPreviewData = null;
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(evt) {
+        document.getElementById('rawTextarea').value = evt.target.result;
+      };
+      reader.readAsText(file);
+    });
+
+    function showStatus(text, type) {
+      var box = document.getElementById('statusBox');
+      box.className = 'status show ' + type;
+      box.innerHTML = text;
+    }
+
+    function clearStatus() {
+      var box = document.getElementById('statusBox');
+      box.className = 'status';
+      box.innerHTML = '';
+    }
+
+    function handleClear() {
+      document.getElementById('rawTextarea').value = '';
+      document.getElementById('fileInput').value = '';
+      document.getElementById('summaryPanel').style.display = 'none';
+      document.getElementById('btnApply').disabled = true;
+      currentPreviewData = null;
+      clearStatus();
+    }
+
+    async function handlePreview() {
+      clearStatus();
+      var content = document.getElementById('rawTextarea').value.trim();
+      if (!content) {
+        showStatus('Harap masukkan konten JSON/CSV atau pilih berkas.', 'error');
+        return;
+      }
+      var dataType = document.getElementById('dataTypeSelect').value;
+      var format = document.getElementById('fileFormatSelect').value;
+
+      showStatus('Memvalidasi dan menganalisis pratinjau...', 'loading');
+      document.getElementById('btnPreview').disabled = true;
+
+      try {
+        var res = await fetch('/api/admin-users?action=ownership_upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            mode: 'preview',
+            data_type: dataType,
+            format: format,
+            content: content
+          })
+        });
+
+        var data = await res.json();
+        document.getElementById('btnPreview').disabled = false;
+
+        if (!res.ok || !data.success) {
+          showStatus('Validasi Gagal: ' + (data.error || 'Terjadi kesalahan sistem.'), 'error');
+          document.getElementById('summaryPanel').style.display = 'none';
+          document.getElementById('btnApply').disabled = true;
+          return;
+        }
+
+        currentPreviewData = data;
+        renderSummary(data);
+        showStatus('Pratinjau siap. Periksa ringkasan validasi di bawah sebelum menerapkan.', 'success');
+        document.getElementById('btnApply').disabled = (data.summary.validRows === 0);
+      } catch (err) {
+        document.getElementById('btnPreview').disabled = false;
+        showStatus('Gagal menghubungi server: ' + err.message, 'error');
+      }
+    }
+
+    function renderSummary(data) {
+      var summary = data.summary;
+      document.getElementById('metricValid').textContent = summary.validRows;
+      document.getElementById('metricInvalid').textContent = summary.invalidRows;
+      document.getElementById('metricAdded').textContent = summary.added;
+      document.getElementById('metricUpdated').textContent = summary.updated;
+      document.getElementById('metricUnchanged').textContent = summary.unchanged;
+
+      var errBox = document.getElementById('errorDetailsBox');
+      if (summary.errors && summary.errors.length > 0) {
+        errBox.style.display = 'block';
+        var errHtml = '<strong>Ditemukan ' + summary.errors.length + ' Peringatan / Kesalahan Baris:</strong><ul style="margin:6px 0 0; padding-left:18px;">';
+        summary.errors.slice(0, 10).forEach(function(e) {
+          errHtml += '<li>Baris ' + (e.row || '-') + (e.ticker ? ' (' + e.ticker + ')' : '') + ': ' + e.error + '</li>';
+        });
+        if (summary.errors.length > 10) errHtml += '<li>... dan ' + (summary.errors.length - 10) + ' baris lainnya</li>';
+        errHtml += '</ul>';
+        errBox.innerHTML = errHtml;
+      } else {
+        errBox.style.display = 'none';
+      }
+
+      var tbody = document.getElementById('previewTbody');
+      tbody.innerHTML = '';
+      (data.sample || []).forEach(function(row) {
+        var tr = document.createElement('tr');
+        var hscText = row.hsc_flag === true ? '<span class="chip chip-amber">HSC Aktif</span>' : (row.hsc_flag === false ? '<span class="chip chip-green">Tidak HSC</span>' : '<span class="chip chip-neutral">— / Belum dievaluasi</span>');
+        var ffKsei = row.freeFloatKsei != null ? row.freeFloatKsei.toFixed(2) + '%' : (row.freeFloat != null ? row.freeFloat.toFixed(2) + '%' : '-');
+        var ffIdx = row.freeFloatIdx != null ? row.freeFloatIdx.toFixed(2) + '%' : '-';
+
+        tr.innerHTML = '<td style="font-weight:700; font-family:monospace; color:#34d399">' + (row.ticker || '-') + '</td>' +
+          '<td>' + (row.name || '-') + '<br><small style="color:var(--muted)">' + (row.sector || 'Umum') + '</small></td>' +
+          '<td style="font-family:monospace">' + ffKsei + '</td>' +
+          '<td style="font-family:monospace">' + ffIdx + '</td>' +
+          '<td>' + hscText + '</td>' +
+          '<td style="font-family:monospace">' + (row.investorCount != null ? row.investorCount : (row.investors ? row.investors.length : 0)) + ' Entitas</td>';
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('summaryPanel').style.display = 'block';
+    }
+
+    async function handleApply() {
+      if (!currentPreviewData) return;
+      if (!confirm('Apakah Anda yakin ingin menerapkan perubahan ini ke dataset produksi? Snapshot cadangan akan dibuat secara otomatis.')) {
+        return;
+      }
+
+      var content = document.getElementById('rawTextarea').value.trim();
+      var dataType = document.getElementById('dataTypeSelect').value;
+      var format = document.getElementById('fileFormatSelect').value;
+
+      showStatus('Menerapkan dataset secara transaksional & membuat cadangan snapshot...', 'loading');
+      document.getElementById('btnApply').disabled = true;
+
+      try {
+        var res = await fetch('/api/admin-users?action=ownership_upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            mode: 'apply',
+            data_type: dataType,
+            format: format,
+            content: content
+          })
+        });
+
+        var data = await res.json();
+        if (!res.ok || !data.success) {
+          showStatus('Gagal Menerapkan: ' + (data.error || 'Terjadi galat.'), 'error');
+          document.getElementById('btnApply').disabled = false;
+          return;
+        }
+
+        showStatus('SUKSES! ' + data.appliedTickers + ' emiten berhasil diterapkan ke produksi. ID Backup: <code>' + data.backupId + '</code>. Cache in-memory diperbarui.', 'success');
+        document.getElementById('btnApply').disabled = true;
+        loadBackupHistory();
+      } catch (err) {
+        showStatus('Gagal menerapkan dataset: ' + err.message, 'error');
+        document.getElementById('btnApply').disabled = false;
+      }
+    }
+
+    async function loadBackupHistory() {
+      var tbody = document.getElementById('backupTbody');
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--muted)">Memuat riwayat snapshot...</td></tr>';
+
+      try {
+        var res = await fetch('/api/admin-users?action=ownership_upload&op=backups', { credentials: 'same-origin' });
+        var data = await res.json();
+        if (!res.ok || !data.success || !Array.isArray(data.backups) || data.backups.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--muted)">Belum ada riwayat backup tersimpan.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = '';
+        data.backups.forEach(function(b) {
+          var tr = document.createElement('tr');
+          var d = new Date(b.timestamp);
+          var dateStr = isNaN(d.getTime()) ? b.timestamp : d.toLocaleString('id-ID');
+          var kb = (b.sizeBytes ? (b.sizeBytes / 1024).toFixed(1) : 0) + ' KB';
+
+          tr.innerHTML = '<td style="font-family:monospace; font-weight:600">' + b.backupId + '</td>' +
+            '<td>' + dateStr + '</td>' +
+            '<td>' + (b.actor || 'admin') + '</td>' +
+            '<td style="font-family:monospace">' + (b.ownershipCount || 0) + ' emiten</td>' +
+            '<td style="font-family:monospace; color:var(--muted)">' + kb + '</td>' +
+            '<td><button type="button" class="danger" style="padding:5px 10px; font-size:11px;" onclick="triggerRollback(\'' + b.backupId + '\')">Rollback ke versi ini</button></td>';
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--red)">Gagal memuat riwayat: ' + err.message + '</td></tr>';
+      }
+    }
+
+    async function triggerRollback(backupId) {
+      if (!confirm('PERINGATAN ROLLBACK:\nApakah Anda yakin ingin mengembalikan seluruh dataset ke snapshot ' + backupId + '?')) {
+        return;
+      }
+
+      showStatus('Melakukan rollback ke ' + backupId + '...', 'loading');
+      try {
+        var res = await fetch('/api/admin-users?action=ownership_upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ mode: 'rollback', backup_id: backupId })
+        });
+        var data = await res.json();
+        if (!res.ok || !data.success) {
+          showStatus('Rollback Gagal: ' + (data.error || 'Terjadi kesalahan.'), 'error');
+          return;
+        }
+        showStatus('Rollback Berhasil! ' + data.restoredCount + ' emiten dipulihkan ke versi ' + data.restoredBackupId + '. Safety snapshot tersimpan: <code>' + data.safetyBackupId + '</code>.', 'success');
+        loadBackupHistory();
+      } catch (err) {
+        showStatus('Gagal melakukan rollback: ' + err.message, 'error');
+      }
+    }
+
+    // Initial load of history on page open
+    loadBackupHistory();
+  </script>
+</body>
+</html>

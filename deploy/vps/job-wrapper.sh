@@ -105,10 +105,28 @@ cd "$REPO_DIR"
 # --- helper waktu WIB (tanpa dependensi node; pakai TZ=Asia/Jakarta) ---
 # Mengembalikan HH:MM WIB saat ini.
 wib_hm() {
-  TZ=Asia/Jakarta date +"%H:%M"
+  if command -v node >/dev/null 2>&1; then
+    node -e "
+      const d = new Date();
+      const wib = new Date(d.getTime() + 7 * 3600000);
+      const pad = (n) => String(n).padStart(2, '0');
+      process.stdout.write(pad(wib.getUTCHours()) + ':' + pad(wib.getUTCMinutes()));
+    " 2>/dev/null || (TZ=Asia/Jakarta date +"%H:%M")
+  else
+    TZ=Asia/Jakarta date +"%H:%M"
+  fi
 }
 wib_iso() {
-  TZ=Asia/Jakarta date +"%Y-%m-%dT%H:%M:%S%z"
+  if command -v node >/dev/null 2>&1; then
+    node -e "
+      const d = new Date();
+      const wib = new Date(d.getTime() + 7 * 3600000);
+      const pad = (n) => String(n).padStart(2, '0');
+      process.stdout.write(wib.getUTCFullYear() + '-' + pad(wib.getUTCMonth()+1) + '-' + pad(wib.getUTCDate()) + 'T' + pad(wib.getUTCHours()) + ':' + pad(wib.getUTCMinutes()) + ':' + pad(wib.getUTCSeconds()) + '+07:00');
+    " 2>/dev/null || (TZ=Asia/Jakarta date +"%Y-%m-%dT%H:%M:%S%z" | sed 's/\([0-9]\{2\}\)$/:\1/')
+  else
+    TZ=Asia/Jakarta date +"%Y-%m-%dT%H:%M:%S%z" | sed 's/\([0-9]\{2\}\)$/:\1/'
+  fi
 }
 wib_to_min() {
   # $1 = HH:MM -> menit sejak 00:00
@@ -189,7 +207,95 @@ fi
 NOW_ISO="$(wib_iso)"
 START_MS="$(date +%s%3N 2>/dev/null || date +%s000)"
 
-# --- (c) hard stop WIB untuk job pemakai kuota ---
+# --- (c0) preflight Admin Console enabled/disabled check ---
+# Cek apakah job berstatus disabled atau legacy_inactive di Admin Console store.
+if command -v node >/dev/null 2>&1; then
+  _ADMIN_STATE="$(node -e "
+    try {
+      const store = require('./lib/admin-schedule-store.js');
+      const res = store.get();
+      if (!res || !res.ok || !res.doc || !res.doc.jobs) {
+        process.stdout.write('CHECK_ERROR');
+        process.exit(0);
+      }
+      const aliasMap = {
+        'fastwatcher': 'daytrade-fastwatcher',
+        'fastwatcher-1555': 'daytrade-fastwatcher',
+        'daytrade-producer': 'daytrade-fastwatcher',
+        'daily-candles': 'yahoo-ohlcv',
+        'daily-candles-1630': 'yahoo-ohlcv',
+        'daily-candles-retry': 'yahoo-ohlcv',
+        'broksum-1945': 'broksum-all',
+        'broksum-retry-2045': 'broksum-foreign',
+        'domestic-compile-2025': 'domestic-compile',
+        'domestic-compile-final-2110': 'accumulation',
+        'bandarmologi-intel-2114': 'bandarmologi',
+        'screeners-preflight-2125': 'top20',
+        'afternoon-recap': 'telegram',
+        'insider-tiered-2200': 'insider',
+        'fundamental-refresh-2220': 'fundamental',
+        'quota-burn-0015': 'quota-backfill',
+        'quota-burn-night-2245': 'quota-backfill',
+        'quota-burn-day': 'quota-backfill',
+        'quota-burn-weekend': 'quota-backfill',
+        'quota-burn-weekend-late': 'quota-backfill'
+      };
+      const key = aliasMap['$JOB_NAME'] || '$JOB_NAME';
+      const job = res.doc.jobs[key];
+      if (job) {
+        if (job.legacy_inactive === true || job.enabled === false) {
+          process.stdout.write('DISABLED');
+        } else {
+          process.stdout.write('ENABLED');
+        }
+      } else {
+        process.stdout.write('NOT_IN_CATALOG');
+      }
+    } catch (e) {
+      process.stdout.write('CHECK_ERROR');
+    }
+  " 2>/dev/null || echo "CHECK_ERROR")"
+
+  if [ "$_ADMIN_STATE" = "DISABLED" ]; then
+    END_ISO="$(wib_iso)"
+    write_heartbeat "SKIPPED" "JOB_DISABLED_BY_ADMIN_CONSOLE" 0 0 0 "Job disabled by Admin Console" "$NOW_ISO" "$END_ISO"
+    printf '[%s] %s SKIPPED: JOB_DISABLED_BY_ADMIN_CONSOLE (legacy_inactive or enabled=false)\n' "$NOW_ISO" "$JOB_NAME" >> "$LOG_FILE" 2>/dev/null || true
+    echo "[$NOW_ISO] $JOB_NAME SKIPPED: JOB_DISABLED_BY_ADMIN_CONSOLE"
+    exit 0
+  elif [ "$_ADMIN_STATE" = "CHECK_ERROR" ] && [ "$USES_QUOTA" -eq 1 ]; then
+    # Fail-closed untuk job pemakai kuota jika schedule store gagal dibaca
+    END_ISO="$(wib_iso)"
+    write_heartbeat "BLOCKED" "STORE_READ_FAILED_FAIL_CLOSED" 4 0 0 "Gagal membaca admin schedule store" "$NOW_ISO" "$END_ISO"
+    printf '[%s] %s BLOCKED: fail-closed store read error on quota job\n' "$NOW_ISO" "$JOB_NAME" >> "$LOG_FILE" 2>/dev/null || true
+    echo "[$NOW_ISO] $JOB_NAME BLOCKED: fail-closed store read error on quota job"
+    exit 4
+  fi
+fi
+
+# --- (c1) de-duplikasi tanggal yang sama (SKIPPED_DUPLICATE) ---
+if [ "${AUTO_CUAN_SKIP_DUPLICATE:-0}" = "1" ] && [ -f "$HEARTBEAT_FILE" ]; then
+  _TODAY_WIB="$(TZ=Asia/Jakarta date +"%Y-%m-%d" 2>/dev/null || date +"%Y-%m-%d")"
+  _ALREADY_DONE="$(node -e "
+    try {
+      const hb = JSON.parse(require('fs').readFileSync('$HEARTBEAT_FILE', 'utf8'));
+      if (hb.exitCode === 0 && (hb.outcome === 'SUCCESS' || hb.status === 'OK')) {
+        const lastDate = (hb.lastEndWIB || hb.lastStartWIB || '').slice(0, 10);
+        if (lastDate === '$_TODAY_WIB') { process.stdout.write('DUPLICATE'); process.exit(0); }
+      }
+    } catch(e){}
+    process.stdout.write('NOT_DUPLICATE');
+  " 2>/dev/null || echo "NOT_DUPLICATE")"
+
+  if [ "$_ALREADY_DONE" = "DUPLICATE" ]; then
+    END_ISO="$(wib_iso)"
+    write_heartbeat "SKIPPED" "SKIPPED_DUPLICATE" 0 0 0 "Job already completed today" "$NOW_ISO" "$END_ISO"
+    printf '[%s] %s SKIPPED: SKIPPED_DUPLICATE (already completed today %s)\n' "$NOW_ISO" "$JOB_NAME" "$_TODAY_WIB" >> "$LOG_FILE" 2>/dev/null || true
+    echo "[$NOW_ISO] $JOB_NAME SKIPPED: SKIPPED_DUPLICATE"
+    exit 0
+  fi
+fi
+
+# --- (c2) hard stop WIB untuk job pemakai kuota ---
 # DESAIN (BUG-V5-P0-006/007): jendela 23:50-00:10 WIB adalah KUNCI KESELAMATAN
 # kuota (safety lock), bukan sekadar skip kosmetik -> outcome BLOCKED, exit 4.
 # Jangan pernah merekamnya sebagai exit 0/SUCCESS.

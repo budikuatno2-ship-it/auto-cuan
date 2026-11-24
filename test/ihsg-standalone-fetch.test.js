@@ -29,12 +29,14 @@ function withCacheDir(fn) {
 
 test('B5: fetches the IHSG bar and reports it present', async () => {
   await withCacheDir(async () => {
-    const origFetch = candleFetcher.fetchDailyCandles;
+    // V6: the tool prefers the zero-quota Yahoo ^JKSE benchmark first; Arjum is
+    // only an opt-in fallback. The test therefore stubs the Yahoo fetcher (the
+    // real primary path) and asserts the same behavioural contract as before.
+    const origYahoo = candleFetcher.fetchDailyCandlesYahoo;
     let calls = 0;
-    candleFetcher.fetchDailyCandles = async (ticker, opts) => {
+    candleFetcher.fetchDailyCandlesYahoo = async (ticker, opts) => {
       calls++;
       assert.equal(ticker, 'IHSG');
-      assert.equal(opts.force, true);
       candleFetcher.writeCache('IHSG', {
         code: 'IHSG',
         candles: [{ date: '2026-09-07', open: 100, high: 110, low: 99, close: 105, volume: 1000 }]
@@ -46,27 +48,27 @@ test('B5: fetches the IHSG bar and reports it present', async () => {
       assert.equal(res.fetched, true);
       assert.equal(res.has_bar, true);
       assert.equal(res.alert_required, false, 'no alert when the bar is present');
-      assert.equal(calls, 1, 'exactly one Arjum request');
+      assert.equal(calls, 1, 'exactly one Yahoo request');
     } finally {
-      candleFetcher.fetchDailyCandles = origFetch;
+      candleFetcher.fetchDailyCandlesYahoo = origYahoo;
     }
   });
 });
 
 test('B5: alerts (exit 7) when the bar is still missing after 17:30 WIB', async () => {
   await withCacheDir(async () => {
-    const origFetch = candleFetcher.fetchDailyCandles;
-    candleFetcher.fetchDailyCandles = async () => ({ ok: false, status: 502, error: 'origin overloaded' });
+    const origYahoo = candleFetcher.fetchDailyCandlesYahoo;
+    candleFetcher.fetchDailyCandlesYahoo = async () => ({ ok: false, status: 502, error: 'origin overloaded' });
     try {
       // 18:00 WIB = 11:00 UTC
       const res = await ihsg.run({ argv: ['--date=2026-09-07'], now: new Date('2026-09-07T11:00:00Z') });
       assert.equal(res.has_bar, false);
       assert.equal(res.alert_required, true, 'must alert after the 17:30 WIB window');
-      assert.equal(res.fetch_error, 'origin overloaded');
+      assert.equal(res.fetch_error, 'origin overloaded', 'the precise upstream failure reason must be surfaced');
       assert.equal(process.exitCode, 7, 'missing IHSG bar must exit non-zero');
     } finally {
       process.exitCode = undefined;
-      candleFetcher.fetchDailyCandles = origFetch;
+      candleFetcher.fetchDailyCandlesYahoo = origYahoo;
     }
   });
 });

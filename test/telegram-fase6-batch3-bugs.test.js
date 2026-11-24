@@ -58,7 +58,8 @@ test('BUG-F6-013: dispatchTelegram does not chunk messages exceeding Telegram 40
   };
 
   try {
-    await webhookEngine.dispatchTelegram(longText, 'mock-token', '12345');
+    // M-P1e: gate_env seam — the chunking contract applies to the live path.
+    await webhookEngine.dispatchTelegram(longText, 'mock-token', '12345', { gate_env: { TELEGRAM_ENABLED: '1', TELEGRAM_LIVE: 'true' } });
     // Telegram API limit is 4096 chars. Unchunked single send will be rejected with HTTP 400 Bad Request
     assert.ok(capturedBody && capturedBody.text.length <= 4096, 'Telegram text must be chunked to <= 4096 chars');
   } finally {

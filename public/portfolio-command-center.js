@@ -113,8 +113,13 @@
   }
 
   function setGateError(message) {
-    $('accessGate').innerHTML = '<h2>Portfolio belum berhasil dibuka</h2><p class="muted">' + escapeHtml(message || 'Sesi tidak dapat diverifikasi.') + '</p><div class="actions" style="justify-content:center"><button id="retryAccess" class="btn primary">Coba Lagi</button><a class="btn" href="/">Login Ulang</a></div>';
-    $('retryAccess').onclick = checkAccess;
+    // FIX 2: the gate can be unmounted by a tab switch while an access check
+    // is in flight. Never throw into the global error handler.
+    var gate = $('accessGate');
+    if (!gate) return;
+    gate.innerHTML = '<h2>Portfolio belum berhasil dibuka</h2><p class="muted">' + escapeHtml(message || 'Sesi tidak dapat diverifikasi.') + '</p><div class="actions" style="justify-content:center"><button id="retryAccess" class="btn primary">Coba Lagi</button><a class="btn" href="/">Login Ulang</a></div>';
+    var retry = $('retryAccess');
+    if (retry) retry.onclick = checkAccess;
   }
 
   function loadLocalState() {
@@ -161,16 +166,13 @@
   async function checkAccess() {
     var gate = $('accessGate');
     if (!gate) return;
-    console.log('[Portfolio checkAccess] Starting access check...');
+    var gateGeneration = (root.__AUTOCUAN_PORTFOLIO_GATE_GENERATION__ = (root.__AUTOCUAN_PORTFOLIO_GATE_GENERATION__ || 0) + 1);
     gate.innerHTML = '<span class="spinner" aria-hidden="true"></span><h2>Memeriksa akses aman…</h2><p class="muted">Maksimal 9 detik. Jika gagal, tombol coba lagi akan muncul.</p>';
     try {
       var response = await fetchPortfolioAccess();
-      console.log('[Portfolio checkAccess] HTTP Status:', response.status);
-      var data = await response.json().catch(function (err) {
-        console.error('[Portfolio checkAccess] JSON parse error:', err);
-        return {};
-      });
-      console.log('[Portfolio checkAccess] Received data:', JSON.stringify(data));
+      var data = await response.json().catch(function () { return {}; });
+      // FIX 2: a tab switch may have replaced the gate while awaiting.
+      if (gateGeneration !== root.__AUTOCUAN_PORTFOLIO_GATE_GENERATION__ || !$('accessGate')) return;
       if (!response.ok || !data || data.success !== true || !data.user_id) throw new Error(data.error || 'Akun belum mendapat akses.');
       function cleanUname(val) {
         if (!val) return '';
@@ -204,7 +206,6 @@
       var sChip = $('sessionChip');
       if (sChip) sChip.innerHTML = '<span class="status-dot"></span>' + escapeHtml(displaySession);
       hide('accessGate'); show('app'); bind();
-      console.log('[Portfolio checkAccess] Portfolio successfully unlocked and app shown!');
 
       // Render the user's own portfolio BEFORE anything that depends on a
       // network call. This used to `await loadSectorHot()` first, and that fetch
@@ -224,8 +225,8 @@
       loadScript('/portfolio-ai-runtime-v2.js?v=20260727-premium-v2').catch(function (error) { var ais = $('aiStatus'); if (ais) ais.textContent = error.message; });
       setTimeout(function () { loadLocalState(); renderAll(); }, 600);
     } catch (error) {
-      console.error('[Portfolio checkAccess error]:', error && error.message ? error.message : error);
-      setGateError(error && error.name === 'AbortError' ? 'Pemeriksaan akses terlalu lama. Coba lagi atau login ulang.' : error.message);
+      if (gateGeneration !== root.__AUTOCUAN_PORTFOLIO_GATE_GENERATION__) return;
+      setGateError(error && error.name === 'AbortError' ? 'Pemeriksaan akses terlalu lama. Coba lagi atau login ulang.' : 'Akses portofolio tidak dapat diverifikasi. Coba lagi.');
     }
   }
 
@@ -492,7 +493,9 @@
       var updated = 0;
       rows.forEach(function (row) { if (row[1] && row[1] > 0) { state.prices[row[0]] = Math.round(row[1]); updated += 1; } });
       saveJson(pricesKey(), state.prices); localStorage.setItem(priceTimeKey(), String(Date.now()));
-      renderAll(); if (force) captureSnapshot(); toast(updated + ' harga berhasil diperbarui.');
+      renderAll(); if (force) captureSnapshot();
+      var msg = updated > 0 ? (updated + ' harga berhasil diperbarui (' + symbols.slice(0, 3).join(', ') + (symbols.length > 3 ? '...' : '') + ').') : 'Harga sudah terkini.';
+      toast(msg);
     } finally {
       buttons.forEach(function (button) { button.disabled = false; button.textContent = button.id === 'refreshToday' ? 'Refresh data' : 'Refresh Harga'; });
     }

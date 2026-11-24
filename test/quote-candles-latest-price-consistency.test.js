@@ -22,6 +22,22 @@ const assert = require('node:assert/strict');
 const policy = require('../lib/chart-t1-policy');
 const quoteHandler = require('../api/quote');
 const candlesHandler = require('../api/candles');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+// Upstream fixtures must not accidentally read the developer's canonical/disk data.
+const originalCwd = process.cwd();
+const originalDb = process.env.AUTO_CUAN_MARKET_DB;
+const offlineRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'OFFLINE_quote_t1_'));
+process.chdir(offlineRoot);
+process.env.AUTO_CUAN_MARKET_DB = path.join(offlineRoot, 'absent.sqlite');
+test.after(() => {
+  process.chdir(originalCwd);
+  if (originalDb === undefined) delete process.env.AUTO_CUAN_MARKET_DB;
+  else process.env.AUTO_CUAN_MARKET_DB = originalDb;
+  fs.rmSync(offlineRoot, { recursive: true, force: true });
+});
 
 function jakartaToday() { return policy.formatJakartaDate(new Date()); }
 

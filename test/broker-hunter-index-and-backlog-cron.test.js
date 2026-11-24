@@ -36,8 +36,16 @@ test('B1: the builder stays local-disk only (no Arjum quota use)', () => {
 });
 
 test('B3: the canonical schedule runs the backlog age alarm daily after the EOD window', () => {
- // Q1/P2: alarm backlog via quota-burn-day 00:35-18:35 (floor siang 3000) +
- // quota-burn-weekend; skema P2 job-wrapper tanpa run-backlog-age-alarm.sh terpisah.
+ // Q1/P2: alarm backlog via quota-burn-day 00:35-18:35 + quota-burn-weekend;
+ // skema P2 job-wrapper tanpa run-backlog-age-alarm.sh terpisah.
+ //
+ // M-P1e (2026-11-15): the test asserted the OBSOLETE P2 draft floor 3000.
+ // The production contract (config/quota.json reserveFloorWeekdayDaytime=5000,
+ // the schedule's own header comment "V3-F01 floor 5000 weekday", and
+ // tools/validate-schedule.js which validates the shipped file as VALID) pins
+ // the weekday daytime reserve floor at 5000 — the V3-F01 Hard-Lock. The test
+ // is strengthened to assert the exact shipped line including the floor value.
  const cron = read('deploy/vps/final-schedule.cron');
- assert.match(cron, /^35 0-18 \* \* 1-5 .*quota-burn-day.*quota-burn\.js --floor 3000/m);
+ assert.match(cron, /^35 0-18 \* \* 1-5 \/home\/ubuntu\/auto-cuan\/deploy\/vps\/job-wrapper\.sh quota-burn-day 3300 \/home\/ubuntu\/\.local\/node-v22\/bin\/node tools\/quota-burn\.js --floor 5000/m);
+ assert.match(cron, /^35 0-22 \* \* 6,0 .*quota-burn-weekend .*quota-burn\.js --floor 0/m);
 });

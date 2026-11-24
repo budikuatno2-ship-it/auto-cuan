@@ -80,6 +80,15 @@ async function main() {
   const finalRun = args.has('--final');
   const force = args.has('--force');
 
+  if (args.has('--selftest')) {
+    console.log(JSON.stringify({
+      selftest: 'OK',
+      telegram_live_send: process.env.TELEGRAM_LIVE_SEND || 'false',
+      runner: 'run-telegram-monitor-local.js'
+    }, null, 2));
+    return;
+  }
+
   if (execute && process.env.LOCAL_MONITOR_LIVE_APPROVED !== 'YES') {
     throw new Error(
       'LIVE_BLOCKED: set LOCAL_MONITOR_LIVE_APPROVED=YES only after production approval'
@@ -143,7 +152,14 @@ async function main() {
 
   const query = {};
 
+  const liveSendAllowed = String(process.env.TELEGRAM_LIVE_SEND || '').toLowerCase() === 'true';
+
   if (!execute) {
+    query.dry_run = '1';
+    query.force = '1';
+    query.preview_hourly_batch = '1';
+  } else if (!liveSendAllowed) {
+    console.warn('[TELEGRAM_LOCK] TELEGRAM_LIVE_SEND is false: forcing dry_run mode to protect live channel');
     query.dry_run = '1';
     query.force = '1';
     query.preview_hourly_batch = '1';

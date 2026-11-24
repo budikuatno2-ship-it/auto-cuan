@@ -57,12 +57,37 @@ test('api/candles returns 502 when upstream fetch throws exception', async () =>
   const prevFetch = global.fetch;
   global.fetch = async () => { throw new Error('network down'); };
 
+  // Use a ticker with NO local disk cache (data/ohlcv|daily-candles/<T>.json),
+  // so the handler is forced down the live-fetch path. BBCA now has a disk
+  // cache in the recovery worktree, which would short-circuit the fetch and
+  // make this assertion vacuous. ZZZZ is a valid ticker shape with no cache.
   const res = makeRes();
-  await handler({ method: 'GET', query: { ticker: 'BBCA' }, headers: { host: 'localhost' } }, res);
+  await handler({ method: 'GET', query: { ticker: 'ZZZZ' }, headers: { host: 'localhost' } }, res);
 
   global.fetch = prevFetch;
   assert.equal(res.statusCode, 502);
   assert.equal(res.body.success, false);
+  // Canonical contract: a thrown transport error carries an explicit error code
+  // and is distinguishable from a genuinely-absent bar (200 + unavailable).
+  assert.equal(res.body.error_code, 'UPSTREAM_TRANSPORT_ERROR');
+  assert.equal(res.body.data_status, 'unavailable');
+});
+
+test('api/candles returns 200 + data_status unavailable (not 502) when upstream data is genuinely absent', async () => {
+  const handler = requireApiWithSupabaseStub('../api/candles');
+  const prevFetch = global.fetch;
+  // Upstream responds OK but with no chart result — an honest "no data" answer,
+  // which must NOT be reported as a transport failure (502).
+  global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ chart: { result: [] } }) });
+
+  const res = makeRes();
+  await handler({ method: 'GET', query: { ticker: 'ZZZZ' }, headers: { host: 'localhost' } }, res);
+
+  global.fetch = prevFetch;
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.success, false);
+  assert.equal(res.body.data_status, 'unavailable');
+  assert.equal(res.body.error_code, undefined, 'absent data must not carry a transport error code');
 });
 
 test('api/candles returns 400 when ticker is missing', async () => {

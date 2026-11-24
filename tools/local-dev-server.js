@@ -812,9 +812,44 @@ const server = http.createServer(async (req, res) => {
     return res.end(html);
   }
 
-  // 1. Handle API routes
-  if (pathname.startsWith('/api/')) {
+    // FINAL CLEAN 5-FILE WAVE / FIX 2: canonical EOD date from the read-only
+    // market.sqlite stock_daily_history max(trade_date). No provider call.
+    if (pathname === '/api/market/eod-status') {
+      try {
+        const { DatabaseSync } = require('node:sqlite');
+        const fsMod = require('node:fs');
+        const candidates = [process.env.AUTO_CUAN_MARKET_DB,
+          path.join(__dirname, '..', 'data', 'market.sqlite'),
+          '/home/ubuntu/auto-cuan-data/market.sqlite'].filter(Boolean);
+        const dbPath = candidates.find(x => fsMod.existsSync(x));
+        if (!dbPath) return res.status(200).json({ success: false, error: 'DB_UNAVAILABLE' });
+        const db = new DatabaseSync(dbPath, { readOnly: true });
+        let row;
+        try {
+          row = db.prepare("SELECT max(json_extract(row_json, '$.trade_date')) AS max_date FROM market_rows WHERE table_name = 'stock_daily_history'").get();
+        } finally { db.close(); }
+        const maxDate = row && row.max_date ? String(row.max_date).slice(0, 10) : null;
+        var updatedAt = null;
+        try {
+          var u = db.prepare("SELECT max(json_extract(row_json, '$.updated_at')) AS updated_at FROM market_rows WHERE table_name = 'stock_daily_history'").get();
+          updatedAt = u && u.updated_at ? String(u.updated_at) : null;
+        } catch (_) {}
+        return res.status(200).json({ success: !!maxDate, canonical_eod_at: maxDate, data_as_of: maxDate, updated_at: updatedAt, source: 'stock_daily_history.max_trade_date' });
+      } catch (e) {
+        return res.status(200).json({ success: false, error: String((e && e.message) || e) });
+      }
+    }
+    if (pathname.startsWith('/api/')) {
     let endpointName = pathname.slice('/api/'.length).replace(/\.js$/, '');
+
+    // V6 (W2a / 13A): /api/whats-new/ack -> whats-new?sub=ack. The generic
+    // API_DIR loader only resolves api/whats-new.js, so the sub-path is mapped
+    // here (mirrors the fast-bundle/<tail> alias below).
+    if (endpointName === 'whats-new/ack') {
+      parsedUrl.searchParams.set('sub', 'ack');
+      endpointName = 'whats-new';
+      pathname = '/api/whats-new';
+    }
 
     // Alias: /api/bandarmologi -> sector-hot?action=bandarmologi
     if (endpointName === 'bandarmologi') {
@@ -898,7 +933,7 @@ const server = http.createServer(async (req, res) => {
     // V3-F13: get-sheet/save-sheet/portfolio-summary wajib mock agar uji browser
     // nyata 19 menu x 4 viewport 0 request gagal (>=400). Data riil bentuk
     // kontrak money-sheet-model (version+rows), bulan dinamis dari query.
-    if (endpointName === 'money-management') {
+    if (PREVIEW_MOCKS_ENABLED && endpointName === 'money-management') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
       const action = req.query.action || (req.body && req.body.action) || 'summary';
@@ -954,17 +989,11 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // FASE V4-F04: Endpoint Quota Settings & Security Audit di local dev server
-    if (endpointName === 'admin/quota-settings' || endpointName === 'quota-settings') {
-      const parsedBody = await parseBody(req);
-      const patch = (parsedBody && parsedBody.patch) || parsedBody || {};
-      const quotaState = require('../lib/quota-state');
-      const saved = quotaState.saveConfig(patch, 'budi');
-      const snap = quotaState.getQuotaSnapshot();
-      return res.status(200).json({ success: true, quota: snap, config: saved.config });
-    }
-
-    if (endpointName === 'admin/security-audit' || endpointName === 'security-audit') {
+    // V6 (Subtask C): `/api/admin/quota-settings` is now a REAL authorized
+    // handler (api/admin/quota-settings.js). The old local stub that called
+    // saveConfig(patch, 'budi') is REMOVED; the generic API_DIR loader below
+    // resolves and runs the real handler (same-origin + admin + audit + readback).
+    if (PREVIEW_MOCKS_ENABLED && (endpointName === 'admin/security-audit' || endpointName === 'security-audit')) {
       const parsedBody = await parseBody(req);
       const action = parsedBody && parsedBody.action;
       if (req.method === 'GET' || !action) {
@@ -1001,10 +1030,9 @@ const server = http.createServer(async (req, res) => {
         });
       }
       if (action === 'quota_update') {
-        const quotaState = require('../lib/quota-state');
-        const patch = (parsedBody && parsedBody.patch) || {};
-        const saved = quotaState.saveConfig(patch, 'budi');
-        return res.status(200).json({ success: true, quota: quotaState.getQuotaSnapshot(), config: saved.config });
+        // V6 (Subtask C): delegate to the single authorized quota-settings handler.
+        const quotaSettings = require('../api/admin/quota-settings');
+        return quotaSettings(req, res);
       }
       if (action === 'security_status') {
         const adminService = require('../lib/admin-console-service');

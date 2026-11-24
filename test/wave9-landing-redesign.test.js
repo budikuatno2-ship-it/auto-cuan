@@ -45,11 +45,13 @@ test('Wave 9: Hero contains canonical heading, restrained Signal Line, and truth
   assert.match(landingHtml, /class="landing-signal-line-wrap"/);
   assert.match(landingHtml, /<svg class="landing-signal-line"/);
 
-  // Grounded workstation preview with provenance label
+  // Grounded workstation preview with provenance label.
+  // W7: the preview must be labelled as an EOD snapshot, never as live prices,
+  // and its static default must be an explicit empty state (no hardcoded quote).
   assert.match(landingHtml, /class="landing-workstation-preview"/);
-  assert.match(landingHtml, /DATA CONTOH MEJA KERJA/);
-  assert.match(landingHtml, /Pratinjau statis komponen antarmuka Auto-Cuan/);
-  assert.match(landingHtml, /Bukan harga pasar real-time/);
+  assert.match(landingHtml, /SNAPSHOT EOD MEJA KERJA/);
+  assert.match(landingHtml, /Bukan rekomendasi transaksi/);
+  assert.match(landingHtml, /<span class="score-number">&mdash;<\/span>/);
 
   // Primary CTA with dynamic label hook (C10: label dinamis via landingPrimaryAction).
   assert.match(landingHtml, /onclick="landingPrimaryAction\(\)"/);

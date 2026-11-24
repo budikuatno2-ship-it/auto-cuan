@@ -22,6 +22,15 @@
 
   function $(id) { return document.getElementById(id); }
 
+  // TASK D: TP/SL status helper for Top20/Top5/Ranking web surfaces.
+  // Reads the status recorded by the intraday monitor; never fabricates a hit.
+  window.taskDTpSlStatus = function(row) {
+    if (!row) return { status: 'AKTIF', label: 'AKTIF/PANTAU', hit_at_wib: null };
+    var status = row.tp_sl_status || 'AKTIF';
+    var label = row.tp_sl_label || (status === 'AKTIF' ? 'AKTIF/PANTAU' : status);
+    return { status: status, label: label, hit_at_wib: row.tp_sl_hit_at_wib || null };
+  };
+
   // 1. Screener 11-Kolom Renderer
   var _cachedScreener = null;
   async function fetchScreenerData() {
@@ -83,18 +92,23 @@
 
     var html = '';
     rows.forEach(function(r) {
-      var p = known(r.last_price) ? Number(r.last_price) : (known(r.close) ? Number(r.close) : null);
+      // TASK 5: ONE canonical plan object for prices/Entry/SL/TP1/TP2/R:R.
+      // The right detail panel consumes the same helper, so no mismatch.
+      var plan = (typeof window.acCanonicalTradePlan === 'function') ? window.acCanonicalTradePlan(r) : null;
+      var p = plan && plan.last_price != null ? plan.last_price
+        : (known(r.last_price) ? Number(r.last_price) : (known(r.close) ? Number(r.close) : null));
       var sc = known(r.score) ? r.score : (known(r.conviction_score) ? r.conviction_score : null);
       var wr = known(r.win_rate_pct) ? Number(r.win_rate_pct) : (known(r.winRatePct) ? Number(r.winRatePct) : null);
       var bm = r.best_method_name || r.bestMethodName || DASH;
       var bh = r.best_broker_horizon || r.bestBrokerHorizon || DASH;
-      var entry = r.entry_area || ((known(r.entry_low) && known(r.entry_high))
-        ? Number(r.entry_low).toLocaleString('id-ID') + ' – ' + Number(r.entry_high).toLocaleString('id-ID')
-        : DASH);
-      var sl = r.stop_loss != null ? r.stop_loss : r.sl;
-      var tp1 = r.tp1;
-      var tp2 = r.tp2;
-      var rr = known(r.risk_reward) ? Number(r.risk_reward) : (known(r.rr) ? Number(r.rr) : null);
+      var entry = (plan && plan.entry_low != null && plan.entry_high != null)
+        ? Number(plan.entry_low).toLocaleString('id-ID') + ' – ' + Number(plan.entry_high).toLocaleString('id-ID')
+        : (r.entry_area || DASH);
+      var sl = plan && plan.sl != null ? plan.sl : (r.stop_loss != null ? r.stop_loss : r.sl);
+      var tp1 = plan && plan.tp1 != null ? plan.tp1 : r.tp1;
+      var tp2 = plan && plan.tp2 != null ? plan.tp2 : r.tp2;
+      var rr = plan && plan.rr_display != null ? plan.rr_display
+        : (known(r.risk_reward) ? Number(r.risk_reward) : (known(r.rr) ? Number(r.rr) : null));
 
       html += '<tr class="kg-table-row border-b border-dark-600/20 hover:bg-dark-700/40 cursor-pointer" onclick="if(window.quickAnalisis) quickAnalisis(\'' + r.ticker + '\')">' +
         '<td class="px-2 py-2 text-left font-bold text-emerald-400 mono sticky left-0 bg-dark-800/90">' + r.ticker + '</td>' +
@@ -169,9 +183,26 @@
         if (resApi.ok) data = await resApi.json();
       }
 
-      if (data && data.top5 && data.top5.length >= 5) {
+      var note = $('dashboardTop5LockNote');
+
+      // Subtask H (anti-slop): the raw file may be a BLOCKED / NOT_PUBLISHED /
+      // VALIDATION_FAILED publication. Rendering it as "5/5 lolos gate" with a
+      // hardcoded Ready pill and a fabricated 75% win rate presented live
+      // numbers that did not exist. The honest status is shown instead.
+      if (!data || !data.top5 || !data.top5.length) {
+        if (note) {
+          var reason = (data && (data.status_reason || data.data_status)) || 'TOP5_ARTIFACT_MISSING';
+          note.textContent = 'Top 5 Radar tidak dipublikasikan: ' + reason;
+        }
+        return;
+      }
+
+      var dataStatus = data.data_status || 'UNKNOWN';
+      var blocked = dataStatus === 'BLOCKED' || dataStatus === 'NOT_PUBLISHED' ||
+        dataStatus === 'VALIDATION_FAILED' || data.publication_blocked === true;
+
+      if (data.top5.length >= 5 && !blocked) {
         var picks = data.top5.slice(0, 5);
-        var note = $('dashboardTop5LockNote');
         if (note) note.textContent = 'Top 5 Radar Terkunci (Final/Locked) (5/5 lolos gate). Monitor update tiap 30 menit saat jam bursa.';
 
         var html = '<div class="tw"><div class="dash-rk-table dashboard-decision-list">';
@@ -186,8 +217,14 @@
           var sl = r.stop_loss || r.sl ? 'Rp ' + Number(r.stop_loss || r.sl).toLocaleString('id-ID') : '-';
           var planId = 'v4f08Plan' + idx;
           var open = idx === 0;
+          // TASK D: TP/SL hit status with WIB hit time, clearly rendered.
+          var tpSl = window.taskDTpSlStatus ? window.taskDTpSlStatus(r) : null;
+          var statusLabel = (tpSl && tpSl.label) || 'AKTIF/PANTAU';
+          var statusClass = (tpSl && tpSl.status === 'KENA SL') ? 'neg'
+            : ((tpSl && (tpSl.status === 'KENA TP1' || tpSl.status === 'KENA TP2')) ? 'pos' : 'g');
+          var statusAttr = ' data-tpsl-status="' + String((tpSl && tpSl.status) || 'AKTIF').replace(/"/g, '') + '"';
 
-          html += '<div class="rk dashboard-decision-row' + (open ? ' sel' : '') + '" role="button" tabindex="0" onclick="if(window.dashTogglePlan) dashTogglePlan(\'' + r.ticker + '\')">';
+          html += '<div class="rk dashboard-decision-row' + (open ? ' sel' : '') + '" role="button" tabindex="0"' + statusAttr + ' onclick="if(window.dashTogglePlan) dashTogglePlan(\'' + r.ticker + '\')">';
           html += '<span class="dash-rank">' + (idx + 1) + '</span>';
           html += '<span class="dash-rk-id"><span class="tk mono font-bold text-emerald-400">' + r.ticker + '</span> <span class="mut dash-rk-name">' + (r.name || r.ticker) + '</span></span>';
           html += '<span class="dash-rk-setup">' + (r.category || 'Swing Ready') + '</span>';
@@ -195,7 +232,7 @@
           html += '<span class="r num dash-strong pos">+' + Number(r.change_pct || 1.5).toFixed(2) + '%</span>';
           html += '<span class="dash-exec font-mono font-bold text-emerald-400">' + wr + '%</span>';
           html += '<span class="r num mono text-xs">' + entry + ' &rarr; ' + tp1 + '</span>';
-          html += '<span class="pill-st"><span class="dot g"></span>Ready</span>';
+          html += '<span class="pill-st" data-tpsl-label><span class="dot ' + statusClass + '"></span>' + statusLabel + '</span>';
           html += '<span class="r"><button type="button" class="vbtn q sm" onclick="event.stopPropagation(); if(window.quickAnalisis) quickAnalisis(\'' + r.ticker + '\')">Riset</button></span>';
           html += '</div>';
 
@@ -211,7 +248,40 @@
 
         html += '</div></div>';
         listEl.innerHTML = html;
+        return;
       }
+
+      // Honest blocked/degraded rendering: show the canonical verdict per row,
+      // never a hardcoded "Ready" pill and never a fabricated win rate.
+      if (note) {
+        note.textContent = 'Top 5 Radar ' + dataStatus + ': ' +
+          (data.status_reason || 'CANONICAL_ENGINE_EMITTED_NO_READY_ROWS') +
+          (data.snapshot_id ? ' · snapshot ' + data.snapshot_id : '');
+      }
+      var rows = (data.top20 && data.top20.length ? data.top20 : data.top5).slice(0, 5);
+      if (!rows.length) return;
+      var bHtml = '<div class="tw"><div class="dash-rk-table dashboard-decision-list">';
+      bHtml += '<div class="rk hd" aria-hidden="true"><span>#</span><span>Ticker</span><span>Setup</span><span class="r">Harga</span><span class="r">R/R</span><span>Status Kanonis</span><span></span></div>';
+      rows.forEach(function(r, idx) {
+        var bp = Number(r.last_price || r.close || 0);
+        var verdict = String(r.canonical_readiness || r.readiness || 'UNKNOWN');
+        var bSetup = r.setup || r.status_reason || 'Short Swing';
+        // TASK 5: canonical plan R:R (same source as the detail panel).
+        var bPlan = (typeof window.acCanonicalTradePlan === 'function') ? window.acCanonicalTradePlan(r) : null;
+        var bRr = bPlan && bPlan.rr_display != null ? bPlan.rr_display.toFixed(2)
+          : (r.rr_at_max_entry != null ? Number(r.rr_at_max_entry).toFixed(2) : '-');
+        bHtml += '<div class="rk dashboard-decision-row" role="button" tabindex="0" onclick="if(window.quickAnalisis) quickAnalisis(\'' + r.ticker + '\')">';
+        bHtml += '<span class="dash-rank">' + (idx + 1) + '</span>';
+        bHtml += '<span class="dash-rk-id"><span class="tk mono font-bold text-amber-400">' + r.ticker + '</span> <span class="mut dash-rk-name">' + (r.emiten || r.name || r.ticker) + '</span></span>';
+        bHtml += '<span class="dash-rk-setup">' + String(bSetup).slice(0, 48) + '</span>';
+        bHtml += '<span class="r num mono dash-strong">Rp ' + bp.toLocaleString('id-ID') + '</span>';
+        bHtml += '<span class="r num mono">' + bRr + '</span>';
+        bHtml += '<span class="pill-st"><span class="dot" style="background:#F59E0B"></span>' + verdict + '</span>';
+        bHtml += '<span class="r"><button type="button" class="vbtn q sm" onclick="event.stopPropagation(); if(window.quickAnalisis) quickAnalisis(\'' + r.ticker + '\')">Riset</button></span>';
+        bHtml += '</div>';
+      });
+      bHtml += '</div></div>';
+      listEl.innerHTML = bHtml;
     } catch (_) {}
   }
 

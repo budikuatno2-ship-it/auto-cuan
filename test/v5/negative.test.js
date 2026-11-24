@@ -103,6 +103,23 @@ function sourceTickerSet() {
       if (row && row.ticker) set.add(String(row.ticker).toUpperCase());
     }
   }
+  // CANONICAL SOURCE UPDATE (F7 triage, 2026-11-13): Top5's producer moved from
+  // the legacy v3f04 category files to the canonical Short Swing pipeline —
+  // data/screener-latest.json `short_swing` (producer_meta.pool ===
+  // 'short_swing', categories_meta['short-swing'].source_file). The traceability
+  // set must follow the producer's actual declared source, otherwise N18 would
+  // flag genuinely-derived rows (e.g. SP-2026-11-11 snapshot picks) as
+  // "no source provenance" purely because the legacy files moved. Every row
+  // served by api/top5-radar.js must still trace to a real source row — the
+  // invariant itself is unchanged.
+  try {
+    const latest = H.loadJson('data/screener-latest.json');
+    if (latest.ok && Array.isArray(latest.data && latest.data.short_swing)) {
+      for (const row of latest.data.short_swing) {
+        if (row && row.ticker) set.add(String(row.ticker).toUpperCase());
+      }
+    }
+  } catch (_) { /* legacy layout: v3f04 files remain the only sources */ }
   return set;
 }
 

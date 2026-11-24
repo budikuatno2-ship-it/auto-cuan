@@ -46,6 +46,10 @@
   }
   var NIL = '<span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span>';
   var BUY_FEE = 0.0015, SELL_FEE = 0.0025, CACHE_MS = 10 * 60 * 1000;
+  // BUG-V6-I (Subtask I, temuan BMRI): batas deviasi entry plan vs harga pasar.
+  // Satu konstanta dipakai oleh levelsOf() dan enforcePlanFreshness() agar gate
+  // di lapisan fetch dan lapisan display tidak bisa berbeda ambang.
+  var STALE_DEVIATION_MAX = 0.25;
   var HZ = {
     scalp: { l: 'Scalping', h: 'hari ini sampai 2 sesi', stop: 'Keluar bila TP1 belum tersentuh dalam 2 sesi', src: 'Level dari engine Day Trade' },
     swing: { l: 'Swing', h: '3 sampai 7 hari bursa', stop: 'Tinjau ulang bila belum bergerak dalam 7 hari bursa', src: 'Level dari engine Swing (Konglo / Non-Konglo)' },
@@ -68,13 +72,119 @@
   }
 
   // Server levels from one screener row, through the app's own normaliser.
-  function levelsOf(row) {
+  // REQ-11 & REQ-12: Validasi keselarasan plan screener dengan tanggal/quote aktif.
+  // Jangan gunakan plan usang tanpa tanggal jelas atau jika harga entry menyimpang jauh dari quote/candle terkini.
+  function levelsOf(row, currentClose) {
     if (!row) return null;
     var l = typeof root.normalizeDisplayLevels === 'function' ? root.normalizeDisplayLevels(row) || {} : {};
     var e1 = n(l.e1 || row.entry1 || row.entry_high), e2 = n(l.e2 || row.entry2 || row.entry_low);
     var sl = n(l.sl || row.stop_loss || row.sl), t1 = n(l.t1 || row.tp1), t2 = n(l.t2 || row.tp2);
     if (!e1 || !sl || !t1) return null;
-    return { lo: e2 ? Math.min(e1, e2) : e1, hi: e2 ? Math.max(e1, e2) : e1, entry: e1, sl: sl, tp1: t1, tp2: t2, source: row.__src };
+
+    var planDate = row.date || row.as_of_date || row.trade_date || row.created_at || null;
+    var planDateStr = planDate ? (' (' + String(planDate).slice(0, 10) + ')') : '';
+
+    // Cek deviasi harga entry terhadap harga pasar/candle terakhir jika tersedia.
+    // ADDENDUM P0 FIX: Jika entry menyimpang > 25%, tandai eksplisit STALE_PLAN_REJECTED / NEEDS_RECALCULATION.
+    // Jangan disamarkan menjadi plan actionable seolah-olah valid atau diganti diam-diam.
+    if (currentClose && currentClose > 0) {
+      var deviasi = Math.abs(e1 - currentClose) / currentClose;
+      if (deviasi > STALE_DEVIATION_MAX) {
+        var deviasiPct = (deviasi * 100).toFixed(1) + '%';
+        return {
+          status: 'STALE_PLAN_REJECTED',
+          code: 'NEEDS_RECALCULATION',
+          reason: 'Deviasi entry (' + fmt(e1) + ') vs harga pasar (' + fmt(currentClose) + ') mencapai ' + deviasiPct + ' (> 25%)',
+          entry: e1,
+          sl: sl,
+          tp1: t1,
+          tp2: t2,
+          lo: e2 ? Math.min(e1, e2) : e1,
+          hi: e2 ? Math.max(e1, e2) : e1,
+          source: (row.__src || 'Screener') + planDateStr + ' [STALE DEVIASI ' + deviasiPct + ']',
+          as_of: planDate,
+          deviationPct: deviasi * 100,
+          actionable: false
+        };
+      }
+    }
+
+    return {
+      status: 'VALID',
+      lo: e2 ? Math.min(e1, e2) : e1,
+      hi: e2 ? Math.max(e1, e2) : e1,
+      entry: e1,
+      sl: sl,
+      tp1: t1,
+      tp2: t2,
+      source: (row.__src || 'Screener') + planDateStr,
+      as_of: planDate,
+      // BUG-V6-I: `priceValidated` menandai bahwa gate deviasi SUDAH dijalankan
+      // terhadap harga pasar nyata. Bila harga belum tersedia saat plan dimuat
+      // (currentClose null) nilainya false dan enforcePlanFreshness() wajib
+      // memvalidasi ulang sebelum plan boleh tampil sebagai actionable.
+      priceValidated: !!(currentClose && currentClose > 0),
+      actionable: true
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* BUG-V6-I — stale-plan gate di lapisan DISPLAY (temuan regresi BMRI)     */
+  /* ---------------------------------------------------------------------- */
+  /* Bukti browser nyata (Subtask I): BMRI quote 3.590 tetapi sheet rencana    */
+  /* menampilkan kalkulator laba actionable "lot @ 6.700 · TP1 7.100 ·        */
+  /* TP2 7.350" (entry 86,6% di atas harga pasar). Penyebabnya:               */
+  /*   1. `refresh()` pertama dipicu `syncActiveTicker` SEBELUM candle chart   */
+  /*      tiba, sehingga `curClose` null dan `levelsOf(row, null)` gagal-open  */
+  /*      menjadi VALID;                                                       */
+  /*   2. hasil itu di-cache 10 menit, jadi refresh kedua (setelah candle      */
+  /*      3.590 tersedia) memakai cache dan gate tidak pernah dievaluasi.      */
+  /* Perbaikan: gate deviasi ditegakkan ulang di titik render/draw memakai     */
+  /* candle yang sudah terverifikasi identitasnya. Tidak ada jalur urutan      */
+  /* maupun cache yang bisa menerbitkan plan tak tervalidasi.                  */
+  function lastVerifiedClose(ticker) {
+    var candles = planCandles(ticker);
+    for (var i = candles.length - 1; i >= 0; i--) {
+      var c = Number(candles[i] && candles[i].close);
+      if (Number.isFinite(c) && c > 0) return c;
+    }
+    return null;
+  }
+
+  /**
+   * Return `plan` only if it is provably fresh against this ticker's own
+   * identity-checked price. Otherwise return a non-actionable status object
+   * (STALE_PLAN_REJECTED when the deviation is proven, PRICE_UNVERIFIED when
+   * no verified price exists yet). Never invents levels, never mutates input.
+   */
+  function enforcePlanFreshness(plan, ticker) {
+    if (!plan || plan.actionable === false || plan.status === 'STALE_PLAN_REJECTED') return plan;
+    var entry = n(plan.entry);
+    if (!entry) return plan;
+    var close = lastVerifiedClose(ticker);
+    if (close == null) {
+      // Fail-closed: tanpa harga terverifikasi, deviasi tidak bisa dibuktikan,
+      // jadi plan tidak boleh disajikan sebagai siap eksekusi.
+      return Object.assign({}, plan, {
+        status: 'PRICE_UNVERIFIED',
+        code: 'NEEDS_RECALCULATION',
+        actionable: false,
+        reason: 'Harga pasar ' + String(ticker || '').toUpperCase() + ' belum terverifikasi dari chart, sehingga deviasi entry plan tidak dapat dihitung.'
+      });
+    }
+    if (plan.priceValidated === true) return plan;
+    var deviasi = Math.abs(entry - close) / close;
+    if (deviasi <= STALE_DEVIATION_MAX) return plan;
+    var deviasiPct = (deviasi * 100).toFixed(1) + '%';
+    return Object.assign({}, plan, {
+      status: 'STALE_PLAN_REJECTED',
+      code: 'NEEDS_RECALCULATION',
+      actionable: false,
+      deviationPct: deviasi * 100,
+      marketClose: close,
+      reason: 'Deviasi entry (' + fmt(entry) + ') vs harga pasar (' + fmt(close) + ') mencapai ' + deviasiPct + ' (> 25%)',
+      source: (plan.source || 'Screener') + ' [STALE DEVIASI ' + deviasiPct + ']'
+    });
   }
 
   function fetchRows(url) {
@@ -168,12 +278,21 @@
       // The response may belong to a ticker the user has already left. The
       // `deriveDeterministicPlan` fallback reads THIS ticker's candles from the
       // bus, so a late plan for another ticker cannot borrow them.
+      var curCandles = planCandles(t);
+      var curClose = (curCandles && curCandles.length > 0) ? Number(curCandles[curCandles.length - 1].close) : null;
       var swingRow = findRow(all[0], t, 'Swing Konglo') || findRow(all[1], t, 'Swing Non-Konglo');
-      var scalpPlan = levelsOf(findRow(all[2], t, 'Day Trade')) || deriveDeterministicPlan(t, 'scalp');
-      var swingPlan = levelsOf(swingRow) || deriveDeterministicPlan(t, 'swing');
+      var rawScalp = levelsOf(findRow(all[2], t, 'Day Trade'), curClose);
+      var rawSwing = levelsOf(swingRow, curClose);
+      // ADDENDUM P0 FIX: Jika plan ditolak karena stale (>25%), pertahankan objek status tidak actionable.
+      // Jangan otomatis diganti dengan plan tampak meyakinkan jika dasar strategi belum tervalidasi.
+      var scalpPlan = rawScalp ? rawScalp : deriveDeterministicPlan(t, 'scalp');
+      var swingPlan = rawSwing ? rawSwing : deriveDeterministicPlan(t, 'swing');
       var invPlan = deriveDeterministicPlan(t, 'inv');
       var plans = { scalp: scalpPlan, swing: swingPlan, inv: invPlan };
-      cache[t] = { at: Date.now(), plans: plans };
+      // BUG-V6-I: jangan cache plan yang gate deviasinya belum bisa dijalankan
+      // (harga pasar belum tersedia saat fetch). Tanpa ini, plan VALID semu
+      // terkunci 10 menit dan lolos walau candle aktif menyimpang >25%.
+      if (curClose != null) cache[t] = { at: Date.now(), plans: plans };
       return plans;
     }).catch(function() {
       var plans = {
@@ -181,7 +300,7 @@
         swing: deriveDeterministicPlan(t, 'swing'),
         inv: deriveDeterministicPlan(t, 'inv')
       };
-      cache[t] = { at: Date.now(), plans: plans };
+      if (hasCandlesFor(t)) cache[t] = { at: Date.now(), plans: plans };
       return plans;
     });
   }
@@ -215,11 +334,44 @@
   function rangeCheck(hz, plan, rng) {
     if (hz === 'inv') return { cls: '', v: 'Tidak dipakai', s: 'Rentang 10 hari terlalu pendek untuk horizon 1 sampai 6 bulan' };
     if (!rng) return { cls: '', v: '—', s: 'Rentang belum tersedia (riwayat kurang dari 60 sesi)' };
-    var out = plan.tp2 && plan.tp2 > rng.p90 ? 'TP2' : (plan.tp1 > rng.p90 ? 'TP1' : null);
-    var s = 'p10 ' + Math.round(rng.p10).toLocaleString('id-ID') + ' – p90 ' + Math.round(rng.p90).toLocaleString('id-ID');
-    if (out) s += ' · ' + out + ' ' + (out === 'TP2' ? plan.tp2 : plan.tp1).toLocaleString('id-ID') + ' > p90';
-    if (plan.sl < rng.p10) s += ' · SL di bawah p10';
-    return { cls: out ? 'w' : 'ok', v: out ? out + ' di luar rentang' : 'Target di dalam rentang', s: s };
+    
+    // REQ-13: Validasi matematis percentile p10-p90 vs Target Harga (TP1, TP2) dan Stop Loss (SL)
+    // Target harga dikatakan berada di luar rentang jika TP > p90 ATAU TP < p10 (di bawah batas bawah rentang)
+    var tpOut = null;
+    var tpOutReason = null;
+    
+    var tp2 = plan.tp2 ? Number(plan.tp2) : null;
+    var tp1 = plan.tp1 ? Number(plan.tp1) : null;
+    var sl = plan.sl ? Number(plan.sl) : null;
+    var p10 = Number(rng.p10);
+    var p90 = Number(rng.p90);
+    
+    if (tp2 != null) {
+      if (tp2 > p90) { tpOut = 'TP2'; tpOutReason = '> p90'; }
+      else if (tp2 < p10) { tpOut = 'TP2'; tpOutReason = '< p10'; }
+    }
+    if (!tpOut && tp1 != null) {
+      if (tp1 > p90) { tpOut = 'TP1'; tpOutReason = '> p90'; }
+      else if (tp1 < p10) { tpOut = 'TP1'; tpOutReason = '< p10'; }
+    }
+    
+    var s = 'p10 ' + Math.round(p10).toLocaleString('id-ID') + ' – p90 ' + Math.round(p90).toLocaleString('id-ID');
+    if (tpOut) {
+      var targetVal = (tpOut === 'TP2' ? tp2 : tp1);
+      s += ' · ' + tpOut + ' ' + Math.round(targetVal).toLocaleString('id-ID') + ' ' + tpOutReason;
+    }
+    if (sl != null && sl < p10) {
+      s += ' · SL di bawah p10';
+    } else if (sl != null && sl > p90) {
+      s += ' · SL di atas p90';
+    }
+    
+    var isInside = !tpOut;
+    return {
+      cls: isInside ? 'ok' : 'w',
+      v: isInside ? 'Target di dalam rentang' : (tpOut + ' di luar rentang'),
+      s: s
+    };
   }
 
   function sheet() { return doc.getElementById('anaPlanSheet'); }
@@ -231,7 +383,10 @@
   }
 
   function renderStock(el, t) {
-    var plan = state.plans[state.hz] || deriveDeterministicPlan(t, state.hz);
+    // BUG-V6-I: gate deviasi ditegakkan ULANG di titik render memakai harga
+    // terverifikasi milik ticker ini. Plan hasil cache yang dimuat sebelum
+    // candle tiba tidak bisa lagi lolos sebagai kalkulator actionable.
+    var plan = enforcePlanFreshness(state.plans[state.hz] || deriveDeterministicPlan(t, state.hz), t);
     var h = HZ[state.hz] || HZ.swing;
     var head = '<div class="ana-hzbar"><span class="ana-hzl">Rencana untuk</span>' + hzBar(false) +
       '<span class="ana-hzm"><b>' + esc(h.h) + '</b> · ' + esc(h.stop) + '</span><span class="ana-hzs">' + esc(plan && plan.source ? h.src + ' · ' + plan.source : h.src) + '</span></div>';
@@ -242,6 +397,24 @@
       // (the old 9860 / 7480 / 5000 defaults), say so explicitly.
       el.innerHTML = head + '<div class="ana-plan-empty">Rencana untuk ' + esc(t) + ' belum tersedia. ' +
         'Muat chart ticker ini terlebih dahulu, atau pilih ticker yang punya level dari engine.</div>';
+      return;
+    }
+    if (plan.actionable === false || plan.status === 'STALE_PLAN_REJECTED' || plan.status === 'PRICE_UNVERIFIED') {
+      var dateInfo = plan.as_of ? (' Tanggal screener: ' + String(plan.as_of).slice(0, 10) + '.') : '';
+      var isStale = plan.status === 'STALE_PLAN_REJECTED';
+      var badge = isStale ? 'STALE_PLAN_REJECTED' : 'PRICE_UNVERIFIED';
+      var title = isStale
+        ? 'Plan Tidak Dapat Digunakan (Deviasi > 25%)'
+        : 'Plan Belum Dapat Divalidasi (Harga Pasar Belum Terverifikasi)';
+      el.innerHTML = head + '<div class="ana-plan-empty" data-plan-gate="' + badge + '" style="border-color:rgba(239,68,68,0.4);background:rgba(239,68,68,0.06);color:#fca5a5;padding:16px;border-radius:8px">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+          '<span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.5px">' + badge + '</span>' +
+          '<span style="background:rgba(239,68,68,0.2);color:#f87171;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px">NEEDS_RECALCULATION</span>' +
+        '</div>' +
+        '<b style="color:#f87171;font-size:13px">' + esc(title) + '</b><br>' +
+        '<div style="font-size:12px;margin-top:4px;color:#cbd5e1">' + esc(plan.reason || 'Harga pasar telah bergerak jauh melampaui toleransi rencana.') + esc(dateInfo) + '</div>' +
+        '<div style="font-size:11px;margin-top:6px;color:#94a3b8">Sistem menolak mengganti plan ini secara otomatis dengan plan acak agar tidak menyamarkan risiko dasar strategi yang belum divalidasi ulang.</div>' +
+      '</div>';
       return;
     }
     var c = calc(plan, state.lots);
@@ -278,8 +451,10 @@
     Object.keys(reg).forEach(function (id) {
       var e = reg[id];
       if (!e || !e.candleSeries || String(e.ticker || '').toUpperCase() !== state.ticker) return;
-      var plan = isIndex(state.ticker) ? null : state.plans[state.hz];
-      if (!plan) { ws.clearPlanPriceLines(e.candleSeries); return; }
+      // BUG-V6-I: garis harga plan juga wajib lolos gate freshness, supaya chart
+      // tidak menggambar entry/SL/TP yang menyimpang jauh dari candle aktif.
+      var plan = isIndex(state.ticker) ? null : enforcePlanFreshness(state.plans[state.hz], state.ticker);
+      if (!plan || plan.actionable === false) { ws.clearPlanPriceLines(e.candleSeries); return; }
       ws.applyPlanPriceLines(e.candleSeries, { entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2 });
     });
   }
@@ -363,6 +538,9 @@
   var api = {
     HZ: HZ, MODE_HZ: MODE_HZ, isIndex: isIndex, levelsOf: levelsOf, calc: calc, range10: range10, rangeCheck: rangeCheck,
     loadPlans: loadPlans, refresh: refresh, setHorizon: setHorizon, render: render, drawPlanLines: drawPlanLines,
+    // BUG-V6-I: diekspos agar regresi stale-plan gate bisa diuji unit tanpa browser.
+    enforcePlanFreshness: enforcePlanFreshness, lastVerifiedClose: lastVerifiedClose,
+    STALE_DEVIATION_MAX: STALE_DEVIATION_MAX,
     state: state
   };
 

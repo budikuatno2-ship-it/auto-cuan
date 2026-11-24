@@ -540,7 +540,40 @@ async function run(argv) {
     const cachedDate = cached && brokerSummaryPayloadDate(cached);
     const alreadyCached = normalized && (!cachedDate || cachedDate === dateArg) && ((normalized.top_buyers || []).length || (normalized.top_sellers || []).length);
 
-    if (alreadyCached) {
+    // V6 AUDIT FIX: Independent Foreign Check!
+    // Check if Foreign (flow=F) is also cached. If ALL is cached but F is missing,
+    // do NOT mark ticker as fully terminal so Foreign can be retried without losing ALL cache.
+    const cachedF = !isFresh && bandarmologiService.readDiskCache('broker-summary-F', ticker, dateArg);
+    const foreignMissing = alreadyCached && !cachedF && !dryRun && !isFresh;
+
+    if (alreadyCached && !foreignMissing) {
+      doneCount++;
+      terminalTickers.add(ticker);
+      shouldRefreshAuxiliary = true;
+    } else if (foreignMissing) {
+      // ALL is already cached, but Foreign is missing: only fetch Foreign!
+      const advanceLatest = shouldAdvanceLatestBrokerSummary(ticker, dateArg);
+      try {
+        if (arjumClient.getUsedQuotaToday() < dailyLimit) {
+          totalRequested++;
+          foreignRequests++;
+          const resF = await arjumClient.fetchBrokerSummary(ticker, dateArg, 'F', null, {
+            allData: true,
+            fresh: true,
+            forceLive: true,
+            noFallback: true,
+            bypassMarketGuard: true
+          });
+          const isFValid = resF.ok && resF.data && !resF.from_cache && !resF.fallback && resF.data.flow === 'F' &&
+            String(resF.data.stock_code || resF.data.code || '').trim().toUpperCase() === ticker.toUpperCase();
+          if (isFValid) {
+            persistDatedCache('broker-summary-F', ticker, dateArg, resF.data);
+            if (advanceLatest) {
+              bandarmologiService.writeDiskCache('broker-summary-F', ticker, 'latest', resF.data);
+            }
+          }
+        }
+      } catch (_) {}
       doneCount++;
       terminalTickers.add(ticker);
       shouldRefreshAuxiliary = true;

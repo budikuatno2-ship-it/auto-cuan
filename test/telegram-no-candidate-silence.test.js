@@ -27,7 +27,14 @@ function row(overrides) {
     entry1: 100, entry_low: 100, entry2: 101, entry_high: 101, stop_loss: 95, sl: 95,
     tp1: 115, tp1n: 115, tp2: 125, last_price: 100, volume_ratio_20d: 1.2,
     value_today: 5000000000, risk_label: 'Medium Risk', plan_quality_status: 'VALID', trading_plan_valid: true,
-    telegram_verdict: 'Pantau dulu.'
+    telegram_verdict: 'Pantau dulu.',
+    // M-P1e (2026-11-15): readiness evidence — the public gates route through
+    // the fail-closed readiness engine; without these the rows drop for
+    // DATA_NOT_AVAILABLE/VOLUME_UNKNOWN (missing fixture), not gate logic.
+    data_status: 'AVAILABLE',
+    volume_today: 1200,
+    avg_volume_20d: 1000,
+    liquidity_idr: 5000000000
   }, overrides || {});
 }
 
@@ -68,16 +75,24 @@ test('Day Trade radar request only disables on explicit false values', () => {
 });
 
 test('Day Trade no candidates at all sends empty heartbeat', async () => {
+  // M-P1e (2026-11-15): TEST_OBSOLETE contract update. The test asserted the
+  // pre-V3-F06 behaviour (`daytrade_emptyheartbeat_sent` — a reason string that
+  // no longer exists anywhere in the product). V3-F06 deliberately suppresses
+  // public empty heartbeats (anti-spam: the message is rendered and logged
+  // locally, `empty_heartbeat_disabled`, never broadcast). This is a product
+  // decision, so the test now asserts the truthful suppression contract:
+  // not sent to Telegram, explicit reason, no silent drop, message retained
+  // with the scan count for the local log.
   const prev = process.env.DAYTRADE_SEND_EMPTY_HEARTBEAT;
   process.env.DAYTRADE_SEND_EMPTY_HEARTBEAT = 'true';
   try {
     await withSendSpy(async (calls) => {
       const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [] }), 'run-empty-heartbeat', '2026-07-02', 0, true, true, { scanned_count: 760, raw_batch_passed_count: 0, bypass_time_guard: true });
-      assert.equal(result.sent, true);
-      assert.equal(result.reason, 'daytrade_empty_heartbeat_sent');
-      assert.equal(calls.length, 1);
-      assert.match(calls[0], /empty heartbeat/);
-      assert.match(calls[0], /Scanned: 760/);
+      assert.equal(result.sent, false, 'empty heartbeat must NOT be broadcast (V3-F06 anti-spam)');
+      assert.equal(result.reason, 'empty_heartbeat_disabled');
+      assert.equal(calls.length, 0, 'no Telegram send may occur for an empty heartbeat');
+      assert.ok(result.message, 'the heartbeat message must still be rendered for the local log');
+      assert.match(result.message, /Scanned: 760/);
     });
   } finally {
     if (prev === undefined) delete process.env.DAYTRADE_SEND_EMPTY_HEARTBEAT;

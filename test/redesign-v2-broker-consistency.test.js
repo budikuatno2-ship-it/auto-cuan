@@ -88,6 +88,7 @@ test('real BBCA archive through the real normaliser', (t) => {
   assert.equal(r.recent.filter((x) => x.net_buy).length, r.days_net_buy);
 });
 
+
 test('API action validates the ticker and is in the handler', () => {
   const src = read('api/sector-hot.js');
   assert.match(src, /action === 'broker-consistency'/);
@@ -95,16 +96,18 @@ test('API action validates the ticker and is in the handler', () => {
   assert.match(src, /computeBrokerConsistency\(tk\)/);
 });
 
-test('layer is stock only and on in Investor and Pro, as in the canvas', () => {
+test('layer is stock only and available in the drawer, not a default preset (TASK 1-4 clean presets)', () => {
   const src = read('public/chart-workstation.js');
   assert.match(src, /id: 'bandar_kons', name: 'Konsistensi broker'/);
   assert.match(src, /bandar_par_f: 1, bandar_kons: 1 \}/);
+  // TASK 1-4 intentionally removed all bandar layers from default presets;
+  // they remain available via the opt-in layer drawer and stay stock-only.
   const presets = src.slice(src.indexOf('var PRESETS'), src.indexOf('MODE_STRATEGY_CONFIG = {'));
-  assert.match(presets, /investor: \{[^}]*'bandar_kons'\]/);
-  assert.match(presets, /pro: \{[^}]*'bandar_kons'\]/);
-  assert.ok(!/simpel: \{[^}]*bandar_kons/.test(presets));
-  assert.ok(!/scalping: \{[^}]*bandar_kons/.test(presets));
-  assert.ok(!/swing: \{[^}]*bandar_kons/.test(presets));
+  for (const name of ['simpel', 'scalping', 'swing', 'investor', 'pro']) {
+    assert.ok(!new RegExp(name + ": \\{[^}]*bandar_kons").test(presets),
+      name + ' must not default bandar_kons (clean preset)');
+  }
+  assert.match(src, /bandar_kons: 1 \}/, 'bandar_kons remains in STOCK_ONLY_LAYERS registry');
 });
 
 test('badge text: reading, streak wording, and empty state', () => {

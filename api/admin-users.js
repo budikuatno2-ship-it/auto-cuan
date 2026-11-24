@@ -213,6 +213,98 @@ async function fundamentalsUpload(req, res) {
   return handleAdminFundamentalsUpload(req, res, supabase);
 }
 
+async function ownershipUpload(req, res) {
+  res.setHeader('Cache-Control', 'private, no-store');
+  const access = requireBudiAdmin(req);
+  if (!access.ok) {
+    return res.status(access.status || 403).json({ success: false, error: access.error });
+  }
+
+  const adminOwnership = require('../lib/admin-ownership-import');
+  const actor = (access.auth && access.auth.session && access.auth.session.un) || 'budi';
+
+  if (req.method === 'GET') {
+    const action = String(req.query && req.query.op || '').trim().toLowerCase();
+    if (action === 'backups') {
+      const backups = adminOwnership.listBackups();
+      return res.status(200).json({ success: true, backups });
+    }
+    return res.status(200).json({ success: true, message: 'Ownership import admin endpoint ready.' });
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  const mode = String(req.body && req.body.mode || 'preview').trim().toLowerCase();
+
+  // Mode rollback
+  if (mode === 'rollback') {
+    const backupId = String(req.body && req.body.backup_id || '').trim();
+    if (!backupId) {
+      return res.status(400).json({ success: false, error: 'backup_id diperlukan untuk rollback.' });
+    }
+    try {
+      const rollbackResult = adminOwnership.rollbackToBackup(backupId, actor);
+      return res.status(200).json(rollbackResult);
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message || String(err) });
+    }
+  }
+
+  // Parse & Validate
+  const rawText = req.body && (req.body.content || req.body.csv || req.body.json);
+  const dataType = String(req.body && req.body.data_type || 'ownership').trim().toLowerCase();
+  const formatHint = String(req.body && req.body.format || 'auto').trim().toLowerCase();
+
+  if (!rawText) {
+    return res.status(400).json({ success: false, error: 'Payload data kosong.' });
+  }
+
+  try {
+    let parsedResult;
+    if (dataType === 'hsc' || dataType === 'market_structure') {
+      parsedResult = adminOwnership.parseAndValidateHscList(rawText, formatHint);
+    } else {
+      parsedResult = adminOwnership.parseAndValidateOwnership(rawText, formatHint);
+    }
+
+    const summary = adminOwnership.computeDiffSummary(parsedResult);
+
+    if (mode === 'preview') {
+      return res.status(200).json({
+        success: true,
+        mode: 'preview',
+        data_type: dataType,
+        sha256: parsedResult.sha256,
+        summary,
+        sample: parsedResult.parsedData.slice(0, 5)
+      });
+    }
+
+    if (mode === 'apply') {
+      if (parsedResult.errors.length > 0 && req.body.force !== true) {
+        return res.status(400).json({
+          success: false,
+          error: `Ditemukan ${parsedResult.errors.length} baris tidak valid. Perbaiki atau gunakan force=true.`,
+          summary
+        });
+      }
+      const applyResult = adminOwnership.applyImport(parsedResult, actor);
+      return res.status(200).json({
+        success: true,
+        mode: 'applied',
+        ...applyResult,
+        summary
+      });
+    }
+
+    return res.status(400).json({ success: false, error: `Mode tidak dikenal: ${mode}` });
+  } catch (err) {
+    return res.status(400).json({ success: false, error: err.message || String(err) });
+  }
+}
+
 async function deleteUser(req, res) {
   const access = requireBudiAdmin(req);
   if (!access.ok) {
@@ -599,45 +691,27 @@ async function handler(req, res) {
     }
   }
 
-  // P1: endpoint kuota dinamis (baca + ubah khusus Admin, 403 untuk non-admin).
-  // GET: action 'quota_get' -> quota-state.json + config/quota.json (snapshot netral "Kuota API data").
-  // POST: action 'quota_update' + { patch } -> validasi, simpan config, tulis audit log.
+  // P1 / V6: endpoint kuota dinamis (baca + ubah khusus Admin).
+  // V6 (Subtask C): mutasi TIDAK lagi melalui quota-state.saveConfig (yang
+  // memungkinkan actor hardcoded & tanpa versioning). Seluruh mutasi config
+  // operasional kini didelegasikan ke endpoint terotorisasi /api/admin/quota-settings
+  // (same-origin + admin session + validasi + audit + readback + conflict).
   if (action === 'quota_get') {
     const auth = requireAdminSession(req);
     if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
     try {
-      const quotaState = require('../lib/quota-state');
-      const snap = quotaState.getQuotaSnapshot();
-      return res.status(200).json({ success: true, quota: snap });
+      const quotaManager = require('../lib/quota-manager');
+      const snap = quotaManager.getQuotaStatus();
+      return res.status(200).json({ success: snap.ok === true, quota: snap });
     } catch (e) {
       return res.status(500).json({ success: false, error: 'Gagal membaca kuota.' });
     }
   }
 
   if (action === 'quota_update') {
-    if (!isSameOrigin(req)) {
-      return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
-    }
-    const auth = requireAdminSession(req);
-    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
-    try {
-      const quotaState = require('../lib/quota-state');
-      const patch = (req.body && req.body.patch) || {};
-      const saved = quotaState.saveConfig(patch, auth.session.un || 'admin');
-      if (!saved.ok) return res.status(400).json({ success: false, error: 'Patch kuota tidak valid.', details: saved.errors });
-      // V3-F02: bila diubah mepet reset atau sisaKuota<=0, antrekan prioritas
-      // jalan otomatis 00:00:01 WIB (jadwal cron tetap sama).
-      let queued = null;
-      try {
-        const snap0 = quotaState.getQuotaSnapshot();
-        const q = quotaState.shouldQueueAtReset(snap0, new Date());
-        if (q.queue) queued = quotaState.enqueuePendingCatchup('quota_update:' + q.reason, new Date());
-      } catch (_) {}
-      const snap = quotaState.getQuotaSnapshot();
-      return res.status(200).json({ success: true, quota: snap, config: saved.config, queued });
-    } catch (e) {
-      return res.status(500).json({ success: false, error: 'Gagal menyimpan kuota.' });
-    }
+    // Delegasikan ke satu-satunya endpoint mutasi yang terotorisasi.
+    const quotaSettings = require('./admin/quota-settings');
+    return quotaSettings(req, res);
   }
 
   // V3-F02: Panel Kontrol Fleksibel Kuota API — semua aksi khusus admin (403 non-admin).
@@ -857,6 +931,10 @@ async function handler(req, res) {
     return fundamentalsUpload(req, res);
   }
 
+  if (action === 'ownership_upload') {
+    return ownershipUpload(req, res);
+  }
+
   if (action === 'delete_user') {
     return deleteUser(req, res);
   }
@@ -882,5 +960,9 @@ async function handler(req, res) {
 handler.isTruthyFlag = isTruthyFlag;
 handler.deleteUserWithSupabase = deleteUserWithSupabase;
 handler.formatTokenBudgetMessage = formatTokenBudgetMessage;
+// 13C: expose the ownership upload handler so its RBAC + CSRF gate is directly
+// testable (a non-admin / cross-origin caller must be rejected before any write).
+handler.ownershipUpload = ownershipUpload;
+handler.requireBudiAdmin = requireBudiAdmin;
 
 module.exports = handler;

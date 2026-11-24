@@ -66,7 +66,9 @@ test('F10-03 webhook dispatchTelegram must expose retry_after on 429', async () 
     text: async () => JSON.stringify({ ok: false, parameters: { retry_after: 5 } })
   });
   try {
-    const result = await engine.dispatchTelegram('test message', 'fake-token', '123', { timeoutMs: 1000 });
+    // M-P1e: official gate_env seam — exercise the live-path 429 handling
+    // without violating the gate contract (no TELEGRAM_LIVE in process.env).
+    const result = await engine.dispatchTelegram('test message', 'fake-token', '123', { timeoutMs: 1000, gate_env: { TELEGRAM_ENABLED: '1', TELEGRAM_LIVE: 'true' } });
     assert.equal(result.sent, false);
     assert.equal(result.status, 429);
     assert.equal(result.retry_after_seconds, 5, 'retry_after_seconds must be 5, got ' + JSON.stringify(result));
@@ -135,7 +137,7 @@ test('F10-06 webhook dispatchTelegram must not throw on network error', async ()
   const originalFetch = global.fetch;
   global.fetch = async () => { throw new Error('network down'); };
   try {
-    const result = await engine.dispatchTelegram('test', 'fake-token', '123', { timeoutMs: 1000 });
+    const result = await engine.dispatchTelegram('test', 'fake-token', '123', { timeoutMs: 1000, gate_env: { TELEGRAM_ENABLED: '1', TELEGRAM_LIVE: 'true' } });
     assert.equal(result.sent, false);
     assert.ok(result.error, 'error must be set');
   } finally {

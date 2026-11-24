@@ -15,28 +15,25 @@ test('Insider Redesign: renders canvas elements and layout', () => {
   const container = { innerHTML: '' };
   bandarmologiRuntime.renderInsiderNetworkUI(container, 'BBCA');
 
-  // Canvas header
   assert.ok(container.innerHTML.includes('<h1>Jejaring Insider</h1>'), 'Must have h1 Jejaring Insider');
   assert.ok(container.innerHTML.includes('Relasi pengendali, direksi, dan kepemilikan silang'), 'Must have canvas subtitle');
-
-  // Graph section & legend
   assert.ok(container.innerHTML.includes('id="insiderGraphSection"'), 'Must have insiderGraphSection');
   assert.ok(container.innerHTML.includes('class="legend"'), 'Must have legend');
   assert.ok(container.innerHTML.includes('Reset sorotan'), 'Must have Reset sorotan button');
 
-  // §5c: HTML overlay labels over SVG
+  // FIX 3: single sharp SVG label per entity/percentage — no ghost overlay.
   assert.ok(container.innerHTML.includes('class="gw"'), 'Must have gw container');
-  assert.ok(container.innerHTML.includes('class="gov"'), 'Must have gov overlay container');
-  assert.ok(container.innerHTML.includes('class="glb gl'), 'Must have HTML node labels with glb gl');
-  assert.ok(container.innerHTML.includes('class="glb gs'), 'Must have HTML node subtitle / edge labels with glb gs');
+  assert.ok(!container.innerHTML.includes('class="gov"'), 'No ghost HTML overlay container');
+  assert.ok(!container.innerHTML.includes('class="glb'), 'No duplicate HTML overlay labels');
+  assert.ok(container.innerHTML.includes('<text class="nl"'), 'SVG node labels present');
 
-  // Detail panel & roster table
   assert.ok(container.innerHTML.includes('id="insiderDetailPanel"'), 'Must have detail panel');
   assert.ok(container.innerHTML.includes('id="insiderRosterSection"'), 'Must have roster section');
   assert.ok(container.innerHTML.includes('id="insiderRosterTbody"'), 'Must have roster tbody');
 
-  // Truthful KSEI provenance date
-  assert.ok(container.innerHTML.includes('30 Sep 2026'), 'Must truthfully display KSEI date 30 Sep 2026');
+  // FIX 3: canonical arjum_insiders provenance through 20 Nov 2026.
+  assert.ok(container.innerHTML.includes('arjum_insiders'), 'Must name canonical source');
+  assert.ok(container.innerHTML.includes('20 Nov 2026'), 'Must show canonical as-of date');
 });
 
 test('Insider Redesign: node selection and graph highlight updates', () => {
@@ -47,7 +44,7 @@ test('Insider Redesign: node selection and graph highlight updates', () => {
 
   const detailBBCA = bandarmologiRuntime.renderCanvasInsiderDetail('BBCA');
   assert.ok(detailBBCA.includes('Emiten'), 'BBCA is Emiten');
-  assert.ok(detailBBCA.includes('Dwimuria 54,94%'), 'Contains pengendali rel');
+  assert.ok(detailBBCA.includes('54,94%'), 'Contains pengendali percentage');
 
   const detailRBH = bandarmologiRuntime.renderCanvasInsiderDetail('RBH');
   assert.ok(detailRBH.includes('Robert Budi Hartono'), 'RBH title');

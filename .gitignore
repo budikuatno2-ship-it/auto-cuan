@@ -153,3 +153,13 @@ missing*
 tmp_fail.log
 .puppeteer-cache/
 **/.puppeteer-cache/
+
+# Release evidence artifacts (never committed: local-only forensic packages)
+audit-evidence/
+
+# Local SQLite databases and sidecar WAL/SHM artifacts (never committed)
+*.sqlite*
+*.sqlite-*
+
+# Backup copies produced by capture/audit builders (never committed)
+*.bak*

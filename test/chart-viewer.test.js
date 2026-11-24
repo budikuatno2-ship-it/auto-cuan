@@ -343,7 +343,12 @@ test('the Chart page and Pattern both open the same viewer', () => {
   // actual invocation with the shared config shape.
   assert.match(html, /typeof openChartViewer === 'function'\)\s*\?\s*openChartViewer/);
   assert.match(html, /viewer\(\{/);
-  assert.match(html, /id="' \+ chartId \+ '_fs"/);
+  // SERVED-UI REPAIR: the standalone Chart page no longer renders its own
+  // `_fs` header button. The single Layar Penuh control is the workstation
+  // toolbar button (`_fullscreen_btn`), so the shared viewer path below is
+  // still required but the duplicate header control must be absent.
+  assert.doesNotMatch(html, /id="' \+ chartId \+ '_fs"/);
+  assert.match(read('public/chart-workstation.js'), /id="' \+ chartId \+ '_fullscreen_btn"/);
   assert.match(patternStable, /root\.openChartViewer\(\{/);
   assert.match(patternStable, /data-ps-zoom/);
 });

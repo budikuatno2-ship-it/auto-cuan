@@ -43,6 +43,34 @@
   // Landing snapshot EOD riil -> timpa kartu pratinjau statis
   function fmtRp(n){ try{ if(n==null||!isFinite(Number(n))) return 'Belum ada'; return 'Rp '+Number(n).toLocaleString('id-ID'); }catch(_){ return 'Rp '+n; } }
   function pct(a,b){ try{ if(a==null||b==null||!isFinite(a)||!isFinite(b)||!b) return ''; return ((a-b)/Math.abs(b)*100).toFixed(1).replace('.',',')+'%'; }catch(_){ return ''; } }
+  // W7 P0: when the live snapshot is unavailable, the static preview markup must
+  // NOT keep showing hardcoded market numbers as if they were live. Blank every
+  // market field to an explicit empty state and flag the calculator as unavailable.
+  function blankLandingPreview(){
+    try{
+      var EMPTY='\u2014';
+      var scoreEl=document.querySelector('.preview-pane .score-number');
+      if(scoreEl) scoreEl.textContent=EMPTY;
+      var detStrong=document.querySelector('.preview-pane .score-details strong');
+      if(detStrong) detStrong.textContent='Snapshot EOD belum tersedia';
+      var detP=document.querySelector('.preview-pane .score-details p');
+      if(detP) detP.textContent='Data bursa belum termuat. Angka tidak ditampilkan agar tidak menyesatkan.';
+      var planRow=document.querySelector('.preview-plan-row');
+      if(planRow){ planRow.querySelectorAll('strong').forEach(function(s){ s.textContent=EMPTY; }); }
+      document.querySelectorAll('.preview-flow-stats .flow-stat').forEach(function(fs){
+        var s=fs.querySelector('strong'); if(s) s.textContent=EMPTY;
+        var sm=fs.querySelector('small'); if(sm) sm.textContent='Belum tersedia';
+      });
+      document.querySelectorAll('.preview-metrics-list .metric-row').forEach(function(mr){
+        var s=mr.querySelector('strong'); if(s) s.textContent=EMPTY;
+        var sp=mr.querySelector('span:last-child'); if(sp && sp!==mr.querySelector('span')) sp.textContent=EMPTY;
+      });
+      document.querySelectorAll('.preview-flow-caption span').forEach(function(c){ c.textContent=EMPTY; });
+      var fill=document.querySelector('.preview-flow-bar .flow-bar-fill'); if(fill) fill.style.width='0%';
+      window.__landingCalcUnavailable=true;
+      if(window.acUpdateLandingCalc) window.acUpdateLandingCalc();
+    }catch(_){}
+  }
   async function loadV3F07Snapshot(){
     var pill=document.querySelector('.preview-sample-pill');
     try{
@@ -95,6 +123,7 @@
       if(tag) tag.textContent='SNAPSHOT EOD MEJA KERJA '+String(snap.trade_date||'');
     }catch(err){
       if(pill){ pill.textContent='SNAPSHOT EOD BELUM TERSEDIA'; }
+      blankLandingPreview();
     }
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',loadV3F07Snapshot);
@@ -247,16 +276,21 @@
     }catch(_){}
   }
   var loadingFor=null;
+  // W7 P1: monotonic request token so a slow response for ticker A can never
+  // render under ticker B after a rapid switch. Only the latest request wins.
+  var matrixSeq=0;
   async function loadMatrix(ticker){
     var t=String(ticker||activeTicker()).toUpperCase();
     if(loadingFor===t) return; loadingFor=t;
+    var seq=++matrixSeq;
     try{
       var res=await fetch('/api/ai/chat?ticker='+encodeURIComponent(t),{method:'GET',cache:'no-cache'});
       if(!res.ok) throw new Error('http '+res.status);
       var j=await res.json();
+      if(seq!==matrixSeq) return; // a newer ticker request superseded this one
       if(j&&j.success&&j.data&&j.data.ticker===t) renderMatrix(j.data);
     }catch(_){}
-    finally{ loadingFor=null; }
+    finally{ if(seq===matrixSeq) loadingFor=null; }
   }
   function scrollChat(){
     try{ var r=$('unifiedChatMessages'); if(r) r.scrollTop=r.scrollHeight; }catch(_){}

@@ -44,6 +44,24 @@ cd "$REPO"
 # Set / support production approval flag for live monitoring runner
 export LOCAL_MONITOR_LIVE_APPROVED="${LOCAL_MONITOR_LIVE_APPROVED:-YES}"
 
+# Safe locking of live send flag: default to false in non-production/dry-run
+export TELEGRAM_LIVE_SEND="${TELEGRAM_LIVE_SEND:-false}"
+
+# Support --selftest directly in bash script to verify bash interpreter & prerequisites
+if [ "${1:-}" = "--selftest" ]; then
+  echo "SELFTEST: bash interpreter OK"
+  echo "SELFTEST: TELEGRAM_LIVE_SEND=$TELEGRAM_LIVE_SEND"
+  echo "SELFTEST: REPO=$REPO"
+  echo "SELFTEST: NODE_BIN=$NODE_BIN"
+  echo "SELFTEST: RUNNER_JS=$RUNNER_JS"
+  if [ -f "$RUNNER_JS" ]; then
+    echo "SELFTEST: RUNNER_JS_EXISTS=OK"
+  else
+    echo "SELFTEST: RUNNER_JS_EXISTS=MISSING"
+  fi
+  exit 0
+fi
+
 # Live mode uses non-blocking flock to avoid overlapping executions
 exec /usr/bin/flock -n "$LOCK_FILE" \
   "$NODE_BIN" "$RUNNER_JS" "$@"

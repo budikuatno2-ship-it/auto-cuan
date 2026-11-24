@@ -202,7 +202,6 @@
 
     var chartId = 'unifiedchart_' + Date.now();
     var _pd = (typeof root.chartDims === 'function') ? root.chartDims('page') : { main: 340, rsi: 60 };
-    var _fsIcon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4m11-5v4a1 1 0 01-1 1h-4"/></svg>';
     var _dlIcon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>';
 
     container.innerHTML = '<div class="unified-card-header">' +
@@ -213,7 +212,10 @@
       '</div>' +
       '<div class="flex items-center gap-1.5 flex-wrap">' +
       '<button id="' + chartId + '_ai" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-300 border border-blue-500/30 hover:bg-blue-500/10 transition" aria-label="Analisis chart ' + safeTicker + ' dengan AI">🤖 Analisis AI</button>' +
-      '<button id="' + chartId + '_fs" onclick="UnifiedCockpit.openFullscreen()" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-sky-300 border border-sky-500/30 hover:bg-sky-500/10 transition" aria-label="Buka chart ' + safeTicker + ' layar penuh">' + _fsIcon + 'Layar Penuh</button>' +
+      // SERVED-UI REPAIR: the single Layar Penuh control lives in the workstation
+      // toolbar (`<chartId>_fullscreen_btn`, chart-workstation.js). The former
+      // header `_fs` button duplicated it on desktop and mobile; it is removed
+      // here so exactly one enter control and one "Keluar Layar Penuh" state exist.
       '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + safeTicker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + safeTicker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button>' +
       '</div>' +
       '</div>' +
@@ -226,7 +228,12 @@
       var resp = await fetch('/api/chart?ticker=' + encodeURIComponent(safeTicker), { signal: _fetchSignal }).catch(function() { return null; });
       var data = (resp && resp.ok) ? await resp.json() : null;
       if (!data || !data.success || !data.candles || data.candles.length === 0) {
-        resp = await fetch('/api/candles?ticker=' + encodeURIComponent(safeTicker), { signal: _fetchSignal });
+        var candleUrl = '/api/candles?ticker=' + encodeURIComponent(safeTicker);
+        var dedupe = root.__AUTOCUAN_CANDLE_DEDUPE__;
+        var candleResult = dedupe
+          ? await dedupe.fetchCandlesOnce(candleUrl, { signal: _fetchSignal })
+          : await fetch(candleUrl, { signal: _fetchSignal });
+        resp = candleResult && candleResult.response ? candleResult.response : candleResult;
         data = await resp.json();
       }
       // Reject an old ticker/sequence BEFORE changing global loading or

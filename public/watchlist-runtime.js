@@ -209,7 +209,9 @@
     html += '</tr></thead><tbody>';
 
     filtered.forEach(function (item, idx) {
-      var last = item.last_price ? Number(item.last_price).toLocaleString('id-ID') : '—';
+      // BATCH 1 / BUG 3: absent canonical quote is UNKNOWN, never a mock price.
+      var hasCanonicalPrice = item.last_price != null && Number.isFinite(Number(item.last_price)) && Number(item.last_price) > 0;
+      var last = hasCanonicalPrice ? Number(item.last_price).toLocaleString('id-ID') : '—';
       var chg = item.change_pct != null ? Number(item.change_pct) : null;
       var chgText = chg != null ? ((chg >= 0 ? '+' : '−') + Math.abs(chg).toFixed(2).replace('.', ',') + '%') : '—';
       var chgClass = chg != null ? (chg >= 0 ? 'pos' : 'neg') : 'mut';
@@ -232,7 +234,7 @@
                       ((cond === 'PRICE_BELOW' || cond === 'BELOW') ? ('Saat ≤ ' + tFmt) :
                       (cond ? (cond + ' ' + tFmt) : ('Target ' + tFmt)));
           alertDot = 'g';
-          if (item.last_price && targetPrice) {
+          if (hasCanonicalPrice && targetPrice) {
             var dist = ((targetPrice - item.last_price) / item.last_price) * 100;
             distText = (dist >= 0 ? '+' : '−') + Math.abs(dist).toFixed(2).replace('.', ',') + '%';
             proxWidth = Math.min(100, Math.max(8, Math.round(100 - Math.abs(dist) * 10)));

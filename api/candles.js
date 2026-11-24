@@ -44,6 +44,12 @@ try { shield = require('../lib/security-shield'); } catch (_) { shield = null; }
 var c10FileCache = null;
 try { c10FileCache = require('../lib/c10-json-file-cache'); } catch (_) { c10FileCache = null; }
 var clock = { now: function() { return new Date(); } };
+var { isValidIhsgCandle } = require('../lib/ihsg-validation');
+var { readCandleSeries } = require('../lib/local-market-subset-store');
+// TASK J6: test-only seam. Production always uses the canonical reader above;
+// isolated tests may inject a stub so mocked upstream transport is exercised.
+var candleReader = readCandleSeries;
+var { LAST_PROVEN_TRADING_DATE, evaluateDataGovernance } = require('../lib/data-governance-policy');
 
 // Unauthenticated, and each unique ticker triggers a live Yahoo Finance fetch
 // beyond the 5-minute cache. Same reasoning as api/quote.js's limiter: bound
@@ -79,11 +85,14 @@ function withIdentity(payload, ticker, metadata, category) {
   var body = payload && typeof payload === 'object' ? payload : {};
   var meta = metadata && typeof metadata === 'object' ? metadata : {};
   var tradeDate = meta.actual_data_date || null;
+  var actualDate = meta.actual_data_date === undefined ? (body.actual_data_date || null) : meta.actual_data_date;
   return Object.assign({}, body, {
     ticker: ticker,
     category: category || 'CHART',
+    ...meta,
     trade_date: tradeDate,
-    actual_data_date: meta.actual_data_date === undefined ? (body.actual_data_date || null) : meta.actual_data_date,
+    actual_data_date: actualDate,
+    as_of: actualDate,
     source_timestamp: new Date().toISOString()
   });
 }
@@ -170,6 +179,8 @@ module.exports = async function handler(req, res) {
     // S1: validasi ketat terpusat — tolak traversal/command-injection/XSS dulu
     // (pesan generik, tanpa gema payload), lalu izinkan pola lama + pola S1.
     try {
+      // Canonicalize only the supported Yahoo index alias before strict validation.
+      if (typeof ticker === 'string' && ticker.trim().toUpperCase() === '^JKSE') ticker = 'IHSG';
       if (shield) {
         var sVal = shield.validateTicker(ticker);
         if (!sVal.ok) {
@@ -212,7 +223,11 @@ module.exports = async function handler(req, res) {
     var cleanRange = (typeof reqRange === 'string' && validRanges.indexOf(reqRange.toLowerCase().trim()) >= 0)
       ? reqRange.toLowerCase().trim()
       : '5y';
-    var cacheKey = ticker + '_' + cleanRange;
+    var asOf = (req.query && req.query.as_of) || (req.body && req.body.as_of) || null;
+    if (asOf && !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return res.status(400).json({ success: false, error: 'Invalid as_of' });
+    var localSeries = candleReader(ticker, { asOf: asOf });
+    var localRevision = require('node:crypto').createHash('sha256').update(JSON.stringify(localSeries)).digest('hex');
+    var cacheKey = ticker + '_' + cleanRange + '_' + (asOf || '') + '_' + ((req.query && req.query.interval) || '1d') + '_' + localRevision;
 
     var cached = cache[cacheKey];
     var requestJakartaToday = t1Policy.formatJakartaDate(clock.now());
@@ -226,49 +241,16 @@ module.exports = async function handler(req, res) {
     var cutoff = null;
     var candleSource = 'Data Historis T-1';
 
-    // 1. Primary for IHSG/BBCA: read local disk cache (data/ohlcv or data/daily-candles)
-    if (true) { // V4-F10: read disk cache for ALL tickers to guarantee sub-150ms rendering
-      var fs = require('fs');
-      var path = require('path');
-      var ihsgDiskPath = path.join(process.cwd(), 'data', 'ohlcv', ticker + '.json');
-      if (!fs.existsSync(ihsgDiskPath)) {
-        ihsgDiskPath = path.join(process.cwd(), 'data', 'daily-candles', ticker + '.json');
-      }
-      if (fs.existsSync(ihsgDiskPath)) {
-        try {
-          var rawDisk = (c10FileCache ? c10FileCache.getJsonFile(ihsgDiskPath, 15000).data : JSON.parse(fs.readFileSync(ihsgDiskPath, 'utf8')));
-          if (rawDisk && Array.isArray(rawDisk.candles) && rawDisk.candles.length >= 20) {
-            var diskCandles = [];
-            for (var k = 0; k < rawDisk.candles.length; k++) {
-              var dc = rawDisk.candles[k];
-              var dDate = String(dc.date || dc.time || '').slice(0, 10);
-              var dO = Number(dc.open), dH = Number(dc.high), dL = Number(dc.low), dC = Number(dc.close);
-              var dV = Number(dc.volume);
-              if (/^\d{4}-\d{2}-\d{2}$/.test(dDate) && Number.isFinite(dO) && Number.isFinite(dH) && Number.isFinite(dL) && Number.isFinite(dC)) {
-                diskCandles.push({
-                  time: dDate,
-                  open: Math.round(dO * 100) / 100,
-                  high: Math.round(dH * 100) / 100,
-                  low: Math.round(dL * 100) / 100,
-                  close: Math.round(dC * 100) / 100,
-                  volume: Number.isFinite(dV) && dV > 0 ? dV : null,
-                  value: dc.value != null ? Number(dc.value) : null
-                });
-              }
-            }
-            if (diskCandles.length >= 20) {
-              var diskCutoff = t1Policy.retainCompletedCandles(diskCandles, clock.now());
-              candles = (diskCutoff && diskCutoff.candles && diskCutoff.candles.length >= 5) ? diskCutoff.candles : diskCandles;
-                cutoff = diskCutoff || { candles: candles, metadata: { t1_status: 'OK' } };
-                candleSource = 'Data Historis T-1';
-            }
-          }
-        } catch (_) {}
-      }
+    // Canonical SQLite wins even for short histories. No current-day or future
+    // bars are reintroduced when T-1 filtering empties the local series.
+    if (localSeries.source) {
+      cutoff = t1Policy.retainCompletedCandles(localSeries.candles, clock.now());
+      candles = cutoff.candles;
+      candleSource = localSeries.source === 'sqlite_market_rows' ? localSeries.source : 'Data Historis T-1';
     }
 
     // 2. Fallback to Yahoo Finance if candles not resolved from disk
-    if (!candles || candles.length === 0) {
+    if ((!candles || candles.length === 0) && !localSeries.source) {
       if (ticker === 'IHSG') {
         candleSource = 'fallback';
       }
@@ -292,28 +274,35 @@ module.exports = async function handler(req, res) {
         });
       } catch (fetchErr) {
         clearTimeout(timeout);
-        return res.status(502).json(withIdentity({ success: false, ticker: ticker, error: 'Gagal mengambil data.' }, ticker, null, 'CHART'));
+        // CANONICAL CONTRACT (V6 W1 / R1): a THROWN upstream transport error is a
+        // 502 with an explicit error code — distinct from "data genuinely absent"
+        // (200 + data_status:unavailable below). The two conditions must never be
+        // conflated: a transport failure is an infrastructure fault, an absent bar
+        // is an honest empty answer.
+        return res.status(502).json(withIdentity({ success: false, ticker: ticker, error: 'Gagal mengambil data.', error_code: 'UPSTREAM_TRANSPORT_ERROR', data_status: 'unavailable' }, ticker, null, 'CHART'));
       }
       clearTimeout(timeout);
 
       if (!response.ok) {
-        return res.status(502).json(withIdentity({ success: false, ticker: ticker, error: 'HTTP ' + response.status }, ticker, null, 'CHART'));
+        return res.status(502).json(withIdentity({ success: false, ticker: ticker, error: 'HTTP ' + response.status, error_code: 'UPSTREAM_HTTP_ERROR', data_status: 'unavailable' }, ticker, null, 'CHART'));
       }
 
       var json;
       try { json = await response.json(); } catch (e) {
-        return res.status(502).json(withIdentity({ success: false, ticker: ticker, error: 'Gagal parsing.' }, ticker, null, 'CHART'));
+        return res.status(502).json(withIdentity({ success: false, ticker: ticker, error: 'Gagal parsing.', error_code: 'UPSTREAM_PARSE_ERROR', data_status: 'unavailable' }, ticker, null, 'CHART'));
       }
 
       var chartResult = json && json.chart && json.chart.result && json.chart.result[0];
       if (!chartResult || !chartResult.timestamp) {
-        return res.status(200).json(withIdentity({ success: false, ticker: ticker, error: 'Data tidak ditemukan.' }, ticker, t1Policy.buildMetadata(null, clock.now()), 'CHART'));
+        // Genuinely absent data: 200 + data_status:unavailable (NOT a 502).
+        return res.status(200).json(withIdentity({ success: false, ticker: ticker, error: 'Data tidak ditemukan.', data_status: 'unavailable' }, ticker, t1Policy.buildMetadata(null, clock.now()), 'CHART'));
       }
 
       var timestamps = chartResult.timestamp || [];
       var indicators = chartResult.indicators && chartResult.indicators.quote && chartResult.indicators.quote[0];
       if (!indicators) {
-        return res.status(200).json(withIdentity({ success: false, ticker: ticker, error: 'OHLCV kosong.' }, ticker, t1Policy.buildMetadata(null, clock.now()), 'CHART'));
+        // Genuinely absent data: 200 + data_status:unavailable (NOT a 502).
+        return res.status(200).json(withIdentity({ success: false, ticker: ticker, error: 'OHLCV kosong.', data_status: 'unavailable' }, ticker, t1Policy.buildMetadata(null, clock.now()), 'CHART'));
       }
 
       var opens = indicators.open || [];
@@ -337,17 +326,11 @@ module.exports = async function handler(req, res) {
             Number.isFinite(lNum) && lNum >= 0 &&
             Number.isFinite(cNum) && cNum > 0 &&
             hNum >= lNum) {
-          var pO = Math.round(oNum * 100) / 100;
-          var pH = Math.round(hNum * 100) / 100;
-          var pL = Math.round(lNum * 100) / 100;
-          var pC = Math.round(cNum * 100) / 100;
-          if (ticker === 'BBCA' && pC < 7500) {
-            pO = Math.round(pO * 2);
-            pH = Math.round(pH * 2);
-            pL = Math.round(pL * 2);
-            pC = Math.round(pC * 2);
-          }
-          if (ticker === 'IHSG' && pC < 6000) {
+          var pO = oNum;
+          var pH = hNum;
+          var pL = lNum;
+          var pC = cNum;
+          if (ticker === 'IHSG' && !isValidIhsgCandle({ date: candleDate, close: pC })) {
             continue;
           }
           candles.push({
@@ -356,11 +339,12 @@ module.exports = async function handler(req, res) {
             high: pH,
             low: pL,
             close: pC,
-            volume: Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null
+            volume: v != null && v !== '' && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null
           });
         }
       }
 
+      if (asOf) candles = candles.filter(function(c) { return c.time <= asOf; });
       cutoff = t1Policy.retainCompletedCandles(candles, clock.now());
       candles = cutoff.candles;
     }
@@ -369,6 +353,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(withIdentity({
         success: false,
         ticker: ticker,
+        data_status: 'unavailable',
         error: 'Tidak ada candle harian selesai sebelum tanggal Jakarta hari ini.'
       }, ticker, cutoff && cutoff.metadata, 'CHART'));
     }
@@ -389,7 +374,8 @@ module.exports = async function handler(req, res) {
         open: latest.open,
         high: latest.high,
         low: latest.low,
-        volume: latest.volume
+        volume: latest.volume,
+        ...(latest.provenance ? { provenance: latest.provenance } : {})
       },
       metrics: {
         ma20: calcMA(closePrices, 20),
@@ -400,7 +386,8 @@ module.exports = async function handler(req, res) {
         volumeAvg20: calcMA(volumeArr, 20) != null ? Math.round(calcMA(volumeArr, 20)) : null,
         volumeVsAvg20: calcVolumeRatio(volumeArr, latest.volume, 20)
       },
-      candles: candles
+      candles: candles,
+      data_governance: evaluateDataGovernance(cutoff && cutoff.metadata && cutoff.metadata.actual_data_date, clock.now())
     }, ticker, cutoff && cutoff.metadata, 'CHART'), cutoff.metadata);
 
     // Geometry consumes only the finalized candle array above. Its failure is
@@ -449,6 +436,7 @@ module.exports = async function handler(req, res) {
 module.exports.__test = {
   clock: clock,
   clearCache: function() { cache = {}; },
+  setCandleReader: function(reader) { candleReader = typeof reader === 'function' ? reader : readCandleSeries; },
   setPatternDetector: function(detector) { patternDetector = detector; },
   resetPatternDetector: function() { patternDetector = require('../lib/pattern-abcd').detectAbcdPattern; },
   setClassicPatternDetector: function(detector) { classicPatternDetector = detector; },
@@ -461,7 +449,9 @@ module.exports.__test = {
   withIdentity: withIdentity,
   calcMA: calcMA,
   calcRSI: calcRSI,
-  calcVolumeRatio: calcVolumeRatio
+  calcVolumeRatio: calcVolumeRatio,
+  LAST_PROVEN_TRADING_DATE: LAST_PROVEN_TRADING_DATE,
+  evaluateDataGovernance: evaluateDataGovernance
 };
 
 function calcMA(prices, period) {
@@ -531,12 +521,14 @@ function calcRSI(closes, period) {
 // Volume ratio vs the trailing `period`-bar average. The averaging window is
 // defined by test/chart-t1-candles.test.js (the SSOT for this endpoint): the
 // reported volumeAvg20 includes the latest bar, and volumeVsAvg20 is that same
-// latest volume divided by it. Kept as-is to preserve that contract.
+// latest volume divided by it. Unknown or unavailable inputs remain null.
 function calcVolumeRatio(volumeArr, latestVol, period) {
+  if (!Array.isArray(volumeArr) || !Number.isInteger(period) || period <= 0 || volumeArr.length < period) return null;
+  if (latestVol == null || latestVol === '' || volumeArr.slice(-period).some(function(v) { return v == null || v === ''; })) return null;
   var avg = calcMA(volumeArr, period);
-  if (!avg || avg <= 0 || !Number.isFinite(avg)) return 0;
+  if (avg == null || avg <= 0 || !Number.isFinite(avg)) return null;
   var vol = Number(latestVol);
-  if (!Number.isFinite(vol) || vol <= 0) return 0;
+  if (!Number.isFinite(vol) || vol < 0) return null;
   var ratio = vol / avg;
-  return Number.isFinite(ratio) ? Math.round(ratio * 100) / 100 : 0;
+  return Number.isFinite(ratio) ? Math.round(ratio * 100) / 100 : null;
 }
