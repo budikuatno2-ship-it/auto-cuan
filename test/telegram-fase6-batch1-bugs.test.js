@@ -87,7 +87,8 @@ test('BUG-F6-004: sendTelegramMessage skips acquireSendSlot throttling for chunk
     await notifier.sendTelegramMessage(longMsg, {
       skip_market_guard: true,
       min_interval_ms: 100,
-      sleep: async () => { sleepCalled = true; }
+      sleep: async () => { sleepCalled = true; },
+      gate_env: { TELEGRAM_ENABLED: '1', TELEGRAM_LIVE: 'true', TELEGRAM_BOT_TOKEN: 'mock-token', TELEGRAM_CHAT_ID: '12345' }
     });
 
     assert.strictEqual(sleepCalled, true, 'acquireSendSlot must be called and waited for chunk 2 even when retryAfterUntil is in future');

@@ -246,14 +246,30 @@ function tmpRegistry() {
 {
   const rp = tmpRegistry();
   // Register with approval.
+  // NOTE: promotion requires statistical QUALIFICATION (commit e67c86b1) in
+  // addition to approval, so the promoted version must carry metrics that pass
+  // isQualified: sampleSize >= MIN_SAMPLE_SIZE, expectancyR > 0, PF >= 1.5.
   const r1 = reg.registerStrategy({
     id: 'daytrade-v7', version: '1.0.0',
-    metrics: { sampleSize: 2179, expectancyR: -0.1, profitFactor: 0.76 },
+    metrics: { sampleSize: 2179, expectancyR: 0.12, profitFactor: 1.8 },
     approvedBy: 'unit-test', evidence: 'unit'
   }, { registryPath: rp });
   assert(r1.ok === true, 'registerStrategy with approvedBy writes');
 
-  // Promote with explicit approval.
+  // An approved but UNQUALIFIED strategy must still be rejected — approval is
+  // necessary but not sufficient (QUALIFICATION_REQUIRED, fail closed).
+  reg.registerStrategy({
+    id: 'daytrade-v7', version: '0.9.0-bad',
+    metrics: { sampleSize: 2179, expectancyR: -0.1, profitFactor: 0.76 },
+    approvedBy: 'unit-test', evidence: 'unit'
+  }, { registryPath: rp });
+  let threwUnqualified = null;
+  try { reg.setProductionStrategy('daytrade-v7', '0.9.0-bad', { approved: true, approvedBy: 'unit-test', reason: 'should not pass', registryPath: rp }); }
+  catch (e) { threwUnqualified = e; }
+  assert(threwUnqualified && threwUnqualified.code === 'QUALIFICATION_REQUIRED',
+    'approved but unqualified strategy rejected with QUALIFICATION_REQUIRED');
+
+  // Promote with explicit approval + qualification.
   const p1 = reg.setProductionStrategy('daytrade-v7', '1.0.0', { approved: true, approvedBy: 'unit-test', reason: 'initial', registryPath: rp });
   assert(p1.ok === true, 'setProductionStrategy with approval applies');
   const g1 = reg.getApprovedStrategy('daytrade-v7', { registryPath: rp });

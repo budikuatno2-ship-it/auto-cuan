@@ -633,6 +633,42 @@ test('isDashboardAdminUser has no header-driven legacy fallback left', () => {
   assert.doesNotMatch(body, /ADMIN_LEGACY_BUDI_PREVIEW/, 'the header-driven legacy budi fallback must be gone');
 });
 
+// NEGATIVE CONTROL (V6 W1 / R5): the spoofed-header path must not merely be
+// "gated" — it must leak NO sensitive data. This pins the security property
+// that the pre-auth web-daily-picks -> api/top5-radar.js delegation (which
+// served the raw artifact to anyone) can never come back.
+test('web-daily-picks spoofed-header rejection leaks no sensitive data and the pre-auth top5 delegation is gone', async () => {
+  await withEnv(async () => {
+    const handler = requireSectorHotWithSupabaseStub(supabaseWithUser({ id: REAL_UUID, username: 'realuser', is_blocked: false, is_approved: true }));
+    const res = makeRes();
+    await handler({ method: 'GET', query: { action: 'web-daily-picks' }, headers: { 'x-user-id': REAL_UUID, 'x-username': 'realuser' } }, res);
+
+    // Rejected, not served.
+    assert.equal(res.body.gated, true);
+    assert.equal(res.body.auth_required, true);
+
+    // No sensitive payload fields may be present on the rejection body.
+    const forbidden = ['picks', 'top5', 'top5_picks', 'top20', 'categories', 'rows', 'monitor', 'history', 'active_history', 'tp_history'];
+    for (const key of forbidden) {
+      const val = res.body[key];
+      const empty = val === undefined || (Array.isArray(val) && val.length === 0);
+      assert.ok(empty, 'rejection body must not carry populated "' + key + '" (leak)');
+    }
+    // The raw artifact's identifying fields must never appear.
+    assert.equal(res.body.snapshot_id, undefined);
+    assert.equal(res.body.readiness_enforced_at, undefined);
+    assert.equal(res.body.actionable_count, undefined);
+
+    // Structural guard: the delegation to api/top5-radar.js must not exist
+    // before the auth gate. It may only appear inside handleWebDailyPicks.
+    const src = fs.readFileSync(path.join(ROOT, 'api', 'sector-hot.js'), 'utf8');
+    const gateIdx = src.indexOf('async function handleWebDailyPicks(');
+    assert.ok(gateIdx >= 0, 'handleWebDailyPicks must exist');
+    const preGate = src.slice(0, gateIdx);
+    assert.doesNotMatch(preGate, /require\(["']\.\/top5-radar["']\)/, 'api/top5-radar.js must not be required before the auth gate');
+  });
+});
+
 test('isDashboardScreenerLoggedIn and lookupDashboardAdminAppUser derive identity only from the signed session, never from X-User-Id/X-Username headers', () => {
   const src = fs.readFileSync(path.join(ROOT, 'api', 'sector-hot.js'), 'utf8');
 

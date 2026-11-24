@@ -193,7 +193,10 @@ async function main() {
     // ASERSI 1: File data/ohlcv/IHSG.json & Respon API /api/chart?ticker=IHSG
     // =========================================================================
     console.log('[ASERSI 1] Memeriksa data/ohlcv/IHSG.json dan /api/chart?ticker=IHSG...');
-    const ihsgFilePath = path.join(ROOT, 'data', 'ohlcv', 'IHSG.json');
+    let ihsgFilePath = path.join(ROOT, 'data', 'ohlcv', 'IHSG.json');
+    if (!fs.existsSync(ihsgFilePath)) {
+      ihsgFilePath = path.join(ROOT, 'data', 'daily-candles', 'IHSG.json');
+    }
     const ihsgFileExists = fs.existsSync(ihsgFilePath);
     let ihsgFileClose = 0;
     if (ihsgFileExists) {
@@ -227,7 +230,10 @@ async function main() {
     // ASERSI 2: File data/ohlcv/BBCA.json & Respon API /api/chart?ticker=BBCA
     // =========================================================================
     console.log('[ASERSI 2] Memeriksa data/ohlcv/BBCA.json dan /api/chart?ticker=BBCA...');
-    const bbcaFilePath = path.join(ROOT, 'data', 'ohlcv', 'BBCA.json');
+    let bbcaFilePath = path.join(ROOT, 'data', 'ohlcv', 'BBCA.json');
+    if (!fs.existsSync(bbcaFilePath)) {
+      bbcaFilePath = path.join(ROOT, 'data', 'daily-candles', 'BBCA.json');
+    }
     const bbcaFileExists = fs.existsSync(bbcaFilePath);
     let bbcaFileClose = 0;
     if (bbcaFileExists) {

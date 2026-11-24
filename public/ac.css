@@ -603,3 +603,225 @@ body.modal-open #landingMain,body.modal-open main#landingMain{filter:blur(10px);
 [data-v3f10-node="DWI"],[data-v3f10-node="PUB"]{background:#fbbf24!important;color:#020617!important;font-weight:800!important;border:1.5px solid #020617!important;}
 [data-v3f10-search="true"]{border:1.5px solid #334155!important;}
 [data-v3f10-ksei-table] th[data-v3f10-col="per-tanggal"],[data-v3f10-cell="per-tanggal"]{white-space:nowrap;}
+
+/* =============================================================================
+   AUTO-CUAN V4 INSTITUTIONAL UI/UX COMPLIANCE (RULES 1, 3, 4, 5, 6)
+   - Rule 1: nutlope/hallmark (Full-Viewport 12-Column Institutional Bento Grid, Zero Outer-Scroll)
+   - Rule 3: pbakaus/impeccable (Zero Layout Shift, CLS = 0.000, Skeleton Loaders)
+   - Rule 4: cth9191/animate (60 FPS GPU-Accelerated Micro-Transitions, transform3d/opacity only)
+   - Rule 5: DhvanilPatel/swarm-cursors (Single rAF Batched Canvas/SVG Rendering)
+   - Rule 6: Tencent/BrowserSkill (Automated Bounding-Box & Collision Inspection, Zero Truncation)
+   Directive: .roo/rules/auto-cuan-8-github-skills.md
+   ============================================================================= */
+
+/* Rule 1: Strict Root Shell Constraints - Zero Outer Scroll on Desktop */
+@media (min-width: 1024px) {
+  html, body {
+    height: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  .institutional-viewport-container,
+  #appShell,
+  .app-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    width: 100vw !important;
+    overflow: hidden !important;
+  }
+
+  #appMain,
+  .app-main {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    flex: 1 1 0% !important;
+    overflow: hidden !important;
+  }
+
+  #appContent,
+  .app-content {
+    flex: 1 1 0% !important;
+    height: calc(100vh - 56px) !important;
+    height: calc(100dvh - 56px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scroll-behavior: smooth;
+    padding: 12px 16px !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* Mathematical 12-Column Grid Topology */
+.bento-grid-12 {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  height: calc(100vh - 56px) !important;
+  height: calc(100dvh - 56px) !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+}
+
+.bento-cell-screener  { grid-column: span 3 !important; height: 100% !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
+.bento-cell-chart     { grid-column: span 6 !important; height: 100% !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
+.bento-cell-orderflow { grid-column: span 3 !important; height: 100% !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
+
+@media (max-width: 1280px) and (min-width: 769px) {
+  .bento-grid-12 {
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+  .bento-cell-screener  { grid-column: span 4 !important; }
+  .bento-cell-chart     { grid-column: span 8 !important; }
+  .bento-cell-orderflow { grid-column: span 12 !important; height: 320px !important; }
+}
+
+@media (max-width: 768px) {
+  .bento-grid-12 {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+  .bento-cell-screener, .bento-cell-chart, .bento-cell-orderflow {
+    grid-column: span 12 !important;
+    height: 480px !important;
+  }
+}
+
+/* Institutional Surface Elevation Standards */
+.surface-level-1 { background-color: #0B0E14 !important; }
+.surface-level-2 { background-color: #0F141C !important; border: 1px solid rgba(255, 255, 255, 0.06) !important; }
+.surface-level-3 { background-color: #151B26 !important; border: 1px solid rgba(255, 255, 255, 0.10) !important; }
+.surface-level-4 { background-color: #1C2433 !important; box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5) !important; }
+
+.bento-card {
+  border-radius: 12px !important;
+  background-color: #0F141C;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.bento-card-inner-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-gutter: stable;
+}
+
+/* Rule 3: Zero Layout Shift (CLS = 0.000) & Skeletons */
+.institutional-skeleton-wrap {
+  width: 100% !important;
+  min-height: 256px !important;
+  border-radius: 8px !important;
+  background-color: rgba(30, 41, 59, 0.4) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+}
+
+.institutional-skeleton-chart {
+  min-height: 256px !important;
+  width: 100% !important;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px !important;
+  background: rgba(30, 41, 59, 0.4) !important;
+}
+
+.institutional-skeleton-row {
+  height: 40px !important;
+  min-height: 40px !important;
+  width: 100% !important;
+  border-radius: 6px !important;
+  background: rgba(30, 41, 59, 0.3) !important;
+  margin-bottom: 6px !important;
+}
+
+@keyframes institutional-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.institutional-pulse {
+  animation: institutional-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+/* Rule 4: cth9191/animate - 60 FPS GPU-Accelerated Micro-Transitions */
+@keyframes price-tick-up {
+  0% {
+    background-color: rgba(16, 185, 129, 0.35);
+    transform: translate3d(0, 0, 0) scale3d(1.02, 1.02, 1);
+  }
+  100% {
+    background-color: transparent;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+}
+
+@keyframes price-tick-down {
+  0% {
+    background-color: rgba(239, 68, 68, 0.35);
+    transform: translate3d(0, 0, 0) scale3d(0.98, 0.98, 1);
+  }
+  100% {
+    background-color: transparent;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+}
+
+.tick-flash-up {
+  will-change: transform, background-color !important;
+  animation: price-tick-up 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.tick-flash-down {
+  will-change: transform, background-color !important;
+  animation: price-tick-down 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+/* Hardware Acceleration Promotion */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/* Throttling on hidden / reduced-motion */
+.reduce-animations *,
+.reduce-animations *::before,
+.reduce-animations *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* Rule 6: Tencent/BrowserSkill Zero-Truncation Contract */
+.no-truncate,
+.institutional-num,
+td.num,
+th.num,
+[data-metric],
+.cr3-val,
+.flow-val,
+.price-val,
+.vwap-val {
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+
+/* High-Contrast Institutional Color Ergonomics */
+.text-bullish { color: #10B981 !important; }
+.text-bearish { color: #EF4444 !important; }
+.text-gold    { color: #F59E0B !important; }

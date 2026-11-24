@@ -4,22 +4,48 @@
 /**
  * scripts/top5-radar.js
  * ============================================================================
- * Runner Pengunci Top 5 Radar Harian Auto-Cuan — V5 P0 hardened
+ * Single-source Short Swing IDX Top 20 / Top 5 snapshot publisher — V6 canonical.
  * ============================================================================
  *
- * WHAT CHANGED IN V5 P0 (BUG-V5-P0-004 / 002)
- *   BEFORE: when a screener pool was empty this script PADDED it with a
- *   hardcoded fallback ticker array carrying literal metrics
- *   (`{ last_price: 1420, score: 88, change_pct: 3.5 }`), then `.slice(0,5)`
- *   published those five clones as a "locked EOD" Top 5. All five rows were
- *   byte-identical because they came from one literal.
+ * WHAT CHANGED (Subtask F):
+ *   BEFORE: this runner merged three legacy screener pools
+ *   (screener-v3f04-konglo + screener-v3f04-nonkonglo + screener-v3f04-daytrade)
+ *   into a combined "Top 5" and published per-category picks. That meant the
+ *   dashboard Top 5 was a re-ranking of three different strategies, not a
+ *   single Short Swing snapshot.
  *
- *   AFTER: only rows that exist in a real screener source file can be emitted.
- *   Zero candidates is a valid, expected outcome. Nothing is padded, nothing is
- *   defaulted, and `top5_locked` is only true when every category really holds
- *   at least five published source rows.
+ * WHAT CHANGED (Subtask H / P0-09):
+ *   The `swing` pool of `data/screener-latest.json` was an ALIAS of the Konglo
+ *   screener results (universe 165 conglomerate-affiliated tickers) — reading
+ *   it meant Top20/Top5 were graded over Konglo165, not the whole eligible IDX
+ *   universe. The runner now reads the CANONICAL `short_swing` pool produced by
+ *   `scripts/run-screeners.js` via `lib/short-swing-universe.js` (whole local
+ *   IDX universe) and graded by `lib/saham-potensial-engine.js`. The deprecated
+ *   `swing` alias is GATED: when it is the only pool present, this runner
+ *   refuses to publish it as canonical and emits an honest NOT_PUBLISHED with
+ *   reason DEPRECATED_SWING_ALIAS_REJECTED.
  *
- * OUTPUT FILES
+ *   AFTER: the runner reads ONE canonical Short Swing IDX source (the
+ *   `short_swing` pool of `data/screener-latest.json`), normalises each real
+ *   IDX row into the canonical candidate contract (preserving per-component
+ *   as-of clocks), and re-ranks them through
+ *   `lib/saham-potensial-engine.js#buildSahamPotensialSnapshot`. Because the
+ *   engine is deterministic, the rebuilt snapshot_id must equal the producer's
+ *   snapshot_id — a mismatch is published as a validation failure, not hidden.
+ *   No three-screener merge, no padding, no fake READY: whatever the canonical
+ *   fail-closed engine emits (READY / WAITING_ENTRY / WATCHLIST / DEGRADED /
+ *   BLOCKED / NOT_READY) is what gets published.
+ *
+ * HONESTY CONTRACTS (still enforced):
+ *   - Only rows that exist in the single IDX source are emitted. Zero is valid.
+ *   - Broker/foreign data unavailable => BLOCKED (engine), never fabricated.
+ *   - Stale as-of vs session_date => NOT_READY (engine), never READY.
+ *   - `top5` is a PURE SUBSET of `top20` (same object references).
+ *   - R/R policy minimum (`MIN_RR_RATIO` from `lib/screener-config.js`) is
+ *     reported as `rr_policy_minimum`; the engine enforces R/R >= 1.5 at
+ *     max_entry before any READY.
+ *
+ * OUTPUT FILES (unchanged paths)
  *   data/top5-radar.json
  *   data/radar-state.json
  *   data/job-heartbeat/top5-radar.json
@@ -29,34 +55,35 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const contract = require('../lib/market-data-contract.js');
 const screenerConfig = require('../lib/screener-config.js');
-const readiness = require('../lib/readiness-engine.js');
+const engine = require('../lib/saham-potensial-engine.js');
+const snapshotStore = require('../lib/saham-potensial-snapshot-store.js');
 
-const { DATA_STATUS, pickNumber, pickText, isKnown } = contract;
-const { MIN_RR_RATIO, recalculateRiskReward } = screenerConfig;
+const { MIN_RR_RATIO } = screenerConfig;
 
 const ROOT = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(ROOT, 'data');
-const BACKTEST_FILE = path.join(ROOT, 'bukti-verifikasi-final', 'backtest-individual-964.json');
-const OUT_FILE = path.join(DATA_DIR, 'top5-radar.json');
-const RADAR_STATE_FILE = path.join(DATA_DIR, 'radar-state.json');
-const HEARTBEAT_FILE = path.join(DATA_DIR, 'job-heartbeat', 'top5-radar.json');
+// Test seams: V6_RADAR_SOURCE / V6_RADAR_OUTDIR / V6_RADAR_STORE let the
+// immutability suite exercise the real runner against synthetic inputs without
+// touching production artifacts. In normal operation they are unset.
+const SOURCE_FILE = process.env.V6_RADAR_SOURCE || path.join(DATA_DIR, 'screener-latest.json');
+const OUT_DIR = process.env.V6_RADAR_OUTDIR || DATA_DIR;
+const OUT_FILE = path.join(OUT_DIR, 'top5-radar.json');
+const RADAR_STATE_FILE = path.join(OUT_DIR, 'radar-state.json');
+const HEARTBEAT_FILE = path.join(OUT_DIR, 'job-heartbeat', 'top5-radar.json');
+const STORE_DIR = process.env.V6_RADAR_STORE || undefined; // undefined => store default
 
-/** Maximum picks per category and for the combined dashboard Top 5. */
+/** Maximum cardinality of the published Top 5 (mirrors the contract). */
 const MAX_PICKS = 5;
-
-/** Minimum backtest sample for a win rate to count as a qualification. */
+const MAX_TOP20 = 20;
 const MIN_WIN_RATE_SAMPLE = 10;
 
 /**
- * Category metadata only — deliberately NO ticker array. A hardcoded ticker
- * list is precisely the mechanism that manufactured the fake Top 5.
+ * A single source descriptor. NO ticker array — the "kosong" factory that
+ * produced the fake Top 5 was seeded by in-code ticker lists, which are gone.
  */
 const CATEGORY_SPECS = Object.freeze([
-  Object.freeze({ key: 'konglo', label: 'Swing Konglo', file: 'screener-v3f04-konglo.json' }),
-  Object.freeze({ key: 'nonkonglo', label: 'Swing Non-Konglo', file: 'screener-v3f04-nonkonglo.json' }),
-  Object.freeze({ key: 'daytrade', label: 'Day Trade', file: 'screener-v3f04-daytrade.json' })
+  Object.freeze({ key: 'short-swing', label: 'Short Swing IDX', file: 'screener-latest.json' })
 ]);
 
 /* -------------------------------------------------------------------------- */
@@ -80,356 +107,367 @@ function wibDateString() {
   }).format(new Date());
 }
 
-function buildBacktestMap() {
-  const map = new Map();
-  const bt = readJsonSafe(BACKTEST_FILE, null);
-  if (bt && Array.isArray(bt.tickers)) {
-    for (const t of bt.tickers) {
-      if (t && t.ticker) map.set(String(t.ticker).toUpperCase(), t);
-    }
+function pickFirstNumber(obj, ...keys) {
+  if (!obj || typeof obj !== 'object') return null;
+  for (const k of keys) {
+    const v = obj[k];
+    if (v === null || v === undefined || v === '') continue;
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
   }
-  return map;
+  return null;
+}
+
+function pickFirstText(obj, ...keys) {
+  if (!obj || typeof obj !== 'object') return null;
+  for (const k of keys) {
+    const v = obj[k];
+    if (v === undefined || v === null) continue;
+    const s = String(v).trim();
+    if (s.length > 0) return s;
+  }
+  return null;
 }
 
 /* -------------------------------------------------------------------------- */
-/* Candidate normalisation — real values only                                 */
+/* Candidate mapping — real values only, no fabrication                       */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Convert a REAL source row into a Top-5 candidate.
+ * Convert a REAL Short Swing source row into a canonical engine candidate.
  *
- * Returns `{ candidate, reject }`. A candidate is only produced when the price
- * and a structurally valid trade plan were actually read. No level is ever
- * synthesised from the price (the old `lastPrice * 0.985` ladder is gone).
+ * Broker (`bandar_score`) and foreign flow (`foreign_flow_score`) are passed
+ * ONLY if the source row actually carries them; when absent the canonical
+ * engine fail-closes to BLOCKED instead of fabricating a neutral 50.
  *
- * @param {object} item source row
- * @param {object} spec category spec
- * @param {Map} backtestMap
- * @param {number} rank
- * @param {{file:string, tradeDate:string|null, today:string}} origin
+ * Subtask H: rows of the canonical `short_swing` pool are themselves engine
+ * outputs, so their PER-COMPONENT as-of clocks (bandar_asof / foreign_asof /
+ * technical_asof / volume_asof, also nested under score_components) are
+ * carried through. Dropping them would let a stale broker clock masquerade as
+ * freshness-unknown and defeat the P0-08 gate on re-evaluation.
+ *
+ * @param {object} row
+ * @param {string} sessionDate (the snapshot session date the row is graded against)
+ * @returns {object}
  */
-function normalizeCandidate(item, spec, backtestMap, rank, origin) {
-  if (!item || typeof item !== 'object') return { candidate: null, reject: { reason: 'ROW_NOT_OBJECT' } };
+function normalizeCandidate(row, sessionDate) {
+  const ticker = String(pickFirstText(row, 'ticker', 'symbol') || '').toUpperCase();
+  const sc = row && row.score_components && typeof row.score_components === 'object'
+    ? row.score_components
+    : {};
 
-  const ticker = String(pickText(item.ticker) || '').toUpperCase();
-  if (!ticker) return { candidate: null, reject: { reason: 'TICKER_ABSENT' } };
+  const componentAsOf = (comp, ...extraKeys) =>
+    pickFirstText(row, ...extraKeys) ||
+    pickFirstText(comp, 'as_of') ||
+    null;
 
-  const bt = backtestMap.get(ticker) || {};
-
-  const lastPrice = pickNumber(item.last_price, item.close, item.price, item.entry_price);
-  if (lastPrice === null || lastPrice <= 0) {
-    return { candidate: null, reject: { ticker, reason: 'LAST_PRICE_ABSENT' } };
-  }
-
-  const entryLow = pickNumber(item.entry_low);
-  const entryHigh = pickNumber(item.entry_high, item.entry);
-  const stopLoss = pickNumber(item.stop_loss, item.sl);
-  const tp1 = pickNumber(item.tp1);
-  const tp2 = pickNumber(item.tp2);
-
-  if ([entryHigh, stopLoss, tp1].some((v) => v === null)) {
-    return { candidate: null, reject: { ticker, reason: 'TRADE_PLAN_LEVELS_ABSENT' } };
-  }
-  if (!(entryHigh > stopLoss && stopLoss > 0 && tp1 > entryHigh)) {
-    return { candidate: null, reject: { ticker, reason: 'TRADE_PLAN_STRUCTURALLY_INVALID' } };
-  }
-
-  const sourceRr = pickNumber(item.rr, item.risk_reward);
-  const computedRr = recalculateRiskReward({ entry_high: entryHigh, stop_loss: stopLoss, tp1 });
-  const rr = sourceRr !== null ? sourceRr : (computedRr === null ? null : Number(computedRr.toFixed(2)));
-
-  const score = pickNumber(item.conviction_score, item.score, item.v3f04_score, item.daytrade_score);
-  const sampleSize = pickNumber(bt.tradesCount, item.trades_count);
-  const rawWinRate = pickNumber(item.win_rate_pct, item.winRatePct, bt.winRatePct);
-  const winRateQualified = sampleSize !== null && sampleSize >= MIN_WIN_RATE_SAMPLE;
-
-  const rowTradeDate = pickText(item.trade_date, item.market_date, item.run_date) || origin.tradeDate;
-
-  const candidate = {
-    rank,
+  return {
     ticker,
-    company_name: pickText(item.company_name, item.stock_name) || ticker,
-    name: pickText(item.company_name, item.stock_name) || ticker,
-    category: spec.label,
-    screener_type: spec.key,
-    source: spec.key,
-    source_file: origin.file,
+    emiten: pickFirstText(row, 'emiten', 'company_name', 'stock_name', 'name') || ticker,
+    last_price: pickFirstNumber(row, 'last_price', 'close', 'price'),
+    change_pct: pickFirstNumber(row, 'change_pct', 'changePercent'),
+    volume_ratio: pickFirstNumber(row, 'volume_ratio_20d', 'volume_ratio', 'effective_volume_ratio'),
 
-    last_price: lastPrice,
-    current_price: lastPrice,
-    close: lastPrice,
-    change_pct: pickNumber(item.change_pct),
-    volume_ratio_avg20: pickNumber(item.volume_ratio_20d, item.volume_ratio),
+    entry_low: pickFirstNumber(row, 'entry_low', 'entry2', 'buy_low'),
+    entry_high: pickFirstNumber(row, 'entry_high', 'entry1', 'entry', 'buy_high'),
+    sl: pickFirstNumber(row, 'sl', 'stop_loss'),
+    tp1: pickFirstNumber(row, 'tp1'),
+    tp2: pickFirstNumber(row, 'tp2'),
 
-    score,
-    conviction_score: score,
-    combined_score: score,
+    // Optional scoring inputs — absence is honest, canonical engine BLOCKS.
+    bandar_score: pickFirstNumber(row, 'bandar_score', 'broksum_score', 'broker_score'),
+    foreign_flow_score: pickFirstNumber(row, 'foreign_flow_score', 'foreign_score'),
+    technical_score: pickFirstNumber(row, 'technical_score', 'conviction_score'),
 
-    // The win rate is REAL data from `backtest-individual-964.json` and is
-    // published unchanged. Sample adequacy is a separate defect (N23); it is
-    // reported additively so the weakness stays visible rather than being
-    // silently suppressed into a `null`.
-    win_rate_pct: rawWinRate,
-    winRatePct: rawWinRate,
-    win_rate_qualified: winRateQualified,
-    win_rate_sample_size: sampleSize,
+    // Per-component clocks (P0-08). The row's OWN as_of is authoritative for
+    // the price clock; only when absent do document-level dates apply. A
+    // missing clock stays null (UNKNOWN) — never defaulted to sessionDate.
+    as_of: pickFirstText(row, 'as_of', 'price_asof', 'trade_date', 'market_date', 'run_date') || null,
+    price_asof: pickFirstText(row, 'price_asof', 'as_of') || null,
+    bandar_asof: componentAsOf(sc.bandar, 'bandar_asof', 'broksum_date', 'broker_date'),
+    foreign_asof: componentAsOf(sc.foreign, 'foreign_asof', 'foreign_date'),
+    technical_asof: componentAsOf(sc.technical, 'technical_asof', 'technical_date'),
+    volume_asof: componentAsOf(sc.volume_ratio, 'volume_asof', 'volume_date'),
 
-    best_method_name: pickText(bt.bestMethodName, item.best_method_name),
-    bestMethodName: pickText(bt.bestMethodName, item.best_method_name),
-    best_broker_horizon: pickText(bt.bestBrokerHorizon, item.best_broker_horizon),
-    bestBrokerHorizon: pickText(bt.bestBrokerHorizon, item.best_broker_horizon),
-
-    entry1: entryHigh,
-    entry2: entryLow,
-    entry_low: entryLow,
-    entry_high: entryHigh,
-    stop_loss: stopLoss,
-    sl: stopLoss,
-    tp1,
-    tp2,
-    risk_reward: rr,
-    rr,
-    rr_policy_minimum: MIN_RR_RATIO,
-
-    trade_date: rowTradeDate,
-    source_status: pickText(item.status, item.setup)
+    setup: pickFirstText(row, 'setup', 'status'),
+    source: 'screener-latest-short-swing',
+    source_file: 'data/screener-latest.json'
   };
-
-  /* --- Provenance first: the verdict needs the freshness context --------- */
-  candidate.stale = isKnown(rowTradeDate) && isKnown(origin.today) ? rowTradeDate !== origin.today : null;
-
-  const status = candidate.stale === true ? DATA_STATUS.STALE : DATA_STATUS.AVAILABLE;
-  const withProvenance = contract.attachProvenance(candidate, {
-    source: origin.file,
-    tradeDate: rowTradeDate,
-    sourceTimestamp: pickText(item.calculated_at, item.price_asof, item.price_date) || null,
-    status,
-    extra: {
-      priceSource: pickText(item.price_source) || null,
-      priceAsof: pickText(item.price_asof, item.price_date) || null,
-      categoryKey: spec.key
-    }
-  });
-
-  /* --- Verdict: SINGLE authority (lib/readiness-engine.js) --------------- */
-  // This block used to re-implement the gate and map it onto READY/WAIT/
-  // REVIEW_REQUIRED with its own BUY token — a second authority that could
-  // disagree with `api/screener.js` about the same candidate.
-  const verdict = readiness.evaluate(withProvenance, {
-    minRiskReward: MIN_RR_RATIO,
-    now: origin.now
-  });
-
-  const isReady = verdict.status === readiness.STATUS.READY;
-
-  withProvenance.readiness_status = verdict.status;
-  withProvenance.status = verdict.status;
-  withProvenance.action = readiness.actionForStatus(verdict.status);
-  withProvenance.action_label = withProvenance.action;
-  withProvenance.status_label = readiness.labelForStatus(verdict.status);
-  withProvenance.verdict_reason = verdict.reasons.length > 0 ? verdict.reasons[0] : null;
-  withProvenance.verdict_reasons = verdict.reasons;
-  withProvenance.rr_gate_passed = Boolean(verdict.gateResults.riskReward && verdict.gateResults.riskReward.pass);
-  withProvenance.rr_policy_minimum = MIN_RR_RATIO;
-  withProvenance.rr_engine = verdict.rr;
-
-  /* Geography of the plan is reported, never asserted as a quality grade. */
-  withProvenance.risk_label = readiness.labelForStatus(verdict.status);
-  withProvenance.plan_quality_status = withProvenance.rr_gate_passed ? 'PASS' : 'FAIL';
-  // `true` only when the engine said READY. These fields feed the Telegram
-  // delivery gate, so deriving them from the R/R gate alone was unsafe.
-  withProvenance.trading_plan_valid = isReady;
-  withProvenance.safe = isReady;
-  withProvenance.quality_grade = null;
-  withProvenance.grade = null;
-  withProvenance.waived = false;
-
-  withProvenance.raw_payload = Object.assign({}, withProvenance);
-
-  return { candidate: withProvenance, reject: null };
-}
-
-/* -------------------------------------------------------------------------- */
-/* Pool reading                                                               */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Read one category's REAL candidate pool. `results` only — `radar` holds
- * price-sourced observations the producer did not publish as candidates, and
- * promoting them here would silently re-invent the candidate set.
- */
-function readPool(spec, backtestMap, today, now) {
-  const relFile = 'data/' + spec.file;
-  const doc = readJsonSafe(path.join(DATA_DIR, spec.file), null);
-
-  const meta = {
-    key: spec.key,
-    label: spec.label,
-    source_file: relFile,
-    source_rows: 0,
-    data_status: DATA_STATUS.SOURCE_UNAVAILABLE,
-    status_reason: null,
-    trade_date: null
-  };
-
-  if (!doc || typeof doc !== 'object') {
-    meta.status_reason = 'SOURCE_FILE_UNREADABLE';
-    return { meta, candidates: [], rejects: [] };
-  }
-
-  meta.trade_date = pickText(doc.trade_date, doc.market_date, doc.run_date);
-  const rows = Array.isArray(doc.results) ? doc.results : [];
-  meta.source_rows = rows.length;
-
-  const candidates = [];
-  const rejects = [];
-  for (const row of rows) {
-    const built = normalizeCandidate(row, spec, backtestMap, candidates.length + 1, {
-      file: relFile,
-      tradeDate: meta.trade_date,
-      today,
-      now
-    });
-    if (built.candidate) candidates.push(built.candidate);
-    else if (built.reject) rejects.push(built.reject);
-  }
-
-  if (candidates.length === 0) {
-    meta.data_status = DATA_STATUS.NOT_PUBLISHED;
-    meta.status_reason = rows.length === 0
-      ? 'PRODUCER_PUBLISHED_NO_CANDIDATES'
-      : 'NO_SOURCE_ROW_PASSED_REAL_DATA_VALIDATION';
-  } else if (rejects.length > 0) {
-    meta.data_status = DATA_STATUS.PARTIAL;
-    meta.status_reason = 'SOME_SOURCE_ROWS_REJECTED';
-  } else {
-    meta.data_status = DATA_STATUS.AVAILABLE;
-  }
-
-  return { meta, candidates, rejects };
-}
-
-/** Rank comparator: real score descending, unscored rows last, then ticker. */
-function byScoreDesc(a, b) {
-  const sa = Number.isFinite(a.score) ? a.score : -Infinity;
-  const sb = Number.isFinite(b.score) ? b.score : -Infinity;
-  if (sb !== sa) return sb - sa;
-  return String(a.ticker).localeCompare(String(b.ticker));
-}
-
-function reselect(pool, limit) {
-  return pool.slice(0, limit).map((p, idx) => {
-    const copy = Object.assign({}, p, { rank: idx + 1 });
-    copy.raw_payload = Object.assign({}, copy);
-    return copy;
-  });
 }
 
 /* -------------------------------------------------------------------------- */
 /* Main                                                                       */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Select the canonical Short Swing source pool from screener-latest.json.
+ *
+ * P0-09 GATE: the deprecated `swing` alias (Konglo165 screener results) is
+ * NEVER accepted as the canonical source. When only the alias exists, the
+ * runner reports an honest rejection instead of silently publishing Konglo165
+ * as "whole IDX Short Swing".
+ *
+ * @returns {{ rows: Array<object>, pool: string, meta: object|null, rejected: string|null }}
+ */
+function selectCanonicalPool(doc) {
+  if (!doc || typeof doc !== 'object') {
+    return { rows: [], pool: null, meta: null, rejected: 'SOURCE_FILE_MISSING_OR_INVALID' };
+  }
+  const canonicalRows = Array.isArray(doc.short_swing) ? doc.short_swing : null;
+  const meta = doc.short_swing_meta && typeof doc.short_swing_meta === 'object' ? doc.short_swing_meta : null;
+  if (canonicalRows) {
+    return { rows: canonicalRows, pool: 'short_swing', meta, rejected: null };
+  }
+  const legacyRows = Array.isArray(doc.swing) ? doc.swing : [];
+  if (legacyRows.length > 0 || doc.swing_alias_deprecated) {
+    return {
+      rows: [],
+      pool: null,
+      meta,
+      rejected: 'DEPRECATED_SWING_ALIAS_REJECTED: pool `swing` adalah alias Konglo165 (P0-09); ' +
+        'producer wajib menulis pool kanonis `short_swing` dari seluruh universe IDX eligible'
+    };
+  }
+  return { rows: [], pool: null, meta, rejected: 'SOURCE_PUBLISHED_NO_SHORT_SWING_POOL' };
+}
+
 function main() {
   const today = wibDateString();
-  const now = Date.now();
-  const backtestMap = buildBacktestMap();
 
-  const perCategory = {};
-  for (const spec of CATEGORY_SPECS) {
-    perCategory[spec.key] = readPool(spec, backtestMap, today, now);
+  const doc = readJsonSafe(SOURCE_FILE, null);
+  const { rows: sourceRows, pool: sourcePool, meta: producerMeta, rejected } = selectCanonicalPool(doc);
+
+  // Session date = the snapshot's own market/trade date when available, so the
+  // freshness gate compares apples to apples (data as-of vs its own session).
+  const sessionDate = pickFirstText(doc, 'market_date', 'trade_date', 'run_date') || today;
+
+  const candidates = sourceRows.map((row) => normalizeCandidate(row, sessionDate));
+
+  const snapshot = engine.buildSahamPotensialSnapshot(candidates, { sessionDate });
+
+  const top20 = snapshot.top20;
+  const top5 = snapshot.top5;
+
+  // Producer/consumer consistency (P0-10).
+  //
+  // The producer's snapshot_id is a content hash over ALL evaluated rows of the
+  // whole universe (909 rows), while the published pool only carries the top20.
+  // The runner therefore cannot reproduce that id from the pool alone, and
+  // comparing the two would always "fail". Instead it verifies what IS
+  // checkable, using the hash inputs the producer persists in short_swing_meta:
+  //
+  //   a) every published row's content digest is recomputed from the row itself
+  //      and compared to the producer's persisted `row_digests[ticker]`. Editing
+  //      a score, level, R/R, risk flag or reason in the file changes the
+  //      recomputed digest => ROW_TAMPERED.
+  //   b) the snapshot-level hash is recomputed from the persisted
+  //      (universe, row_digests, ranking, session_date, score_version, horizon)
+  //      and compared to `snapshot_content_hash` => detects edited meta.
+  //   c) the frozen store artifact for the producer snapshot_id must exist and
+  //      still verify (append-only history, tamper-evident).
+  //   d) no newer revision may exist for the session (superseded check).
+  //
+  // Any failure is published as an honest VALIDATION_FAILED / NOT_PUBLISHED —
+  // never silently corrected, never served as READY.
+  const producerSnapshotId = producerMeta && producerMeta.snapshot_id ? producerMeta.snapshot_id : null;
+  const producerContentHash = producerMeta && producerMeta.snapshot_content_hash
+    ? producerMeta.snapshot_content_hash
+    : null;
+
+  let recomputedContentHash = null;
+  let rowDigestTamper = null;
+  const tamperedRows = [];
+  if (producerMeta && producerMeta.row_digests && Array.isArray(producerMeta.universe) &&
+      Array.isArray(producerMeta.ranking)) {
+    const rowDigests = Object.assign({}, producerMeta.row_digests);
+    for (const row of sourceRows) {
+      const recomputedRowDigest = engine.buildRowContentDigest(row);
+      const persisted = rowDigests[row.ticker];
+      if (persisted !== undefined && persisted !== recomputedRowDigest) {
+        tamperedRows.push(row.ticker);
+        rowDigests[row.ticker] = recomputedRowDigest;
+      }
+    }
+    if (tamperedRows.length) rowDigestTamper = tamperedRows.join('|');
+    recomputedContentHash = engine.buildSnapshotContentHash({
+      session_date: producerMeta.session_date || sessionDate,
+      score_version: producerMeta.score_version || engine.SCORE_ALGORITHM_VERSION,
+      horizon: producerMeta.horizon || engine.HOLDING_HORIZON_LABEL,
+      rows: [],
+      ranking: producerMeta.ranking,
+      universe: producerMeta.universe,
+      rowDigests
+    }).content_hash;
   }
 
-  const kongloTop = reselect(perCategory.konglo.candidates.slice().sort(byScoreDesc), MAX_PICKS);
-  const nkTop = reselect(perCategory.nonkonglo.candidates.slice().sort(byScoreDesc), MAX_PICKS);
-  const dtTop = reselect(perCategory.daytrade.candidates.slice().sort(byScoreDesc), MAX_PICKS);
+  const contentHashMatch = producerContentHash === null || recomputedContentHash === null
+    ? null
+    : recomputedContentHash === producerContentHash;
+  const snapshotIdMatch = contentHashMatch;
 
-  const combined = [...perCategory.konglo.candidates, ...perCategory.nonkonglo.candidates, ...perCategory.daytrade.candidates]
-    .sort(byScoreDesc);
-  const primaryTop5 = reselect(combined, MAX_PICKS);
+  // Append-only snapshot store (P0-10): the PRODUCER owns commits; the runner
+  // only VERIFIES. Committing the runner's own 20-row rebuild would pollute
+  // the canonical revision chain (a derived view is not a new revision).
+  // Checks performed against the producer's snapshot_id:
+  //   1. the frozen artifact exists and its content hash still matches its
+  //      rows (tamper detection);
+  //   2. no NEWER revision exists for the session (superseded => the runner
+  //      must not present the old snapshot as the current truth).
+  let superseded = false;
+  let storeVerified = null;
+  if (producerSnapshotId) {
+    try {
+      const storeOpts = STORE_DIR ? { storeDir: STORE_DIR } : {};
+      superseded = snapshotStore.isSuperseded(producerSnapshotId, storeOpts);
+      storeVerified = snapshotStore.loadVerifiedSnapshot(producerSnapshotId, storeOpts);
+    } catch (err) {
+      storeVerified = { snapshot: null, valid: false, reason: 'STORE_READ_ERROR_' + String((err && err.message) || err) };
+    }
+  }
 
-  /* Locking is a factual claim: only assert it when every category is deep. */
-  const thinCategories = CATEGORY_SPECS
-    .map((spec) => ({ key: spec.key, sourceRows: perCategory[spec.key].meta.source_rows }))
-    .filter((c) => c.sourceRows < MAX_PICKS);
-  const top5Locked = thinCategories.length === 0 && primaryTop5.length === MAX_PICKS;
-
-  const anyStale = primaryTop5.some((p) => p.stale === true);
+  // Data status reflects the honest result of the canonical engine.
   let dataStatus;
   let statusReason;
-  if (primaryTop5.length === 0) {
-    dataStatus = DATA_STATUS.NOT_PUBLISHED;
-    statusReason = 'NO_REAL_CANDIDATES_IN_ANY_SCREENER_SOURCE';
-  } else if (anyStale) {
-    dataStatus = DATA_STATUS.STALE;
-    statusReason = 'SOURCE_TRADE_DATE_IS_NOT_TODAY';
-  } else if (primaryTop5.length < MAX_PICKS) {
-    dataStatus = DATA_STATUS.PARTIAL;
-    statusReason = 'FEWER_REAL_CANDIDATES_THAN_REQUESTED';
+  const readyCount = top20.filter((r) => r.readiness === 'READY').length;
+  if (rejected) {
+    dataStatus = 'NOT_PUBLISHED';
+    statusReason = rejected;
+  } else if (snapshotIdMatch === false) {
+    dataStatus = 'VALIDATION_FAILED';
+    statusReason = rowDigestTamper
+      ? 'SNAPSHOT_ROW_TAMPERED_' + rowDigestTamper
+      : 'SNAPSHOT_CONTENT_HASH_MISMATCH_PRODUCER_' + producerContentHash + '_VS_RECOMPUTED_' + recomputedContentHash;
+  } else if (producerSnapshotId && storeVerified && storeVerified.valid === false) {
+    // Fail-closed: the canonical producer ALWAYS commits its snapshot to the
+    // append-only store. A missing/tampered artifact means the pool was not
+    // produced by the canonical chain.
+    dataStatus = 'VALIDATION_FAILED';
+    statusReason = 'SNAPSHOT_STORE_VERIFICATION_FAILED_' + storeVerified.reason;
+  } else if (superseded) {
+    dataStatus = 'NOT_PUBLISHED';
+    statusReason = 'SNAPSHOT_SUPERSEDED_BY_NEWER_REVISION';
+  } else if (sourceRows.length === 0) {
+    dataStatus = 'NOT_PUBLISHED';
+    statusReason = 'SOURCE_PUBLISHED_NO_SHORT_SWING_ROWS';
+  } else if (top20.length === 0) {
+    dataStatus = 'NOT_PUBLISHED';
+    statusReason = 'NO_SOURCE_ROW_PASSED_CANONICAL_ENGINE';
+  } else if (readyCount === 0 && top20.every((r) => r.readiness === 'NOT_READY' || r.readiness === 'BLOCKED')) {
+    dataStatus = 'BLOCKED';
+    statusReason = 'ALL_CANDIDATES_NOT_READY_OR_BLOCKED_BY_CANONICAL_ENGINE';
+  } else if (readyCount > 0) {
+    dataStatus = 'AVAILABLE';
+    statusReason = 'CANONICAL_SHORT_SWING_SNAPSHOT';
   } else {
-    dataStatus = DATA_STATUS.AVAILABLE;
-    statusReason = 'REAL_CANDIDATES_ONLY';
+    dataStatus = 'PARTIAL';
+    statusReason = 'CANONICAL_ENGINE_EMITTED_NO_READY_ROWS';
   }
 
-  const tradeDates = CATEGORY_SPECS
-    .map((spec) => perCategory[spec.key].meta.trade_date)
-    .filter((d) => typeof d === 'string' && d.length > 0)
-    .sort();
-  const dataTradeDate = tradeDates.length ? tradeDates[tradeDates.length - 1] : null;
+  // A superseded or failed-validation snapshot must NOT publish READY rows:
+  // consumers read `picks`/`top5` as the actionable set.
+  const publishable = dataStatus === 'AVAILABLE' || dataStatus === 'PARTIAL' || dataStatus === 'BLOCKED';
 
-  const categoryMeta = {};
-  for (const spec of CATEGORY_SPECS) categoryMeta[spec.key] = perCategory[spec.key].meta;
+  // Canonical identity for the published rows. The runner's own rebuild only
+  // spans the 20 published rows, so its id differs from the producer's
+  // whole-universe content hash; the PRODUCER's id is the canonical one and is
+  // stamped onto every published row so the artifact is internally consistent.
+  const canonicalSnapshotId = producerSnapshotId || snapshot.snapshot_id;
+  const canonicalContentHash = producerContentHash || snapshot.snapshot_content_hash;
+  const restamp = (row) => Object.assign({}, row, {
+    snapshot_id: canonicalSnapshotId,
+    snapshot_content_hash: canonicalContentHash
+  });
+  const publishedTop20 = publishable ? top20.map(restamp) : [];
+  const publishedTop5 = publishable ? publishedTop20.slice(0, Math.min(MAX_PICKS, publishedTop20.length)) : [];
+
+  const top5Locked = false; // Deprecated three-category lock claim; kept false.
 
   const lockedPayload = {
     success: true,
-    trade_date: dataTradeDate,
-    date: dataTradeDate,
-    data_as_of: dataTradeDate,
+    engine: '../lib/saham-potensial-engine.js',
+    source_pool: sourcePool,
+    score_version: snapshot.score_version,
+    // Canonical identity = the PRODUCER's content-hash snapshot id. The
+    // runner's own rebuild (20-row derived view) is diagnostic only.
+    snapshot_id: producerSnapshotId || snapshot.snapshot_id,
+    snapshot_content_hash: producerContentHash || snapshot.snapshot_content_hash,
+    rebuilt_snapshot_id: snapshot.snapshot_id,
+    rebuilt_content_hash: snapshot.snapshot_content_hash,
+    producer_snapshot_id: producerSnapshotId,
+    producer_snapshot_content_hash: producerContentHash,
+    recomputed_content_hash: recomputedContentHash,
+    content_hash_version: snapshot.content_hash_version,
+    snapshot_id_match: snapshotIdMatch,
+    revision_parent: producerMeta && producerMeta.revision_parent !== undefined ? producerMeta.revision_parent : null,
+    snapshot_superseded: superseded,
+    store_verified: storeVerified ? storeVerified.valid : null,
+    store_verify_reason: storeVerified ? storeVerified.reason : null,
+    session_date: snapshot.session_date,
+    trade_date: snapshot.session_date,
+    date: snapshot.session_date,
+    data_as_of: snapshot.session_date,
     locked_at: new Date().toISOString(),
     last_updated_at: new Date().toISOString(),
     monitor_last_updated_at: new Date().toISOString(),
 
     top5_locked: top5Locked,
-    top5_source: top5Locked ? 'locked_rows' : 'real_candidates_only',
-    lock_reason: top5Locked ? 'ALL_CATEGORIES_HAVE_AT_LEAST_FIVE_REAL_ROWS' : 'CATEGORY_TOO_THIN_TO_LOCK',
-    thin_categories: thinCategories,
+    top5_source: 'canonical_short_swing_snapshot',
+    lock_reason: 'CANONICAL_SNAPSHOT_PUBLISHER',
 
-    session_status: primaryTop5.length === 0 ? 'NO_DATA' : (anyStale ? 'STALE' : 'FINAL_EOD'),
-    is_eod_final: top5Locked && !anyStale,
-    eod_complete: top5Locked && !anyStale,
+    session_status: publishedTop20.length === 0 ? 'NO_DATA' : 'FINAL_SNAPSHOT',
+    is_eod_final: false,
+    eod_complete: false,
 
     data_status: dataStatus,
     status_reason: statusReason,
     rr_policy_minimum: MIN_RR_RATIO,
     fabricated_count: 0,
 
-    total_locked: primaryTop5.length,
-    top5: primaryTop5,
-    picks: primaryTop5,
-    top5_picks: primaryTop5,
-    categories: {
-      konglo: kongloTop,
-      nonkonglo: nkTop,
-      daytrade: dtTop
-    },
-    categories_meta: categoryMeta
+    universe_count: snapshot.universe_count,
+    evaluated_count: snapshot.evaluated_count,
+    top20_count: publishedTop20.length,
+    top5_count: publishedTop5.length,
+    producer_meta: producerMeta,
+
+    total_locked: publishedTop5.length,
+    top5: publishedTop5,
+    picks: publishedTop5,
+    top5_picks: publishedTop5,
+    top20: publishedTop20,
+    categories: {},
+    categories_meta: {
+      'short-swing': {
+        key: 'short-swing',
+        label: 'Short Swing IDX',
+        source_file: 'data/screener-latest.json',
+        source_pool: sourcePool,
+        source_rows: sourceRows.length,
+        data_status: dataStatus,
+        trade_date: sessionDate
+      }
+    }
   };
 
   fs.writeFileSync(OUT_FILE, JSON.stringify(lockedPayload, null, 2), 'utf8');
 
   /* Radar state */
   const radarState = readJsonSafe(RADAR_STATE_FILE, {});
-  radarState.status = primaryTop5.length === 0 ? 'no_data' : 'active';
+  radarState.status = publishedTop20.length === 0 ? 'no_data' : 'active';
   radarState.top5_locked = top5Locked;
   radarState.session_status = lockedPayload.session_status;
   radarState.is_eod_final = lockedPayload.is_eod_final;
   radarState.data_status = dataStatus;
   radarState.status_reason = statusReason;
-  radarState.trade_date = dataTradeDate;
-  radarState.market_date = dataTradeDate;
-  radarState.run_date = dataTradeDate;
+  radarState.trade_date = sessionDate;
+  radarState.market_date = sessionDate;
+  radarState.run_date = sessionDate;
+  radarState.snapshot_id = canonicalSnapshotId;
+  radarState.snapshot_content_hash = canonicalContentHash;
+  radarState.rebuilt_snapshot_id = snapshot.snapshot_id;
+  radarState.score_version = snapshot.score_version;
   radarState.calculated_at = new Date().toISOString();
   radarState.updated_at = new Date().toISOString();
-  radarState.freshness_label = anyStale ? 'stale' : (primaryTop5.length === 0 ? null : 'fresh');
+  radarState.freshness_label = readyCount > 0 && publishable ? 'fresh' : (publishedTop20.length === 0 ? null : 'stale');
   fs.writeFileSync(RADAR_STATE_FILE, JSON.stringify(radarState, null, 2), 'utf8');
 
   /* Heartbeat */
@@ -440,28 +478,31 @@ function main() {
     lastRun: new Date().toISOString(),
     lastStartWIB: new Date().toISOString(),
     lastEndWIB: new Date().toISOString(),
-    status: primaryTop5.length === 0 ? 'NO_DATA' : 'OK',
+    status: publishedTop20.length === 0 ? 'NO_DATA' : 'OK',
     exitCode: 0,
-    durationMs: 42,
+    durationMs: 0,
     requestsUsed: 0,
     updatedAt: new Date().toISOString(),
-    locked_count: primaryTop5.length,
+    locked_count: publishedTop5.length,
+    top20_count: publishedTop20.length,
     data_status: dataStatus,
     status_reason: statusReason,
+    snapshot_id: canonicalSnapshotId,
+    snapshot_content_hash: canonicalContentHash,
+    score_version: snapshot.score_version,
     categories_locked: {
-      konglo: kongloTop.length,
-      nonkonglo: nkTop.length,
-      daytrade: dtTop.length
+      'short-swing': publishedTop5.length
     }
   };
   fs.writeFileSync(HEARTBEAT_FILE, JSON.stringify(heartbeat, null, 2), 'utf8');
 
-  console.log('[TOP5-RADAR] real candidates only — konglo=' + kongloTop.length +
-    ' nonkonglo=' + nkTop.length + ' daytrade=' + dtTop.length +
-    ' combined=' + primaryTop5.length + ' top5_locked=' + top5Locked +
-    ' data_status=' + dataStatus);
-  console.log('[TOP5-RADAR] reason: ' + statusReason +
-    (thinCategories.length ? ' (thin: ' + thinCategories.map((c) => c.key + '=' + c.sourceRows).join(',') + ')' : ''));
+  console.log('[TOP5-RADAR] canonical short swing only — pool=' + sourcePool +
+    ' source_rows=' + sourceRows.length +
+    ' evaluated=' + snapshot.evaluated_count + ' top20=' + publishedTop20.length +
+    ' top5=' + publishedTop5.length + ' ready=' + readyCount +
+    ' snapshot_id=' + canonicalSnapshotId + ' hash_match=' + snapshotIdMatch +
+    ' superseded=' + superseded + ' data_status=' + dataStatus);
+  console.log('[TOP5-RADAR] reason: ' + statusReason);
   console.log('[TOP5-RADAR] File tersimpan: data/top5-radar.json, exitCode=0');
   process.exit(0);
 }
@@ -475,4 +516,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { main, normalizeCandidate, CATEGORY_SPECS, MAX_PICKS, MIN_WIN_RATE_SAMPLE };
+module.exports = { main, normalizeCandidate, selectCanonicalPool, CATEGORY_SPECS, MAX_PICKS, MAX_TOP20, MIN_WIN_RATE_SAMPLE };

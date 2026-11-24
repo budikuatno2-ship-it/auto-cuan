@@ -129,13 +129,15 @@ test('admin can fail closed when security configuration is unavailable', async (
   assert.equal(result.httpStatus, 503);
 });
 
-test('Telegram alerts use a dedicated chat and never include secrets', async () => {
+test('Telegram alerts use a dedicated chat and never include secrets (mocked dry-run, zero live sends)', async () => {
+  // TASK J8: TELEGRAM_LIVE is never set, so the gate MUST stay dry-run. The
+  // dedicated chat id and redaction are asserted from the captured dry-run
+  // record; global.fetch is mocked and must never be called (0 live sends).
   const originalFetch = global.fetch;
-  let captured = null;
-  global.fetch = async function (url, options) {
-    captured = { url, options, body: JSON.parse(options.body) };
-    return { ok: true, status: 200 };
-  };
+  let fetchCalls = 0;
+  let dryRecord = null;
+  global.fetch = async function () { fetchCalls++; throw new Error('LIVE_TELEGRAM_FORBIDDEN'); };
+  guard.setDryRunRecorder(function (r) { dryRecord = r; });
   try {
     const context = guard.buildContext(req({
       'x-vercel-forwarded-for': '203.0.113.24',
@@ -153,16 +155,21 @@ test('Telegram alerts use a dedicated chat and never include secrets', async () 
       SECURITY_TELEGRAM_CHAT_ID: '123456',
       TELEGRAM_CHAT_ID: 'must-not-be-used'
     }));
-    assert.equal(result.sent, true);
-    assert.equal(captured.body.chat_id, '123456');
-    assert.match(captured.url, /dedicated-token/);
-    assert.doesNotMatch(captured.body.text, /passwordHash|cookie|deviceId|must-not-be-used/i);
-    assert.match(captured.body.text, /Target: bu\*\*/);
+    assert.equal(result.sent, false, 'dry-run never reports a live send');
+    assert.equal(result.dry_run, true);
+    assert.equal(result.dedicated_chat, '123456', 'dedicated security chat, not the general chat');
+    assert.equal(fetchCalls, 0, 'ZERO live Telegram HTTP calls');
+    assert.ok(dryRecord, 'dry-run record captured via isolated seam');
+    assert.equal(dryRecord.chat_id, '123456');
+    assert.equal(dryRecord.method, 'sendMessage');
+    assert.match(dryRecord.text, /SECURITY ALERT/);
+    assert.match(dryRecord.text, /Target: bu\*\*/);
+    assert.doesNotMatch(dryRecord.text, /passwordHash|cookie|deviceId|must-not-be-used|dedicated-token/i);
   } finally {
+    guard.setDryRunRecorder(null);
     global.fetch = originalFetch;
   }
 });
-
 test('security dashboard groups suspicious activity by IP and sorts active critical blocks first', () => {
   const now = Date.parse('2026-07-29T10:00:00Z');
   const rows = [

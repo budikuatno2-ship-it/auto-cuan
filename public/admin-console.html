@@ -204,6 +204,12 @@ body {
 .tbl .mut { color: var(--ac-muted); }
 .tbl .mono { font-family: 'Geist Mono', monospace; }
 .tbl .num { font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums; }
+/* FIX 6: schedule table must fit 1440x900 with all 7 columns visible. */
+.admin-schedule-tbl { table-layout: fixed; width: 100%; min-width: 0; }
+.admin-schedule-tbl th, .admin-schedule-tbl td { padding: 8px 10px; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
+.admin-schedule-tbl th:nth-child(6), .admin-schedule-tbl td:nth-child(6) { white-space: nowrap; }
+.admin-schedule-tbl .schedule-legacy-group > td { padding: 0; }
+.admin-schedule-tbl .schedule-legacy-group table { table-layout: fixed; width: 100%; }
 
 .st {
   display: inline-flex;
@@ -221,6 +227,7 @@ body {
 .st.r { background: var(--ac-neg-soft); color: var(--ac-neg); }
 .st.m { background: var(--ac-hover); color: var(--ac-2); }
 .st.i { background: var(--ac-info-soft); color: var(--ac-info); }
+.st.x { background: var(--ac-hover); color: var(--ac-2); }
 
 .meter { height: 6px; border-radius: 3px; background: var(--ac-hover); overflow: hidden; margin-top: 8px; }
 .meter i { display: block; height: 100%; background: var(--ac-brand); border-radius: 3px; }
@@ -457,7 +464,7 @@ body {
     <!-- S2: Banner peringatan keamanan real-time -->
     <div id="secBanner" class="banner" style="display:none" role="alert">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M12 9v4M12 17h.01"/></svg>
-      <span id="secBannerText">Aman — Firewall & Anti-Bot Aktif</span>
+      <span id="secBannerText">Keamanan tidak tersedia</span>
       <button class="btn sm" onclick="switchAdminTab(8)" style="margin-left:auto">Buka Tab Keamanan</button>
     </div>
 
@@ -471,7 +478,7 @@ body {
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(5)" data-admin-tab="5">Kupon/Voucher</button>
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(6)" data-admin-tab="6">Job &amp; Data Pipeline</button>
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(7)" data-admin-tab="7">Log Audit & Keamanan</button>
-      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(8)" data-admin-tab="8">Keamanan & Audit <span class="st g" id="tabSecBadge">Aman</span></button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(8)" data-admin-tab="8">Keamanan & Audit <span class="st x" id="tabSecBadge">UNAVAILABLE</span></button>
     </nav>
 
     <!-- TAB 0: RINGKASAN -->
@@ -480,8 +487,8 @@ body {
         <div class="strip">
           <div>
             <div class="lbl">Pengguna aktif</div>
-            <div class="big num" id="statUsersActive">1.284</div>
-            <div class="sub">7 hari terakhir · <button class="lnkb" onclick="switchAdminTab(1)"><span class="live"></span><span id="statOnlineNow">1</span> online sekarang</button></div>
+            <div class="big num" id="statUsersActive">—</div>
+            <div class="sub">7 hari terakhir · <button class="lnkb" onclick="switchAdminTab(1)"><span class="live"></span><span id="statOnlineNow">—</span> online sekarang</button></div>
           </div>
           <div>
             <div class="lbl">Menunggu persetujuan</div>
@@ -499,8 +506,8 @@ body {
           </div>
           <div>
             <div class="lbl">Status layanan</div>
-            <div style="margin-top:8px"><span class="st g" id="statServiceStatus">Semua Normal</span></div>
-            <div class="sub">API p95 &lt; 320 ms</div>
+            <div style="margin-top:8px"><span class="st x" id="statServiceStatus">UNAVAILABLE</span></div>
+            <div class="sub">API p95 —</div>
           </div>
         </div>
       </section>
@@ -514,34 +521,34 @@ body {
             <span style="font-size:12px;color:var(--ac-2)">Operasional bursa dan penutupan data harian reguler</span>
           </div>
           <div>
-            <label class="flabel" for="qf-maxQuota">Batas Kuota Harian Maksimal Stock Arjum (Default: 18.080 req/hari)</label>
+            <label class="flabel" for="qf-maxQuota">Batas Kuota Operasional Harian (Daily Cap)</label>
             <div style="position:relative;display:flex;align-items:center">
-              <input id="qf-maxQuota" type="number" class="inp" min="1" max="1000000" value="18080" style="padding-right:75px">
+              <input id="qf-maxQuota" type="number" class="inp" min="1" max="1000000" placeholder="cth: 6000 atau 12752" style="padding-right:75px">
               <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req/hari</span>
             </div>
-            <div class="sub">Default 18.080 req/hari · batas kuota harian resmi dari penyedia data Stock Arjum.</div>
+            <div class="sub">Diatur dinamis oleh Owner tanpa hardcode · batas konsumsi operasional harian sistem Auto-Cuan.</div>
           </div>
           <div>
-            <label class="flabel" for="qf-weekdayBackfill">Batas Maksimal Backfill Pagi/Siang Hari Kerja (00:05 – 19:30 WIB) (Default: 13.080 req)</label>
-            <div style="position:relative;display:flex;align-items:center">
-              <input id="qf-weekdayBackfill" type="number" class="inp" min="0" max="1000000" value="13080" style="padding-right:50px">
-              <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req</span>
-            </div>
-            <div class="sub">Default 13.080 req · alokasi penarikan data historis pagi hingga petang hari kerja.</div>
-          </div>
-          <div>
-            <label class="flabel" for="qf-reserveFloor">Cadangan Wajib Sore/Malam untuk Broksum ALL + Foreign (Reserve Floor) (Default: 5.000 req — dikunci ketat sampai 20:30 WIB)</label>
+            <label class="flabel" for="qf-reserveFloor">Cadangan Harian Wajib (Mandatory Daily Reserve Floor)</label>
             <div style="position:relative;display:flex;align-items:center">
               <input id="qf-reserveFloor" type="number" class="inp" min="0" max="1000000" value="5000" style="padding-right:50px">
               <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req</span>
             </div>
-            <div class="sub">Default 5.000 req — dikunci ketat sampai 20:30 WIB untuk penutupan data harian bursa.</div>
+            <div class="sub">Khusus pekerjaan harian wajib (broksum ALL, foreign, insider, candles, screener) — BUKAN untuk backfill!</div>
+          </div>
+          <div>
+            <label class="flabel" for="qf-weekdayBackfill">Alokasi Anggaran Backfill Hari Kerja</label>
+            <div style="position:relative;display:flex;align-items:center">
+              <input id="qf-weekdayBackfill" type="number" class="inp" min="0" max="1000000" style="padding-right:50px">
+              <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req</span>
+            </div>
+            <div class="sub">Backfill hanya berjalan jika sisa kuota > cadangan wajib belum terpakai + antrean wajib.</div>
           </div>
           <div style="padding:10px 14px;background:var(--ac-subtle, rgba(255,255,255,0.03));border:1px solid var(--ac-hair);border-radius:8px">
-            <div class="flabel" style="margin-bottom:4px">Status Pelepasan Otomatis Sisa Cadangan Pasca-EOD (20:30 – 23:50 WIB)</div>
+            <div class="flabel" style="margin-bottom:4px">Status Pelepasan Otomatis Cadangan Pasca-EOD (20:30 WIB)</div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span class="st g" style="font-weight:700">AKTIF OTOMATIS</span>
-              <span class="mut" style="font-size:12px">Cadangan 5.000 dilepas otomatis setelah 20:30 WIB untuk sisa antrean backfill.</span>
+              <span class="st g" style="font-weight:700">TERVERIFIKASI / WAIVER</span>
+              <span class="mut" style="font-size:12px">Cadangan dilepas setelah tugas wajib verified selesai atau ada audit waiver admin.</span>
             </div>
           </div>
         </section>
@@ -553,12 +560,12 @@ body {
             <span style="font-size:12px;color:var(--ac-2)">Sabtu, Minggu & Libur Nasional BEI · Tanpa sesi perdagangan baru</span>
           </div>
           <div>
-            <label class="flabel" for="qf-weekendBackfill">Batas Maksimal Backfill Akhir Pekan / Hari Libur (Default: 18.080 req — 100% kuota harian penuh)</label>
+            <label class="flabel" for="qf-weekendBackfill">Batas Maksimal Backfill Akhir Pekan / Hari Libur</label>
             <div style="position:relative;display:flex;align-items:center">
-              <input id="qf-weekendBackfill" type="number" class="inp" min="0" max="1000000" value="18080" style="padding-right:50px">
+              <input id="qf-weekendBackfill" type="number" class="inp" min="0" max="1000000" placeholder="Kosongkan untuk sisa kuota penuh" style="padding-right:50px">
               <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req</span>
             </div>
-            <div class="sub">Default 18.080 req — 100% kuota harian penuh dialokasikan untuk catchup backfill data historis.</div>
+            <div class="sub">Alokasi maksimal penarikan data historis akhir pekan saat bursa tutup.</div>
           </div>
           <div>
             <label class="flabel" for="qf-reserveFloorWeekend">Cadangan Wajib Akhir Pekan / Hari Libur (Default: 0 req — bursa tutup, 0 EOD baru)</label>
@@ -599,7 +606,105 @@ body {
             <span class="mut" id="quotaSaveStatus" style="font-size:12px">Tersimpan ke server via API & dicatat di log audit.</span>
           </div>
         </section>
+
+        <!-- Kartu Blok 3 — Kendali Throughput Worker & Toleransi Kegagalan -->
+        <section class="sheet" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div class="sec-h" style="padding-bottom:12px;border-bottom:1px solid var(--ac-hair);margin-bottom:4px">
+            <h2 style="font-size:15px;font-weight:700;color:var(--ac-ink);margin:0">Throughput Worker & Concurrency Engine</h2>
+            <span style="font-size:12px;color:var(--ac-2)">Kendali beban kerja paralel & laju request tanpa restart PM2</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label class="flabel" for="qf-concurrency">Concurrency Limit</label>
+              <input id="qf-concurrency" type="number" class="inp" min="1" max="20" value="2">
+              <div class="sub">1..20 proses worker paralel</div>
+            </div>
+            <div>
+              <label class="flabel" for="qf-rateLimit">Rate Limit (req/sec)</label>
+              <input id="qf-rateLimit" type="number" class="inp" min="1" max="50" step="0.5" value="5">
+              <div class="sub">Maksimal request per detik</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label class="flabel" for="qf-retryCount">Retry Count</label>
+              <input id="qf-retryCount" type="number" class="inp" min="0" max="10" value="3">
+              <div class="sub">Percobaan ulang kegagalan</div>
+            </div>
+            <div>
+              <label class="flabel" for="qf-backoffBaseMs">Backoff Base (ms)</label>
+              <input id="qf-backoffBaseMs" type="number" class="inp" min="100" max="10000" step="100" value="1000">
+              <div class="sub">Jeda eksponensial dasar</div>
+            </div>
+          </div>
+          <div>
+            <label class="flabel" for="qf-priorityOrder">Urutan Prioritas Pekerjaan (Priority Order)</label>
+            <input id="qf-priorityOrder" type="text" class="inp mono" value="broksum-ALL, broksum-Foreign, insider-tiered, candles, financial">
+            <div class="sub">Pekerjaan diproses urut berdasarkan prioritas ini.</div>
+          </div>
+        </section>
+
+        <!-- Kartu Blok 4 — Saklar Darurat Global & Jeda Layanan (Kill-Switch & Pause) -->
+        <section class="sheet" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div class="sec-h" style="padding-bottom:12px;border-bottom:1px solid var(--ac-hair);margin-bottom:4px">
+            <h2 style="font-size:15px;font-weight:700;color:var(--ac-ink);margin:0">Emergency Kill-Switch & Jeda Layanan</h2>
+            <span style="font-size:12px;color:var(--ac-2)">Hentikan atau jeda layanan tertentu seketika</span>
+          </div>
+          <div style="padding:12px;border:1px solid rgba(239,68,68,0.3);border-radius:8px;background:rgba(239,68,68,0.06)">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input id="qf-killSwitch" type="checkbox" style="width:18px;height:18px">
+              <div>
+                <strong style="color:var(--ac-danger, #ef4444);font-size:13px">Global Emergency Kill-Switch</strong>
+                <div class="sub" style="color:var(--ac-danger, #ef4444)">Jika aktif, seluruh konsumsi kuota Stock Arjum ditolak seketika (KILL_SWITCH_ACTIVE).</div>
+              </div>
+            </label>
+          </div>
+          <div class="flabel">Jeda Layanan Spesifik (Pause / Resume):</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+              <input id="qf-pause-backfill" type="checkbox"> Jeda Backfill
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+              <input id="qf-pause-broksum" type="checkbox"> Jeda Broksum ALL
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+              <input id="qf-pause-foreign" type="checkbox"> Jeda Broksum Foreign
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+              <input id="qf-pause-insider" type="checkbox"> Jeda Insider Network
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+              <input id="qf-pause-candles" type="checkbox"> Jeda Candles / Market
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+              <input id="qf-pause-financial" type="checkbox"> Jeda Financial
+            </label>
+          </div>
+        </section>
       </div>
+
+      <!-- Kartu Blok 5 — Riwayat Audit Mutasi Pengaturan Kuota & Scheduler -->
+      <section class="sheet" style="margin-top:16px">
+        <div class="sec-h">
+          <h2>Riwayat Audit Mutasi Pengaturan Kuota (Append-Only Log)</h2>
+          <span>Catatan forensik setiap perubahan konfigurasi disertai timestamp WIB, aktor, alasan, dan ringkasan diff</span>
+        </div>
+        <div class="tw" style="padding:0 20px 16px">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th style="width:180px">Waktu (WIB)</th>
+                <th style="width:100px">Pelaksana</th>
+                <th>Alasan Perubahan</th>
+                <th>Perubahan Nilai (Diff)</th>
+              </tr>
+            </thead>
+            <tbody id="quota-audit-history-tbody">
+              <tr><td colspan="4" class="mut" style="text-align:center;padding:16px">Memuat riwayat audit mutasi pengaturan…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <!-- Ringkasan Parameter Aktif & Kontrol Operasional -->
       <section class="sheet" style="margin-top:16px">
@@ -869,30 +974,90 @@ body {
           <table class="tbl" style="min-width:880px">
             <thead><tr><th>Tanggal</th><th>Hari</th><th class="r">Kapasitas</th><th class="r">Serapan</th><th class="r">Sisa</th><th>Status</th></tr></thead>
             <tbody id="forecastTbody">
-              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat forecast penyelesaian backfill…</td></tr>
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Forecast akan dimuat otomatis saat panel dibuka.</td></tr>
             </tbody>
           </table>
         </div>
         <div class="prov" style="margin-top:12px">
-          <span><b>Sumber:</b> <span class="mono">data/completeness/forecast.json</span> (dibangun dari antrean nyata). Kapasitas: hari kerja ~15.000 req/hari, akhir pekan ~18.030 req/hari.</span>
+          <span><b>Sumber:</b> <span class="mono">data/completeness/forecast.json</span> (dibangun dari antrean nyata). <span id="fcCapacity">Kapasitas: data tidak tersedia.</span></span>
         </div>
       </section>
 
 <section class="sheet">
         <div class="sec-h">
           <h2>Job &amp; Data Pipeline</h2>
-          <span>Jalankan ulang hanya bila sumber eksternal sudah pulih</span>
+          <span style="font-size:12px">Sumber kebenaran: <span class="mono">data/admin-schedule-config.json</span> (durable) · <span id="schVersioneLabel" class="mono">Memuat…</span> · <span id="schNowWib" class="mono">WIB —</span></span>
         </div>
         <div class="tw">
-          <table class="tbl" style="min-width:880px">
-            <thead><tr><th>Job</th><th>Jadwal</th><th>Terakhir Sukses</th><th class="r">Durasi/Req</th><th>Status</th><th class="r">Aksi</th></tr></thead>
+          <table class="tbl admin-schedule-tbl" style="width:100%;table-layout:fixed">
+            <thead><tr><th style="width:20%">Job</th><th style="width:8%">JAM WIB</th><th style="width:19%">Hari Aktif</th><th style="width:20%">5 RUN BERIKUTNYA</th><th style="width:17%">DESKRIPSI</th><th style="width:10%;white-space:nowrap">ENABLED / AKTIF</th><th class="r" style="width:6%">Aksi</th></tr></thead>
             <tbody id="jobsPipelineTbody">
-              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat status job dari heartbeat & jadwal cron…</td></tr>
+              <tr><td colspan="7" class="mut" style="text-align:center;padding:24px">Memuat status job dari scheduler durable…</td></tr>
             </tbody>
           </table>
         </div>
-        <div class="prov">
-          <span><b>Keamanan kuota data:</b> Pemicu manual ke penyedia data eksternal dinonaktifkan di antarmuka web untuk mencegah bentrok jadwal cron dan menjaga batas kuota harian.</span>
+        <div class="prov" style="margin-top:12px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
+          <span><b>Editor jadwal V6:</b> Perubahan UI → API → validasi server → persist atomik → scheduler baca config terbaru → next-run berubah → tahan restart/refresh/midnight. Default Broksum mulai 20:40 WIB (jeda +10 menit pasca-rilis 20:30 WIB, concurrency 10, editable di Admin Console).</span>
+          <span id="scheduleSaveStatus" style="font-weight:600;color:var(--ac-brand,#10B981)"></span>
+        </div>
+      </section>
+
+      <!-- TASK C: Quarterly financial windows + incomplete issuer list -->
+      <section class="sheet" id="financialPublicationPanel">
+        <div class="sec-h">
+          <h2>Financial Publication — Quarterly Windows & Incomplete Issuers</h2>
+          <span style="font-size:12px">Jendela 5–15 setelah deadline · state terpisah · <span id="fpWindowVersion" class="mono">—</span></span>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:720px">
+            <thead><tr><th>Period</th><th>Deadline</th><th>Fetch Window</th><th>Status</th></tr></thead>
+            <tbody id="fpWindowsTbody"><tr><td colspan="4" class="mut" style="text-align:center;padding:20px">Memuat quarterly windows…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="sec-h" style="margin-top:18px">
+          <h3 style="margin:0;font-size:14px">Incomplete Issuer List</h3>
+          <span id="fpIncompleteCount" class="mono">—</span>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:960px">
+            <thead><tr><th>Ticker</th><th>FY</th><th>Period</th><th>Status</th><th>Source</th><th>As-of</th><th>Reason</th><th class="r">Aksi</th></tr></thead>
+            <tbody id="fpIncompleteTbody"><tr><td colspan="8" class="mut" style="text-align:center;padding:20px">Memuat incomplete issuers…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="prov" style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="btn sm" onclick="loadFinancialPublicationPanel()">Muat Ulang</button>
+          <span id="fpActionStatus" style="font-weight:600;color:var(--ac-brand,#10B981)"></span>
+        </div>
+        <div class="prov" style="margin-top:8px">
+          <span><b>Catatan:</b> Manual fetch berjalan melalui transport MOCK (offline) di lingkungan terisolasi. 0 panggilan provider berbayar, 0 unit tertagih. Tidak ada publikasi yang direkayasa.</span>
+        </div>
+      </section>
+
+      <!-- V6 (W5): Scheduler & Backfill — EFFECTIVE runtime readback -->
+      <section class="sheet" id="schedulerBackfillPanel">
+        <div class="sec-h">
+          <h2>Scheduler & Backfill</h2>
+          <span style="font-size:12px">Status EFEKTIF dari file nyata · <span id="sbReadbackSource" class="mono">—</span></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 12px">
+          <span id="sbBadge" class="st a" style="font-size:13px;font-weight:700">MEMUAT…</span>
+          <span id="sbReason" class="mut" style="font-size:12px">Membaca status backfill…</span>
+        </div>
+        <div class="tw">
+          <table class="tbl" style="min-width:720px">
+            <tbody id="sbDetailTbody">
+              <tr><td colspan="2" class="mut" style="text-align:center;padding:20px">Memuat status scheduler efektif…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prov" style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="btn sm" id="sbPauseBtn" onclick="sbPauseBackfill()">Jeda Backfill</button>
+          <button class="btn sm" id="sbResumeBtn" onclick="sbResumeBackfill()">Lanjutkan Backfill</button>
+          <button class="btn sm" id="sbRetryBtn" onclick="sbRetryBackfill()">Retry Backfill</button>
+          <span id="sbActionStatus" style="font-weight:600;color:var(--ac-brand,#10B981)"></span>
+        </div>
+        <div class="prov" style="margin-top:8px">
+          <span><b>Kontrak:</b> IDLE = tidak ada backlog terverifikasi (0 request provider). BLOCKED = cron mati (exit 126) / kuota tidak cukup / jeda admin. Status dihitung dari <span class="mono">data/backfill-status.json</span> + ledger worker, bukan teks UI.</span>
         </div>
       </section>
     </div>
@@ -937,8 +1102,8 @@ body {
         </div>
         <div style="padding:16px 20px">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span class="st g" id="secStatusBadge">Aman</span>
-            <span class="mut" id="secStatusLabel" style="font-size:13px">Aman — Firewall & Anti-Bot Aktif</span>
+            <span class="st x" id="secStatusBadge">UNAVAILABLE</span>
+            <span class="mut" id="secStatusLabel" style="font-size:13px">Data keamanan tidak tersedia</span>
             <button class="btn sm" onclick="refreshSecurityPanel()" style="margin-left:auto">Muat Ulang</button>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px">

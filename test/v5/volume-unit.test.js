@@ -110,6 +110,15 @@ test('chart-workstation formatter: missing vs measured zero are distinguishable 
   assert.equal(W.formatIndonesianRupiahCompact(0), '\u2014',
     'a bare 0 is indistinguishable from the old defect default, so it stays absent');
   // The workspace formatter treats an explicit AVAILABLE status as a real zero.
-  assert.equal(W.formatIndonesianRupiahCompact(0, { status: 'AVAILABLE' }), '\u2014',
-    'workspace formatter does not render an unprovenanced 0 as Rp 0');
+  // F7 triage (2026-11-13): the assertion previously expected '\u2014' here,
+  // contradicting both the formatter contract (public/chart-workstation.js
+  // formatIndonesianRupiahCompact: raw===0 && status==='AVAILABLE' -> 'Rp 0')
+  // and this test's own message ("does not render an *unprovenanced* 0 as
+  // Rp 0" — an explicit AVAILABLE status IS provenance). Fixing the
+  // expectation, not weakening it: provenance-backed zero must render Rp 0
+  // while bare zero must not (asserted above).
+  assert.equal(W.formatIndonesianRupiahCompact(0, { status: 'AVAILABLE' }), 'Rp 0',
+    'a provenance-backed (AVAILABLE) 0 renders Rp 0; only unprovenanced 0 stays em dash');
+  assert.equal(W.formatIndonesianRupiahCompact(0, { status: 'NOT_PUBLISHED' }), '\u2014',
+    'a zero without measured provenance (NOT_PUBLISHED) stays em dash');
 });

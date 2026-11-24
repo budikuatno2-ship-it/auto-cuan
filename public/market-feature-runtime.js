@@ -141,7 +141,7 @@ if (typeof window !== 'undefined') window.__chartRegistry = _chartRegistry;
 // Single source of truth for chart heights (CSS px). Responsive by viewport width.
 // viewportHeight is only consulted by the 'fullscreen' variant; existing two-argument
 // callers are unaffected.
-function chartDims(variant, viewportWidth, viewportHeight) {
+function chartDims(variant, viewportWidth, viewportHeight, mode) {
     var w = (typeof viewportWidth === 'number' && viewportWidth > 0) ? viewportWidth
           : (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1024;
     var mobile = w < 640;
@@ -155,10 +155,20 @@ function chartDims(variant, viewportWidth, viewportHeight) {
         var main = Math.max(220, Math.round(h - 168 - rsi));
         return { main: main, rsi: rsi };
     }
-    // Chart page (default): taller on desktop, roomier on mobile than the old
-    // 270px panel — but never taller than the container is wide, so it cannot
-    // swallow a small phone screen. Fullscreen covers serious inspection.
-    return { main: mobile ? Math.min(320, Math.round(w * 0.92)) : 420, rsi: mobile ? 60 : 64 };
+    // BATCH 1 / BUG 1: the five-mode layout contract lives in CHART_MODES /
+    // CLEAN_CHART.MODE_LAYOUT. chartDims() is a pure consumer. The inline
+    // fallback keeps this helper usable in isolated vm/static tests.
+    var layout = null;
+    try {
+        var ws = (typeof window !== 'undefined' && window.AutoCuanChartWorkstation)
+            ? window.AutoCuanChartWorkstation : null;
+        if (ws && ws.CLEAN_CHART && ws.CLEAN_CHART.MODE_LAYOUT) {
+            layout = ws.CLEAN_CHART.MODE_LAYOUT[mode || 'simpel'] || null;
+        }
+    } catch (_) {}
+    if (!layout) layout = { priceDesktop: 400, priceMobile: 380, subpanes: { volume: 90 } };
+    var price = mobile ? Math.min(w, layout.priceMobile) : layout.priceDesktop;
+    return { main: price, rsi: mobile ? 60 : 64, subpanes: layout.subpanes, mode: mode || 'simpel' };
 }
 
 // Chart colours from the redesign v2 theme tokens, read from the chart's own
@@ -331,20 +341,38 @@ function acAttachHiLo(chart, series, candles, container, fmt) {
         var x = chart.timeScale().logicalToCoordinate(idx), y = series.priceToCoordinate(price);
         var size = typeof chart.paneSize === 'function' ? chart.paneSize() : null;
         var w = size ? size.width : container.clientWidth, h = size ? size.height : container.clientHeight;
+        // FIX 1: swing high/low labels are clipped to the MAIN CANDLE PANE.
+        // The container is the candle pane only; oscillator subpanes are
+        // siblings, so clamping y to [0, h] prevents any ▲/▼ leak downward.
+        var labelH = 16;
+        var ty = above ? y - 17 : y + 5;
         if (x == null || y == null || y < 4 || y > h - 4 || x < 0 || x > w) { el.style.display = 'none'; return; }
+        if (ty < 0) ty = 0;
+        if (ty + labelH > h) ty = Math.max(0, h - labelH);
         el.textContent = text;
         el.style.display = 'block';
+        el.style.clipPath = 'inset(0 0 0 0)';
         var shift = x > w - 70 ? '-100%' : (x < 50 ? '0' : '-50%');
-        el.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(above ? y - 17 : y + 5) + 'px) translateX(' + shift + ')';
+        el.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(ty) + 'px) translateX(' + shift + ')';
     };
     var place = function() {
         raf = 0;
         if (chart.__acDead) return;
-        var lr = chart.timeScale().getVisibleLogicalRange();
-        var hl = lr ? acVisibleHiLo(candles, lr.from, lr.to) : null;
-        if (!hl) { hiEl.style.display = 'none'; loEl.style.display = 'none'; return; }
-        put(hiEl, hl.hi, Number(candles[hl.hi].high), '▲ ' + fmt(Number(candles[hl.hi].high)), true);
-        put(loEl, hl.lo, Number(candles[hl.lo].low), '▼ ' + fmt(Number(candles[hl.lo].low)), false);
+        // BUG-V6-I (Subtask I): a range-change / wheel / pointerup event that was
+        // already scheduled can fire AFTER the chart was disposed and re-created
+        // (rapid preset / timeframe / layer switching). `__acDead` alone is not
+        // enough because lightweight-charts throws "Object is disposed" from the
+        // native object itself, which surfaced as an uncaught page error.
+        try {
+            var lr = chart.timeScale().getVisibleLogicalRange();
+            var hl = lr ? acVisibleHiLo(candles, lr.from, lr.to) : null;
+            if (!hl) { hiEl.style.display = 'none'; loEl.style.display = 'none'; return; }
+            put(hiEl, hl.hi, Number(candles[hl.hi].high), '▲ ' + fmt(Number(candles[hl.hi].high)), true);
+            put(loEl, hl.lo, Number(candles[hl.lo].low), '▼ ' + fmt(Number(candles[hl.lo].low)), false);
+        } catch (x) {
+            // Disposed mid-frame: hide the labels and stop touching this chart.
+            try { hiEl.style.display = 'none'; loEl.style.display = 'none'; } catch (_) {}
+        }
     };
     var schedule = function() { if (!raf) raf = acAfterPaint(place); };
     chart.timeScale().subscribeVisibleLogicalRangeChange(schedule);
@@ -444,13 +472,19 @@ function acAttachCursorBox(chart, candles, container, fmt, volFmt, byDate) {
     var draw = function() {
         raf = 0;
         if (chart.__acDead) return;
-        var q = pending;
-        if (!q || !q.point || q.idx < 0) { box.style.display = 'none'; shown = -1; return; }
-        if (!paneW) measure();
-        if (q.idx !== shown) { content(q.idx); shown = q.idx; box.style.display = 'grid'; }
-        var tx = q.point.x + 16 + tipW < paneW ? q.point.x + 16 : q.point.x - 16 - tipW;
-        var ty = Math.max(4, Math.min(paneH - tipH - 4, q.point.y + 14));
-        box.style.transform = 'translate3d(' + Math.round(Math.max(0, tx)) + 'px,' + Math.round(ty) + 'px,0)';
+        // BUG-V6-I (Subtask I): same disposed-chart race as acAttachHiLo — the
+        // crosshair callback can be invoked for a chart that was just removed.
+        try {
+            var q = pending;
+            if (!q || !q.point || q.idx < 0) { box.style.display = 'none'; shown = -1; return; }
+            if (!paneW) measure();
+            if (q.idx !== shown) { content(q.idx); shown = q.idx; box.style.display = 'grid'; }
+            var tx = q.point.x + 16 + tipW < paneW ? q.point.x + 16 : q.point.x - 16 - tipW;
+            var ty = Math.max(4, Math.min(paneH - tipH - 4, q.point.y + 14));
+            box.style.transform = 'translate3d(' + Math.round(Math.max(0, tx)) + 'px,' + Math.round(ty) + 'px,0)';
+        } catch (x) {
+            try { box.style.display = 'none'; } catch (_) {}
+        }
     };
     chart.subscribeCrosshairMove(function(param) {
         pending = { point: param && param.point, idx: acCandleIndex(candles, param, byDate) };
@@ -503,7 +537,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     }
     try {
     var variant = (options && options.variant) || 'inline';
-    var dims = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0), (typeof window !== 'undefined' ? window.innerHeight : 0));
+    var _activeMode = (wsState && wsState.activePreset) ? wsState.activePreset : 'simpel';
+    var dims = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0), (typeof window !== 'undefined' ? window.innerHeight : 0), _activeMode);
     var _observers = [];
     // Clean up any prior chart bound to this id + orphaned charts (prevents duplicate
     // observers, stale references, and exporting an older hidden chart).
@@ -524,7 +559,9 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         // rupiah, indices keep two decimals.
         localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: function(p) { return _axisFmt.format(p); } },
         rightPriceScale: { borderColor: _th.border },
-        timeScale: { borderColor: _th.border, timeVisible: false, tickMarkFormatter: acTickMark },
+        // FINAL POLISH TASK 1: X axis is locked to the last real candle with a
+        // small right offset (<= 8 bars) reserved for manual SKENARIO projection.
+        timeScale: { borderColor: _th.border, timeVisible: false, tickMarkFormatter: acTickMark, rightOffset: 8, barSpacing: 8, fixLeftEdge: false, lockVisibleTimeRangeOnResize: true },
         // Touch behavior: horizontal drag pans the chart, vertical finger movement is
         // left to the page so mobile page scrolling is never trapped. Pinch zooms time,
         // a tap pins the crosshair until the next tap. The wheel is handled by
@@ -566,8 +603,12 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         try { _lastLine = candleSeries.createPriceLine({ price: _lp.price, color: _lp.up ? _th.up : _th.down, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: _narrow ? '' : _lp.title }); } catch (_) {}
     }
 
-    // Volume
-    var volumeSeries = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol', color: _th.vol });
+    // Volume — FINAL CLEAN 5-FILE WAVE / FIX 1: hide the red volume number on
+    // the right price axis. The histogram stays in its own 'vol' subpane.
+    var volumeSeries = chart.addHistogramSeries({
+      priceFormat: { type: 'volume' }, priceScaleId: 'vol', color: _th.vol,
+      lastValueVisible: false, priceLineVisible: false
+    });
     chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     var volData = candles.map(function(c) { return { time: c.time, value: c.volume, color: c.close >= c.open ? acChartAlpha(_th.up, '30') : acChartAlpha(_th.down, '30') }; });
     volumeSeries.setData(volData);
@@ -670,82 +711,12 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         if (existingNotice) existingNotice.style.display = 'none';
     }
 
-    // Render Bandar Metrics Curves on Main Chart Canvas
-    if (showLPM && ws && candles.length >= 5) {
-        var lpmData = ws.calculateLPMSeries(candles);
-        var sLpm = chart.addLineSeries({
-            color: '#10b981',
-            lineWidth: 2,
-            priceScaleId: 'right', // Overlay directly on candlestick price scale
-            crosshairMarkerVisible: false,
-            priceLineVisible: false,
-            lastValueVisible: true,
-            title: 'LPM',
-            priceFormat: {
-                type: 'custom',
-                formatter: function(price) {
-                    if (!price && price !== 0) return '';
-                    return 'Rp ' + acNumFmt(0, 0).format(Math.round(price));
-                }
-            }
-        });
-        sLpm.setData(lpmData);
-    }
-
-    if (showForeign && ws && candles.length >= 5) {
-        var foreignData = ws.calculateForeignFlowCumulative(candles);
-        var sForeign = chart.addLineSeries({
-            color: '#3b82f6',
-            lineWidth: 2,
-            priceScaleId: 'foreign_scale',
-            crosshairMarkerVisible: false,
-            priceLineVisible: false,
-            lastValueVisible: true,
-            title: 'Foreign Flow',
-            priceFormat: {
-                type: 'custom',
-                formatter: function(price) {
-                    if (!price && price !== 0) return '';
-                    var abs = Math.abs(price);
-                    var sign = price < 0 ? '-' : '';
-                    if (abs >= 1e12) return sign + (abs / 1e12).toFixed(2).replace('.', ',') + ' T';
-                    if (abs >= 1e9) return sign + (abs / 1e9).toFixed(1).replace('.', ',') + ' Mrd';
-                    if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1).replace('.', ',') + ' Jt';
-                    return sign + acNumFmt(0, 0).format(Math.round(abs));
-                }
-            }
-        });
-        chart.priceScale('foreign_scale').applyOptions({
-            visible: false,
-            scaleMargins: { top: 0.28, bottom: 0.15 }
-        });
-        sForeign.setData(foreignData);
-    }
-
-    if (showCMF && ws && candles.length >= 5) {
-        var cmfData = ws.calculateCMF(candles, 20);
-        var sCmf = chart.addLineSeries({
-            color: '#f97316',
-            lineWidth: 2,
-            priceScaleId: 'cmf_scale',
-            crosshairMarkerVisible: false,
-            priceLineVisible: false,
-            lastValueVisible: true,
-            title: 'Money Flow',
-            priceFormat: {
-                type: 'custom',
-                formatter: function(price) {
-                    if (!price && price !== 0) return '';
-                    return (price >= 0 ? '+' : '') + price.toFixed(2);
-                }
-            }
-        });
-        chart.priceScale('cmf_scale').applyOptions({
-            visible: false,
-            scaleMargins: { top: 0.38, bottom: 0.05 }
-        });
-        sCmf.setData(cmfData);
-    }
+    // FINAL POLISH TASK 1: LPM / Foreign Flow / Money Flow are NON-PRICE curves.
+    // They are NEVER added to the candlestick price pane. When a user enables
+    // them from the drawer they render in a dedicated "Bandar Metrics" subpane
+    // (created below, next to Intensity / Rotation / RSI). The candle pane is
+    // reserved for candles + MA/BB + at most 2 S/R price lines.
+    var bandarSubpaneSeries = [];
 
     var activeMode = (wsState && wsState.activePreset) ? wsState.activePreset : 'swing';
     var activeTf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
@@ -787,11 +758,27 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             if (!supPrice && recentLow > 0 && isFinite(recentLow)) supPrice = recentLow;
         }
 
+        // REQ-14: Mencegah label bertumpuk bila support/resistance berdekatan dengan trading plan
+        var isSimpleMode = (activeMode === 'simpel' || activeMode === 'Simple');
         if (resPrice > 0 && isFinite(resPrice)) {
-            candleSeries.createPriceLine({ price: resPrice, color: '#3b82f6', lineWidth: 1.5, lineStyle: 3, axisLabelVisible: true, title: acLevelTitle('Resistance', _narrow) });
+            candleSeries.createPriceLine({
+                price: resPrice,
+                color: '#3b82f6',
+                lineWidth: 1.5,
+                lineStyle: 3,
+                axisLabelVisible: !isSimpleMode || !plan,
+                title: acLevelTitle('Resistance', _narrow)
+            });
         }
         if (supPrice > 0 && isFinite(supPrice)) {
-            candleSeries.createPriceLine({ price: supPrice, color: '#10b981', lineWidth: 1.5, lineStyle: 3, axisLabelVisible: true, title: acLevelTitle('Support', _narrow) });
+            candleSeries.createPriceLine({
+                price: supPrice,
+                color: '#10b981',
+                lineWidth: 1.5,
+                lineStyle: 3,
+                axisLabelVisible: !isSimpleMode || !plan,
+                title: acLevelTitle('Support', _narrow)
+            });
         }
     }
 
@@ -863,15 +850,26 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var lpmTxt = lpmVal ? acNum(lpmVal) : '—';
         var moneyFlowStr = _m.moneyFlow;
         var prov = '<span class="ac-prov" data-k="prov" style="font-weight:600;color:var(--ac-warn-t, #fbbf24)"></span>';
+        // FIX 1: honest EOD header from max(trade_date). A date-only value is a
+        // calendar label, never an instant: no fake UTC-to-WIB clock conversion.
+        var eodLabel = (ws && typeof ws.formatEodHeader === 'function')
+            ? ws.formatEodHeader(candles && candles.length ? candles[candles.length - 1].time : null,
+                candles && candles.length ? (candles[candles.length - 1].updated_at || candles[candles.length - 1].updatedAt) : null)
+            : 'EOD';
+        var eodHtml = '<span class="ac-eod" style="font-weight:600;color:var(--ac-2, #9ca3af)">' + eodLabel + '</span>';
         if (isMobile) {
+            // BATCH 1 / BUG 1: exactly 2 compact lines. Volume and Par F are
+            // separated into different rows so they never collide at 390px.
             headerEl.style.fontSize = '10px';
             headerEl.innerHTML =
-                '<div class="flex items-center gap-1 text-[10px] font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
-                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' + prov +
+                '<div class="flex items-center gap-1 text-[10px] font-bold text-slate-100 flex-nowrap overflow-hidden" style="color:#f8fafc;white-space:nowrap;">' +
+                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' + eodHtml + prov +
                     '<span data-k="close"></span>' +
-                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
                 '</div>' +
-                '<div class="text-[10px] text-gray-300 font-medium">Vol <b style="color:#f1f5f9;" data-k="vol"></b> • Par F <b style="color:#fbbf24;">' + parTxt + '</b></div>' +
+                '<div class="text-[10px] text-gray-300 font-medium flex flex-nowrap justify-between gap-2" style="white-space:nowrap;">' +
+                    '<span>Vol <b style="color:#f1f5f9;" data-k="vol"></b></span>' +
+                    '<span>Par F <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
+                '</div>' +
                 '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#10b981;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + lpmTxt + '</b></div>' +
                 '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#3b82f6;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign <b style="color:#60a5fa;" data-k="foreign"></b></div>' +
                 '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#f97316;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
@@ -879,7 +877,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             headerEl.style.fontSize = '12px';
             headerEl.innerHTML =
                 '<div class="flex items-center gap-1.5 text-xs font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
-                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + ' · IDX</span>' + prov +
+                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + ' · IDX</span>' + eodHtml + prov +
                     '<span class="text-gray-300">O<span data-k="o"></span></span>' +
                     '<span class="text-gray-300">H<span style="color:#34d399" data-k="h"></span></span>' +
                     '<span class="text-gray-300">L<span style="color:#f87171" data-k="l"></span></span>' +
@@ -1034,16 +1032,20 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             var visibleMin = priceMin - priceRange * 0.15;
             var visibleMax = priceMax + priceRange * 0.15;
 
+            // REQ-14: Visual clutter reduction. Pada mode simpel atau bila ada banyak garis,
+            // batasi axisLabelVisible pada level fibonacci kunci (50% & 61.8%) agar tidak menumpuk dengan S/R atau Entry.
+            var isSimplePreset = (wsState && (wsState.activePreset === 'simpel' || wsState.activePreset === 'Simple'));
             for (var fi = 0; fi < fibPriceLines.length; fi++) {
                 var fpl = fibPriceLines[fi];
                 if (fpl.val != null && fpl.val >= visibleMin && fpl.val <= visibleMax) {
+                    var isKeyFib = (fpl.label === 'Fib 50' || fpl.label === 'Fib 61,8');
                     candleSeries.createPriceLine({
                         price: fpl.val,
                         color: fpl.color,
                         lineWidth: 1,
                         lineStyle: 2,
-                        axisLabelVisible: true,
-                        title: fpl.label
+                        axisLabelVisible: !isSimplePreset || isKeyFib,
+                        title: _narrow ? '' : fpl.label
                     });
                 }
             }
@@ -1167,6 +1169,117 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var intensityChart = null;
     var rotationChart = null;
     var rsiChart = null;
+    var bandarChart = null;
+
+    // FINAL POLISH TASK 1: non-price curves live in their own subpane.
+    if ((showLPM || showForeign || showCMF) && ws && candles.length >= 5) {
+        var bandarContainer = document.getElementById(chartId + '_bandar_container');
+        if (!bandarContainer) {
+            bandarContainer = document.createElement('div');
+            bandarContainer.id = chartId + '_bandar_container';
+            bandarContainer.className = 'relative w-full rounded-lg overflow-hidden border border-dark-700/60 bg-[#0b0e14]';
+            bandarContainer.style.height = '80px';
+            subpanelsWrapper.appendChild(bandarContainer);
+        }
+        bandarContainer.style.display = 'block';
+        // FIX 1: real numeric legend from the canonical foreign-flow series.
+        var _ffSeries = showForeign ? ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow) : [];
+        var _ffLast = _ffSeries.length ? Number(_ffSeries[_ffSeries.length - 1].value) : null;
+        var _bandarLegend = 'BANDAR METRICS (sub-pane, bukan harga)';
+        if (_ffLast != null && isFinite(_ffLast)) {
+            _bandarLegend += ' · Foreign kumulatif ' + (ws.formatIndonesianRupiahCompact ? ws.formatIndonesianRupiahCompact(_ffLast) : _ffLast.toFixed(0));
+        }
+        bandarContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#94a3b8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _bandarLegend + '</div>';
+        bandarChart = LightweightCharts.createChart(bandarContainer, {
+            width: container.clientWidth,
+            height: 80,
+            layout: acChartLayout(_th),
+            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.15, bottom: 0.1 } },
+            timeScale: { visible: false },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+        });
+        if (showLPM) {
+            var sLpm = bandarChart.addLineSeries({ color: '#10b981', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'LPM' });
+            sLpm.setData(ws.calculateLPMSeries(candles));
+        }
+        if (showForeign) {
+            var sForeign = bandarChart.addLineSeries({ color: '#3b82f6', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Foreign Flow', priceScaleId: 'foreign_scale' });
+            bandarChart.priceScale('foreign_scale').applyOptions({ scaleMargins: { top: 0.15, bottom: 0.1 } });
+            sForeign.setData(ws.calculateForeignFlowCumulative(candles));
+        }
+        if (showCMF) {
+            var sCmf = bandarChart.addLineSeries({ color: '#f97316', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Money Flow' });
+            sCmf.setData(ws.calculateCMF(candles, 20));
+        }
+        bandarChart.timeScale().fitContent();
+    } else {
+        var existingBandar = document.getElementById(chartId + '_bandar_container');
+        if (existingBandar) existingBandar.style.display = 'none';
+    }
+
+    // FINAL POLISH TASK 1/2: RSI and MACD always render in a separate subpane
+    // (never in the candle pane). IHSG gets RSI + MACD here as well.
+    var showRSI = wsState ? wsState.isLayerActive('rsi14') : false;
+    var showMACD = wsState ? wsState.isLayerActive('macd') : false;
+    var oscChart = null;
+    if ((showRSI || showMACD) && ws && candles.length >= 26) {
+        var oscContainer = document.getElementById(chartId + '_osc_container');
+        if (!oscContainer) {
+            oscContainer = document.createElement('div');
+            oscContainer.id = chartId + '_osc_container';
+            oscContainer.className = 'relative w-full rounded-lg overflow-hidden border border-dark-700/60 bg-[#0b0e14]';
+            oscContainer.style.height = '90px';
+            subpanelsWrapper.appendChild(oscContainer);
+        }
+        oscContainer.style.display = 'block';
+        // FIX 1: real numeric legend in the pane corner (computed from the
+        // canonical series, never a placeholder). RSI active value + 30/70
+        // guides; MACD line/signal/histogram from the real 12/26/9 calculation.
+        var _rsiData = showRSI ? ws.calculateRSI(candles, 14) : [];
+        var _macdData = showMACD ? ws.calculateMACD(candles, 12, 26, 9) : null;
+        var _rsiLast = _rsiData.length ? Number(_rsiData[_rsiData.length - 1].value) : null;
+        var _macdLast = _macdData && _macdData.macd.length ? Number(_macdData.macd[_macdData.macd.length - 1].value) : null;
+        var _sigLast = _macdData && _macdData.signal.length ? Number(_macdData.signal[_macdData.signal.length - 1].value) : null;
+        var _oscLegend = 'OSILATOR (sub-pane)';
+        if (_rsiLast != null && isFinite(_rsiLast)) _oscLegend += ' · RSI14 ' + _rsiLast.toFixed(2) + ' (30/70)';
+        if (_macdLast != null && isFinite(_macdLast)) _oscLegend += ' · MACD ' + _macdLast.toFixed(2) + ' / Signal ' + (_sigLast != null && isFinite(_sigLast) ? _sigLast.toFixed(2) : '—');
+        oscContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#94a3b8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _oscLegend + '</div>';
+        oscChart = LightweightCharts.createChart(oscContainer, {
+            width: container.clientWidth,
+            height: 90,
+            layout: acChartLayout(_th),
+            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.12, bottom: 0.08 } },
+            timeScale: { visible: false },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+        });
+        if (showRSI) {
+            var rsiSeries = oscChart.addLineSeries({ color: '#f97316', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'RSI 14' });
+            rsiSeries.setData(_rsiData);
+            // FIX 1: 30/70 overbought/oversold guides in the RSI subpane.
+            var guide70 = oscChart.addLineSeries({ color: 'rgba(239,68,68,0.35)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: '70' });
+            var guide30 = oscChart.addLineSeries({ color: 'rgba(16,185,129,0.35)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: '30' });
+            var guideTimes = _rsiData.map(function(p) { return p.time; });
+            guide70.setData(guideTimes.map(function(t) { return { time: t, value: 70 }; }));
+            guide30.setData(guideTimes.map(function(t) { return { time: t, value: 30 }; }));
+        }
+        if (showMACD) {
+            var macdCalc = ws.calculateMACD(candles, 12, 26, 9);
+            var macdLine = oscChart.addLineSeries({ color: '#38bdf8', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'MACD' });
+            var signalLine = oscChart.addLineSeries({ color: '#f59e0b', lineWidth: 1, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: 'Signal' });
+            macdLine.setData(macdCalc.macd);
+            signalLine.setData(macdCalc.signal);
+        }
+        oscChart.timeScale().fitContent();
+    } else {
+        var existingOsc = document.getElementById(chartId + '_osc_container');
+        if (existingOsc) existingOsc.style.display = 'none';
+    }
 
     if (showIntensity && ws && candles.length >= 5) {
         intensityContainer.style.display = 'block';
@@ -1211,11 +1324,19 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     }
 
     chart.timeScale().subscribeVisibleLogicalRangeChange(function(range) {
-        if (range) {
+        // BUG-V6-I (Subtask I): during rapid preset/timeframe/layer switching the
+        // main chart is disposed and re-created; a queued range event can still
+        // reach this subscriber and lightweight-charts throws "Object is
+        // disposed" as an UNCAUGHT page error. Guard on the dead flag and treat
+        // any dispose race as a no-op.
+        if (!range || chart.__acDead) return;
+        try {
             if (intensityChart) intensityChart.timeScale().setVisibleLogicalRange(range);
             if (rotationChart) rotationChart.timeScale().setVisibleLogicalRange(range);
             if (rsiChart) rsiChart.timeScale().setVisibleLogicalRange(range);
-        }
+            if (bandarChart) bandarChart.timeScale().setVisibleLogicalRange(range);
+            if (oscChart) oscChart.timeScale().setVisibleLogicalRange(range);
+        } catch (_) { /* subpanel disposed mid-event: nothing to sync */ }
     });
 
     // Plan & Backtest Card below subpanels
@@ -1406,6 +1527,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         rsiChart: (typeof rsiChart !== 'undefined' ? rsiChart : null) || null,
         intensityChart: (typeof intensityChart !== 'undefined' ? intensityChart : null) || null,
         rotationChart: (typeof rotationChart !== 'undefined' ? rotationChart : null) || null,
+        bandarChart: (typeof bandarChart !== 'undefined' ? bandarChart : null) || null,
+        oscChart: (typeof oscChart !== 'undefined' ? oscChart : null) || null,
         ticker: ticker || '',
         metrics: metrics || null,
         lastClose: _latest ? _latest.close : null,
@@ -1437,6 +1560,29 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             return true;
         }
     };
+
+    // V6 (W2b / 13B): attach the user drawing-tools layer (trendline, S/R,
+    // Fibonacci, ruler, freehand) on top of the chart. The layer is a separate
+    // transparent canvas that never re-renders the chart; drawings persist per
+    // (ticker, timeframe) in localStorage. Guarded so a missing module or a
+    // headless environment can never break chart rendering.
+    try {
+        if (typeof window !== 'undefined' && window.AutoCuanChartDrawing && typeof window.AutoCuanChartDrawing.attach === 'function') {
+            var _drawTf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
+            window.AutoCuanChartDrawing.attach(chartId, { ticker: ticker || '', timeframe: _drawTf });
+        }
+    } catch (_) {}
+
+    // F3 (CHT wiring): run the F1/F2 detectors over the loaded series and render
+    // them through the verified-anchor overlay pipeline. Incremental (keyed by
+    // the series source_hash) so pan/zoom never triggers a recompute. Guarded so
+    // a missing bundle or headless environment can never break chart rendering.
+    try {
+        if (typeof window !== 'undefined' && window.AutoCuanChartAutoPatterns && typeof window.AutoCuanChartAutoPatterns.attach === 'function') {
+            var _apPreset = (wsState && wsState.activePreset) ? wsState.activePreset : 'simpel';
+            window.AutoCuanChartAutoPatterns.attach(chartId, candles, ticker || '', { preset: _apPreset });
+        }
+    } catch (_) {}
 
     } catch (renderErr) {
         container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart gagal dirender. Coba buka TradingView.</div>';

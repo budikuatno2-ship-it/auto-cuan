@@ -68,6 +68,23 @@
     return true;
   }
 
+  function makeOwnershipButton(root, doc) {
+    if (doc.querySelector('[data-admin-ownership-button]')) return true;
+    var row = buttonRow(doc);
+    if (!row) return false;
+    var button = doc.createElement('button');
+    button.type = 'button';
+    button.setAttribute('data-admin-ownership-button', 'true');
+    button.className = 'px-4 py-2 rounded-lg text-sm font-medium text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all';
+    button.textContent = '👥 Ownership & HSC Import';
+    button.addEventListener('click', function () {
+      root.location.assign('/admin-ownership.html');
+    });
+    var security = row.querySelector('[data-security-center-button]');
+    security ? row.insertBefore(button, security) : row.appendChild(button);
+    return true;
+  }
+
   function guideHtml(steps) {
     var list = steps.map(function (step) {
       return '<li class="rounded-xl border border-dark-600/40 bg-dark-800/50 p-3">' +
@@ -114,6 +131,7 @@
     function sync() {
       makeForeignButton(root, doc);
       makeAiEvalButton(root, doc);
+      makeOwnershipButton(root, doc);
       enhanceSecurityGuide(doc);
     }
 

@@ -21,6 +21,19 @@ let _cachedAt = 0;
 const CACHE_TTL_MS = 60 * 1000;
 
 /**
+ * Canonical Short Swing readiness (lib/saham-potensial-engine.js) is a STRICTER
+ * authority than the level-based readiness engine: it also grades per-component
+ * data freshness (price / bandar / foreign) and mandatory-input availability.
+ *
+ * Only canonical READY may ever surface as an actionable READY here. Every
+ * other canonical verdict caps the served status at WAITING_CONFIRMATION, so a
+ * row the canonical engine demoted for staleness (NOT_READY) can never be
+ * re-promoted to READY by the level-only engine.
+ */
+const CANONICAL_READY = 'READY';
+const CANONICAL_READINESS_FLOOR_REASON = 'CANONICAL_READINESS_NOT_READY';
+
+/**
  * Re-evaluate a pick that the producer wrote, through the single authority.
  *
  * WHY THIS EXISTS (BUG-V5-P0-003 / BUG-V5-P0-005):
@@ -35,24 +48,53 @@ const CACHE_TTL_MS = 60 * 1000;
  * consider READY has its action token removed before it is returned, whatever
  * the file said.
  *
+ * Subtask H: the canonical engine's own `readiness` verdict is additionally
+ * applied as a hard floor (see CANONICAL_READY above).
+ *
  * @param {object} pick
  * @param {number} now
+ * @param {object} [context] { publicationBlocked, blockReason }
  * @returns {object} the pick, with a corrected verdict
  */
-function revalidatePick(pick, now) {
+function revalidatePick(pick, now, context) {
   if (!pick || typeof pick !== 'object') return pick;
 
   const result = readiness.evaluate(pick, { now });
-  const isReady = result.status === readiness.STATUS.READY;
+  let status = result.status;
+  const reasons = result.reasons.slice();
+
+  // Canonical readiness floor (fail-closed).
+  const canonicalReadiness = typeof pick.readiness === 'string' ? pick.readiness.toUpperCase() : null;
+  const canonicalBlocks = canonicalReadiness !== null && canonicalReadiness !== CANONICAL_READY;
+  if (canonicalBlocks && status === readiness.STATUS.READY) {
+    status = readiness.STATUS.WAITING_CONFIRMATION;
+    reasons.push(CANONICAL_READINESS_FLOOR_REASON + '_' + canonicalReadiness);
+  }
+
+  // A publication the producer itself refused (superseded revision, failed
+  // content-hash validation, incomplete snapshot) must never look actionable.
+  // The reason is recorded UNCONDITIONALLY so the block is auditable even when
+  // another gate had already demoted the row.
+  const ctx = context || {};
+  if (ctx.publicationBlocked) {
+    reasons.push('PUBLICATION_BLOCKED_' + String(ctx.blockReason || 'UNKNOWN'));
+    if (status === readiness.STATUS.READY) {
+      status = readiness.STATUS.INSUFFICIENT_DATA;
+    }
+  }
+
+  const isReady = status === readiness.STATUS.READY;
 
   const out = Object.assign({}, pick);
-  out.readiness_status = result.status;
-  out.status = result.status;
-  out.action = readiness.actionForStatus(result.status);
+  out.canonical_readiness = canonicalReadiness;
+  out.canonical_status_reason = pick.status_reason || null;
+  out.readiness_status = status;
+  out.status = status;
+  out.action = readiness.actionForStatus(status);
   out.action_label = out.action;
-  out.status_label = readiness.labelForStatus(result.status);
-  out.verdict_reason = result.reasons.length > 0 ? result.reasons[0] : null;
-  out.verdict_reasons = result.reasons.slice();
+  out.status_label = readiness.labelForStatus(status);
+  out.verdict_reason = reasons.length > 0 ? reasons[0] : null;
+  out.verdict_reasons = reasons;
   out.rr_gate_passed = Boolean(result.gateResults.riskReward && result.gateResults.riskReward.pass);
   // Honest derived flags, matching what the producer now writes.
   out.trading_plan_valid = isReady;
@@ -61,7 +103,7 @@ function revalidatePick(pick, now) {
   out.grade = null;
   // Records that the artefact's own claim was overruled, so the discrepancy is
   // visible instead of silently corrected.
-  if (pick.status !== result.status) {
+  if (pick.status !== status) {
     out.artifact_status_overruled = pick.status === undefined ? null : pick.status;
   }
   return out;
@@ -101,18 +143,36 @@ function loadTop5Data() {
     const parsed = JSON.parse(fs.readFileSync(TOP5_FILE, 'utf8'));
     if (parsed && typeof parsed === 'object') {
       const served = Object.assign({}, parsed);
+
+      // Subtask H / P0-10: a publication the producer refused — superseded
+      // revision, failed content-hash validation, or an incomplete snapshot —
+      // must never yield actionable picks, even if rows are present.
+      const publicationBlocked =
+        served.snapshot_superseded === true ||
+        served.snapshot_id_match === false ||
+        served.store_verified === false ||
+        served.data_status === 'VALIDATION_FAILED' ||
+        served.data_status === 'NOT_PUBLISHED';
+      const revalidateCtx = {
+        publicationBlocked,
+        blockReason: served.status_reason || served.data_status || 'UNKNOWN'
+      };
+
       // Enforce the readiness verdict on the way out. The file is treated as
       // untrusted input, not as an authority.
       for (const key of ['picks', 'top5', 'top5_picks']) {
         if (Array.isArray(served[key])) {
-          served[key] = served[key].map((pick) => revalidatePick(pick, now));
+          served[key] = served[key].map((pick) => revalidatePick(pick, now, revalidateCtx));
         }
+      }
+      if (Array.isArray(served.top20)) {
+        served.top20 = served.top20.map((pick) => revalidatePick(pick, now, revalidateCtx));
       }
       if (served.categories && typeof served.categories === 'object') {
         const cats = {};
         for (const catKey of Object.keys(served.categories)) {
           const list = served.categories[catKey];
-          cats[catKey] = Array.isArray(list) ? list.map((pick) => revalidatePick(pick, now)) : list;
+          cats[catKey] = Array.isArray(list) ? list.map((pick) => revalidatePick(pick, now, revalidateCtx)) : list;
         }
         served.categories = cats;
       }
@@ -123,8 +183,16 @@ function loadTop5Data() {
         acc[k] = (acc[k] || 0) + 1;
         return acc;
       }, {});
+      served.canonical_readiness_counts = enforced.reduce((acc, pick) => {
+        const k = String(pick && pick.canonical_readiness || 'UNKNOWN');
+        acc[k] = (acc[k] || 0) + 1;
+        return acc;
+      }, {});
+      served.actionable_count = enforced.filter((pick) => pick && pick.action === 'BUY').length;
+      served.publication_blocked = publicationBlocked;
       served.readiness_enforced_at = new Date(now).toISOString();
       served.readiness_engine = '../lib/readiness-engine.js';
+      served.canonical_engine = '../lib/saham-potensial-engine.js';
 
       _cachedData = served;
       _cachedAt = now;
@@ -151,7 +219,7 @@ function loadTop5Data() {
   }
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   try {
     const data = loadTop5Data();
     if (res && typeof res.setHeader === 'function') {
@@ -167,4 +235,11 @@ module.exports = async function handler(req, res) {
     }
     throw err;
   }
-};
+}
+
+module.exports = handler;
+// Exported for the Subtask H consumer-contract tests: the canonical readiness
+// floor must be verifiable without spinning up an HTTP server.
+module.exports.revalidatePick = revalidatePick;
+module.exports.loadTop5Data = loadTop5Data;
+module.exports.CANONICAL_READY = CANONICAL_READY;

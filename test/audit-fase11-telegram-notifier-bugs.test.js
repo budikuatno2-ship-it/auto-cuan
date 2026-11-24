@@ -22,6 +22,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const notifier = require('../lib/telegram-notifier');
 
+// M-P1e (2026-11-15): live-path tests inject the official `options.gate_env`
+// seam (see telegram-notifier.js) instead of setting TELEGRAM_LIVE=true in
+// process.env, per the gate contract (lib/telegram-gate.js header).
+const GATE_LIVE_ENV = { TELEGRAM_ENABLED: '1', TELEGRAM_LIVE: 'true', TELEGRAM_BOT_TOKEN: 'test-token', TELEGRAM_CHAT_ID: '123' };
+
 async function withTelegramEnv(fetchImpl, fn) {
   const saved = {
     enabled: process.env.TELEGRAM_ENABLED,
@@ -84,7 +89,8 @@ test('F11N-03 a 429 with retry_queue:true must enqueue the alert instead of drop
       skip_market_guard: true,
       retry_queue: true,
       min_interval_ms: 0,
-      sleep: async () => {}
+      sleep: async () => {},
+      gate_env: GATE_LIVE_ENV
     });
     assert.equal(res.sent, false);
     assert.equal(res.reason, 'rate_limited');
@@ -186,7 +192,8 @@ test('F11N-09 sendTelegramMessage must never emit a body above 4096 chars', asyn
       skip_market_guard: true,
       max_chunk_length: 12000,
       min_interval_ms: 0,
-      sleep: async () => {}
+      sleep: async () => {},
+      gate_env: GATE_LIVE_ENV
     });
     assert.equal(res.sent, true);
     assert.ok(bodies.length >= 2, 'the payload must be chunked');
@@ -205,7 +212,8 @@ test('F11N-10 a 429 without retry_queue must keep the legacy non-queued contract
     const res = await notifier.sendTelegramMessage('plain alert', {
       skip_market_guard: true,
       min_interval_ms: 0,
-      sleep: async () => {}
+      sleep: async () => {},
+      gate_env: GATE_LIVE_ENV
     });
     assert.equal(res.sent, false);
     assert.equal(res.reason, 'rate_limited');

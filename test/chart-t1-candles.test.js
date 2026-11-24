@@ -103,8 +103,17 @@ async function callApi(ticker) {
   return res;
 }
 
+// TASK J6: every test below mocks global.fetch as the upstream transport.
+// Inject an empty local reader so real local SQLite/flat-file candles cannot
+// shadow the mocked fetch (fixture: OFFLINE_MOCKED_FETCH, no network/DB writes).
+function isolateFromLocalStore(t) {
+  handler.__test.setCandleReader(function () { return { candles: [], source: null }; });
+  t.after(function () { handler.__test.setCandleReader(null); });
+}
+
 test('endpoint filters before latest and every indicator, and preserves response compatibility', async (t) => {
   handler.__test.clearCache();
+  isolateFromLocalStore(t);
   handler.__test.clock.now = () => atJakarta('2026-07-27');
   t.after(() => { handler.__test.clock.now = () => new Date(); delete global.fetch; handler.__test.clearCache(); });
   const rows = [];
@@ -139,6 +148,7 @@ test('endpoint filters before latest and every indicator, and preserves response
 
 test('malformed timestamps are discarded and completed filtered result is cached', async (t) => {
   handler.__test.clearCache();
+  isolateFromLocalStore(t);
   handler.__test.clock.now = () => atJakarta('2026-07-27');
   t.after(() => { handler.__test.clock.now = () => new Date(); delete global.fetch; handler.__test.clearCache(); });
   let fetches = 0;
@@ -175,6 +185,7 @@ test('malformed timestamps are discarded and completed filtered result is cached
 
 test('endpoint returns missing metadata when upstream contains only today', async (t) => {
   handler.__test.clearCache();
+  isolateFromLocalStore(t);
   handler.__test.clock.now = () => atJakarta('2026-07-27');
   t.after(() => { handler.__test.clock.now = () => new Date(); delete global.fetch; handler.__test.clearCache(); });
   global.fetch = async () => ({ ok: true, json: async () => yahooPayload([
@@ -188,6 +199,7 @@ test('endpoint returns missing metadata when upstream contains only today', asyn
 
 test('empty upstream result returns explicit missing metadata', async (t) => {
   handler.__test.clearCache();
+  isolateFromLocalStore(t);
   handler.__test.clock.now = () => atJakarta('2026-07-27');
   t.after(() => { handler.__test.clock.now = () => new Date(); delete global.fetch; handler.__test.clearCache(); });
   global.fetch = async () => ({ ok: true, json: async () => ({ chart: { result: [] } }) });
@@ -199,6 +211,7 @@ test('empty upstream result returns explicit missing metadata', async (t) => {
 
 test('endpoint detector receives only finalized T-1 candles and binds ticker, date and candle set', async (t) => {
   handler.__test.clearCache(); handler.__test.clock.now = () => atJakarta('2026-07-27');
+  isolateFromLocalStore(t);
   t.after(() => { handler.__test.clock.now = () => new Date(); handler.__test.resetPatternDetector(); delete global.fetch; handler.__test.clearCache(); });
   const rows = [];
   for (let day = 1; day <= 24; day++) rows.push({ timestamp: unixAtJakarta(`2026-07-${String(day).padStart(2, '0')}`), open: day + 1, high: day + 3, low: day, close: day + 2, volume: day });
@@ -214,6 +227,7 @@ test('endpoint detector receives only finalized T-1 candles and binds ticker, da
 
 test('detector failure is isolated and cached response stays deterministic', async (t) => {
   handler.__test.clearCache(); handler.__test.clock.now = () => atJakarta('2026-07-27');
+  isolateFromLocalStore(t);
   t.after(() => { handler.__test.clock.now = () => new Date(); handler.__test.resetPatternDetector(); delete global.fetch; handler.__test.clearCache(); });
   let fetches = 0;
   global.fetch = async () => { fetches++; return { ok: true, json: async () => yahooPayload(Array.from({ length: 20 }, (_, i) => ({
@@ -228,6 +242,7 @@ test('detector failure is isolated and cached response stays deterministic', asy
 
 test('Jakarta date cache binding cannot return an obsolete pattern result', async (t) => {
   handler.__test.clearCache(); let today = '2026-07-27'; handler.__test.clock.now = () => atJakarta(today);
+  isolateFromLocalStore(t);
   t.after(() => { handler.__test.clock.now = () => new Date(); handler.__test.resetPatternDetector(); delete global.fetch; handler.__test.clearCache(); });
   let fetches = 0; global.fetch = async () => { fetches++; return { ok: true, json: async () => yahooPayload([
     { timestamp: unixAtJakarta('2026-07-24'), open: 10, high: 12, low: 9, close: 11, volume: 1 },

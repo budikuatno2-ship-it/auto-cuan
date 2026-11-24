@@ -7,6 +7,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const notifier = require('../lib/telegram-notifier');
 
+// M-P1e (2026-11-15): live-path tests inject the official `options.gate_env`
+// seam (see telegram-notifier.js) instead of setting TELEGRAM_LIVE=true in
+// process.env, per the gate contract (lib/telegram-gate.js). The gate's rules
+// are unchanged; only the inspected env object is synthetic.
+const GATE_LIVE_ENV = { TELEGRAM_ENABLED: '1', TELEGRAM_LIVE: 'true', TELEGRAM_BOT_TOKEN: 'test-token', TELEGRAM_CHAT_ID: '123' };
+
 async function withTelegramEnv(fetchImpl, fn) {
   const saved = {
     enabled: process.env.TELEGRAM_ENABLED,
@@ -49,7 +55,7 @@ test('burst of 5 alerts is paced: every send after the first waits, none are dro
     const waits = [];
     const sleep = async (ms) => { waits.push(ms); };
     const results = await Promise.all([0, 1, 2, 3, 4].map((i) =>
-      notifier.sendTelegramMessage('alert ' + i, { skip_market_guard: true, min_interval_ms: 1000, sleep })
+      notifier.sendTelegramMessage('alert ' + i, { skip_market_guard: true, min_interval_ms: 1000, sleep, gate_env: GATE_LIVE_ENV })
     ));
     assert.equal(fetchCount, 5, 'all 5 alerts must still be sent');
     assert.ok(results.every((r) => r.sent === true), 'no alert dropped');
@@ -73,7 +79,8 @@ test('429 response extracts retry_after, parks the gate and warns without throwi
       const result = await notifier.sendTelegramMessage('test', {
         skip_market_guard: true,
         min_interval_ms: 0,
-        sleep: async () => {}
+        sleep: async () => {},
+        gate_env: GATE_LIVE_ENV
       });
       assert.equal(result.sent, false);
       assert.equal(result.reason, 'rate_limited');

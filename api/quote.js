@@ -701,6 +701,8 @@ async function handler(req, res) {
     // (pesan generik, tanpa gema payload). Pola S1 (4 huruf/IHSG) diterima;
     // pola lama (LQ45/IDX30) tetap didukung untuk kompatibilitas benchmark BEI.
     try {
+      // Canonicalize only the supported Yahoo index alias before strict validation.
+      if (typeof ticker === 'string' && ticker.trim().toUpperCase() === '^JKSE') ticker = 'IHSG';
       if (shield) {
         var sValQ = shield.validateTicker(ticker);
         if (!sValQ.ok) {
@@ -957,25 +959,12 @@ module.exports = handler;
 
 // ===== YAHOO QUOTE FETCH =====
 async function fetchYahooQuote(ticker) {
-  // Check quote cache
+  // Read canonical storage before cache: short history and corrections are authoritative.
+  var localSeries = require('../lib/local-market-subset-store').readCandleSeries(ticker);
   var cached = quoteCache[ticker];
-  if (cached && (Date.now() - cached.timestamp < QUOTE_CACHE_TTL)) {
+  if (!localSeries.source && cached && (Date.now() - cached.timestamp < QUOTE_CACHE_TTL)) {
     return cached.data;
   }
-
-  // Primary disk-first check for IHSG/BBCA/canonical symbols
-  var fs = require('fs');
-  var path = require('path');
-  var diskPath1 = path.join(process.cwd(), 'data', 'ohlcv', ticker + '.json');
-  var diskPath2 = path.join(process.cwd(), 'data', 'daily-candles', ticker + '.json');
-  var diskData = null;
-  try {
-    if (fs.existsSync(diskPath1)) {
-      diskData = JSON.parse(fs.readFileSync(diskPath1, 'utf8'));
-    } else if (fs.existsSync(diskPath2)) {
-      diskData = JSON.parse(fs.readFileSync(diskPath2, 'utf8'));
-    }
-  } catch (_) {}
 
   // Map ticker to Yahoo Finance symbol
   var symbol;
@@ -986,6 +975,8 @@ async function fetchYahooQuote(ticker) {
   }
   var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=1y&interval=1d';
 
+  var candles = localSeries.candles;
+  if (!localSeries.source) {
   var controller = new AbortController();
   var timeout = setTimeout(function() { controller.abort(); }, 8000);
 
@@ -1028,45 +1019,15 @@ async function fetchYahooQuote(ticker) {
   var closes = indicators.close || [];
   var volumes = indicators.volume || [];
 
-  var candles = [];
-  if (diskData && Array.isArray(diskData.candles) && diskData.candles.length >= 20 && (ticker === 'IHSG' || ticker === 'BBCA')) {
-    for (var di = 0; di < diskData.candles.length; di++) {
-      var dRow = diskData.candles[di];
-      candles.push({
-        date: dRow.date,
-        time: dRow.date || dRow.time,
-        open: Number(dRow.open),
-        high: Number(dRow.high),
-        low: Number(dRow.low),
-        close: Number(dRow.close),
-        volume: Number(dRow.volume) || 0
-      });
-    }
-  } else {
     for (var i = 0; i < timestamps.length; i++) {
       var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
       var oNum = Number(o), hNum = Number(h), lNum = Number(l), cNum = Number(c);
-      if (c != null && o != null && h != null && l != null && Number.isFinite(oNum) && Number.isFinite(hNum) && Number.isFinite(lNum) && Number.isFinite(cNum)) {
+      if (c != null && o != null && h != null && l != null && Number.isFinite(oNum) && Number.isFinite(hNum) && Number.isFinite(lNum) && Number.isFinite(cNum) && Math.min(oNum, hNum, lNum, cNum) > 0 && hNum >= Math.max(oNum, cNum) && lNum <= Math.min(oNum, cNum) && hNum >= lNum) {
         // Jakarta (WIB) session date, never the naive UTC slice (a UTC bar at
         // >=17:00 belongs to the next WIB day). Same label policy as /api/candles.
-        candles.push({ close: Math.round(cNum * 100) / 100, open: Math.round(oNum * 100) / 100, high: Math.round(hNum * 100) / 100, low: Math.round(lNum * 100) / 100, volume: v || 0, time: t1Policy.formatJakartaDate(new Date(timestamps[i] * 1000)) });
+        candles.push({ close: cNum, open: oNum, high: hNum, low: lNum, volume: v != null && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null, time: t1Policy.formatJakartaDate(new Date(timestamps[i] * 1000)) });
       }
     }
-  }
-
-  // Anti-anomali & anti-split-error guard
-  if (ticker === 'BBCA') {
-    for (var bi = 0; bi < candles.length; bi++) {
-      if (candles[bi].close < 7500) {
-        candles[bi].open = Math.round(candles[bi].open * 2);
-        candles[bi].high = Math.round(candles[bi].high * 2);
-        candles[bi].low = Math.round(candles[bi].low * 2);
-        candles[bi].close = Math.round(candles[bi].close * 2);
-      }
-    }
-  }
-  if (ticker === 'IHSG') {
-    candles = candles.filter(function(c) { return c.close >= 6000; });
   }
 
   // Unify "last price" with /api/candles: drop today's still-open Jakarta bar
@@ -1089,14 +1050,17 @@ async function fetchYahooQuote(ticker) {
   var ma100 = calcMA(closePrices, 100);
   var ma200 = calcMA(closePrices, 200);
   var rsi14 = calcRSI(closePrices, 14);
-  var volumeAvg20 = calcMA(volumeArr, 20);
-  var volumeVsAvg20 = (volumeAvg20 && volumeAvg20 > 0) ? Math.round((latest.volume / volumeAvg20) * 100) / 100 : null;
+  var volumeAverage = function(n) {
+    return volumeArr.length >= n && volumeArr.slice(-n).every(function(v) { return v != null && Number.isFinite(v); }) ? calcMA(volumeArr, n) : null;
+  };
+  var volumeAvg20 = volumeAverage(20);
+  var volumeVsAvg20 = (latest.volume != null && volumeAvg20 > 0) ? Math.round((latest.volume / volumeAvg20) * 100) / 100 : null;
 
   // === VOLUME INTELLIGENCE (3D / 7D) ===
-  var volumeAvg3 = calcMA(volumeArr, 3);
-  var volumeAvg7 = calcMA(volumeArr, 7);
-  var volumeVsAvg3 = (volumeAvg3 && volumeAvg3 > 0) ? Math.round((latest.volume / volumeAvg3) * 100) / 100 : null;
-  var volumeVsAvg7 = (volumeAvg7 && volumeAvg7 > 0) ? Math.round((latest.volume / volumeAvg7) * 100) / 100 : null;
+  var volumeAvg3 = volumeAverage(3);
+  var volumeAvg7 = volumeAverage(7);
+  var volumeVsAvg3 = (latest.volume != null && volumeAvg3 > 0) ? Math.round((latest.volume / volumeAvg3) * 100) / 100 : null;
+  var volumeVsAvg7 = (latest.volume != null && volumeAvg7 > 0) ? Math.round((latest.volume / volumeAvg7) * 100) / 100 : null;
 
   // Previous close and price change
   var prevClose = candles.length >= 2 ? candles[candles.length - 2].close : null;
@@ -1120,6 +1084,7 @@ async function fetchYahooQuote(ticker) {
     ticker: ticker,
     symbol: ticker === 'IHSG' ? '^JKSE' : symbol,
     isIndex: ticker === 'IHSG',
+    provenance: latest.provenance || { source: 'yahoo_chart', trade_date: latest.time },
     latestBarDate: latest.time,
     last: lastPrice,
     open: latest.open,
@@ -1131,10 +1096,10 @@ async function fetchYahooQuote(ticker) {
     ma100: ma100,
     ma200: ma200,
     rsi14: rsi14,
-    volumeAvg20: volumeAvg20 ? Math.round(volumeAvg20) : null,
+    volumeAvg20: volumeAvg20 != null ? Math.round(volumeAvg20) : null,
     volumeVsAvg20: volumeVsAvg20,
-    volumeAvg3: volumeAvg3 ? Math.round(volumeAvg3) : null,
-    volumeAvg7: volumeAvg7 ? Math.round(volumeAvg7) : null,
+    volumeAvg3: volumeAvg3 != null ? Math.round(volumeAvg3) : null,
+    volumeAvg7: volumeAvg7 != null ? Math.round(volumeAvg7) : null,
     volumeVsAvg3: volumeVsAvg3,
     volumeVsAvg7: volumeVsAvg7,
     prevClose: prevClose,
@@ -3133,8 +3098,9 @@ function normalizeBoardSafe(board) {
  * Returns: 'spike', 'rising', 'falling', 'drying_up', 'normal'
  */
 function classifyVolumeTrend(volumeArr) {
-  if (!volumeArr || volumeArr.length < 7) return 'normal';
+  if (!volumeArr || volumeArr.length < 7) return null;
   var recent7 = volumeArr.slice(-7);
+  if (recent7.some(function(v) { return v == null || !Number.isFinite(v) || v < 0; })) return null;
   var recent3 = volumeArr.slice(-3);
   var avg7 = recent7.reduce(function(s, v) { return s + v; }, 0) / 7;
   var avg3 = recent3.reduce(function(s, v) { return s + v; }, 0) / 3;

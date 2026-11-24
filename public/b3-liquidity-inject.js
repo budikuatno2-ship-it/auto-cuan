@@ -15,8 +15,13 @@
       var job = QUEUE.shift();
       ACTIVE++;
       (function (j) {
-        fetch("/api/candles?ticker=" + encodeURIComponent(j.ticker))
-          .then(function (r) { return r.ok ? r.json() : null; })
+        var candleUrl = "/api/candles?ticker=" + encodeURIComponent(j.ticker);
+        var dedupe = root.__AUTOCUAN_CANDLE_DEDUPE__;
+        (dedupe ? dedupe.fetchCandlesOnce(candleUrl) : fetch(candleUrl))
+          .then(function (result) {
+            var r = result && result.response ? result.response : result;
+            return r.ok ? r.json() : null;
+          })
           .then(function (d) {
             var candles = (d && (d.candles || d.data || d.rows)) || [];
             var liq = computeLiquidity(candles);

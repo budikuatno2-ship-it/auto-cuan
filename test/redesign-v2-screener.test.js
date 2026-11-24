@@ -14,7 +14,9 @@ test('header carries the title, the mode text and the three-way mode switch', ()
   const start = html.indexOf('<div id="page-screener"');
   const page = html.slice(start, html.indexOf('<!-- ===== PAGE:', start + 10));
   assert.match(page, /class="page-content ac-page[^"]*" data-premium-page="true" data-ac-ui="v2"/);
-  assert.match(page, /<div class="segx n3 scr-modes" role="group" aria-label="Mode screener"><span class="ind" id="scrTypeInd"><\/span>/);
+  // TASK E: the legacy three-way mode switch is hidden from the UI but kept in
+  // source (ids, panes and switchScreenerType remain intact).
+  assert.match(page, /<div class="segx n3 scr-modes hidden" style="display:none !important" role="group" aria-label="Mode screener" data-task-e-legacy-mode-switch="hidden"><span class="ind" id="scrTypeInd"><\/span>/);
   ['scrTypeKonglo', 'scrTypeNonKonglo', 'scrTypeDayTrade', 'scrModeDesc', 'scrRrMin'].forEach((id) => assert.ok(page.includes('id="' + id + '"'), id));
   assert.doesNotMatch(page, />(Scanned|Failed|Last|Group|Plan View)</, 'labels are Indonesian');
   assert.match(html, /var SCREENER_MODE_DESC = \{/);

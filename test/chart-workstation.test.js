@@ -7,7 +7,7 @@ const Workstation = require('../public/chart-workstation.js');
 test('Chart Workstation - Layer Registry and Presets Contract', () => {
   assert.equal(typeof Workstation, 'object');
   assert.ok(Array.isArray(Workstation.LAYER_GROUPS));
-  assert.equal(Workstation.LAYER_GROUPS.length, 9, 'Must have exactly 9 layer groups');
+  assert.equal(Workstation.LAYER_GROUPS.length, 10, 'Nine legacy groups plus the V6 automatic detector family');
 
   const groupIds = Workstation.LAYER_GROUPS.map(g => g.id);
   assert.deepEqual(groupIds, [
@@ -18,9 +18,22 @@ test('Chart Workstation - Layer Registry and Presets Contract', () => {
     'volume',
     'fibonacci',
     'pola_klasik',
+    'auto_patterns',
     'osilator',
     'bandar_metrics'
   ]);
+
+  const automatic = Workstation.LAYER_GROUPS.find(g => g.id === 'auto_patterns');
+  assert.deepEqual(automatic.layers.map(l => l.id), [
+    'sr', 'fibonacci', 'candlestick', 'pivots', 'zigzag', 'trendlines',
+    'gaps', 'divergence', 'fvg', 'smc_structure', 'order_blocks',
+    'classical', 'harmonic', 'elliott'
+  ]);
+  const state = Workstation.createWorkstationState('simpel');
+  state.setAllLayers(true);
+  for (const layer of automatic.layers) assert.equal(state.isLayerActive(layer.id), true);
+  state.setAllLayers(false);
+  for (const layer of automatic.layers) assert.equal(state.isLayerActive(layer.id), false);
 
   // Presets
   const presets = Object.keys(Workstation.PRESETS);
@@ -50,8 +63,11 @@ test('Chart Workstation - State Management and Switching (<100ms)', () => {
   assert.ok(tDiff < 100, `Preset switch must be < 100ms (was ${tDiff.toFixed(2)}ms)`);
 
   assert.equal(state.activePreset, 'pro');
-  assert.ok(state.isLayerActive('ma200'));
-  assert.ok(state.isLayerActive('bandar_foreign'));
+  // FINAL POLISH: Pro is clean/readable; MA200 and non-price bandar curves are
+  // no longer default layers. They remain available in the drawer.
+  assert.ok(!state.isLayerActive('ma200'));
+  assert.ok(!state.isLayerActive('bandar_foreign'));
+  assert.ok(state.isLayerActive('rsi14') && state.isLayerActive('macd'));
 
   state.setAllLayers(false);
   assert.equal(state.getActiveLayerCount(), 0);

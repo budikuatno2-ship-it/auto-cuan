@@ -138,3 +138,29 @@ test('FIX-24: the diet is wired into the response paths, not just exported', () 
     'handleMarketStructureList must compact its payload before responding'
   );
 });
+
+test('FIX-24: compaction measurably shrinks the market-structure payload', () => {
+  const sectorHot = require('../api/sector-hot.js');
+  const diet = (sectorHot.__test && sectorHot.__test.applyCompactPayloadDiet) || sectorHot.applyCompactPayloadDiet;
+  assert.equal(typeof diet, 'function', 'applyCompactPayloadDiet must be exported');
+
+  // A realistic market-structure row: the investors array is the heavy field.
+  const rows = Array.from({ length: 50 }, (_, i) => ({
+    ticker: 'T' + i,
+    name: 'Ticker ' + i,
+    investors: Array.from({ length: 40 }, (_, j) => ({ investorName: 'Holder ' + j, percentage: j + 0.5 }))
+  }));
+  const payload = { success: true, count: rows.length, data: rows, rows: rows };
+
+  const before = JSON.stringify(payload).length;
+  const compacted = diet(payload, true);
+  const after = JSON.stringify(compacted).length;
+
+  assert.ok(after < before, 'compacted payload must be strictly smaller (' + after + ' vs ' + before + ')');
+  // The duplicate `rows` alias and the trimmed investors head are the savings.
+  assert.equal(compacted.rows, undefined, 'compacted payload must drop the duplicate rows alias');
+  assert.equal(compacted.data[0].investors.length, 10, 'investors must be trimmed to the disclosed head');
+  assert.equal(compacted.data[0].investors_count_total, 40, 'the original investor count must be disclosed');
+  // A meaningful reduction, not a rounding artefact.
+  assert.ok(after <= before * 0.5, 'compaction should at least halve the payload (' + after + ' vs ' + before + ')');
+});

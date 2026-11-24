@@ -30,12 +30,14 @@
  * ============================================================================
  */
 
+
 const fs = require('node:fs');
 const path = require('node:path');
 
 const contract = require('../lib/market-data-contract.js');
 const screenerConfig = require('../lib/screener-config.js');
 const readiness = require('../lib/readiness-engine.js');
+const canonicalScreener = require('../lib/canonical-screener-source.js');
 
 const { DATA_STATUS, pickNumber, pickText, isKnown } = contract;
 const { MIN_RR_RATIO, recalculateRiskReward } = screenerConfig;
@@ -376,19 +378,29 @@ function buildScreenerRow(raw, spec, backtestMap, origin) {
 function buildCategory(spec, backtestMap, today, now) {
   const filePath = path.join(DATA_DIR, spec.file);
   const relFile = 'data/' + spec.file;
-  const doc = readJsonSafe(filePath, null);
+  const canonicalMeta = canonicalScreener.getCanonicalScreenerMeta();
+  // FIX 5: the canonical 20 Nov regeneration is the single fresh source for
+  // the swing categories. The stale 3 Nov flat files are never published.
+  const useCanonical = canonicalMeta.status === 'OK' && canonicalMeta.verified &&
+    (spec.key === 'konglo' || spec.key === 'nonkonglo');
+  const canonicalRows = useCanonical ? canonicalScreener.getCanonicalScreenerRows() : [];
+  const doc = useCanonical
+    ? { trade_date: canonicalMeta.trade_date, results: canonicalRows }
+    : readJsonSafe(filePath, null);
 
   const base = {
     key: spec.key,
     label: spec.label,
-    source_file: relFile,
+    source_file: useCanonical ? canonicalScreener.SNAPSHOT_REL : relFile,
     source_rows: 0,
     published_rows: 0,
     rejected: [],
     radar_candidates: [],
     trade_date: null,
     data_status: DATA_STATUS.SOURCE_UNAVAILABLE,
-    status_reason: null
+    status_reason: null,
+    canonical_source: useCanonical ? canonicalMeta.data_source : null,
+    canonical_sha256: useCanonical ? canonicalMeta.sha256 : null
   };
 
   if (!doc || typeof doc !== 'object') {
@@ -399,7 +411,7 @@ function buildCategory(spec, backtestMap, today, now) {
   const tradeDate = pickText(doc.trade_date, doc.market_date, doc.run_date);
   base.trade_date = tradeDate;
   // The clock is injected into the readiness engine, never read inside it.
-  const origin = { file: relFile, tradeDate, today, now };
+  const origin = { file: useCanonical ? canonicalScreener.SNAPSHOT_REL : relFile, tradeDate, today, now };
 
   const rawResults = Array.isArray(doc.results) ? doc.results : [];
   const rawRadar = Array.isArray(doc.radar)
@@ -464,6 +476,7 @@ function buildScreenerPayload() {
 
   const today = wibDateString();
   const backtestMap = getBacktestMap();
+  const canonicalMeta = canonicalScreener.getCanonicalScreenerMeta();
 
   const perCategory = {};
   for (const spec of CATEGORY_SPECS) {
@@ -516,6 +529,14 @@ function buildScreenerPayload() {
     freshness_label: publishedCount === 0 ? null : (anyStale ? 'stale' : 'fresh'),
 
     data_status: payloadDataStatus,
+
+    canonical_screener: {
+      status: canonicalMeta.status,
+      data_source: canonicalMeta.data_source,
+      trade_date: canonicalMeta.trade_date,
+      sha256: canonicalMeta.sha256,
+      verified: canonicalMeta.verified
+    },
 
     konglo: kongloRows,
     nonkonglo: nkRows,

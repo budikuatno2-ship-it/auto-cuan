@@ -63,6 +63,19 @@ test('BUG-025: gate still blocks a short-text trigger (no regression)', () => {
 
 test('BUG-025: clean candidate still passes the gate (no over-blocking)', () => {
   const { candidatePassesPublicTelegramSafetyGate } = sectorHot.__test;
-  const candidate = baseCandidate({ plan_quality_note: 'Plan rapi, RR sehat, level tertata.' });
+  // M-P1e (2026-11-15): the gate routes through the readiness engine, which is
+  // fail-closed on missing evidence. Declare the evidence set the engine
+  // requires so the clean-candidate case exercises the no-over-blocking
+  // contract, not missing-fixture rejection.
+  const candidate = baseCandidate({
+    plan_quality_note: 'Plan rapi, RR sehat, level tertata.',
+    category: 'Day Trade',
+    trading_plan_valid: true,
+    plan_quality_status: 'VALID',
+    data_status: 'AVAILABLE',
+    volume_today: 1200,
+    avg_volume_20d: 1000,
+    liquidity_idr: 500000000
+  });
   assert.equal(candidatePassesPublicTelegramSafetyGate(candidate, 'daytrade'), true);
 });

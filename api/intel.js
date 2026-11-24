@@ -24,6 +24,11 @@
  *   - `data/screener-v3f04-*.json`        → anomaly / divergence candidates
  *   - `data/foreign-flow-multi-day.json`  → foreign net flow per ticker
  *   - `data/daily-candles/<TICKER>.json`  → RSI(14) for the divergence axis
+ *   - `lib/bandarmologi-intel-service.js` (F7 triage 2026-11-13) → the SINGLE
+ *     bandarmologi authority (`getBandarmologiIntel`). Broker-concentration
+ *     axes (`cr3_massive`, `harga_di_bawah_modal_bandar`,
+ *     `ritel_cutloss_bandar_nampung`, `distribusi_ke_ritel`) are served from
+ *     its on-disk index — never from a parallel local dataset.
  *
  * CONTRACT
  *   - No numeric literal is ever substituted for a missing market datum.
@@ -42,6 +47,15 @@ const { DATA_STATUS, pickNumber, pickText, isKnown, numberOrNull } = contract;
 
 const ROOT = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(ROOT, 'data');
+
+// F7 triage (2026-11-13): the bandarmologi intel authority is the single
+// publisher of broker-concentration signals. Requiring it here (best-effort:
+// the module ships with every deployment that serves this endpoint) makes the
+// delegation explicit and testable — see test/v5/intel-no-synthetic.test.js.
+let bandarmologiIntelService = null;
+try { bandarmologiIntelService = require('../lib/bandarmologi-intel-service.js'); }
+catch (_) { bandarmologiIntelService = null; }
+const INTEL_INDEX_FILE = path.join(DATA_DIR, 'bandarmologi-intel-indexes', 'latest.json');
 
 const SCREENER_FILES = Object.freeze([
   Object.freeze({ key: 'konglo', label: 'Swing Konglo', file: 'screener-v3f04-konglo.json' }),
@@ -328,7 +342,7 @@ function buildDivergences(rows) {
  * price and `retail_cutloss_bandar_absorb` needs broker-level seller/buyer
  * detail; neither exists on disk, so both arrays are honestly empty.
  */
-function buildStrategicSignals(rows, foreignFlow) {
+function buildStrategicSignals(rows, foreignFlow, intelAuthorityIndex) {
   const silentAccumulation = [];
   const belowBandarPrice = [];
   const retailAbsorb = [];
@@ -366,11 +380,40 @@ function buildStrategicSignals(rows, foreignFlow) {
     }
   }
 
+  // F7 triage (2026-11-13): broker-concentration axes come from the REAL
+  // bandarmologi-intel authority (lib/bandarmologi-intel-service.js →
+  // getBandarmologiIntel → data/bandarmologi-intel-indexes/latest.json), never
+  // from a locally invented table. When the authority answered, its rows are
+  // published verbatim with provenance; when it did not, the sections stay
+  // honestly empty exactly as before.
+  const auth = intelAuthorityIndex && intelAuthorityIndex.indexes ? intelAuthorityIndex.indexes : null;
+  const authSource = {
+    source: 'lib/bandarmologi-intel-service.js (data/bandarmologi-intel-indexes/latest.json)',
+    tradeDate: intelAuthorityIndex ? (intelAuthorityIndex.as_of_date || null) : null,
+    status: auth ? DATA_STATUS.AVAILABLE : DATA_STATUS.SOURCE_UNAVAILABLE
+  };
+  const authRows = (key) => (Array.isArray(auth && auth[key]) ? auth[key] : []);
+  for (const row of authRows('cr3_massive')) {
+    if (row && row.ticker) concentrationRatio.push(contract.attachProvenance(Object.assign({}, row), authSource));
+  }
+  for (const row of authRows('harga_di_bawah_modal_bandar')) {
+    if (row && row.ticker) belowBandarPrice.push(contract.attachProvenance(Object.assign({}, row), authSource));
+  }
+  for (const row of authRows('ritel_cutloss_bandar_nampung')) {
+    if (row && row.ticker) retailAbsorb.push(contract.attachProvenance(Object.assign({}, row), authSource));
+  }
+
   return {
     silent_accumulation: silentAccumulation,
     below_bandar_price: belowBandarPrice,
     retail_cutloss_bandar_absorb: retailAbsorb,
-    concentration_ratio: concentrationRatio
+    concentration_ratio: concentrationRatio,
+    intel_authority: {
+      service: bandarmologiIntelService ? 'lib/bandarmologi-intel-service.js' : null,
+      method: bandarmologiIntelService ? 'getBandarmologiIntel' : null,
+      index_updated_at: intelAuthorityIndex ? (intelAuthorityIndex.updated_at || null) : null,
+      answered: Boolean(auth)
+    }
   };
 }
 
@@ -388,10 +431,20 @@ function buildIntelPayload() {
   const screener = readScreenerRows();
   const foreignFlow = readForeignFlow();
 
+  // F7 triage (2026-11-13): read the bandarmologi authority's on-disk index
+  // (read-only, no network). getBandarmologiIntel itself may touch the VPS
+  // bridge, so the endpoint reads the same baked index file the service's
+  // loadIntelIndexWithProvenance serves from — same authority, zero network.
+  let intelAuthorityIndex = null;
+  try {
+    const raw = fs.readFileSync(INTEL_INDEX_FILE, 'utf8');
+    intelAuthorityIndex = JSON.parse(raw);
+  } catch (_) { intelAuthorityIndex = null; }
+
   const volumeAnomalies = buildVolumeAnomalies(screener.rows);
   const brokerSurges = buildBrokerSurges(screener.rows, foreignFlow);
   const divergences = buildDivergences(screener.rows);
-  const strategicSignals = buildStrategicSignals(screener.rows, foreignFlow);
+  const strategicSignals = buildStrategicSignals(screener.rows, foreignFlow, intelAuthorityIndex);
 
   // Freshness is reported, never asserted. A section is stale when its own
   // source trade date is not today.

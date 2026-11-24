@@ -10,7 +10,8 @@
  * the 962-stock pass.
  *
  * This tool:
- *   - fetches the IHSG daily candle from Arjum (1 request),
+ *   - fetches the IHSG daily candle from Yahoo ^JKSE (0 Arjum quota) first;
+ *     Arjum is ONLY a fallback when CANDLE_ALLOW_ARJUM_FALLBACK=1 (opt-in),
  *   - writes/merges data/daily-candles/IHSG.json,
  *   - reports whether the bar for the target trading date exists,
  *   - raises an alert (Admin Console + Telegram) when the bar for TODAY is
@@ -84,12 +85,21 @@ async function run(options = {}) {
   let fetched = false;
   let fetchError = null;
   if (!before) {
-    const res = await fetcher.fetchDailyCandles('IHSG', {
-      limit: Number(process.env.CANDLE_LIMIT) || 500,
-      force: true
-    });
-    fetched = Boolean(res && res.ok);
-    if (!fetched) fetchError = (res && res.error) || 'fetch_failed';
+    // V6 AUDIT FIX: prefer the zero-quota Yahoo ^JKSE benchmark first. Arjum is
+    // only a fallback when explicitly allowed (CANDLE_ALLOW_ARJUM_FALLBACK=1),
+    // because the Arjum index history endpoint stalled at 2026-11-04.
+    const yahooRes = await fetcher.fetchDailyCandlesYahoo('IHSG', { range: '5d', retries: 2 });
+    fetched = Boolean(yahooRes && yahooRes.ok);
+    if (!fetched && process.env.CANDLE_ALLOW_ARJUM_FALLBACK === '1') {
+      const arjumRes = await fetcher.fetchDailyCandles('IHSG', {
+        limit: Number(process.env.CANDLE_LIMIT) || 500,
+        force: true
+      });
+      fetched = Boolean(arjumRes && arjumRes.ok);
+      if (!fetched) fetchError = (arjumRes && arjumRes.error) || 'fetch_failed';
+    } else if (!fetched) {
+      fetchError = (yahooRes && yahooRes.error) || 'yahoo_fetch_failed';
+    }
   }
 
   const hasBar = hasBarForDate('IHSG', targetDate);

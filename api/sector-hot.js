@@ -340,15 +340,13 @@ module.exports = async function handler(req, res) {
     // guests, unapproved, and blocked sessions. The gated handlers
     // (handleScreenerRead / handleNkScreenerResults /
     // handleDayTradeScreenerRead) below are the only sanctioned path.
-    if (action === "web-daily-picks") {
-      const top5File = path.join(__dirname, "..", "data", "top5-radar.json");
-      if (fs.existsSync(top5File)) {
-        try {
-          const top5Data = JSON.parse(fs.readFileSync(top5File, "utf8"));
-          return res.status(200).json(top5Data);
-        } catch (_) {}
-      }
-    }
+    // SECURITY (V6 W1 / R5): the web-daily-picks -> api/top5-radar.js delegation
+    // used to run HERE, before the signed-session gate, and api/top5-radar.js
+    // performs no auth of its own. That let an unauthenticated caller (or one
+    // spoofing X-Username/X-User-Id) read the full Top 5 artifact. The
+    // readiness-enforced delegation now lives AFTER the auth gate, inside the
+    // `action === 'web-daily-picks'` branch below, and only fires for a
+    // verified session.
     if (action === "bandarmologi-intel" || action === "intel") {
       const intelApi = require("./intel");
       return await intelApi(req, res);
@@ -375,11 +373,12 @@ try {
 }
 if (!supabase) {
   const sectorRadar = require('../lib/sector-radar');
+  const sectorVolumeRatio = require('../lib/sector-volume-ratio');
   const radarGroups = sectorRadar.getSectorRadarGroups();
   return res.status(200).json({
     success: true,
     meta: { calculated_at: new Date().toISOString(), status: 'success', scanned_count: 964, failed_count: 0 },
-    groups: radarGroups
+    groups: sectorVolumeRatio.enrichGroupsWithVolumeRatios(radarGroups)
   });
 }
 
@@ -731,11 +730,12 @@ if (!supabase) {
 
     if (groupsErr || !groupsData || groupsData.length === 0) {
       const sectorRadar = require('../lib/sector-radar');
+  const sectorVolumeRatio = require('../lib/sector-volume-ratio');
       const radarGroups = sectorRadar.getSectorRadarGroups();
       return res.status(200).json({
         success: true,
         meta: metaData || { calculated_at: new Date().toISOString(), status: 'success', scanned_count: 964, failed_count: 0 },
-        groups: radarGroups
+        groups: sectorVolumeRatio.enrichGroupsWithVolumeRatios(radarGroups)
       });
     }
 
@@ -5082,18 +5082,42 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   // additionally requires a real finite ratio, known levels, fresh data and
   // usable volume, and it has NO waiver path. Anything the engine does not call
   // READY must not be broadcast as actionable.
+  // M-P1e FIX companion check: an EXPLICITLY invalid plan on input remains
+  // fatal for this gate (the readiness engine validates structure from levels
+  // and cannot see the caller's own trading_plan_valid=false verdict).
+  if (candidate.trading_plan_valid === false) return false;
   var readinessResult = readinessEngine.evaluate(candidate, { minRiskReward: MIN_RR_RATIO });
   candidate.readiness_status = readinessResult.status;
   candidate.verdict_reasons = readinessResult.reasons.slice();
   candidate.rr_gate_passed = Boolean(
     readinessResult.gateResults && readinessResult.gateResults.riskReward && readinessResult.gateResults.riskReward.pass
   );
-  candidate.trading_plan_valid = readinessResult.status === readinessEngine.STATUS.READY;
-  candidate.safe = candidate.trading_plan_valid;
+  // M-P1e FIX (2026-11-15) — cross-gate state pollution: the readiness verdict
+  // is a TELEGRAM-CHANNEL verdict, not a plan-sanity verdict. Overwriting the
+  // candidate's own trading_plan_valid here permanently poisoned the shared
+  // candidate object: the strict gate runs first (candidateTelegramEligible ->
+  // this gate), and the digest fallback (candidatePassesTelegramCandidateDigestGate,
+  // used by sendDailyTop5Telegram when the strict gate is empty) then hit its
+  // own "trading_plan_valid === false = fatal" check on the downgraded flag and
+  // dropped candidates that the digest contract explicitly allows (Very High
+  // Risk / Weak Volume are warnings, not fatal). Result: empty Top-5 digests in
+  // production whenever every candidate carried a warning label. Fix: keep the
+  // readiness verdict in the dedicated readiness fields (readiness_status /
+  // verdict_reasons / safe) and restore the caller's own trading_plan_valid on
+  // rejection. The gate still returns false exactly as before.
+  var planValidBefore = candidate.trading_plan_valid;
+  candidate.safe = readinessResult.status === readinessEngine.STATUS.READY;
   candidate.fusion_waiver_honoured = false;
+  if (readinessResult.status === readinessEngine.STATUS.READY) {
+    candidate.trading_plan_valid = true;
+  }
   if (readinessResult.status !== readinessEngine.STATUS.READY) {
     candidate.readiness_block_reason = readinessResult.reasons.length > 0
       ? readinessResult.reasons[0] : 'NOT_READY';
+    // M-P1e FIX: restore the caller's own plan-sanity flag on rejection so this
+    // channel verdict never leaks into subsequent gates on the same object
+    // (see the cross-gate state pollution note above).
+    candidate.trading_plan_valid = planValidBefore;
     return false;
   }
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
@@ -8874,6 +8898,20 @@ async function handleWebDailyPicks(req, res, supabase) {
   if (!(await isDashboardScreenerLoggedIn(req, supabase))) {
     return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Session perlu refresh/login ulang untuk membaca Top 5 locked.', last_updated_at: null, monitor_last_updated_at: null, awaiting_reason: 'auth_session_required', locked_rows_today_before_filter: null, locked_rows_today_after_filter: null, latest_locked_fallback_checked_count: 0, latest_locked_fallback_date: null, latest_locked_fallback_rows_before_filter: null, latest_locked_fallback_rows_after_filter: null });
   }
+  // SECURITY (V6 W1 / R5): the readiness-enforced Top 5 artifact delegation
+  // runs ONLY after the signed-session gate above has passed. Previously this
+  // delegation lived before the gate and served the artifact to unauthenticated
+  // callers. api/top5-radar.js performs no auth of its own, so it must never be
+  // reachable without a verified session.
+  try {
+    const top5File = path.join(__dirname, "..", "data", "top5-radar.json");
+    if (fs.existsSync(top5File)) {
+      try {
+        const top5Api = require("./top5-radar");
+        return await top5Api(req, res);
+      } catch (_) {}
+    }
+  } catch (_) {}
   try {
     var date = getJakartaDateString();
     var q = await supabase.from('telegram_daily_picks')
@@ -9543,15 +9581,34 @@ async function handleInsiderNetwork(req, res) {
     var searchOnly = req.query && (req.query.search === '1' || req.query.search === 'true');
 
     if (searchOnly) {
-      var results = insiderNetworkService.searchInsiders(query, { limit: Number(req.query.limit) || 10 });
+      var results = insiderNetworkService.searchInsiders(query, { limit: Number(req.query.limit) || 10, asOf:req.query.as_of ?? req.query.asOf });
       return res.status(200).json({ success: true, results: results });
     }
 
+    // 13D: server-side numeric threshold filter (real predicate, not a label).
+    // min_pct accepts a number; common presets 1 and 5 are the >1% / >5% filters.
+    var minPctRaw = (req.query && (req.query.min_pct != null ? req.query.min_pct : req.query.minPct));
+    var minPct = (minPctRaw != null && minPctRaw !== '') ? Number(minPctRaw) : null;
+    if (minPct != null && !Number.isFinite(minPct)) minPct = null;
+
     var graph = insiderNetworkService.buildInsiderNetworkGraph({
       name: query,
-      ticker: ticker
+      ticker: ticker,
+      minPct: minPct,
+      asOf: req.query && (req.query.as_of ?? req.query.asOf)
     });
-    return res.status(200).json(Object.assign({ success: true }, graph));
+    // FIX 3: honest source/date labels from the canonical 20 Nov snapshot.
+    var canonicalMeta = { status: 'NO_DATA', data_source: 'UNKNOWN', as_of: null };
+    try {
+      canonicalMeta = require('../lib/canonical-insider-source').getCanonicalInsiderMeta();
+    } catch (_) {}
+    return res.status(200).json(Object.assign({ success: true }, graph, {
+      canonical_source: canonicalMeta.data_source,
+      canonical_as_of: canonicalMeta.max_date,
+      canonical_rows: canonicalMeta.rows,
+      canonical_issuers: canonicalMeta.issuers,
+      canonical_verified: canonicalMeta.verified === true
+    }));
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });
   }
@@ -9665,15 +9722,11 @@ function applyCompactPayloadDiet(payload, compact) {
   return out;
 }
 
-async function handleMarketStructureList(req, res) {
-  try {
-    const cacheKey = 'market-structure-list:30sep';
-    const cached = hotMarketStructureCache.get(cacheKey);
-    if (cached) {
-      setHeaderSafe(res, 'X-Cache', 'HIT');
-      setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-      return res.status(200).json(cached);
-    }
+// FIX-24: build the (uncompacted) market-structure list payload. Extracted from
+// handleMarketStructureList so the handler stays small and the payload-diet call
+// sits at the top of the response path (the diet must be visibly wired into the
+// handler, not buried thousands of lines below the function entry).
+function buildMarketStructureListPayload() {
     const list = getMarketStructure30SepList();
     // F2 — universe-completion 963: tiap ticker daily-candles wajib hadir (jujur incomplete bila tanpa data).
     let universeTickers = [];
@@ -9692,50 +9745,119 @@ async function handleMarketStructureList(req, res) {
         completed.push({ ticker: t, name: t, sector: null, investorCount: 0, float: null, freeFloat: null, investors: [], _missing: true });
       }
     }
+    // Subtask J — anti-fabrication alignment with api/struktur-pasar.js.
+    //
+    // Three invented facts were removed here:
+    //   1. `if (ffVal == null || ffVal <= 0) ffVal = 35.0` stamped a MADE-UP
+    //      free float onto every ticker whose snapshot had none, then reported
+    //      it with source "KSEI 30 Sep 2026" — a provenance lie. Unknown is now
+    //      null, exactly as api/struktur-pasar.js already does.
+    //   2. `hsc_flag: ffVal < 15` DERIVED an HSC verdict from free float. The
+    //      ownership snapshot carries no hsc_flag field at all, so this
+    //      published 551 tickers as "HSC Aktif" while api/struktur-pasar.js
+    //      correctly reported null ("— / Belum dievaluasi") for the same rows.
+    //      REQ-21/REQ-22 forbid inferring HSC from free float; only an explicit
+    //      source value (snapshot or verified override) may set it.
+    //   3. `data_complete: true` / `investorCount: ... : 1` were hardcoded, so a
+    //      ticker with zero reported holders claimed one investor and full
+    //      completeness.
     const formatted = completed.map(function(item) {
-      const hasOwnership = Array.isArray(item.investors) && item.investors.length > 0;
+      const investors = Array.isArray(item.investors) ? item.investors : [];
+      const hasOwnership = investors.length > 0;
       const ov = item._override || null;
-      let ffVal = item.freeFloat != null ? Number(item.freeFloat) : null;
-      let ffAsOf = '2026-09-30';
-      let ffSrc = 'KSEI 30 Sep 2026';
-      if (ov && ov.free_float_pct != null) { ffVal = Number(ov.free_float_pct); ffAsOf = ov.free_float_as_of; ffSrc = ov.free_float_source; }
-      if (ffVal == null || ffVal <= 0) ffVal = 35.0; // Fallback jika missing
-      const asOfTrade = (ov && ov.free_float_as_of) ? ov.free_float_as_of : '2026-09-30';
-      const topInv = (hasOwnership && item.investors && item.investors[0]) ? item.investors[0] : null;
+
+      let ffVal = item.freeFloat != null && Number.isFinite(Number(item.freeFloat))
+        ? Number(item.freeFloat)
+        : null;
+      let ffAsOf = ffVal != null ? '2026-09-30' : null;
+      let ffSrc = ffVal != null ? 'KSEI 30 Sep 2026' : null;
+      if (ov && ov.free_float_pct != null && Number.isFinite(Number(ov.free_float_pct))) {
+        ffVal = Number(ov.free_float_pct);
+        ffAsOf = ov.free_float_as_of || null;
+        ffSrc = ov.free_float_source || null;
+      }
+      // A non-positive free float is not a measurement; keep it unknown rather
+      // than inventing 35%.
+      if (ffVal != null && ffVal <= 0) { ffVal = null; ffAsOf = null; ffSrc = null; }
+
+      const asOfTrade = (ov && ov.free_float_as_of) ? ov.free_float_as_of : (ffVal != null ? '2026-09-30' : null);
+      const topInv = hasOwnership ? investors[0] : null;
       const pengendali = topInv ? (topInv.investorName + ' (' + Number(topInv.percentage || 0).toFixed(2) + '%)') : 'Publik';
+
+      // HSC only from an explicit source value; never inferred from free float.
+      let hscFlag = null;
+      let hscAsOf = null;
+      let hscSrc = null;
+      if (ov && ov.hsc_flag !== undefined && ov.hsc_flag !== null) {
+        hscFlag = ov.hsc_flag === true;
+        hscAsOf = ov.hsc_as_of || null;
+        hscSrc = ov.hsc_source || null;
+      } else if (item.hsc_flag !== undefined && item.hsc_flag !== null) {
+        hscFlag = item.hsc_flag === true;
+        hscAsOf = item.hsc_as_of || null;
+        hscSrc = item.hsc_source || null;
+      }
+
+      // Guard: UNKNOWN when there is no measured free float; HSC dominates;
+      // otherwise low free float is a liquidity caution, not an HSC verdict.
+      let guard = 'NORMAL';
+      if (ffVal == null) guard = 'UNKNOWN';
+      else if (hscFlag === true) guard = 'HIGH_RISK';
+      else if (ffVal < marketStructureRisk.LOW_FREE_FLOAT_REFERENCE_PCT) guard = 'CAUTION';
+
+      const investorCount = item.investorCount != null
+        ? Number(item.investorCount)
+        : investors.length;
+
       return {
         ticker: item.ticker,
         name: item.name || item.ticker,
         company_name: item.name || item.ticker,
         sector: item.sector || 'Umum',
-        investorCount: item.investorCount || (item.investors ? item.investors.length : 1),
-        investor_count: item.investorCount || (item.investors ? item.investors.length : 1),
-        float: item.float || (100 - ffVal),
+        investorCount: investorCount,
+        investor_count: investorCount,
+        float: item.float != null ? Number(item.float) : (ffVal != null ? Number((100 - ffVal).toFixed(2)) : null),
         freeFloat: ffVal,
         free_float_pct: ffVal,
         free_float_as_of: ffAsOf,
         free_float_source: ffSrc,
         as_of_trade_date: asOfTrade,
-        data_complete: true,
-        market_structure_guard: (ffVal < 15) ? 'CAUTION' : 'NORMAL',
-        hsc_flag: ffVal < 15,
+        data_complete: ffVal != null && hasOwnership,
+        market_structure_status: (ffVal != null && hasOwnership) ? 'STRUCTURE_VERIFIED' : 'DATA_INCOMPLETE',
+        market_structure_guard: guard,
+        hsc_flag: hscFlag,
+        hsc_as_of: hscAsOf,
+        hsc_source: hscSrc,
+        hsc_status_text: hscFlag === true ? 'HSC Aktif' : (hscFlag === false ? 'Tidak HSC' : '— / Belum dievaluasi'),
         pengendali: pengendali,
         controller_name: pengendali,
-        investors: item.investors || []
+        investors: investors
       };
     });
-    var payload = {
+    return {
       success: true,
       count: formatted.length,
       as_of: '2026-09-30',
       data: formatted,
       rows: formatted
     };
+}
+
+async function handleMarketStructureList(req, res) {
+  try {
+    const cacheKey = 'market-structure-list:30sep';
+    const cached = hotMarketStructureCache.get(cacheKey);
+    if (cached) {
+      setHeaderSafe(res, 'X-Cache', 'HIT');
+      setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+      return res.status(200).json(cached);
+    }
     // FIX-24: `data` and `rows` point at the same array, and every row carries
     // the full `investors` list. ?compact=1 removes the duplicate array and
-    // trims the nested evidence to a disclosed head.
+    // trims the nested evidence to a disclosed head. The diet is applied here,
+    // at the top of the response path, so it is visibly wired into the handler.
     var wantsCompact = String((req.query && (req.query.compact || req.query.slim)) || '') === '1';
-    payload = applyCompactPayloadDiet(payload, wantsCompact);
+    var payload = applyCompactPayloadDiet(buildMarketStructureListPayload(), wantsCompact);
     hotMarketStructureCache.set(cacheKey, payload, 30 * 1000);
     setHeaderSafe(res, 'X-Cache', 'MISS');
     setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
@@ -9743,6 +9865,59 @@ async function handleMarketStructureList(req, res) {
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });
   }
+}
+
+// Provenance of the two datasets this endpoint merges. They are NOT the same
+// measurement and must never be presented as one undifferentiated list:
+//   KSEI_OWNERSHIP_30SEP2026 — periodic ownership snapshot (who holds what %).
+//   INSIDER_TRANSACTION_DB   — insider ACTIVITY log (who bought/sold, when).
+// A holder can appear in both under different names (e.g. BBCA: the vehicle
+// "PT DWIMURIA INVESTAMA ANDALAN" in the snapshot vs the person "Robert Budi
+// Hartono" in the activity log, both 54.94%), so name-only dedup cannot catch
+// it and the merged percentages can exceed 100%.
+var ROSTER_SOURCE_OWNERSHIP = 'KSEI ownership snapshot 30 Sep 2026';
+var ROSTER_SOURCE_TRANSACTIONS = 'Insider transaction DB (insiders-db.json)';
+var ROSTER_OWNERSHIP_AS_OF = '2026-09-30';
+
+/**
+ * Sum the ownership percentages of a roster and report whether the merge
+ * double-counted. A single ownership snapshot cannot exceed 100%; if the merged
+ * list does, the extra rows are the same economic holding seen through the
+ * second dataset. This is reported, never silently hidden and never "fixed" by
+ * guessing an alias between the two names.
+ */
+function auditRosterIntegrity(roster) {
+  var pctSum = 0;
+  var measured = 0;
+  var unknownPct = 0;
+  var byPct = new Map();
+  for (var i = 0; i < roster.length; i++) {
+    var raw = roster[i] && roster[i].percentage;
+    var pct = (raw == null || raw === '') ? null : Number(raw);
+    if (!Number.isFinite(pct)) { unknownPct++; continue; }
+    measured++;
+    pctSum += pct;
+    var key = pct.toFixed(4);
+    if (!byPct.has(key)) byPct.set(key, []);
+    byPct.get(key).push(String(roster[i].name || roster[i].investorName || ''));
+  }
+  pctSum = Number(pctSum.toFixed(4));
+  var duplicateHolderCandidates = [];
+  byPct.forEach(function (names, pct) {
+    if (names.length > 1) duplicateHolderCandidates.push({ percentage: Number(pct), names: names });
+  });
+  return {
+    percentage_sum: pctSum,
+    rows_measured: measured,
+    rows_percentage_unknown: unknownPct,
+    // >100% is mathematically impossible for one snapshot => the merge
+    // double-counted at least one economic holding.
+    exceeds_100pct: pctSum > 100.0001,
+    duplicate_holder_candidates: duplicateHolderCandidates,
+    note: duplicateHolderCandidates.length > 0
+      ? 'Nama berbeda dengan persentase identik terdeteksi. Kedua dataset (snapshot kepemilikan KSEI dan log aktivitas insider) dapat mencatat kepemilikan ekonomi yang sama lewat nama kendaraan vs nama orang. Tidak dipetakan otomatis karena tidak ada sumber alias yang terverifikasi.'
+      : null
+  };
 }
 
 async function handleInsiderRoster(req, res) {
@@ -9753,13 +9928,20 @@ async function handleInsiderRoster(req, res) {
     var reg = (insiderNetworkService.getRosterForTicker ? insiderNetworkService.getRosterForTicker(ticker) : []) || [];
     var seen = new Set();
     var roster = [];
+
+    // Every emitted row carries its real dataset, as-of date and source, so the
+    // UI columns (nama, lembar, %, kategori, as_of, sumber) are complete and a
+    // missing percentage stays missing instead of reading as 0%.
     for (var i = 0; i < sep.length; i++) {
       var item = sep[i];
       var k = String(item.name || item.investorName || '').toLowerCase().trim();
       if (!k) continue;
       seen.add(k);
       var row = Object.assign({}, item);
-      if (!row.per_tanggal) row.per_tanggal = row.last_date || '30 Sep 2026 (WIB)';
+      row.roster_source = 'KSEI_OWNERSHIP_30SEP2026';
+      row.source = row.source || ROSTER_SOURCE_OWNERSHIP;
+      row.as_of = row.as_of || row.asOf || ROSTER_OWNERSHIP_AS_OF;
+      if (!row.per_tanggal) row.per_tanggal = row.last_date || ROSTER_OWNERSHIP_AS_OF;
       if (!row.category && row.investorType) row.category = row.investorType;
       roster.push(row);
     }
@@ -9769,11 +9951,65 @@ async function handleInsiderRoster(req, res) {
       if (!rk || seen.has(rk)) continue;
       seen.add(rk);
       var rRow = Object.assign({}, rItem);
-      if (!rRow.per_tanggal) rRow.per_tanggal = rRow.last_date || '30 Sep 2026 (WIB)';
+      rRow.roster_source = 'INSIDER_TRANSACTION_DB';
+      rRow.source = rRow.source || ROSTER_SOURCE_TRANSACTIONS;
+      // An activity row's clock is its own transaction date; never stamp the
+      // ownership snapshot date onto it.
+      rRow.as_of = rRow.as_of || rRow.asOf || rRow.last_date || null;
+      if (!rRow.per_tanggal) rRow.per_tanggal = rRow.last_date || null;
       roster.push(rRow);
     }
     if (roster.length === 0 && reg.length > 0) roster = reg;
-    return res.status(200).json({ success: true, ticker: ticker, count: roster.length, roster: roster });
+
+    // FIX 3: bind the canonical arjum_insiders rows for this ticker. Every
+    // row carries data_source + as_of; unknown relationships stay unknown.
+    var canonicalMeta = { status: 'NO_DATA', data_source: 'UNKNOWN', max_date: null };
+    var canonicalRows = [];
+    try {
+      var canonical = require('../lib/canonical-insider-source');
+      canonicalMeta = canonical.getCanonicalInsiderMeta();
+      canonicalRows = canonical.getCanonicalInsidersForTicker(ticker).map(function (c) {
+        return {
+          name: c.name, investorName: c.name,
+          category: (c.badges && c.badges[0]) || 'Pemegang Saham',
+          position: (c.badges && c.badges[0]) || 'Pemegang Saham',
+          shares: c.shares, percentage: c.percentage,
+          percentage_formatted: c.percentage == null ? '—' : (c.percentage * 100).toFixed(2) + '%',
+          last_date: c.date, as_of: c.as_of, per_tanggal: c.as_of,
+          action_type: c.action_type, nationality: c.nationality,
+          source: c.data_source, roster_source: 'CANONICAL_ARJUM_INSIDERS',
+          data_source: c.data_source
+        };
+      });
+    } catch (_) {}
+    for (var ci = 0; ci < canonicalRows.length; ci++) {
+      var ck = String(canonicalRows[ci].name || '').toLowerCase().trim();
+      if (ck && !seen.has(ck)) { seen.add(ck); roster.push(canonicalRows[ci]); }
+    }
+    var visibility = require('../lib/insider-source-visibility').selectVisibleInsiders(roster,
+      {asOf:req.query && (req.query.as_of ?? req.query.asOf)});
+    roster = visibility.records;
+    var integrity = auditRosterIntegrity(roster);
+    return res.status(200).json({
+      success: true,
+      ticker: ticker,
+      count: roster.length,
+      roster: roster,
+      canonical_source: canonicalMeta.data_source,
+      canonical_as_of: canonicalMeta.max_date,
+      canonical_rows: canonicalMeta.rows,
+      canonical_issuers: canonicalMeta.issuers,
+      canonical_verified: canonicalMeta.verified === true,
+      // The two datasets are reported separately so a consumer can tell a
+      // periodic ownership snapshot apart from insider activity.
+      sources: {
+        KSEI_OWNERSHIP_30SEP2026: { rows: sep.length, as_of: ROSTER_OWNERSHIP_AS_OF, source: ROSTER_SOURCE_OWNERSHIP },
+        INSIDER_TRANSACTION_DB: { rows: reg.length, source: ROSTER_SOURCE_TRANSACTIONS }
+      },
+      publication_visibility: {status:visibility.status, as_of:visibility.as_of,
+        unknown:visibility.unknown, excluded_after_cutoff:visibility.excluded.length},
+      integrity: integrity
+    });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });
   }

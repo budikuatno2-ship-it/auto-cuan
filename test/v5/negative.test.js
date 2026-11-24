@@ -103,6 +103,23 @@ function sourceTickerSet() {
       if (row && row.ticker) set.add(String(row.ticker).toUpperCase());
     }
   }
+  // CANONICAL SOURCE UPDATE (F7 triage, 2026-11-13): Top5's producer moved from
+  // the legacy v3f04 category files to the canonical Short Swing pipeline —
+  // data/screener-latest.json `short_swing` (producer_meta.pool ===
+  // 'short_swing', categories_meta['short-swing'].source_file). The traceability
+  // set must follow the producer's actual declared source, otherwise N18 would
+  // flag genuinely-derived rows (e.g. SP-2026-11-11 snapshot picks) as
+  // "no source provenance" purely because the legacy files moved. Every row
+  // served by api/top5-radar.js must still trace to a real source row — the
+  // invariant itself is unchanged.
+  try {
+    const latest = H.loadJson('data/screener-latest.json');
+    if (latest.ok && Array.isArray(latest.data && latest.data.short_swing)) {
+      for (const row of latest.data.short_swing) {
+        if (row && row.ticker) set.add(String(row.ticker).toUpperCase());
+      }
+    }
+  } catch (_) { /* legacy layout: v3f04 files remain the only sources */ }
   return set;
 }
 
@@ -1460,14 +1477,18 @@ const N21 = {
     if (!src.ok) throw new SkipControl('public/market-feature-runtime.js unreadable');
     const lines = src.lines;
 
+    // Target the chart series creation (addLineSeries/addHistogramSeries with
+    // title 'Foreign Flow'), not the helper `calculateForeignFlowCumulative` call
+    // that lives in a data-building block 300+ lines earlier.
     let foreignIndex = -1;
     for (let i = 0; i < lines.length; i += 1) {
-      if (/calculateForeignFlowCumulative\(/.test(lines[i]) && !lines[i].trim().startsWith('//')) { foreignIndex = i; break; }
+      if (/addLineSeries\(/.test(lines[i]) && /title:\s*'Foreign Flow'/.test(lines[i]) && !lines[i].trim().startsWith('//')) { foreignIndex = i; break; }
     }
-    if (foreignIndex < 0) throw new SkipControl('no foreign-flow series created in this module');
+    if (foreignIndex < 0) throw new SkipControl('no foreign-flow chart series created in this module');
 
-    const block = lines.slice(foreignIndex, foreignIndex + 40).join('\n');
-    const scaleMatch = /priceScaleId:\s*'([^']+)'/.exec(block);
+    // The series line itself carries priceScaleId when properly isolated.
+    const seriesLine = lines[foreignIndex];
+    const scaleMatch = /priceScaleId:\s*'([^']+)'/.exec(seriesLine);
     const violations = [];
     if (!scaleMatch) {
       violations.push({ line: foreignIndex + 1, reason: 'foreign series declares no priceScaleId — it inherits the main price scale' });

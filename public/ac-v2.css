@@ -164,6 +164,30 @@ html.is-dark [data-ac-ui="v2"] .vbtn.p { color: #06140E; }
 [data-ac-ui="v2"] .prov { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 12px; color: var(--ac-2); padding: 12px 20px; border-top: 1px solid var(--ac-hair); }
 [data-ac-ui="v2"] .prov b { font-weight: 600; color: var(--ac-ink); }
 [data-ac-ui="v2"] .tw { overflow-x: auto; }
+/* SERVED-UI REPAIR: the admin schedule table's intrinsic width (1200px) exceeded
+   its .tw container (~1086px at 1440x900), clipping the rightmost ENABLED/Aktif
+   column. Constrain only this table so every column stays inside the container
+   at desktop width; narrow viewports keep the existing .tw horizontal scroll. */
+#page-admin-console .admin-schedule-tbl { table-layout: fixed; min-width: 0 !important; width: 100% !important; }
+#page-admin-console .admin-schedule-tbl th,
+#page-admin-console .admin-schedule-tbl td { overflow: hidden; text-overflow: clip; }
+#page-admin-console .admin-schedule-tbl th:nth-child(1),
+#page-admin-console .admin-schedule-tbl td:nth-child(1) { width: 24%; }
+#page-admin-console .admin-schedule-tbl th:nth-child(2),
+#page-admin-console .admin-schedule-tbl td:nth-child(2) { width: 8%; }
+#page-admin-console .admin-schedule-tbl th:nth-child(3),
+#page-admin-console .admin-schedule-tbl td:nth-child(3) { width: 21%; }
+#page-admin-console .admin-schedule-tbl th:nth-child(4),
+#page-admin-console .admin-schedule-tbl td:nth-child(4) { width: 13%; }
+#page-admin-console .admin-schedule-tbl th:nth-child(5),
+#page-admin-console .admin-schedule-tbl td:nth-child(5) { width: 13%; }
+#page-admin-console .admin-schedule-tbl th:nth-child(6),
+#page-admin-console .admin-schedule-tbl td:nth-child(6) { width: 14%; white-space: nowrap; }
+#page-admin-console .admin-schedule-tbl th:nth-child(7),
+#page-admin-console .admin-schedule-tbl td:nth-child(7) { width: 7%; }
+@media (max-width: 900px) {
+  #page-admin-console .admin-schedule-tbl { table-layout: auto; min-width: 1080px !important; }
+}
 [data-ac-ui="v2"] .vbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; margin-top: 10px; }
 [data-ac-ui="v2"] .vbar i { display: block; min-width: 0; transform-origin: left; animation: acGrow 800ms var(--ease-e) both; }
 [data-ac-ui="v2"] .vbar i:nth-child(2) { animation-delay: 80ms; }
@@ -640,10 +664,32 @@ html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#f8
 html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#fbbf24"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#f97316"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#fb923c"] { color: var(--ac-warn-t) !important; }
 html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#38bdf8"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#3b82f6"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#60a5fa"] { color: var(--ac-info) !important; }
 
-/* Satu layar */
-html #appContent #page-analisis .unified-card.cw-one-screen { position: fixed; inset: 0; z-index: 70; border-radius: 0 !important; border: 0 !important; overflow: auto; }
+/* FINAL POLISH TASK 3: Layar Penuh (native Fullscreen API + CSS fallback). */
+html #appContent #page-analisis .unified-card.cw-one-screen { position: fixed; inset: 0; z-index: 9999; border-radius: 0 !important; border: 0 !important; overflow: auto; }
 html.cw-one-screen-open, html.cw-one-screen-open body { overflow: hidden; }
 html.cw-one-screen-open .mm, html.cw-one-screen-open #acBottomBar { display: none !important; }
+
+/* FINAL POLISH TASK 3 / FIX 1: compact drawing-toolbar pills with mobile
+   horizontal scroll so the tools never collide with the OHLCV legend at 390px. */
+.ac-draw-toolbar { display: inline-flex !important; flex-wrap: nowrap !important; gap: 6px !important; overflow-x: auto !important; overscroll-behavior-x: contain; scrollbar-width: thin; max-width: calc(100% - 20px); }
+.ac-draw-toolbar .ac-draw-btn {
+  display: inline-flex !important; align-items: center; justify-content: center;
+  flex: 0 0 auto; white-space: nowrap; gap: 4px;
+  padding: 4px 8px !important; border: 1px solid var(--ac-hair, rgba(255,255,255,.14)) !important;
+  border-radius: 6px !important; line-height: 1.2;
+}
+@media (max-width: 640px) {
+  .ac-draw-toolbar { top: auto !important; bottom: 8px !important; max-width: calc(100% - 20px); }
+}
+/* FIX 1: 390x844 mode bar — smaller padding/font so "Investor" is never
+   clipped or touching "Pro". The mode group scrolls horizontally instead. */
+@media (max-width: 430px) {
+  html #appContent #page-analisis .cw-bar { padding: 8px 10px; gap: 6px 8px; }
+  html #appContent #page-analisis .cw-group { gap: 4px 6px; }
+  html #appContent #page-analisis .cw-seg { display: inline-flex; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+  html #appContent #page-analisis .cw-seg button { height: 32px; padding: 0 7px; font-size: 11px; letter-spacing: -.01em; white-space: nowrap; flex: 0 0 auto; }
+  html #appContent #page-analisis .cw-l { font-size: 10px; }
+}
 
 @media (max-width: 760px) {
   html #appContent #page-analisis .ana-ctx-row { padding: 12px 16px; gap: 8px 12px; }

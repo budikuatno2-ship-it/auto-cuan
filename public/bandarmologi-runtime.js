@@ -2880,23 +2880,31 @@
     }
     var curPrice = Number(data.price || (bSum && bSum.price) || 0);
     var curPriceFmt = curPrice > 0 ? ('Rp ' + curPrice.toLocaleString('id-ID')) : '—';
-    var curChg = data.change_pct != null ? Number(data.change_pct) : ((bSum && bSum.change_pct != null) ? Number(bSum.change_pct) : 0);
-    var curChgFmt = (curChg >= 0 ? '+' : '') + curChg.toFixed(2).replace('.', ',') + '%';
-    var curDateVal = bSum.date || currentBandarDate || (availableDates[0] || '2026-10-15');
+    // W7 P1: a missing daily change is not a flat 0.00%. Render '—' when absent.
+    var curChg = data.change_pct != null ? Number(data.change_pct) : ((bSum && bSum.change_pct != null) ? Number(bSum.change_pct) : null);
+    var curChgFmt = curChg == null ? '—' : ((curChg >= 0 ? '+' : '') + curChg.toFixed(2).replace('.', ',') + '%');
+    // W7 P1: no hardcoded fallback date. If no real date is known, say so.
+    var curDateVal = bSum.date || currentBandarDate || (availableDates[0] || null);
     var curDateIndo = formatIndoDate(curDateVal);
 
-    var bandarScore = (bAcc && bAcc.accumulation_score != null) ? bAcc.accumulation_score : ((bSum && bSum.bandar_score != null) ? bSum.bandar_score : (Number(bSum.net_flow || 0) >= 0 ? 92 : 35));
-    var bandarNetVal = Number(bSum.net_flow || 0);
-    var bandarNetFmt = (bandarNetVal >= 0 ? '+' : '−') + formatIDR(Math.abs(bandarNetVal));
+    // W7 P0: never invent a bandar score. If neither the accumulation model nor
+    // the broker summary carries one, the score is unknown (null), not 92/35.
+    var bandarScore = (bAcc && bAcc.accumulation_score != null) ? bAcc.accumulation_score
+      : ((bSum && bSum.bandar_score != null) ? bSum.bandar_score : null);
+    var bandarNetVal = bSum.net_flow != null ? Number(bSum.net_flow) : null;
+    var bandarNetFmt = bandarNetVal == null ? '—' : ((bandarNetVal >= 0 ? '+' : '−') + formatIDR(Math.abs(bandarNetVal)));
 
-    var foreignNetVal = Number(bSum.foreign_flow != null ? bSum.foreign_flow : (data.foreign_flow != null ? data.foreign_flow : 0));
-    if (!foreignNetVal && (bSum.foreign_buy_val != null || bSum.foreign_sell_val != null)) {
+    // W7 P0: foreign flow must come from a real field. The old code fabricated a
+    // value as `bandarNetVal * 0.755` when the source was missing — that is
+    // invented market data. Missing now renders '—'.
+    var foreignNetVal = null;
+    if (bSum.foreign_flow != null) foreignNetVal = Number(bSum.foreign_flow);
+    else if (data.foreign_flow != null) foreignNetVal = Number(data.foreign_flow);
+    else if (bSum.foreign_buy_val != null || bSum.foreign_sell_val != null) {
       foreignNetVal = Number(bSum.foreign_buy_val || 0) - Number(bSum.foreign_sell_val || 0);
     }
-    if (!foreignNetVal && bandarNetVal !== 0) {
-      foreignNetVal = Math.round(bandarNetVal * 0.755);
-    }
-    var foreignNetFmt = (foreignNetVal >= 0 ? '+' : '−') + formatIDR(Math.abs(foreignNetVal));
+    if (foreignNetVal != null && !isFinite(foreignNetVal)) foreignNetVal = null;
+    var foreignNetFmt = foreignNetVal == null ? '—' : ((foreignNetVal >= 0 ? '+' : '−') + formatIDR(Math.abs(foreignNetVal)));
     var cr3Sub = cr3 >= 60 ? 'sangat terkonsentrasi' : (cr3 >= 40 ? 'terkonsentrasi sehat' : 'menyebar');
 
     // 1. Ticker Context & Verdict Sheet (Canvas Bandarmologi.dc.html)
@@ -2905,10 +2913,10 @@
     html += '    <span class="tk mono" style="font-size:20px" id="bandarTickerDisplay">' + escapeHtml(ticker) + '</span>';
     html += '    <span class="mut" id="bandarNameDisplay">' + escapeHtml(companyName) + '</span>';
     html += '    <span class="num mono" style="font-weight:700" id="bandarPriceDisplay">' + escapeHtml(curPriceFmt) + '</span>';
-    html += '    <span class="num ' + (curChg >= 0 ? 'pos' : 'neg') + '" style="font-weight:600" id="bandarChangeDisplay">' + escapeHtml(curChgFmt) + '</span>';
+    html += '    <span class="num ' + (curChg == null ? '' : (curChg >= 0 ? 'pos' : 'neg')) + '" style="font-weight:600" id="bandarChangeDisplay">' + escapeHtml(curChgFmt) + '</span>';
     html += '    <span style="margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
     html += '      <label class="mut" style="font-size:12px" for="bandarDateInput">Tanggal</label>';
-    html += '      <input id="bandarDateInput" class="fld" type="date" max="2026-10-16" value="' + escapeHtml(curDateVal) + '" oninput="BandarmologiRuntime.onDateInput(this.value)">';
+    html += '      <input id="bandarDateInput" class="fld" type="date" max="2026-10-16" value="' + escapeHtml(curDateVal == null ? '' : curDateVal) + '" oninput="BandarmologiRuntime.onDateInput(this.value)">';
     html += '      <button class="btn sm" id="bandarRecalcBtn" onclick="BandarmologiRuntime.recalculateFlow()">Hitung ulang flow</button>';
     html += '      <span class="mut" id="bandarDateMsg" role="status" style="font-size:12px">Flow tanggal ' + escapeHtml(curDateIndo) + '</span>';
     html += '      ' + isDemoBadge;
@@ -2919,12 +2927,12 @@
     html += '      <div class="lbl">Kesimpulan aliran</div>';
     html += '      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">';
     html += '        <span class="chip b" style="height:26px;font-size:12px">' + escapeHtml(netLabel) + '</span>';
-    html += '        <span class="num" style="font-weight:700;font-size:20px">' + bandarScore + '<span class="mut" style="font-size:13px">/100</span></span>';
+    html += '        <span class="num" style="font-weight:700;font-size:20px">' + (bandarScore == null ? '—' : bandarScore) + '<span class="mut" style="font-size:13px">/100</span></span>';
     html += '      </div>';
-    html += '      <div class="meter" style="margin-top:10px;max-width:260px"><i style="width:' + Math.min(100, Math.max(0, bandarScore)) + '%"></i></div>';
+    html += '      <div class="meter" style="margin-top:10px;max-width:260px"><i style="width:' + (bandarScore == null ? 0 : Math.min(100, Math.max(0, bandarScore))) + '%"></i></div>';
     html += '    </div>';
-    html += '    <div><div class="lbl">Net bandar</div><div class="big num ' + (bandarNetVal >= 0 ? 'pos' : 'neg') + ' pop">' + escapeHtml(bandarNetFmt) + '</div></div>';
-    html += '    <div><div class="lbl">Net asing</div><div class="big num ' + (foreignNetVal >= 0 ? 'pos' : 'neg') + ' pop">' + escapeHtml(foreignNetFmt) + '</div></div>';
+    html += '    <div><div class="lbl">Net bandar</div><div class="big num ' + (bandarNetVal == null ? '' : (bandarNetVal >= 0 ? 'pos' : 'neg')) + ' pop">' + escapeHtml(bandarNetFmt) + '</div></div>';
+    html += '    <div><div class="lbl">Net asing</div><div class="big num ' + (foreignNetVal == null ? '' : (foreignNetVal >= 0 ? 'pos' : 'neg')) + ' pop">' + escapeHtml(foreignNetFmt) + '</div></div>';
     html += '    <div><div class="lbl">Konsentrasi top 3 pembeli</div><div class="big num pop">' + cr3 + '%</div><div class="sub">' + escapeHtml(cr3Sub) + '</div></div>';
     html += '  </div>';
     html += '</section>';
@@ -3757,21 +3765,12 @@
   var currentInsiderRosterData = [];
   var insiderRosterFilterQuery = '';
   var insiderRosterCategoryFilter = 'all';
-    var DEFAULT_BBCA_ROSTER = [
-    { no: 1, ticker: 'BBCA', name: 'PT DWIMURIA INVESTAMA ANDALAN', category: 'Pengendali (>=5%)', position: 'Pengendali Utama (Holding)', shares: 67729950000, percentage: 54.94, percentage_formatted: '54.94%', last_change: '0%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 2, ticker: 'BBCA', name: 'ANTHONI SALIM', category: 'Investor Strategis (>1%)', position: 'Pemegang Saham Publik Signifikan', shares: 1416306835, percentage: 1.15, percentage_formatted: '1.15%', last_change: '0%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 3, ticker: 'BBCA', name: 'PT TRICIPTA MANDHALA GUMILANG', category: 'Corporate (>1%)', position: 'Investor Korporasi Terafiliasi', shares: 1313250000, percentage: 1.07, percentage_formatted: '1.07%', last_change: '0%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 4, ticker: 'BBCA', name: 'PT CATURGUWIRATNA SUMAPALA', category: 'Corporate (>1%)', position: 'Investor Korporasi Terafiliasi', shares: 1261750000, percentage: 1.02, percentage_formatted: '1.02%', last_change: '0%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 5, ticker: 'BBCA', name: 'JAHJA SETIAATMADJA', category: 'Direksi', position: 'Presiden Direktur', shares: 40811211, percentage: 0.03, percentage_formatted: '0.03%', last_change: '+0.0006%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 6, ticker: 'BBCA', name: 'ARMAND WAHYUDI HARTONO', category: 'Direksi', position: 'Wakil Presiden Direktur', shares: 19852300, percentage: 0.02, percentage_formatted: '0.02%', last_change: '0%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 7, ticker: 'BBCA', name: 'TONNY KUSNADI', category: 'Komisaris', position: 'Komisaris', shares: 7819950, percentage: 0.01, percentage_formatted: '0.01%', last_change: '+0.0002%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 8, ticker: 'BBCA', name: 'LIANAWATY SUWONO', category: 'Direksi', position: 'Direktur', shares: 3906242, percentage: 0.003, percentage_formatted: '0.00%', last_change: '+0.0004%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 9, ticker: 'BBCA', name: 'SANTOSO', category: 'Direksi', position: 'Direktur', shares: 3764062, percentage: 0.003, percentage_formatted: '0.00%', last_change: '+0.0004%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 10, ticker: 'BBCA', name: 'VERA EVE LIM', category: 'Direksi', position: 'Direktur Keuangan & Perencanaan', shares: 3281460, percentage: 0.003, percentage_formatted: '0.00%', last_change: '+0.0005%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 11, ticker: 'BBCA', name: 'FRENGKY CHANDRA KUSUMA', category: 'Direksi', position: 'Direktur', shares: 2835916, percentage: 0.002, percentage_formatted: '0.00%', last_change: '+0.0003%', per_tanggal: '30 Sep 2026 (WIB)' },
-    { no: 12, ticker: 'BBCA', name: 'GREGORY HENDRA LEMBONG', category: 'Direksi', position: 'Direktur', shares: 2666921, percentage: 0.002, percentage_formatted: '0.00%', last_change: '+0.001%', per_tanggal: '30 Sep 2026 (WIB)' }
-  ];
-  var vpsInsiderRosterCache = { BBCA: DEFAULT_BBCA_ROSTER };
+  // 13D: the hard-coded 12-row DEFAULT_BBCA_ROSTER literal was REMOVED. It was
+  // seeded into the cache and shown as if it were live KSEI data whenever both
+  // fetches failed. The roster cache now starts EMPTY; a failed fetch renders an
+  // explicit DATA_UNAVAILABLE empty state (see renderRosterTableRows) instead of
+  // fabricated rows. The literal survives only as a test fixture.
+  var vpsInsiderRosterCache = {};
 
   function fetchRemoteInsiderGraph(name, cb) {
     if (typeof window === 'undefined' || typeof fetch === 'undefined') return;
@@ -3870,14 +3869,33 @@
           .then(function (res) { return res.json(); })
           .then(function (data) {
             if (activeInsiderRosterAbortController !== controller) return;
-            if (data && data.success && Array.isArray(data.roster)) {
+            if (data && data.success && Array.isArray(data.roster) && data.roster.length > 0) {
               vpsInsiderRosterCache[cleanTicker] = data.roster;
               if (typeof cb === 'function') cb(data.roster);
+            } else {
+              // 13D: both fetches failed / returned nothing. Surface an explicit
+              // DATA_UNAVAILABLE state — never the removed hard-coded roster.
+              renderRosterUnavailable(cleanTicker);
             }
           })
-          .catch(function () {});
-      } catch (_) {}
+          .catch(function () { renderRosterUnavailable(cleanTicker); });
+      } catch (_) { renderRosterUnavailable(cleanTicker); }
     }
+  }
+
+  /**
+   * 13D: explicit empty state when no real roster could be fetched. Replaces the
+   * former hard-coded DEFAULT_BBCA_ROSTER fallback that was shown as live data.
+   */
+  function renderRosterUnavailable(ticker) {
+    var tbody = byId('insiderRosterTbody');
+    if (!tbody) return;
+    var badge = byId('insiderRosterCountBadge');
+    if (badge) badge.textContent = 'DATA_UNAVAILABLE';
+    tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-xs text-gray-400">' +
+      'Data pemegang saham ' + escapeHtml(String(ticker || '')) + ' belum tersedia (DATA_UNAVAILABLE). ' +
+      'Sumber KSEI/insider tidak dapat dihubungi — tidak ada data yang ditampilkan agar tidak menyesatkan.' +
+      '</td></tr>';
   }
 
   function loadInsiderNetwork(container) {
@@ -3918,8 +3936,9 @@
 
     var cx = 450;
     var cy = 350;
-    var radius = 185;
     var numEmitens = emitenNodes.length;
+    // REQ-16: Adaptive radius to avoid node & label overlap
+    var radius = numEmitens > 8 ? 220 : (numEmitens > 5 ? 195 : 170);
 
     var svg = '';
     svg += '<svg id="insiderNetworkSvg" viewBox="0 0 900 700" class="w-full h-auto max-h-[640px] select-none rounded-xl" xmlns="http://www.w3.org/2000/svg">\n';
@@ -4256,6 +4275,12 @@
     }
 
     if (filtered.length === 0) {
+      // 13D: an empty roster is an explicit DATA_UNAVAILABLE state, never a
+      // fabricated fallback. Distinguish "no data at all" from "filtered out".
+      if (list.length === 0) {
+        renderRosterUnavailable(currentInsiderRosterTicker);
+        return;
+      }
       tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-xs text-gray-400">Tidak ada data pemegang saham / insider yang sesuai dengan filter.</td></tr>';
       return;
     }
@@ -4419,7 +4444,8 @@
     ['MBH', 'TOWR', ''],
     ['RBH', 'BELI', ''],
     ['MBH', 'BELI', ''],
-    ['PUB', 'BBCA', '41,82%']
+    // FIX 3: 41,82% already shown in the PUB node subtitle — no duplicate edge label.
+    ['PUB', 'BBCA', '']
   ];
 
   function renderCanvasInsiderGraph(s) {
@@ -4435,7 +4461,7 @@
     var C = { e: '#315F9A', h: '#94602B', p: '#7357A6' };
 
     var svgLines = '';
-    var govEdgeLabels = '';
+    // FIX 3: no HTML overlay edge labels — SVG <text> renders each once.
     for (var i = 0; i < E.length; i++) {
       var edge = E[i];
       var a = N[edge[0]];
@@ -4471,13 +4497,12 @@
         svgLines += '  <text class="edge-text" x="' + lx.toFixed(1) + '" y="' + (ly + 4).toFixed(1) + '" fill="#34D399" font-size="9" font-family="monospace" font-weight="600" text-anchor="middle">' + escapeHtml(edge[2]) + '</text>';
         svgLines += '</g>';
 
-        var lst = 'left:' + (lx / 7.6).toFixed(2) + '%;top:' + ((ly - 4) / 4.4).toFixed(2) + '%;font-weight:600';
-        govEdgeLabels += '<span class="glb gs" style="' + lst + '">' + escapeHtml(edge[2]) + '</span>';
+        // FIX 3: edge percentage is rendered once, by the SVG <text> above.
       }
     }
 
     var svgNodes = '';
-    var govNodeLabels = '';
+    // FIX 3: no HTML overlay node labels — SVG <text> renders each once.
     var keys = Object.keys(N);
     for (var k = 0; k < keys.length; k++) {
       var key = keys[k];
@@ -4511,20 +4536,7 @@
       }
       svgNodes += '</g>';
 
-      var lText = isP ? n.label.split(' ')[0] : n.label;
-      var sText = isP ? n.label.split(' ').slice(1).join(' ') : (key === 'DWI' ? 'Pengendali Utama' : n.sub);
-      var ty = isP ? (n.y + 30) : (n.y + 4);
-      var sy = isP ? (n.y + 44) : (n.y + 32);
-
-      var lst = 'left:' + (n.x / 7.6).toFixed(2) + '%;top:' + ((ty - 4) / 4.4).toFixed(2) + '%';
-      var sst = 'left:' + (n.x / 7.6).toFixed(2) + '%;top:' + ((sy - 4) / 4.4).toFixed(2) + '%';
-
-      var lcls = 'glb gl' + ((!isP && isSel) ? ' on' : '') + (isLinked ? '' : ' dim');
-      var scls = 'glb gs ns2' + (isLinked ? '' : ' dim');
-      var hiStyle = isV3F10Hi ? 'background:#fbbf24;color:#020617;font-weight:800;border:1.5px solid #020617;' : '';
-
-      govNodeLabels += '<span class="' + lcls + '" data-v3f10-node="' + escapeHtml(key) + '" style="' + lst + ';' + hiStyle + '">' + escapeHtml(lText) + '</span>';
-      govNodeLabels += '<span class="' + scls + '" style="' + sst + ';' + hiStyle + '">' + escapeHtml(sText) + '</span>';
+      // FIX 3: node label/subtitle are rendered once by the SVG <text> nodes.
     }
 
     var html = '';
@@ -4532,10 +4544,7 @@
     html += svgLines;
     html += svgNodes;
     html += '</svg>';
-    html += '<div class="gov" aria-hidden="true">';
-    html += govEdgeLabels;
-    html += govNodeLabels;
-    html += '</div>';
+    // FIX 3: no .gov overlay — single sharp SVG label per entity/percentage.
     return html;
   }
 
@@ -4621,7 +4630,7 @@
     html += '    <div class="gw" id="insiderGraphSvgWrap">';
     html += renderCanvasInsiderGraph(insiderSelectedNode || 'BBCA');
     html += '    </div>';
-    html += '    <div class="prov"><span>Tata letak tetap (bukan simulasi fisika) agar posisi simpul sama di setiap kunjungan.</span><span class="chip i">Per 30 Sep 2026 · KSEI</span></div>';
+    html += '    <div class="prov"><span>Tata letak tetap (bukan simulasi fisika) agar posisi simpul sama di setiap kunjungan.</span><span class="chip i" data-v6-insider-source="true">Data kepemilikan & aktivitas insider · Per 20 Nov 2026</span></div>';
     html += '  </section>';
 
     // Right: Detail Entitas (flex: 1 1 320px)
@@ -4634,7 +4643,7 @@
     html += '<div class="grid grid-cols-12 gap-4" id="insiderBentoBottomRow" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:16px">';
     html += '<div class="grid grid-cols-12 gap-4" id="insiderBentoBottomRow" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:16px">';
     html += '  <section class="sheet rise d3" id="insiderRosterSection" data-v3f10-ksei="true" style="flex:999 1 580px;min-width:320px">';
-    html += '    <div class="sec-h" style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:15px;font-weight:700">Daftar Pemegang Saham KSEI (&ge;5% & Direksi/Komisaris) · <span id="rosterTickerDisplay">' + escapeHtml(ticker) + '</span></h2><span id="insiderRosterCountBadge" class="chip i" style="font-size:11px">Sumber: KSEI · per 30 Sep 2026 (WIB)</span></div>';
+    html += '    <div class="sec-h" style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:15px;font-weight:700">Daftar Pemegang Saham · <span id="rosterTickerDisplay">' + escapeHtml(ticker) + '</span></h2><span id="insiderRosterCountBadge" class="chip i" style="font-size:11px" data-v6-insider-source="true">Data kepemilikan & aktivitas insider · Per 20 Nov 2026</span></div>';
     html += '    <input type="hidden" id="insiderRosterTickerInput" value="' + escapeHtml(ticker) + '">';
     html += '    <div class="tw" style="overflow-x:auto">';
     html += '      <table class="tbl" data-v3f10-ksei-table="true" style="min-width:860px">';
@@ -5111,9 +5120,11 @@
 
     var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     activeIntelAbortController = controller;
+    // REQ-15: Adaptive timeout (60s for full universe scan, 25s for single ticker)
+    var timeoutDuration = (bandarIntelViewMode === 'scanner') ? 60000 : 25000;
     var timer = controller ? setTimeout(function () {
       try { controller.abort(); } catch (_) {}
-    }, 35000) : null;
+    }, timeoutDuration) : null;
 
     try {
       var url = '/api/sector-hot?action=bandarmologi-intel&range=' + encodeURIComponent(bandarIntelRange) + '&days=' + (({ '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 }[bandarIntelRange]) || 7) + '&_t=' + Date.now();
@@ -5170,7 +5181,7 @@
       if (timer) clearTimeout(timer);
       if (thisRequestSeq !== intelRequestSeq) return;
       if (err && (err.name === 'AbortError' || String(err.message).includes('aborted'))) {
-        bandarIntelError = 'Permintaan dibatalkan atau waktu kalkulasi melebihi batas (30s). Silakan coba lagi.';
+        bandarIntelError = 'Waktu kalkulasi melebihi batas (' + Math.round(timeoutDuration/1000) + 's). Server sedang memproses kalkulasi intensif. Silakan coba beberapa saat lagi.';
       } else {
         bandarIntelError = err.message || String(err);
       }

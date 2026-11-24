@@ -237,6 +237,9 @@ async function mainUnlocked(options) {
     universe: universe.length,
     target_date: targetDate,
     calendar_source: tradingDay.source,
+    candle_source: options.source || process.env.CANDLE_SOURCE || 'yahoo',
+    arjum_touched: (options.source || process.env.CANDLE_SOURCE || 'yahoo') === 'arjum',
+    cross_check_enabled: false,
     fetched: 0,
     cached: 0,
     stale: 0,
@@ -244,48 +247,76 @@ async function mainUnlocked(options) {
     stale_after_fetch: 0,
     quota_stop: false,
     yahoo_fetched: 0,
+    ihsg_ok: null,
     cross_check_failed: false,
-    cross_check: null
+    cross_check: null,
+    sqlite_sync: null,
+    sqlite_sync_failed: false
   };
 
   const candleSource = options.source || process.env.CANDLE_SOURCE || 'yahoo';
-  const crossCheckEnabled = options.crossCheck !== false && process.env.CANDLE_CROSSCHECK !== 'false';
+
+  // V6 AUDIT FIX: Arjum cross-check is now strictly OPT-IN for the Yahoo pass.
+  // The default Yahoo-only path MUST NOT consume Arjum quota. Previously
+  // `crossCheckEnabled` defaulted to true, so a "Yahoo pass" could still burn 20
+  // Arjum requests through performDailyCrossCheck. Enable only when explicitly
+  // requested via --cross-check / options.crossCheck === true, or when the
+  // operator opts in via env CANDLE_CROSSCHECK=true (and CANDLE_ARJUM_CROSSCHECK
+  // is not explicitly 'false').
+  // An explicit `crossCheckTickers` array is itself an opt-in: a caller that
+  // names the sample set clearly intends a cross-check to run. This keeps the
+  // quota-safe default (no cross-check unless requested) while making the
+  // explicit request meaningful — the R2 regression was that supplying
+  // crossCheckTickers alone silently disabled the cross-check entirely.
+  const crossCheckRequested =
+    options.crossCheck === true ||
+    process.env.CANDLE_CROSSCHECK === 'true' ||
+    (Array.isArray(options.crossCheckTickers) && options.crossCheckTickers.length > 0);
+  const crossCheckEnabled =
+    crossCheckRequested &&
+    process.env.CANDLE_ARJUM_CROSSCHECK !== 'false';
+  summary.cross_check_enabled = crossCheckEnabled;
+  summary.arjum_touched = summary.arjum_touched || (candleSource === 'arjum');
 
   // B3 (2026-10-20): take the shared Arjum lock for the REQUEST phase only.
   // It is acquired here (after the trading-day check, so a market-closed day
   // stays MARKET_CLOSED) and released as soon as the pass finishes. J1 invokes
   // this in-process while already holding the lock — the lock is reentrant, so
   // the nested pass runs directly.
-  const arjumSharedLock = require('../lib/arjum-shared-lock');
-  const lockOutcome = await arjumSharedLock.withArjumLock({ job: 'J2-candles', waitMs: 0 }, () => runCandlePass({
-    options, universe, targetDate, dryRun, candleSource, crossCheckEnabled, summary, tradingDay
-  }));
-  if (lockOutcome && lockOutcome.skipped) {
-    console.warn('[CANDLE-SKIP] SKIPPED_ARJUM_BUSY: job Arjum lain sedang berjalan; J2 dilewati untuk firing ini.');
-    const busy = { universe: universe.length, target_date: targetDate, skipped: true, reason: 'SKIPPED_ARJUM_BUSY', calendar_source: tradingDay.source, fetched: 0, cached: 0, stale: 0, failed: 0, stale_after_fetch: 0, quota_stop: false };
-    console.log(JSON.stringify({ mode: dryRun ? 'DRY_RUN' : 'LIVE', ...busy }, null, 2));
-    return busy;
+  // V6 AUDIT FIX: Yahoo Finance (0 kuota) berjalan 100% independen tanpa lock Arjum!
+  // Mengambil lock Arjum untuk Yahoo menyebabkan J2 diskip (SKIPPED_ARJUM_BUSY)
+  // jika ada job Arjum/backfill/J1 lain aktif. Padahal Yahoo tidak mengonsumsi kuota Arjum.
+  // Hanya ambil shared Arjum lock jika candleSource === 'arjum'.
+  if (candleSource === 'arjum') {
+    const arjumSharedLock = require('../lib/arjum-shared-lock');
+    const lockOutcome = await arjumSharedLock.withArjumLock({ job: 'J2-candles', waitMs: 0 }, () => runCandlePass({
+      options, universe, targetDate, dryRun, candleSource, crossCheckEnabled, summary, tradingDay
+    }));
+    if (lockOutcome && lockOutcome.skipped) {
+      console.warn('[CANDLE-SKIP] SKIPPED_ARJUM_BUSY: job Arjum lain sedang berjalan; J2 dilewati untuk firing ini.');
+      const busy = { universe: universe.length, target_date: targetDate, skipped: true, reason: 'SKIPPED_ARJUM_BUSY', calendar_source: tradingDay.source, fetched: 0, cached: 0, stale: 0, failed: 0, stale_after_fetch: 0, quota_stop: false };
+      console.log(JSON.stringify({ mode: dryRun ? 'DRY_RUN' : 'LIVE', ...busy }, null, 2));
+      return busy;
+    }
+    return lockOutcome;
   }
-  return lockOutcome;
+
+  // Yahoo pass runs independently without blocking Arjum lock
+  return await runCandlePass({
+    options, universe, targetDate, dryRun, candleSource, crossCheckEnabled, summary, tradingDay
+  });
 }
 
 // B3: the actual request phase of the daily candle pass (runs under the shared
 // Arjum lock).
 async function runCandlePass(ctx) {
   const { options, universe, targetDate, dryRun, candleSource, crossCheckEnabled, summary, tradingDay } = ctx;
+  summary.cross_check_enabled = crossCheckEnabled;
 
   // BUG-01 Fix: Yahoo Finance is the primary, free, quota-less source for all 962 stocks.
   // Cross-check to Arjum is an analytical verification, NOT a blocker that aborts saving Yahoo candles!
   // At 16:40 WIB, Arjum often has not published EOD yet, but Yahoo already has it.
   // Yahoo candles must ALWAYS be fetched and persisted immediately without waiting for 23:30 WIB.
-
-  const isNightPass = (() => {
-    try {
-      const cal = require('../lib/idx-trading-calendar');
-      const nowWib = cal.getJakartaTime ? cal.getJakartaTime() : { hour: new Date().getUTCHours() + 7 };
-      return nowWib.hour >= 23;
-    } catch (_) { return false; }
-  })();
 
   for (const ticker of universe) {
 
@@ -305,31 +336,32 @@ async function runCandlePass(ctx) {
     let res = null;
     let usedYahoo = false;
 
-    if (ticker === 'IHSG') {
-      res = await fetcher.fetchDailyCandles(ticker, {
-        limit: Number(process.env.CANDLE_LIMIT) || 500,
-        force: true
-      });
-      summary.ihsg_ok = Boolean(res && res.ok);
-    } else if (candleSource === 'yahoo') {
+    if (candleSource === 'yahoo') {
+      // V6 AUDIT FIX: IHSG now routes through Yahoo ^JKSE like every other ticker.
       res = await fetcher.fetchDailyCandlesYahoo(ticker, { range: '5d', retries: 2 });
       usedYahoo = Boolean(res && res.ok);
+      if (ticker === 'IHSG') summary.ihsg_ok = usedYahoo;
 
-      // Only fall back to Arjum for failed Yahoo tickers during late night pass (23:30)
-      // or if explicitly requested, saving Arjum quota during afternoon pass
-      if (!usedYahoo && (isNightPass || options.allowArjumFallback || process.env.CANDLE_ALLOW_ARJUM_FALLBACK === '1')) {
+      // V6 AUDIT FIX: Arjum fallback is STRICTLY OPT-IN. A Yahoo-only pass must
+      // never touch Arjum quota by default — not even on the late night pass.
+      // Only the explicit flag (options.allowArjumFallback true or
+      // CANDLE_ALLOW_ARJUM_FALLBACK=1) enables the fallback.
+      if (!usedYahoo && (options.allowArjumFallback === true || process.env.CANDLE_ALLOW_ARJUM_FALLBACK === '1')) {
         console.warn(`[CANDLE-FALLBACK] Yahoo failed for ${ticker} (${res ? res.error : 'unknown'}), falling back to Arjum.`);
+        summary.arjum_touched = true;
         res = await fetcher.fetchDailyCandles(ticker, {
           limit: Number(process.env.CANDLE_LIMIT) || 500,
           force: true
         });
       }
     } else {
-      // Direct Arjum fetch
+      // Direct Arjum fetch (candleSource === 'arjum'), including IHSG.
+      summary.arjum_touched = true;
       res = await fetcher.fetchDailyCandles(ticker, {
         limit: Number(process.env.CANDLE_LIMIT) || 500,
         force: true
       });
+      if (ticker === 'IHSG') summary.ihsg_ok = Boolean(res && res.ok);
     }
 
     if (res && res.ok) {
@@ -352,6 +384,19 @@ async function runCandlePass(ctx) {
     if (summary.fetched % 50 === 0 && summary.fetched > 0) console.log('fetched=' + summary.fetched + ' last=' + ticker);
   }
 
+  // R2: the legacy `allowMassFallbackOnCrossCheckFail` override is now EXPLICIT
+  // and LOGGED rather than silently ignored. Under the BUG-01 policy a failed
+  // cross-check never triggers a mass Arjum fallback (Yahoo candles are always
+  // retained), so the override no longer re-enables the old mass-fallback — it
+  // is recorded so an operator can see the request was seen and intentionally
+  // not honoured. A mass fallback still requires the separate, explicit
+  // `allowArjumFallback` opt-in, which is never reachable with the provider key
+  // absent.
+  if (options.allowMassFallbackOnCrossCheckFail === true) {
+    summary.mass_fallback_override_requested = true;
+    console.warn('[CROSS-CHECK-OVERRIDE] allowMassFallbackOnCrossCheckFail=true was supplied; legacy mass Arjum fallback is NOT performed (Yahoo candles retained). Use allowArjumFallback for an explicit per-ticker fallback.');
+  }
+
   // Non-blocking cross-check after Yahoo fetch
   if (candleSource === 'yahoo' && crossCheckEnabled && !dryRun && universe.length > 20 && !options.skipCrossCheck) {
     try {
@@ -372,6 +417,63 @@ async function runCandlePass(ctx) {
       summary.cross_check = { error: err && err.message };
       console.warn(`[CROSS-CHECK-AUDIT-ERROR] ${err && err.message}. Yahoo candles safely retained.`);
     }
+  }
+
+  // V6 AUDIT FIX: Atomic bridge to SQLite stock_daily_history!
+  // Flat files in data/daily-candles must immediately sync to SQLite store
+  // so chart APIs, screeners, and lifecycle evaluators never observe stale history.
+  //
+  // FAIL-CLOSED: a failed sync must make the WHOLE job fail. It is no longer a
+  // swallowable warning — chart APIs, screeners, and lifecycle consumers read
+  // stock_daily_history, so silently succeeding with a broken bridge means they
+  // all observe stale (or no) history.
+  if (!dryRun && (summary.fetched > 0 || options.forceSqliteSync || process.env.FORCE_SQLITE_SYNC === '1')) {
+    try {
+      const historySync = require('../lib/daily-history-sqlite-sync');
+      const candleDir = path.join(__dirname, '..', 'data', 'daily-candles');
+      const syncRes = await historySync.syncRecentHistoryToSqlite({
+        candleDir,
+        env: process.env,
+        sessions: 5
+      });
+      summary.sqlite_sync = {
+        ok: syncRes.ok,
+        rows_upserted: syncRes.rows_upserted,
+        tickers_scanned: syncRes.tickers_scanned,
+        tickers_with_rows: syncRes.tickers_with_rows,
+        tickers_unreadable: syncRes.tickers_unreadable,
+        tickers_unavailable: syncRes.tickers_unavailable,
+        tickers_stale: syncRes.tickers_stale,
+        reason: syncRes.reason || null,
+        per_ticker: syncRes.per_ticker || null
+      };
+      if (!syncRes.ok) {
+        summary.sqlite_sync_failed = true;
+        summary.sqlite_sync_failure_reason = syncRes.reason || 'sqlite_sync_failed';
+        console.error(`[SQLITE-SYNC-FAILED] reason=${syncRes.reason || 'unknown'} rows_upserted=${syncRes.rows_upserted || 0}`);
+      } else {
+        console.log(`[SQLITE-SYNC] Updated SQLite history: rows_upserted=${syncRes.rows_upserted} tickers_scanned=${syncRes.tickers_scanned} stale=${syncRes.tickers_stale || 0}`);
+      }
+    } catch (syncErr) {
+      summary.sqlite_sync_failed = true;
+      summary.sqlite_sync_failure_reason = 'sqlite_sync_exception';
+      summary.sqlite_sync = { ok: false, error: syncErr.message };
+      console.error('[SQLITE-SYNC-FAILED] exception:', syncErr.message);
+    }
+  }
+
+  // V6 AUDIT FIX: fail-closed health gate. A SQLite sync failure, a failed
+  // fetch pass (stale_after_fetch), or a failed opt-in Arjum cross-check means
+  // the firing is NOT a success. `ok:false` is in the emitted JSON summary AND
+  // the process exit code is non-zero so the VPS wrapper / cron observes a
+  // failed firing instead of a silently successful one (the prior behavior
+  // only console.warn'd the sync error — FAIL SILENT).
+  summary.ok = !summary.sqlite_sync_failed &&
+    !summary.cross_check_failed &&
+    summary.failed === 0 &&
+    summary.stale_after_fetch === 0;
+  if (require.main === module && !summary.ok) {
+    process.exitCode = 3;
   }
 
   console.log(JSON.stringify({

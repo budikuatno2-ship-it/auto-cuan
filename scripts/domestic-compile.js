@@ -30,6 +30,23 @@ const HUNTER_INDEX_DIR = path.join(BASE_DATA, 'broker-hunter-indexes');
 
 const FOREIGN_SET = new Set(['AK', 'BK', 'RX', 'KZ', 'ZP', 'CS', 'DB', 'YU', 'CG', 'OD', 'ML', 'DP', 'BQ', 'EP', 'LG', 'AI']);
 
+/**
+ * Subtask J — fail-closed skip counters.
+ *
+ * These count the sessions this script deliberately REFUSED to publish as a
+ * Domestic broker summary. They exist so a silent refusal is still observable:
+ * a run that skips 100 clipped sessions must say so rather than look identical
+ * to a run that found nothing to do. Mutated from parallel tasks, which is safe
+ * because the increments are synchronous (no await between read and write).
+ */
+const DOMESTIC_COMPILE_STATS = {
+  domestic_written: 0,
+  domestic_all_clipped_skipped: 0,
+  domestic_empty_skipped: 0,
+  foreign_synthesized_from_all: 0,
+  domestic_from_derived_foreign: 0
+};
+
 function safeReadJson(filePath) {
   try {
     if (!fs.existsSync(filePath)) return null;
@@ -164,13 +181,36 @@ async function processTickerBatch(tickers) {
             if (fBrokers.length > 0) {
               const fBuyVal = fBrokers.reduce((s, b) => s + Number(b.bval || 0), 0);
               const fSellVal = fBrokers.reduce((s, b) => s + Number(b.sval || 0), 0);
+              // Subtask J — PROVENANCE. This payload is NOT the provider's
+              // `flow=F` feed. It is a subset of ALL selected by a hardcoded
+              // 16-code FOREIGN_SET, written into `broker-summary-F/`, which is
+              // the directory consumers read as PROVIDER_ORIGINAL foreign data.
+              //
+              // It used to be written as `is_complete: true` with no marker, so
+              // a derived file was byte-for-byte indistinguishable from an
+              // authentic one — exactly the "do not claim identical" violation
+              // this audit exists to close. The repo already sets the standard
+              // for this in lib/legacy-foreign-adapter.normalizeLegacyForeign(),
+              // which refuses to fabricate a foreign decomposition and marks
+              // `is_complete: false` + `data_status: 'PARTIAL'`. This now matches.
+              //
+              // `is_complete` is false because FOREIGN_SET covers 16 broker
+              // codes, not the full foreign broker universe, so the true foreign
+              // total is unobserved. `status` stays 'RELEASED' so the in-memory
+              // D computation below is unchanged; consumers that read the file
+              // back through lib/broksum-flow.computeDomestic now fail closed on
+              // `is_complete === false` instead of trusting a derived figure.
               fJson = {
                 stock_code: ticker,
                 ticker,
                 date,
                 flow: 'F',
                 status: 'RELEASED',
-                is_complete: true,
+                is_complete: false,
+                provenance: 'DERIVED_LOCAL',
+                computed_from: 'broker_code_heuristic_from_all',
+                data_status: 'PARTIAL',
+                note: 'Derived by filtering ALL to a hardcoded 16-code FOREIGN_SET; NOT the provider flow=F feed. Foreign total is unobserved beyond that set.',
                 brokers: fBrokers,
                 broker_net: fBuyVal - fSellVal,
                 net_flow: fBuyVal - fSellVal,
@@ -181,6 +221,7 @@ async function processTickerBatch(tickers) {
                 top_sellers: fBrokers.filter(b => Number(b.nval || (b.bval - b.sval)) < 0)
               };
               safeWriteJson(path.join(tickerFDir, file), fJson);
+              DOMESTIC_COMPILE_STATS.foreign_synthesized_from_all++;
             }
           }
 
@@ -188,29 +229,67 @@ async function processTickerBatch(tickers) {
             rawFDays.push({ date, broksum: fJson });
             const domResult = accumLocal.computeDomesticBroksum(allJson, fJson, date, ticker);
             if (domResult && domResult.status === 'RELEASED') {
+              // Subtask J — propagate the foreign side's provenance onto D.
+              // When F was synthesized from ALL above, D is not
+              // `ALL − provider_foreign`; it is `ALL − (ALL filtered by a
+              // 16-code set)`. Without this marker the D file looks identical to
+              // one derived from an authentic provider F feed.
+              if (fJson.provenance === 'DERIVED_LOCAL') {
+                domResult.foreign_provenance = 'DERIVED_LOCAL';
+                domResult.foreign_computed_from = fJson.computed_from || 'broker_code_heuristic_from_all';
+                domResult.note = 'Domestic computed against a foreign side DERIVED from ALL (not the provider flow=F feed).';
+                DOMESTIC_COMPILE_STATS.domestic_from_derived_foreign++;
+              }
               safeWriteJson(path.join(tickerDDir, file), domResult);
-            } else if (Array.isArray(allJson.brokers)) {
-              // Direct domestic extraction
+              DOMESTIC_COMPILE_STATS.domestic_written++;
+            } else if (accumLocal.isAllBroksumClipped(allJson)) {
+              // Subtask J — FAIL CLOSED on a truncated ALL feed.
+              // `broker_levels` capped at 25 without `all_data: true` means every
+              // broker ranked below 25 is missing, so neither the identity nor the
+              // heuristic below can produce a trustworthy domestic figure. Writing
+              // one anyway would publish a partial session as a complete one.
+              DOMESTIC_COMPILE_STATS.domestic_all_clipped_skipped++;
+            } else if (Array.isArray(allJson.brokers) && allJson.brokers.length > 0) {
+              // Direct domestic extraction.
+              //
+              // Subtask J — this branch is NOT the `D = ALL − F` identity: it never
+              // subtracts the foreign payload, it excludes a hardcoded foreign
+              // broker-code set from ALL. That is a weaker, different definition, so
+              // it is now labelled with `computed_from` and is not allowed to claim
+              // `is_complete: true`. Two fail-open defects were closed here:
+              //   1. `Array.isArray([])` is true, so an ALL payload with an empty
+              //      brokers[] used to write `status:'RELEASED', is_complete:true`
+              //      with ZERO brokers and 0 turnover — an empty session published
+              //      as a complete one (the GPRA/META pattern).
+              //   2. the heuristic output was byte-identical in its status fields to
+              //      the identity-derived output, so a consumer could not tell which
+              //      definition produced the file.
               const dBrokers = allJson.brokers.filter(b => !FOREIGN_SET.has(b.broker_code));
-              const dBuyVal = dBrokers.reduce((s, b) => s + Number(b.bval || 0), 0);
-              const dSellVal = dBrokers.reduce((s, b) => s + Number(b.sval || 0), 0);
-              const dPayload = {
-                stock_code: ticker,
-                ticker,
-                date,
-                flow: 'D',
-                status: 'RELEASED',
-                is_complete: true,
-                brokers: dBrokers,
-                broker_net: dBuyVal - dSellVal,
-                net_flow: dBuyVal - dSellVal,
-                total_buy_val: dBuyVal,
-                total_sell_val: dSellVal,
-                total_turnover: Math.max(dBuyVal, dSellVal),
-                top_buyers: dBrokers.filter(b => Number(b.nval || (b.bval - b.sval)) > 0),
-                top_sellers: dBrokers.filter(b => Number(b.nval || (b.bval - b.sval)) < 0)
-              };
-              safeWriteJson(path.join(tickerDDir, file), dPayload);
+              if (dBrokers.length === 0) {
+                DOMESTIC_COMPILE_STATS.domestic_empty_skipped++;
+              } else {
+                const dBuyVal = dBrokers.reduce((s, b) => s + Number(b.bval || 0), 0);
+                const dSellVal = dBrokers.reduce((s, b) => s + Number(b.sval || 0), 0);
+                const dPayload = {
+                  stock_code: ticker,
+                  ticker,
+                  date,
+                  flow: 'D',
+                  status: 'RELEASED',
+                  is_complete: false,
+                  computed_from: 'broker_code_heuristic',
+                  note: 'Domestic derived by excluding a hardcoded foreign broker-code set from ALL; foreign payload was NOT subtracted (D != ALL - F).',
+                  brokers: dBrokers,
+                  broker_net: dBuyVal - dSellVal,
+                  net_flow: dBuyVal - dSellVal,
+                  total_buy_val: dBuyVal,
+                  total_sell_val: dSellVal,
+                  total_turnover: Math.max(dBuyVal, dSellVal),
+                  top_buyers: dBrokers.filter(b => Number(b.nval || (b.bval - b.sval)) > 0),
+                  top_sellers: dBrokers.filter(b => Number(b.nval || (b.bval - b.sval)) < 0)
+                };
+                safeWriteJson(path.join(tickerDDir, file), dPayload);
+              }
             }
           }
         }
@@ -302,6 +381,14 @@ async function runDomesticCompile() {
     const batch = allTickers.slice(i, i + BATCH_SIZE);
     await processTickerBatch(batch);
   }
+
+  console.log(
+    `Domestic: ${DOMESTIC_COMPILE_STATS.domestic_written} ditulis · ` +
+    `${DOMESTIC_COMPILE_STATS.domestic_all_clipped_skipped} dilewati (ALL terpotong 25 level) · ` +
+    `${DOMESTIC_COMPILE_STATS.domestic_empty_skipped} dilewati (0 broker domestik) · ` +
+    `${DOMESTIC_COMPILE_STATS.foreign_synthesized_from_all} F diturunkan dari ALL (bukan feed provider) · ` +
+    `${DOMESTIC_COMPILE_STATS.domestic_from_derived_foreign} D dihitung dari F turunan`
+  );
 
   // Build Hunter Indexes
   fs.mkdirSync(HUNTER_INDEX_DIR, { recursive: true });

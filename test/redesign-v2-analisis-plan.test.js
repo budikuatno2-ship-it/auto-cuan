@@ -30,8 +30,16 @@ test('plans come from the Day Trade and Swing screener rows; Investor stays empt
   assert.match(src, /fetchRows\('\/api\/sector-hot\?action=screener'\)/);
   assert.match(src, /fetchRows\('\/api\/sector-hot\?action=nk-screener-results'\)/);
   assert.match(src, /fetchRows\('\/api\/sector-hot\?action=daytrade-screener'\)/);
-  assert.match(src, /plans = \{ scalp: levelsOf\(findRow\(all\[2\], t, 'Day Trade'\)\), swing: levelsOf\(swingRow\), inv: null \}/);
-  assert.match(src, /Belum ada rencana Investor dari server\. Level tidak dihitung di layar ini\./);
+  // Current implementation: Scalping from the Day Trade row, Swing from the
+  // Konglo/Non-Konglo rows, Investor from the deterministic valuation plan.
+  // (The old shape `plans = { scalp: levelsOf(...), swing: levelsOf(swingRow), inv: null }`
+  // was replaced by the ADDENDUM P0 stale-plan gate + deterministic Investor plan.)
+  assert.match(src, /var rawScalp = levelsOf\(findRow\(all\[2\], t, 'Day Trade'\), curClose\)/);
+  assert.match(src, /var rawSwing = levelsOf\(swingRow, curClose\)/);
+  assert.match(src, /var invPlan = deriveDeterministicPlan\(t, 'inv'\)/);
+  assert.match(src, /var plans = \{ scalp: scalpPlan, swing: swingPlan, inv: invPlan \}/);
+  // BUG-V6-I: the stale-plan gate must be enforced at the display layer too.
+  assert.match(src, /enforcePlanFreshness\(state\.plans\[state\.hz\] \|\| deriveDeterministicPlan\(t, state\.hz\), t\)/);
   const a = load();
   assert.equal(a.levelsOf(null), null);
   assert.equal(a.levelsOf({ ticker: 'X', entry1: 100 }), null, 'no SL/TP from the server means no plan');

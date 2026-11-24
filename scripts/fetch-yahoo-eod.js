@@ -109,38 +109,15 @@ function normalizeCandles(ticker, chartResult) {
     }
   }
 
-  // Khusus IHSG: buang candle-candle corrupt / anomali artifisial (< 6000 atau spike palsu)
-  // dan pastikan penutupan terakhir berada pada range wajar BEI (~7.000 s.d. 7.700, wajib > 6000)
+  // Khusus IHSG: buang candle-candle corrupt / anomali artifisial (< 6000 atau
+  // spike palsu). Deliberately does NOT fabricate any missing index bar — see
+  // docs/v6/V6_YAHOO_SQLITE_IHSG_AUDIT.md. If Yahoo ^JKSE hasn't published the
+  // latest session yet, the series simply ends at the last real, verifiable
+  // close. Synthetic index numbers (the hardcoded 2026-11-03/11-04 bars that
+  // previously lived here) are forbidden: they are NOT redistributable market
+  // data and misstate the benchmark.
   if (ticker === 'IHSG') {
-    // Candle yang valid di atas 6000
     const cleanCandles = rawCandles.filter(c => c.close >= 6000);
-
-    // Tambahkan bar EOD riil untuk sesi terkini (2026-11-03 dan 2026-11-04) dengan kisaran wajar BEI
-    const datesPresent = new Set(cleanCandles.map(c => c.date));
-    if (!datesPresent.has('2026-11-03')) {
-      cleanCandles.push({
-        date: '2026-11-03',
-        open: 7460.50,
-        high: 7495.80,
-        low: 7445.10,
-        close: 7480.25,
-        volume: 24500000000,
-        value: 11200000000000,
-        frequency: 1250000
-      });
-    }
-    if (!datesPresent.has('2026-11-04')) {
-      cleanCandles.push({
-        date: '2026-11-04',
-        open: 7485.00,
-        high: 7520.10,
-        low: 7470.20,
-        close: 7505.50,
-        volume: 26000000000,
-        value: 12100000000000,
-        frequency: 1320000
-      });
-    }
     cleanCandles.sort((a, b) => a.date.localeCompare(b.date));
     return cleanCandles;
   }

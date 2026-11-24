@@ -407,7 +407,13 @@ test('Batch 2: Isolated SQLite store end-to-end import and buildFinancialSnapsho
     assert.equal(preSnapshot.fundamental.data_available, false);
     assert.equal(preSnapshot.status, 'missing');
 
-    // Simulate import of statements & market cap
+    // Simulate import of statements & market cap.
+    // NOTE (F7 triage, 2026-11-13): `collected_at` is part of the REAL Arjum
+    // statement payload (lib/financial-statements-import.js parseStatementFile
+    // reads json.collected_at) and it is the source date the importer promotes
+    // to the top-level publication date required by the V5 Phase-3
+    // publication-lag gate (lib/publication-lag.js). Without it the record is
+    // UNKNOWN_PUBLICATION and every fundamental is withheld by design.
     const merged = buildMergedFundamentalRecord({
       ticker: 'BBCA',
       existingRecord: store.queryRows('stock_fundamentals', { filters: [{ field: 'ticker', op: 'eq', value: 'BBCA' }] })[0],
@@ -415,6 +421,7 @@ test('Batch 2: Isolated SQLite store end-to-end import and buildFinancialSnapsho
         equity: 281687555000000,
         fundamental_period: 'Q1 2026',
         source: 'arjum financial-statements',
+        collected_at: '2026-10-01T00:00:00Z',
         quarterly: {
           periods: ['Q1 2026'],
           income_statement: { periods: ['Q1 2026'], rows: [{ type: 'item', label: 'Pendapatan Usaha', values: [20000], unit: 'idr' }] },

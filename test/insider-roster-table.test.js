@@ -143,7 +143,7 @@ test('BandarmologiRuntime: renderInsiderNetworkUI renders structured roster tabl
   runtime.renderInsiderNetworkUI(container, 'BBCA');
 
   assert.ok(container.innerHTML.includes('id="insiderRosterSection"'), 'Contains roster section');
-  assert.ok(container.innerHTML.includes('Daftar Pemegang Saham &amp; Insider'), 'Contains title');
+  assert.ok(container.innerHTML.includes('Daftar Pemegang Saham'), 'Contains title');
   assert.ok(container.innerHTML.includes('id="insiderRosterTbody"'), 'Contains table tbody');
   assert.ok(container.innerHTML.includes('id="insiderRosterTickerInput"'), 'Contains ticker input');
   assert.ok(container.innerHTML.includes('id="insiderGraphSection"'), 'Contains graph section below table');

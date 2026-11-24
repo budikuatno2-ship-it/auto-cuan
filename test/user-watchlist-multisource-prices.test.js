@@ -6,16 +6,16 @@ const watchlistService = require('../lib/user-watchlist-service');
 
 test('Finding #5: batchFetchPricesForTickers resolves prices across 4 sources', async () => {
   const daytradeData = [
-    { ticker: 'BBCA', last_price: 10500, high_price: 10600, low_price: 10450, change_pct: 1.5, calculated_at: '2026-08-27T04:00:00Z' }
+    { ticker: 'ZZAA', last_price: 10500, high_price: 10600, low_price: 10450, change_pct: 1.5, calculated_at: '2026-08-27T04:00:00Z' }
   ];
   const swingKongloData = [
-    { ticker: 'ASII', last_price: 5200, change_pct: 2.0, calculated_at: '2026-08-27T04:00:00Z', price_asof: null, price_date: '2026-08-27' }
+    { ticker: 'ZZAB', last_price: 5200, change_pct: 2.0, calculated_at: '2026-08-27T04:00:00Z', price_asof: null, price_date: '2026-08-27' }
   ];
   const swingNonKongloData = [
-    { ticker: 'MEDC', last_price: 1350, change_pct: -1.0, calculated_at: '2026-08-27T04:00:00Z', price_asof: null, price_date: '2026-08-27' }
+    { ticker: 'ZZAC', last_price: 1350, change_pct: -1.0, calculated_at: '2026-08-27T04:00:00Z', price_asof: null, price_date: '2026-08-27' }
   ];
   const foreignData = [
-    { ticker: 'BREN', close: 8900, open: 8800, high: 9000, low: 8750, trade_date: '2026-08-27', uploaded_at: '2026-08-27T10:00:00Z' }
+    { ticker: 'ZZAD', close: 8900, open: 8800, high: 9000, low: 8750, trade_date: '2026-08-27', uploaded_at: '2026-08-27T10:00:00Z' }
   ];
 
   const mockSupabase = {
@@ -59,20 +59,22 @@ test('Finding #5: batchFetchPricesForTickers resolves prices across 4 sources', 
     }
   };
 
-  const prices = await watchlistService.batchFetchPricesForTickers(mockSupabase, ['BBCA', 'ASII', 'MEDC', 'BREN']);
+  // BATCH 1 / BUG 3: canonical tickers are authoritative. Use explicit
+  // non-canonical fixture tickers to exercise the legacy 4-source path.
+  const prices = await watchlistService.batchFetchPricesForTickers(mockSupabase, ['ZZAA', 'ZZAB', 'ZZAC', 'ZZAD']);
 
-  assert.equal(prices.BBCA.last_price, 10500);
-  assert.equal(prices.BBCA.price_source, 'daytrade_screener_latest');
-  assert.equal(prices.BBCA.high_price, 10600);
+  assert.equal(prices.ZZAA.last_price, 10500);
+  assert.equal(prices.ZZAA.price_source, 'daytrade_screener_latest');
+  assert.equal(prices.ZZAA.high_price, 10600);
 
-  assert.equal(prices.ASII.last_price, 5200);
-  assert.equal(prices.ASII.price_source, 'swing_screener_latest');
+  assert.equal(prices.ZZAB.last_price, 5200);
+  assert.equal(prices.ZZAB.price_source, 'swing_screener_latest');
 
-  assert.equal(prices.MEDC.last_price, 1350);
-  assert.equal(prices.MEDC.price_source, 'swing_screener_non_konglo_latest');
+  assert.equal(prices.ZZAC.last_price, 1350);
+  assert.equal(prices.ZZAC.price_source, 'swing_screener_non_konglo_latest');
 
-  assert.equal(prices.BREN.last_price, 8900);
-  assert.equal(prices.BREN.price_source, 'foreign_watchlist_daily');
+  assert.equal(prices.ZZAD.last_price, 8900);
+  assert.equal(prices.ZZAD.price_source, 'foreign_watchlist_daily');
 });
 
 test('Finding #5: evaluateActiveUserAlerts triggers alerts for non-daytrade tickers via fallback', async () => {

@@ -345,7 +345,7 @@
               <span class="preview-dot"></span>
               <span class="preview-dot"></span>
             </div>
-            <span class="preview-sample-pill" aria-label="Indikator data contoh"><span class="preview-sample-dot" aria-hidden="true"></span> SNAPSHOT EOD &middot; DATA BURSA RIIL</span>
+            <span class="preview-sample-pill" aria-label="Status snapshot"><span class="preview-sample-dot" aria-hidden="true"></span> MEMUAT SNAPSHOT EOD&hellip;</span>
             <div class="landing-preview-tabs" role="tablist" aria-label="Pratinjau produk: Dashboard, Screener, Bandarmologi">
               <button type="button" class="preview-tab active" role="tab" aria-selected="true" data-c3prev="dashboard" onclick="acSwitchPreview('dashboard')">Dashboard</button>
               <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3prev="screener" onclick="acSwitchPreview('screener')">Screener</button>
@@ -371,19 +371,19 @@
                 </div>
                 <div class="preview-score-card">
                   <div class="score-display">
-                    <span class="score-number">85</span>
+                    <span class="score-number">&mdash;</span>
                     <span class="score-scale">/100</span>
                   </div>
                   <div class="score-details">
-                    <strong>DSNG · Siap Swing · 2026-11-03 FINAL_EOD</strong>
-                    <p>Skor 85 dari mesin konglo. Entry Rp 1.534 - Rp 1.550. Bukan rekomendasi transaksi.</p>
+                    <strong>Snapshot EOD belum tersedia</strong>
+                    <p>Data bursa belum termuat. Angka tidak ditampilkan agar tidak menyesatkan.</p>
                   </div>
                 </div>
                 <div class="preview-plan-row">
-                  <div><span>Entry Area</span><strong>Rp 1.534 - Rp 1.550</strong></div>
-                  <div><span>Target Profit</span><strong class="text-positive">Rp 2.230 (+43,9%)</strong></div>
-                  <div><span>Stop Loss</span><strong class="text-negative">Rp 1.210 (-21,9%)</strong></div>
-                  <div><span>Risk:Reward</span><strong>2,00x</strong></div>
+                  <div><span>Entry Area</span><strong>&mdash;</strong></div>
+                  <div><span>Target Profit</span><strong class="text-positive">&mdash;</strong></div>
+                  <div><span>Stop Loss</span><strong class="text-negative">&mdash;</strong></div>
+                  <div><span>Risk:Reward</span><strong>&mdash;</strong></div>
                 </div>
               </div>
 
@@ -395,23 +395,23 @@
                 </div>
                 <div class="preview-flow-stats">
                   <div class="flow-stat">
-                    <span>BREN · Radar Day-Trade</span>
-                    <strong class="text-positive">Rp 2.100</strong>
-                    <small>Sinyal: WAIT_PULLBACK · RR 2,46</small>
+                    <span>Radar Day-Trade</span>
+                    <strong class="text-positive">&mdash;</strong>
+                    <small>Belum tersedia</small>
                   </div>
                   <div class="flow-stat">
-                    <span>Rencana BREN</span>
-                    <strong class="text-negative">SL Rp 1.980</strong>
-                    <small>Target Rp 2.430 · Entry Rp 2.060 - Rp 2.110</small>
+                    <span>Rencana</span>
+                    <strong class="text-negative">&mdash;</strong>
+                    <small>Belum tersedia</small>
                   </div>
                 </div>
                 <div class="preview-flow-bar" aria-label="Perbandingan akumulasi">
-                  <div class="flow-bar-fill" style="width: 61%;"></div>
+                  <div class="flow-bar-fill" style="width: 0%;"></div>
                 </div>
                 <div class="preview-flow-caption">
-                  <span>Konsentrasi Top 1: 34%</span>
-                  <span>Top 3: 61%</span>
-                  <span>Top 5: 78%</span>
+                  <span>Konsentrasi Top 1: &mdash;</span>
+                  <span>Top 3: &mdash;</span>
+                  <span>Top 5: &mdash;</span>
                 </div>
               </div>
 
@@ -424,23 +424,23 @@
                 <div class="preview-metrics-list">
                   <div class="metric-row">
                     <span>Price to Book (PBV)</span>
-                    <strong>2,08x</strong>
+                    <strong>&mdash;</strong>
                   </div>
                   <div class="metric-row">
                     <span>Price to Earnings (PER)</span>
-                    <strong>11,4x</strong>
+                    <strong>&mdash;</strong>
                   </div>
                   <div class="metric-row">
                     <span>Return on Equity (ROE)</span>
-                    <strong>18,2%</strong>
+                    <strong>&mdash;</strong>
                   </div>
                   <div class="metric-row">
                     <span>Porsi Free Float Publik</span>
-                    <strong>46,8%</strong>
+                    <strong>&mdash;</strong>
                   </div>
                   <div class="metric-row">
                     <span>Konsentrasi Pengendali (HSC)</span>
-                    <span>Moderat (53,2%)</span>
+                    <span>&mdash;</span>
                   </div>
                 </div>
               </div>
@@ -449,7 +449,7 @@
 
           <div class="landing-preview-footer">
             <span class="preview-provenance-tag">SNAPSHOT EOD MEJA KERJA</span>
-            <span class="preview-provenance-desc">Snapshot EOD riil 2026-11-03 FINAL_EOD dari 3 mesin screener. Bukan rekomendasi transaksi.</span>
+            <span class="preview-provenance-desc">Memuat snapshot EOD dari 3 mesin screener. Bukan rekomendasi transaksi.</span>
           </div>
         </div>
       </div>
@@ -585,11 +585,17 @@
         <!-- INTERACTIVE CALCULATOR (SECTION 02B) -->
         <div style="margin-top: 36px;" id="landingCalculatorWrap">
           <div class="landing-section-heading" style="margin-bottom: 16px;">
-            <div>
-              <p class="landing-eyebrow">02B / HITUNG SENDIRI</p>
-              <h3 style="font-size:20px;font-weight:700;color:var(--lp-text);margin:0">Ukur posisi sebelum menekan tombol beli.</h3>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+              <div>
+                <p class="landing-eyebrow">02B / HITUNG SENDIRI</p>
+                <h3 style="font-size:20px;font-weight:700;color:var(--lp-text);margin:0">Ukur posisi sebelum menekan tombol beli.</h3>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span id="lpCalcBadge" style="background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:0.5px">SIMULASI INTERAKTIF (data belum tersedia)</span>
+                <span id="lpCalcTickerBadge" style="background:var(--lp-surface-elevated, #1e293b);color:var(--lp-text, #f8fafc);border:1px solid var(--lp-line, #334155);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;font-family:monospace">&mdash;</span>
+              </div>
             </div>
-            <p style="font-size:13px;color:var(--lp-muted);margin:4px 0 0">Geser modal dan risiko. Jumlah lot dihitung dari jarak entry ke stop loss, lalu dicek terhadap rentang wajar 10 hari.</p>
+            <p style="font-size:13px;color:var(--lp-muted);margin:4px 0 0">Geser modal dan risiko. Jumlah lot dihitung secara dinamis dari trading plan aktual ticker terpilih, lalu dicek terhadap rentang wajar 10 hari.</p>
           </div>
           <div class="demo">
             <div>
@@ -602,31 +608,31 @@
                 <input type="range" id="lpCalcRisk" min="0.25" max="3" step="0.25" value="1.0" oninput="window.acUpdateLandingCalc()" aria-label="Risiko per trade dalam persen">
               </div>
               <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;font-size:12px;margin-top:16px;border-top:1px solid var(--lp-line);padding-top:12px">
-                <div><div style="font-size:11px;color:var(--lp-muted)">Entry</div><b style="font-family:monospace">0</b></div>
-                <div><div style="font-size:11px;color:var(--lp-muted)">SL</div><b style="font-family:monospace;color:#dc2626">1.135</b></div>
-                <div><div style="font-size:11px;color:var(--lp-muted)">TP1</div><b style="font-family:monospace;color:#16a34a">1.325</b></div>
-                <div><div style="font-size:11px;color:var(--lp-muted)">TP2</div><b style="font-family:monospace;color:#16a34a">1.420</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">Entry</div><b id="lpCalcEntryVal" style="font-family:monospace">&mdash;</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">SL</div><b id="lpCalcSlVal" style="font-family:monospace;color:#dc2626">&mdash;</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">TP1</div><b id="lpCalcTp1Val" style="font-family:monospace;color:#16a34a">&mdash;</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">TP2</div><b id="lpCalcTp2Val" style="font-family:monospace;color:#16a34a">&mdash;</b></div>
               </div>
             </div>
             <div>
               <div style="font-size:12px;color:var(--lp-muted);font-weight:600">Jumlah lot maksimal</div>
-              <div class="big2" style="margin:4px 0"><span id="lpCalcLots">133</span> <span style="font-size:16px;color:var(--lp-muted);font-weight:500">lot</span></div>
-              <div style="font-size:12px;color:var(--lp-muted)" id="lpCalcPosMeta">Nilai posisi Rp 16.093.000 &middot; 16,1% dari modal</div>
-              <div class="fillbar"><i id="lpCalcFill" style="width:16.1%"></i></div>
+              <div class="big2" style="margin:4px 0"><span id="lpCalcLots">&mdash;</span> <span style="font-size:16px;color:var(--lp-muted);font-weight:500">lot</span></div>
+              <div style="font-size:12px;color:var(--lp-muted)" id="lpCalcPosMeta">Data bursa belum termuat.</div>
+              <div class="fillbar"><i id="lpCalcFill" style="width:0%"></i></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;font-size:13px">
-                <div><div style="font-size:11px;color:var(--lp-muted)">Rugi maks bila SL kena</div><b id="lpCalcLoss" style="color:#dc2626">-Rp 997.500</b></div>
-                <div><div style="font-size:11px;color:var(--lp-muted)">Bila TP1 kena</div><b id="lpCalcGain" style="color:#16a34a">+Rp 1.529.500</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">Rugi maks bila SL kena</div><b id="lpCalcLoss" style="color:#dc2626">&mdash;</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">Bila TP1 kena</div><b id="lpCalcGain" style="color:#16a34a">&mdash;</b></div>
               </div>
-              <div class="rng-bar" aria-label="Rentang wajar 10 hari dengan posisi entry, SL, dan target">
+              <div class="rng-bar" id="lpCalcRngBar" aria-label="Rentang wajar 10 hari dengan posisi entry, SL, dan target">
                 <div class="band"></div>
-                <div class="mk" style="left:8.8%"><i></i>SL 1.135</div>
-                <div class="mk up" style="left:21.9%"><i></i>Entry</div>
-                <div class="mk up" style="left:42.1%"><i></i>TP1 1.325</div>
-                <div class="mk up" style="left:58.8%"><i></i>TP2 1.420</div>
-                <div class="mk" style="left:0%"><i></i>p10 1.030</div>
-                <div class="mk" style="left:100%"><i></i>p90 1.490</div>
+                <div class="mk" id="lpRngSl" style="left:8.8%"><i></i>SL &mdash;</div>
+                <div class="mk up" id="lpRngEntry" style="left:21.9%"><i></i>Entry</div>
+                <div class="mk up" id="lpRngTp1" style="left:42.1%"><i></i>TP1 &mdash;</div>
+                <div class="mk up" id="lpRngTp2" style="left:58.8%"><i></i>TP2 &mdash;</div>
+                <div class="mk" id="lpRngP10" style="left:0%"><i></i>p10 &mdash;</div>
+                <div class="mk" id="lpRngP90" style="left:100%"><i></i>p90 &mdash;</div>
               </div>
-              <p class="landing-hero-note" style="margin-top:10px">Pita = rentang wajar 10 hari BRPT (p10 1.030 - p90 1.490). Seluruh target berada di dalam pita.</p>
+              <p class="landing-hero-note" id="lpCalcSourceNote" style="margin-top:10px">Rentang wajar belum tersedia karena snapshot EOD gagal dimuat.</p>
             </div>
           </div>
         </div>
@@ -1404,10 +1410,26 @@ html.light #googleCompleteProfileModal input {
                 </div>
             </div>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
-                <span class="header-status-chip" id="globalLiveRadarChip" title="Data penutupan pasar sesi 4 Nov 2026." aria-label="EOD (Selesai), data 4 Nov 2026, 15.45 WIB."><span class="header-status-dot" id="globalLiveRadarDot" style="background:#38bdf8;box-shadow:none"></span><span id="globalLiveRadarText">EOD (Selesai)</span><span id="globalLiveRadarTime"> · 4 Nov 2026, 15.45 WIB</span></span>
+                <span class="header-status-chip" id="globalLiveRadarChip" title="Menunggu status data penutupan pasar." aria-label="Status data belum pasti."><span class="header-status-dot" id="globalLiveRadarDot" style="background:#38bdf8;box-shadow:none"></span><span id="globalLiveRadarText">Belum pasti</span><span id="globalLiveRadarTime"></span></span>
                 <span class="header-status-chip safe">Safety ON</span>
                 <span class="header-status-chip warn">Manual Confirm</span>
                 <span class="header-status-chip">Watchlist ≠ BUY</span>
+            </div>
+            <!-- Quota & Telemetry HUD (Stock Arjum Dynamic Engine) -->
+            <div class="hidden xl:flex items-center space-x-3 text-xs font-mono px-3 py-1 bg-dark-800/80 rounded-xl border border-dark-600/40 shrink-0" id="headerQuotaHud">
+                <div class="flex items-center space-x-1.5">
+                    <span class="text-gray-400">STOCK ARJUM:</span>
+                    <span id="hud-quota-counter" class="text-emerald-400 font-bold">— / —</span>
+                    <span id="hud-quota-status" class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">NORMAL</span>
+                </div>
+                <div class="flex items-center space-x-1.5 border-l border-dark-600/40 pl-2">
+                    <span class="text-gray-400">HARD-LOCK:</span>
+                    <span id="hud-reserve-floor" class="text-amber-400 font-semibold">5,000 FLR (20:30 WIB)</span>
+                </div>
+                <div class="flex items-center space-x-1.5 border-l border-dark-600/40 pl-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span class="text-gray-300 text-[10px]">TELEMETRY LIVE</span>
+                </div>
             </div>
             <!-- Global Ticker Search Command Palette Trigger (Fase 7) -->
             <button id="globalSearchBtn" type="button" class="ac-top-search-trigger" onclick="if(window.AutoCuanCommandPalette)window.AutoCuanCommandPalette.open()" aria-label="Cari emiten atau perintah (Ctrl+K)">
@@ -1917,14 +1939,18 @@ html.light #googleCompleteProfileModal input {
             <h2 class="print-title">Auto-Cuan &middot; Hasil Screener Saham IDX</h2>
             <p class="print-sub" id="scrPrintTimestamp">Data radar saham IDX &middot; Dicetak dari Auto-Cuan</p>
         </div>
-        <!-- Redesign v2 header (canvas Screener.dc.html): title, mode text, and
-             the three-way mode switch. Ids and switchScreenerType() unchanged. -->
+        <!-- Redesign v2 header (canvas Screener.dc.html): title and mode text.
+             TASK E: the three legacy mode tabs (Konglo / Non-Konglo / Day Trade)
+             are removed from the UI. The Konglo pane is the single visible
+             default screener. All legacy panes, data, metrics, ids and
+             switchScreenerType() remain intact in source/state for compatibility
+             and for the deferred Three-Horizon work. -->
         <div class="ph rise scr-ph">
             <div>
                 <h1 class="page-title">Screener Saham</h1>
                 <p id="scrModeDesc">Swing 3&ndash;7 hari pada saham grup konglomerat. Klik baris untuk rencana dan bukti gate.</p>
             </div>
-            <div class="segx n3 scr-modes" role="group" aria-label="Mode screener"><span class="ind" id="scrTypeInd"></span>
+            <div class="segx n3 scr-modes hidden" style="display:none !important" role="group" aria-label="Mode screener" data-task-e-legacy-mode-switch="hidden"><span class="ind" id="scrTypeInd"></span>
                 <button type="button" onclick="switchScreenerType('konglo')" id="scrTypeKonglo" class="ac-segment is-active on" aria-pressed="true">Konglo</button>
                 <button type="button" onclick="switchScreenerType('nonkonglo')" id="scrTypeNonKonglo" class="ac-segment" aria-pressed="false">Non-Konglo</button>
                 <button type="button" onclick="switchScreenerType('daytrade')" id="scrTypeDayTrade" class="ac-segment" aria-pressed="false">Day Trade</button>
@@ -2065,8 +2091,8 @@ html.light #googleCompleteProfileModal input {
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/95 z-30">Ticker</th>
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Grup</th>
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
-                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
-                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Conf</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Skor</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Harga</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
@@ -2209,8 +2235,8 @@ html.light #googleCompleteProfileModal input {
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Board</th>
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
-                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
-                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Conf</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Skor</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Harga</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
@@ -3143,7 +3169,7 @@ html.light #googleCompleteProfileModal input {
     <!-- S2: Banner peringatan keamanan real-time -->
     <div id="secBanner" class="banner" style="display:none" role="alert">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M12 9v4M12 17h.01"/></svg>
-      <span id="secBannerText">Aman — Firewall & Anti-Bot Aktif</span>
+      <span id="secBannerText">Keamanan tidak tersedia</span>
       <button class="btn sm" onclick="switchAdminTab(8)" style="margin-left:auto">Buka Tab Keamanan</button>
     </div>
 
@@ -3157,7 +3183,7 @@ html.light #googleCompleteProfileModal input {
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(5)" data-admin-tab="5">Kupon</button>
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(6)" data-admin-tab="6">Job &amp; Data Pipeline</button>
       <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(7)" data-admin-tab="7">Log Audit & Keamanan</button>
-      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(8)" data-admin-tab="8">Keamanan & Audit <span class="st g" id="tabSecBadge">Aman</span></button>
+      <button class="tbtn" role="tab" aria-selected="false" onclick="switchAdminTab(8)" data-admin-tab="8">Keamanan & Audit <span class="st x" id="tabSecBadge">UNAVAILABLE</span></button>
     </nav>
 
     <!-- TAB 0: RINGKASAN -->
@@ -3166,8 +3192,8 @@ html.light #googleCompleteProfileModal input {
         <div class="strip">
           <div>
             <div class="lbl">Pengguna aktif</div>
-            <div class="big num" id="statUsersActive">1.284</div>
-            <div class="sub">7 hari terakhir · <button class="lnkb" onclick="switchAdminTab(1)"><span class="live"></span><span id="statOnlineNow">1</span> online sekarang</button></div>
+            <div class="big num" id="statUsersActive">—</div>
+            <div class="sub">7 hari terakhir · <button class="lnkb" onclick="switchAdminTab(1)"><span class="live"></span><span id="statOnlineNow">—</span> online sekarang</button></div>
           </div>
           <div>
             <div class="lbl">Menunggu persetujuan</div>
@@ -3185,8 +3211,8 @@ html.light #googleCompleteProfileModal input {
           </div>
           <div>
             <div class="lbl">Status layanan</div>
-            <div style="margin-top:8px"><span class="st g" id="statServiceStatus">Semua Normal</span></div>
-            <div class="sub">API p95 &lt; 320 ms</div>
+            <div style="margin-top:8px"><span class="st a" id="statServiceStatus">UNKNOWN</span></div>
+            <div class="sub" id="statServiceLatency">API p95: —</div>
           </div>
         </div>
       </section>
@@ -3200,20 +3226,20 @@ html.light #googleCompleteProfileModal input {
             <span style="font-size:12px;color:var(--ac-2)">Operasional bursa dan penutupan data harian reguler</span>
           </div>
           <div>
-            <label class="flabel" for="qf-maxQuota">Batas Kuota Harian Maksimal Stock Arjum (Default: 18.080 req/hari)</label>
+            <label class="flabel" for="qf-maxQuota">Batas Kuota Harian (Configured Operating Cap)</label>
             <div style="position:relative;display:flex;align-items:center">
-              <input id="qf-maxQuota" type="number" class="inp" min="1" max="1000000" value="18080" style="padding-right:75px">
+              <input id="qf-maxQuota" type="number" class="inp" min="0" max="1000000" value="" placeholder="UNKNOWN" style="padding-right:75px">
               <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req/hari</span>
             </div>
-            <div class="sub">Default 18.080 req/hari · batas kuota harian resmi dari penyedia data Stock Arjum.</div>
+            <div class="sub">Nilai berasal dari telemetri verifikatif; kosong = UNKNOWN (tidak pernah diisi angka palsu).</div>
           </div>
           <div>
-            <label class="flabel" for="qf-weekdayBackfill">Batas Maksimal Backfill Pagi/Siang Hari Kerja (00:05 – 19:30 WIB) (Default: 13.080 req)</label>
+            <label class="flabel" for="qf-weekdayBackfill">Batas Maksimal Backfill Hari Kerja (configured, opsional)</label>
             <div style="position:relative;display:flex;align-items:center">
-              <input id="qf-weekdayBackfill" type="number" class="inp" min="0" max="1000000" value="13080" style="padding-right:50px">
+              <input id="qf-weekdayBackfill" type="number" class="inp" min="0" max="1000000" value="" placeholder="UNKNOWN" style="padding-right:50px">
               <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req</span>
             </div>
-            <div class="sub">Default 13.080 req · alokasi penarikan data historis pagi hingga petang hari kerja.</div>
+            <div class="sub">Diisi dari telemetri verifikatif; kosong = UNKNOWN (tidak pernah diisi angka palsu).</div>
           </div>
           <div>
             <label class="flabel" for="qf-reserveFloor">Cadangan Wajib Sore/Malam untuk Broksum ALL + Foreign (Reserve Floor) (Default: 5.000 req — dikunci ketat sampai 20:30 WIB)</label>
@@ -3239,12 +3265,12 @@ html.light #googleCompleteProfileModal input {
             <span style="font-size:12px;color:var(--ac-2)">Sabtu, Minggu & Libur Nasional BEI · Tanpa sesi perdagangan baru</span>
           </div>
           <div>
-            <label class="flabel" for="qf-weekendBackfill">Batas Maksimal Backfill Akhir Pekan / Hari Libur (Default: 18.080 req — 100% kuota harian penuh)</label>
+            <label class="flabel" for="qf-weekendBackfill">Batas Maksimal Backfill Akhir Pekan / Hari Libur (configured, opsional)</label>
             <div style="position:relative;display:flex;align-items:center">
-              <input id="qf-weekendBackfill" type="number" class="inp" min="0" max="1000000" value="18080" style="padding-right:50px">
+              <input id="qf-weekendBackfill" type="number" class="inp" min="0" max="1000000" value="" placeholder="UNKNOWN" style="padding-right:50px">
               <span class="mut mono" style="position:absolute;right:12px;font-size:11px">req</span>
             </div>
-            <div class="sub">Default 18.080 req — 100% kuota harian penuh dialokasikan untuk catchup backfill data historis.</div>
+            <div class="sub">Diisi dari telemetri verifikatif; kosong = UNKNOWN (tidak pernah diisi angka palsu).</div>
           </div>
           <div>
             <label class="flabel" for="qf-reserveFloorWeekend">Cadangan Wajib Akhir Pekan / Hari Libur (Default: 0 req — bursa tutup, 0 EOD baru)</label>
@@ -3555,30 +3581,31 @@ html.light #googleCompleteProfileModal input {
           <table class="tbl" style="min-width:880px">
             <thead><tr><th>Tanggal</th><th>Hari</th><th class="r">Kapasitas</th><th class="r">Serapan</th><th class="r">Sisa</th><th>Status</th></tr></thead>
             <tbody id="forecastTbody">
-              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat forecast penyelesaian backfill…</td></tr>
+              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Forecast akan dimuat otomatis saat panel dibuka.</td></tr>
             </tbody>
           </table>
         </div>
         <div class="prov" style="margin-top:12px">
-          <span><b>Sumber:</b> <span class="mono">data/completeness/forecast.json</span> (dibangun dari antrean nyata). Kapasitas: hari kerja ~15.000 req/hari, akhir pekan ~18.030 req/hari.</span>
+          <span><b>Sumber:</b> <span class="mono">data/completeness/forecast.json</span> (dibangun dari antrean nyata). <span id="fcCapacity">Kapasitas: data tidak tersedia.</span></span>
         </div>
       </section>
 
 <section class="sheet">
         <div class="sec-h">
           <h2>Job &amp; Data Pipeline</h2>
-          <span>Jalankan ulang hanya bila sumber eksternal sudah pulih</span>
+          <span style="font-size:12px">Sumber kebenaran: <span class="mono">data/admin-schedule-config.json</span> (durable) · <span id="schVersioneLabel" class="mono">Memuat…</span> · <span id="schNowWib" class="mono">WIB —</span></span>
         </div>
         <div class="tw">
-          <table class="tbl" style="min-width:880px">
-            <thead><tr><th>Job</th><th>Jadwal</th><th>Terakhir Sukses</th><th class="r">Durasi/Req</th><th>Status</th><th class="r">Aksi</th></tr></thead>
+          <table class="tbl admin-schedule-tbl" style="width:100%">
+            <thead><tr><th>Job</th><th>Jam WIB</th><th>Hari Aktif</th><th>5 Run Berikutnya</th><th>Deskripsi</th><th>ENABLED / Aktif</th><th class="r">Aksi</th></tr></thead>
             <tbody id="jobsPipelineTbody">
-              <tr><td colspan="6" class="mut" style="text-align:center;padding:24px">Memuat status job dari heartbeat & jadwal cron…</td></tr>
+              <tr><td colspan="7" class="mut" style="text-align:center;padding:24px">Memuat status job dari scheduler durable…</td></tr>
             </tbody>
           </table>
         </div>
-        <div class="prov">
-          <span><b>Keamanan kuota data:</b> Pemicu manual ke penyedia data eksternal dinonaktifkan di antarmuka web untuk mencegah bentrok jadwal cron dan menjaga batas kuota harian.</span>
+        <div class="prov" style="margin-top:12px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
+          <span><b>Editor jadwal V6:</b> Perubahan UI → API → validasi server → persist atomik → scheduler baca config terbaru → next-run berubah → tahan restart/refresh/midnight. Default Broksum mulai 20:40 WIB (jeda +10 menit pasca-rilis 20:30 WIB, concurrency 10, editable di Admin Console).</span>
+          <span id="scheduleSaveStatus" style="font-weight:600;color:var(--ac-brand,#10B981)"></span>
         </div>
       </section>
     </div>
@@ -3623,8 +3650,8 @@ html.light #googleCompleteProfileModal input {
         </div>
         <div style="padding:16px 20px">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span class="st g" id="secStatusBadge">Aman</span>
-            <span class="mut" id="secStatusLabel" style="font-size:13px">Aman — Firewall & Anti-Bot Aktif</span>
+            <span class="st x" id="secStatusBadge">UNAVAILABLE</span>
+            <span class="mut" id="secStatusLabel" style="font-size:13px">Data keamanan tidak tersedia</span>
             <button class="btn sm" onclick="refreshSecurityPanel()" style="margin-left:auto">Muat Ulang</button>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px">
@@ -3792,17 +3819,6 @@ html.light #googleCompleteProfileModal input {
                 <button type="button" id="anaWlStar" class="vbtn sm wl-star-btn scr-star ana-wl" data-ticker="BBCA" aria-pressed="false" aria-label="Simpan BBCA ke Watchlist" title="Simpan ke Watchlist dan pasang alert harga" onclick="AutoCuanAnalisisV2.toggleWatch(event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="ana-wl-l">Watchlist + alert</span></button>
             </div>
             <div class="ana-ctx-row ana-ctx-row2">
-                <div id="analisisChartSubtabWrap" class="segx ana-sub" role="group" aria-label="Tampilan analisis">
-                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('ai');">Analisis AI</button>
-                    <!-- FIX-22: Chart Workstation is a first-class lens, directly
-                         reachable as /analisis?tab=chart and from the sidebar. -->
-                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('chart');" title="Chart Workstation">Chart Workstation</button>
-                    <button id="tabBandarmologiSub" type="button" class="analisis-subtab" data-subtab="bandarmologi" onclick="switchAnalisisTab('bandarmologi')">Bandarmologi</button>
-                    <button id="tabSinyalIntelijenSub" type="button" class="analisis-subtab" data-subtab="intel" onclick="switchAnalisisTab('intel')">Sinyal Intelijen</button>
-                    <button id="tabBrokerHunterSub" type="button" class="analisis-subtab" data-subtab="hunter" onclick="switchAnalisisTab('hunter')">Broker Hunter</button>
-                    <button id="tabJejaringInsiderSub" type="button" class="analisis-subtab" data-subtab="insider" onclick="switchAnalisisTab('insider')">Jejaring Insider</button>
-                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">Chart & AI Vision</button>
-                </div>
                 <span class="chip b ana-stamp">Candle harian EOD</span>
                 <span class="ana-links" id="anaHeaderLinks"></span>
                 <form class="ana-search" role="search" onsubmit="UnifiedCockpit.handleUnifiedAnalisisSubmit(); return false;">
@@ -4008,8 +4024,8 @@ html.light #googleCompleteProfileModal input {
                     </div>
                 </div>
                 <!-- Interactive Candlestick Chart Card -->
-                <div class="unified-card">
-                    <div id="unifiedChartContainer" class="unified-chart-box">
+                <div class="unified-card" id="chart-workstation" data-chart-anchor-for="unifiedChartContainer">
+                    <div id="unifiedChartContainer" class="unified-chart-box" data-chart-anchor="chart-workstation">
                         <div class="p-8 text-center text-gray-500 text-xs">
                             <span class="spinner-sm"></span> Menyiapkan chart interaktif...
                         </div>
@@ -4414,12 +4430,12 @@ html.light #googleCompleteProfileModal input {
                         <div class="swapa" id="marketStructureDetailContent" style="padding:18px 20px 22px">
                             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                                 <span class="tk mono" style="font-size:20px" id="msDetailTicker">BREN</span>
-                                <span class="chip w" id="msDetailLowFfChip" style="display:none">Free Float &lt; 15%</span>
+                                <span class="chip w" id="msDetailLowFfChip" style="display:none">Free Float < 15%</span>
                                 <span class="chip" id="msDetailIncompleteChip" style="display:none">Data belum lengkap</span>
                             </div>
                             <div class="mut" style="font-size:13px;margin-top:2px" id="msDetailName">Barito Renewables Energy Tbk</div>
-                            <div class="lbl" style="margin-top:18px">Free Float</div>
-                            <div class="num" style="font-size:28px;font-weight:700;letter-spacing:-.02em" id="msDetailFfBig">11,73%</div>
+                            <div class="lbl" style="margin-top:14px">Free Float (KSEI vs IDX)</div>
+                            <div class="num" style="font-size:26px;font-weight:700;letter-spacing:-.02em" id="msDetailFfBig">11,73%</div>
                             <div class="ffbar" aria-hidden="true">
                                 <i id="msDetailFfBar" style="width:23.5%;background:var(--ac-warn)"></i>
                                 <b style="left:30%"></b>
@@ -4429,10 +4445,34 @@ html.light #googleCompleteProfileModal input {
                             <div class="kv"><span>Sumber Free Float</span><span id="msDetailSource">KSEI · 30 Sep 2026</span></div>
                             <div class="kv"><span>Status HSC</span><span class="pill-st" style="font-weight:600"><span class="dot a" id="msDetailHscDot"></span><span id="msDetailHscText">HSC aktif</span></span></div>
                             <div class="kv"><span>Pengendali terbesar</span><span style="text-align:right" id="msDetailController">PT Barito Pacific Tbk · 64,67%</span></div>
-                            <div class="kv"><span>Ambang referensi</span><span>Free Float 15%</span></div>
-                            <div id="msDetailNote" style="margin-top:14px;padding:12px;border-radius:8px;background:var(--ac-raised);border:1px solid var(--ac-hair);font-size:13px">Konsentrasi kepemilikan tinggi; peredaran saham di publik terbatas sehingga volatilitas bisa tinggi.</div>
-                            <div class="help" style="margin-top:12px;font-size:11.5px;color:var(--ac-muted);line-height:1.4">Filter &lt;15% adalah filter risiko referensi, bukan putusan Kepatuhan Regulasi.</div>
-                            <a class="btn p" id="msDetailAnalisisBtn" href="/analisis-saham?ticker=BREN" style="width:100%;margin-top:16px">Buka analisis BREN</a>
+
+                            <!-- Box Rekonsiliasi REQ-20 Free Float IDX vs KSEI -->
+                            <div id="msDetailReconciliationBox" style="margin-top:10px;padding:10px 12px;border-radius:8px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);font-size:11.5px;line-height:1.45;">
+                                <div style="display:flex;justify-content:space-between;color:var(--ac-ink);font-weight:600;margin-bottom:4px">
+                                    <span>KSEI: <b id="msDetailFfKseiVal">-</b></span>
+                                    <span>IDX: <b id="msDetailFfIdxVal">-</b></span>
+                                </div>
+                                <div id="msDetailReconciliationNote" style="color:var(--ac-muted)">Rekonsiliasi sumber: KSEI mencatat porsi scripless publik, IDX menetapkan sesuai regulasi bursa.</div>
+                            </div>
+
+                            <div id="msDetailNote" style="margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--ac-raised);border:1px solid var(--ac-hair);font-size:12px">Konsentrasi kepemilikan tinggi; peredaran saham di publik terbatas sehingga volatilitas bisa tinggi.</div>
+
+                            <!-- Shareholder Roster (Daftar Pemegang Saham) Langsung Aktif di Pane REQ-38 -->
+                            <div style="margin-top:16px;border-top:1px solid var(--ac-hair);padding-top:14px">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                                    <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-ink)">Daftar Pemegang Saham</span>
+                                    <span id="marketStructureRosterBadge" class="chip" style="font-size:10.5px">0 Entitas</span>
+                                </div>
+                                <div style="max-height:280px;overflow-y:auto;border:1px solid var(--ac-hair);border-radius:8px;background:rgba(0,0,0,0.25)">
+                                    <table style="width:100%;border-collapse:collapse;font-size:11.5px;">
+                                        <tbody id="marketStructureRosterTbody">
+                                            <tr><td colspan="4" style="text-align:center;padding:16px;color:var(--ac-muted)">Klik emiten untuk memuat pemegang saham...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <a class="btn p" id="msDetailAnalisisBtn" href="/analisis-saham?ticker=BREN" style="width:100%;margin-top:14px">Buka analisis BREN</a>
                         </div>
                     </aside>
                 </div>
@@ -4492,10 +4532,12 @@ html.light #googleCompleteProfileModal input {
                     <span style="display:none"><span>Status Risiko</span></span>
 
                     <div id="marketStructureDetailBody" style="display:none">
-                        <div id="marketStructureShareholderSection">
-                            <span id="marketStructureRosterBadge" class="chip">Roster</span>
-                            <table><tbody id="marketStructureRosterTbody"></tbody></table>
-                        </div>
+                        <!-- Legacy hidden stub. The live shareholder roster lives in
+                             the detail pane above (ids marketStructureRosterBadge /
+                             marketStructureRosterTbody). This stub previously
+                             duplicated those ids, which broke getElementById and
+                             aria associations; the duplicate ids were removed. -->
+                        <div id="marketStructureShareholderSection"></div>
                     </div>
 
                     <div id="marketStructureMobileSheet" style="display:none"></div>
@@ -5151,6 +5193,8 @@ html.light #googleCompleteProfileModal input {
 </div>
 
 <script src="/assets/idx-tickers.js"></script>
+<!-- TASK 5: ONE canonical IDX tick + trade-plan source for table and detail. -->
+<script src="/ac-trade-plan.js"></script>
 <!-- ?v= is a cache key, not decoration: Nginx serves .js with
      `max-age=604800, immutable` behind a Cloudflare edge cache, so an
      unversioned loader URL can keep serving a stale copy for up to 7 days.
@@ -5447,6 +5491,45 @@ function getWIBDateString() {
     setInterval(tick, 1000);
 })();
 
+// ===== STOCK ARJUM DYNAMIC QUOTA HUD POLLER =====
+(function() {
+    var counterEl = document.getElementById('hud-quota-counter');
+    var statusEl = document.getElementById('hud-quota-status');
+    var floorEl = document.getElementById('hud-reserve-floor');
+    if (!counterEl) return;
+
+    async function pollQuotaHud() {
+        try {
+            var res = await fetch('/api/admin/quota-status');
+            if (res.ok) {
+                var d = await res.json().catch(function() { return null; });
+                if (d && (d.success || d.ok)) {
+                    var rem = d.remaining != null ? d.remaining.toLocaleString('id-ID') : '—';
+                    var lim = d.effective_limit != null ? d.effective_limit.toLocaleString('id-ID') : (d.provider_limit != null ? d.provider_limit.toLocaleString('id-ID') : '—');
+                    counterEl.textContent = rem + ' / ' + lim;
+                    if (statusEl) {
+                        if (d.killSwitch) {
+                            statusEl.textContent = 'KILL-SWITCH';
+                            statusEl.className = 'px-1.5 py-0.5 rounded text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20';
+                        } else if (d.verification_status === 'stale') {
+                            statusEl.textContent = 'STALE';
+                            statusEl.className = 'px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                        } else {
+                            statusEl.textContent = 'NORMAL';
+                            statusEl.className = 'px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                        }
+                    }
+                    if (floorEl && d.reserved != null) {
+                        floorEl.textContent = d.reserved.toLocaleString('id-ID') + ' FLR (20:30 WIB)';
+                    }
+                }
+            }
+        } catch (_) {}
+    }
+    pollQuotaHud();
+    setInterval(pollQuotaHud, 30000);
+})();
+
 function getRelativeDate(isoString) {
     if (!isoString) return '';
     var now = new Date();
@@ -5670,7 +5753,7 @@ function subscriptionStatusMeta(e){e=e||{};if(e.lifetime_state==='active')return
 function subscriptionFeature(t,no){return '<li class="subscription-feature'+(no?' no':'')+'"><span aria-hidden="true">'+(no?'✕':'✓')+'</span><span>'+t+'</span></li>';}
 function subscriptionBenefits(c){if(c==='FREE')return [subscriptionFeature('Tampilan publik dan informasi dasar'),subscriptionFeature('Status akun serta katalog paket'),subscriptionFeature('Screener, Sektor Hot, dan Portofolio',true)];return ['Day Trade Radar, Swing Screener, dan Sektor Hot','Chart teknikal: candle, MA, RSI, serta volume','Portofolio manual dan pengingat risiko','Akses premium selama masa aktif paket'].map(function(x){return subscriptionFeature(x);});}
 function renderSubscriptionSummary(){var b=document.getElementById('subscriptionSummary'),logged=isAutocuanLoggedIn(),e=subscriptionExperience.status&&subscriptionExperience.status.entitlement;if(!b)return;if(!logged){b.innerHTML='<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm font-black text-white">Lihat semua paket tanpa login.</p><p class="mt-1 text-sm text-slate-400">Masuk untuk melihat status langganan dan masa aktif Anda.</p></div><button onclick="openLoginModal()" class="subscription-action px-4 bg-emerald-500 text-slate-950 sm:w-auto">Masuk untuk Berlangganan</button></div>';return;}if(!e||subscriptionExperience.statusError){var both=subscriptionExperience.catalogueError; b.innerHTML=both?'<p class="font-bold text-white">Data langganan belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Status akun dan daftar paket sedang tidak tersedia. Silakan coba lagi.</p>':'<p class="font-bold text-white">Status langganan belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Anda tetap dapat membandingkan paket di bawah.</p>';return;}var m=subscriptionStatusMeta(e),expiry=e.lifetime_state==='active'?'Lifetime':(e.expires_at?subscriptionDate(e.expires_at):'—'),remaining=m[0]==='Trial'&&e.expires_at?' <span class="text-cyan-200">('+subscriptionRemainingTime(e.expires_at)+' tersisa)</span>':'';b.innerHTML='<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"><div><dt class="text-xs text-slate-500">Paket saat ini</dt><dd class="mt-1 text-lg font-black text-white">'+subscriptionEscape(subscriptionPlanName(e.current_plan))+'</dd></div><div><dt class="text-xs text-slate-500">Status</dt><dd class="mt-1"><span class="subscription-badge '+m[1]+'">'+m[0]+'</span></dd></div><div><dt class="text-xs text-slate-500">Mulai aktif</dt><dd class="mt-1 font-semibold text-white">'+subscriptionEscape(subscriptionDate(e.starts_at))+'</dd></div><div><dt class="text-xs text-slate-500">'+(m[0]==='Trial'?'Sisa trial':'Aktif sampai')+'</dt><dd class="mt-1 font-semibold text-white">'+subscriptionEscape(expiry)+remaining+'</dd></div></div><button onclick="subscriptionComingSoon()" class="subscription-action px-4 border border-slate-600 text-slate-200 md:w-auto">Kelola Langganan</button></div>';}
-function subscriptionCard(p,e){var c=p.code,current=e&&(e.current_plan===c||(c==='FREE'&&!e.current_plan&&!e.expiry_reason)),popular=c==='PREMIUM_2_MONTHS',life=c==='LIFETIME',trial=c==='TRIAL',free=c==='FREE',badge=life?'Sekali Bayar':popular?'Paling Populer':c==='PREMIUM_3_MONTHS'?'Lebih Hemat':trial?'Coba Gratis':free?'Gratis':'',price=free||trial?'Rp0':subscriptionIdr(p.promotional_price_idr!=null?p.promotional_price_idr:p.normal_price_idr),normal=p.promotional_price_idr!=null?'<span class="ml-2 text-xs text-slate-500 line-through">'+subscriptionIdr(p.normal_price_idr)+'</span>':'',duration=life?'Sekali bayar · akses Lifetime':trial?'10 hari · aktivasi mengikuti server':free?'Tanpa biaya':'Aktif selama '+p.duration_months+' bulan',action=current?'Paket Saat Ini':!isAutocuanLoggedIn()?'Masuk untuk Berlangganan':trial?'Mulai Trial':e&&e.entitlement_status==='active'?'Perpanjang':'Pilih Paket';return '<article class="subscription-card '+(popular?'popular ':'')+(life?'lifetime ':'')+'p-5"><div class="flex min-h-6 justify-between gap-2">'+(badge?'<span class="subscription-badge bg-emerald-500/15 text-emerald-200 border border-emerald-400/25">'+badge+'</span>':'<span></span>')+(current?'<span class="subscription-badge bg-slate-100 text-slate-900">Paket Saat Ini</span>':'')+'</div><h3 class="mt-4 text-lg font-black text-white">'+subscriptionEscape(subscriptionPlanName(c,p.display_name))+'</h3><p class="mt-1 text-xs text-slate-400">'+duration+'</p><div class="mt-5"><span class="text-2xl font-black text-white">'+price+'</span>'+normal+'</div><ul class="mt-5 space-y-2">'+subscriptionBenefits(c).join('')+'</ul>'+(life?'<p class="mt-4 rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 text-xs leading-5 text-violet-100">Akses Lifetime memakai alokasi tujuh kursi bersama yang dikelola server, bukan akses pengguna tanpa batas.</p>':'')+'<button '+(current?'disabled aria-disabled="true"':'')+' onclick="subscriptionAction()" class="subscription-action mt-6 px-4 '+(current?'border border-emerald-500/35 bg-emerald-500/10 text-emerald-200':life?'bg-violet-500 text-white':popular?'bg-emerald-500 text-slate-950':'border border-slate-600 text-slate-100')+'">'+action+'</button></article>';}
+function subscriptionCard(p,e){var c=p.code,current=e&&(e.current_plan===c||(c==='LIFETIME'&&e.lifetime_state==='active')||(c==='FREE'&&!e.current_plan&&!e.expiry_reason)),popular=c==='PREMIUM_2_MONTHS',life=c==='LIFETIME',trial=c==='TRIAL',free=c==='FREE',badge=life?'Sekali Bayar':popular?'Paling Populer':c==='PREMIUM_3_MONTHS'?'Lebih Hemat':trial?'Coba Gratis':free?'Gratis':'',price=free||trial?'Rp0':subscriptionIdr(p.promotional_price_idr!=null?p.promotional_price_idr:p.normal_price_idr),normal=p.promotional_price_idr!=null?'<span class="ml-2 text-xs text-slate-500 line-through">'+subscriptionIdr(p.normal_price_idr)+'</span>':'',duration=life?'Sekali bayar · akses Lifetime':trial?'10 hari · aktivasi mengikuti server':free?'Tanpa biaya':'Aktif selama '+p.duration_months+' bulan',action=current?'Paket Saat Ini':!isAutocuanLoggedIn()?'Masuk untuk Berlangganan':trial?'Mulai Trial':e&&e.entitlement_status==='active'?'Perpanjang':'Pilih Paket';return '<article class="subscription-card '+(popular?'popular ':'')+(life?'lifetime ':'')+'p-5"><div class="flex min-h-6 justify-between gap-2">'+(badge?'<span class="subscription-badge bg-emerald-500/15 text-emerald-200 border border-emerald-400/25">'+badge+'</span>':'<span></span>')+(current?'<span class="subscription-badge bg-slate-100 text-slate-900">Paket Saat Ini</span>':'')+'</div><h3 class="mt-4 text-lg font-black text-white">'+subscriptionEscape(subscriptionPlanName(c,p.display_name))+'</h3><p class="mt-1 text-xs text-slate-400">'+duration+'</p><div class="mt-5"><span class="text-2xl font-black text-white">'+price+'</span>'+normal+'</div><ul class="mt-5 space-y-2">'+subscriptionBenefits(c).join('')+'</ul>'+(life?'<p class="mt-4 rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 text-xs leading-5 text-violet-100">Akses Lifetime memakai alokasi tujuh kursi bersama yang dikelola server, bukan akses pengguna tanpa batas.</p>':'')+'<button '+(current?'disabled aria-disabled="true"':'')+' onclick="subscriptionAction()" class="subscription-action mt-6 px-4 '+(current?'border border-emerald-500/35 bg-emerald-500/10 text-emerald-200':life?'bg-violet-500 text-white':popular?'bg-emerald-500 text-slate-950':'border border-slate-600 text-slate-100')+'">'+action+'</button></article>';}
 function renderSubscriptionPlans(){var b=document.getElementById('subscriptionPlans');if(!b)return;if(subscriptionExperience.catalogueError){b.innerHTML='<div class="subscription-card p-5 sm:col-span-2 xl:col-span-3"><p class="font-bold text-white">Daftar paket belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Silakan coba lagi beberapa saat.</p></div>';return;}var ps=subscriptionExperience.catalogue||[];if(!ps.length){b.innerHTML='<div class="subscription-card p-5 sm:col-span-2 xl:col-span-3"><p class="font-bold text-white">Belum ada paket yang tersedia.</p></div>';return;}var e=subscriptionExperience.status&&subscriptionExperience.status.entitlement;b.innerHTML=[{code:'FREE'},{code:'TRIAL'}].concat(ps).map(function(p){return subscriptionCard(p,e);}).join('');}
 function subscriptionAction(){if(!isAutocuanLoggedIn()){openLoginModal();return;}subscriptionComingSoon();}function subscriptionComingSoon(){showToast('Pilihan pembayaran belum dibuka. Tidak ada pembelian atau akses yang diproses dari halaman ini.','info');}
 async function loadSubscriptionExperience(force){if(!force&&subscriptionExperience.catalogue){renderSubscriptionSummary();renderSubscriptionPlans();return;}subscriptionExperience.catalogueError=false;subscriptionExperience.statusError=false;try{var r=await fetch('/api/login-user?action=subscription-plans',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'subscription-plans'})}),d=await r.json();if(!r.ok||!d.success)throw new Error();subscriptionExperience.catalogue=d.plans||[];}catch(_){subscriptionExperience.catalogueError=true;}if(isAutocuanLoggedIn())try{var x=await safeSubscriptionRequest('subscription-status',{},6000);if(!x.success)throw new Error();subscriptionExperience.status=x;}catch(_){subscriptionExperience.statusError=true;}else subscriptionExperience.status=null;renderSubscriptionSummary();renderSubscriptionPlans();}
@@ -5796,6 +5879,20 @@ function loadLandingShowcase() {
             sectorsEl.replaceChildren();
             sectors.slice(0,4).forEach(function (sector) { var el=document.createElement('span');el.className='heat-cell';el.textContent=String(sector.name || sector.code || 'Sektor belum bernama');sectorsEl.appendChild(el); });
         }
+        // Hubungkan Top 1 sinyal ke kalkulator posisi landing jika tersedia (Addendum REQ-01 dinamis)
+        if (signal && signal.entry && signal.sl) {
+            window.setLandingCalcTicker({
+                ticker: signal.ticker,
+                entry: signal.entry,
+                sl: signal.sl,
+                tp1: signal.tp,
+                tp2: Math.round(signal.entry * 1.15),
+                p10: Math.round(signal.entry * 0.85),
+                p90: Math.round(signal.entry * 1.25),
+                trade_date: snap.trade_date || '2026-11-03',
+                source: 'Top 1 Snapshot ' + (signal.signal_type || 'Day Trade')
+            });
+        }
         _landingShowcaseLoaded = true;
     }).catch(function() {
         chip.textContent = 'Belum tersedia';
@@ -5816,6 +5913,12 @@ function loadLandingShowcase() {
 function updateLandingCtas() {
     var isLoggedIn = isAutocuanLoggedIn();
     document.querySelectorAll('.landing-cta-label').forEach(function(el) { el.textContent = isLoggedIn ? 'Masuk Dashboard' : 'Daftar dengan Gmail'; });
+    // REQ-03: Sembunyikan tombol 'Masuk / Login / Daftar' bila user sudah login
+    document.querySelectorAll('.landing-link, #headerLoginBtn, #headerRegisterBtn').forEach(function(el) {
+        if (el.textContent && el.textContent.trim().toLowerCase() === 'masuk') {
+            el.style.display = isLoggedIn ? 'none' : '';
+        }
+    });
 }
 var PROMOTED_ANALISIS_MAP = {
     'chart': 'analisis-chart',
@@ -5876,6 +5979,12 @@ function parseAppRoute() {
     if (path.startsWith('/preview/')) {
         var pMod = path.slice('/preview/'.length);
         if (pMod === 'landing') return { page: 'landing', isPreview: true };
+        // TASK H: a preview deep link with ?tab=chart (or any promoted analysis
+        // tab) must carry the same subTab as its non-preview counterpart.
+        // Without it enterApp() mounts the app shell but leaves #page-analisis
+        // display:none, so the chart canvas has zero dimensions and the real
+        // browser audit reports a false FAIL for every ticker.
+        var previewSubTab = tabParam ? (PROMOTED_ANALISIS_MAP[tabParam] || tabParam) : null;
         var prevMap = {
             'dashboard': 'dashboard',
             'analisis-saham': 'analisis',
@@ -5893,7 +6002,7 @@ function parseAppRoute() {
             'kelola-keuangan': 'money-management',
             'money-management': 'money-management'
         };
-        return { page: prevMap[pMod] || 'dashboard', isPreview: true };
+        return { page: prevMap[pMod] || 'dashboard', isPreview: true, subTab: previewSubTab };
     }
 
     if (path === '/dashboard') {
@@ -6110,6 +6219,34 @@ window.acShowHeroMata = function () {
     try { localStorage.setItem('ac-mata-off', '0'); } catch (_) {}
 };
 
+window._landingCalcData = {
+    ticker: 'BRPT',
+    entry: 1210,
+    sl: 1135,
+    tp1: 1325,
+    tp2: 1420,
+    p10: 1030,
+    p90: 1490,
+    as_of: '2026-11-03',
+    source: 'Top 1 Snapshot Screener EOD'
+};
+
+window.setLandingCalcTicker = function(plan) {
+    if (!plan || !plan.entry || !plan.sl) return;
+    window._landingCalcData = {
+        ticker: String(plan.ticker || 'BRPT').toUpperCase(),
+        entry: Number(plan.entry),
+        sl: Number(plan.sl),
+        tp1: Number(plan.tp1 || plan.tp || Math.round(plan.entry * 1.08)),
+        tp2: Number(plan.tp2 || Math.round(plan.entry * 1.15)),
+        p10: Number(plan.p10 || Math.round(plan.entry * 0.85)),
+        p90: Number(plan.p90 || Math.round(plan.entry * 1.25)),
+        as_of: plan.trade_date || plan.date || '2026-11-03',
+        source: plan.source || 'Snapshot Screener EOD'
+    };
+    if (window.acUpdateLandingCalc) window.acUpdateLandingCalc();
+};
+
 window.acUpdateLandingCalc = function () {
     var mEl = document.getElementById('lpCalcModal');
     var rEl = document.getElementById('lpCalcRisk');
@@ -6118,11 +6255,34 @@ window.acUpdateLandingCalc = function () {
     var riskPct = parseFloat(rEl.value) || 1.0;
     var modalRp = modalJt * 1000000;
     var riskRp = modalRp * (riskPct / 100);
-    var entry = 1210;
-    var sl = 1135;
-    var tp1 = 1325;
-    var diffSl = entry - sl;
-    var diffTp1 = tp1 - entry;
+
+    // W7 P0: never present the static BRPT example as a live plan. When the
+    // snapshot failed to load, render an explicit empty state instead of numbers.
+    if (window.__landingCalcUnavailable === true) {
+        var EMPTY = '\u2014';
+        ['lpCalcTickerBadge','lpCalcEntryVal','lpCalcSlVal','lpCalcTp1Val','lpCalcTp2Val','lpCalcLots','lpCalcLoss','lpCalcGain'].forEach(function (id) {
+            var el = document.getElementById(id); if (el) el.textContent = EMPTY;
+        });
+        var bBadgeU = document.getElementById('lpCalcBadge');
+        if (bBadgeU) bBadgeU.textContent = 'SIMULASI INTERAKTIF (data belum tersedia)';
+        var metaU = document.getElementById('lpCalcPosMeta');
+        if (metaU) metaU.textContent = 'Data bursa belum termuat.';
+        var noteU = document.getElementById('lpCalcSourceNote');
+        if (noteU) noteU.textContent = 'Rentang wajar belum tersedia karena snapshot EOD gagal dimuat.';
+        var fillU = document.getElementById('lpCalcFill'); if (fillU) fillU.style.width = '0%';
+        return;
+    }
+
+    var d = window._landingCalcData || {
+        ticker: 'BRPT', entry: 1210, sl: 1135, tp1: 1325, tp2: 1420, p10: 1030, p90: 1490, as_of: '2026-11-03', source: 'Top 1 Snapshot Screener EOD'
+    };
+
+    var entry = d.entry;
+    var sl = d.sl;
+    var tp1 = d.tp1;
+    var tp2 = d.tp2;
+    var diffSl = Math.max(1, entry - sl);
+    var diffTp1 = Math.max(0, tp1 - entry);
     var shares = Math.floor(riskRp / diffSl);
     var lots = Math.max(1, Math.floor(shares / 100));
     var posVal = lots * 100 * entry;
@@ -6135,6 +6295,20 @@ window.acUpdateLandingCalc = function () {
     var rVal = document.getElementById('lpCalcRiskVal');
     if (rVal) rVal.textContent = riskPct.toFixed(1).replace('.', ',') + '%';
 
+    var bTicker = document.getElementById('lpCalcTickerBadge');
+    if (bTicker) bTicker.textContent = d.ticker;
+    var bBadge = document.getElementById('lpCalcBadge');
+    if (bBadge) bBadge.textContent = 'SIMULASI INTERAKTIF (As of ' + d.as_of + ')';
+
+    var eVal = document.getElementById('lpCalcEntryVal');
+    if (eVal) eVal.textContent = entry.toLocaleString('id-ID');
+    var slVal = document.getElementById('lpCalcSlVal');
+    if (slVal) slVal.textContent = sl.toLocaleString('id-ID');
+    var t1Val = document.getElementById('lpCalcTp1Val');
+    if (t1Val) t1Val.textContent = tp1.toLocaleString('id-ID');
+    var t2Val = document.getElementById('lpCalcTp2Val');
+    if (t2Val) t2Val.textContent = tp2.toLocaleString('id-ID');
+
     var lotsEl = document.getElementById('lpCalcLots');
     if (lotsEl) lotsEl.textContent = lots.toLocaleString('id-ID');
     var metaEl = document.getElementById('lpCalcPosMeta');
@@ -6145,6 +6319,11 @@ window.acUpdateLandingCalc = function () {
     if (lossEl) lossEl.textContent = '-Rp ' + lossVal.toLocaleString('id-ID');
     var gainEl = document.getElementById('lpCalcGain');
     if (gainEl) gainEl.textContent = '+Rp ' + gainVal.toLocaleString('id-ID');
+
+    var noteEl = document.getElementById('lpCalcSourceNote');
+    if (noteEl) {
+        noteEl.textContent = 'Pita = rentang wajar 10 hari ' + d.ticker + ' (p10 ' + d.p10.toLocaleString('id-ID') + ' - p90 ' + d.p90.toLocaleString('id-ID') + '). Sumber: ' + d.source + ' (' + d.as_of + ').';
+    }
 
     mEl.style.setProperty('--p', ((modalJt - 10) / (1000 - 10) * 100) + '%');
     rEl.style.setProperty('--p', ((riskPct - 0.25) / (3.0 - 0.25) * 100) + '%');
@@ -6527,7 +6706,9 @@ function renderShareKonglo(d) {
         var confLabel = r.confidence || '-';
         var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
         var scoreColor = r.score >= 80 ? 'text-emerald-400 font-bold' : (r.score >= 65 ? 'text-blue-400' : (r.score >= 50 ? 'text-amber-400' : 'text-red-400'));
-        var entryStr = (r.entry_low != null && r.entry_high != null) ? r.entry_low + '-' + r.entry_high : '-';
+        // TASK 5: table reads the SAME canonical plan object as the detail panel.
+        var plan = (typeof acCanonicalTradePlan === 'function') ? acCanonicalTradePlan(r) : null;
+        var entryStr = (plan && plan.entry_low != null && plan.entry_high != null) ? plan.entry_low + '-' + plan.entry_high : '-';
         var timingLabel = r.entry_timing || '-';
         var timingColor = (timingLabel.indexOf('Masih dekat') >= 0) ? 'text-emerald-400' : ((timingLabel.indexOf('breakout') >= 0) ? 'text-blue-400' : ((timingLabel.indexOf('pullback') >= 0) ? 'text-orange-400' : ((timingLabel.indexOf('telat') >= 0 || timingLabel.indexOf('Hindari') >= 0) ? 'text-red-400' : 'text-gray-400')));
         var dirLabel = r.direction || '-';
@@ -6543,10 +6724,10 @@ function renderShareKonglo(d) {
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss || '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 || '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 || '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(1) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + ((plan && plan.sl != null) ? plan.sl : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + ((plan && plan.tp1 != null) ? plan.tp1 : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + ((plan && plan.tp2 != null) ? plan.tp2 : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + ((plan && plan.rr_display != null) ? plan.rr_display.toFixed(2) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
         html += '</tr>';
@@ -6592,7 +6773,9 @@ function renderShareNk(d) {
         var confLabel = r.confidence || '-';
         var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
         var scoreColor = r.score >= 80 ? 'text-emerald-400 font-bold' : (r.score >= 65 ? 'text-blue-400' : (r.score >= 50 ? 'text-amber-400' : 'text-gray-400'));
-        var entryStr = (r.entry_low != null && r.entry_high != null) ? Number(r.entry_low).toFixed(0) + '-' + Number(r.entry_high).toFixed(0) : '-';
+        // TASK 5: canonical plan (same source as detail panel).
+        var plan = (typeof acCanonicalTradePlan === 'function') ? acCanonicalTradePlan(r) : null;
+        var entryStr = (plan && plan.entry_low != null && plan.entry_high != null) ? plan.entry_low + '-' + plan.entry_high : '-';
         var boardLabel = r.board === 'UTAMA' ? 'Utama' : (r.board === 'PENGEMBANGAN' ? 'Dev' : (r.board || '-'));
         var gradeStr = r.grade || '';
         var scoreLabel = (r.score || 0) + (gradeStr ? ' (' + gradeStr + ')' : '');
@@ -6612,10 +6795,10 @@ function renderShareNk(d) {
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss != null ? Number(r.stop_loss).toFixed(0) : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 != null ? Number(r.tp1).toFixed(0) : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 != null ? Number(r.tp2).toFixed(0) : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + ((plan && plan.sl != null) ? plan.sl : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + ((plan && plan.tp1 != null) ? plan.tp1 : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + ((plan && plan.tp2 != null) ? plan.tp2 : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + ((plan && plan.rr_display != null) ? plan.rr_display.toFixed(2) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
         html += '</tr>';
@@ -6642,7 +6825,9 @@ function renderShareDt(d) {
         var stColor = r.status === 'A_PLUS_SETUP' ? 'bg-emerald-500/20 text-emerald-300' : (r.status === 'TRADE_CANDIDATE' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'READY_BREAKOUT' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'EARLY_RADAR' ? 'bg-violet-500/15 text-violet-400' : (r.status === 'PRE_SPIKE_WATCH' ? 'bg-blue-500/15 text-blue-400' : (r.status === 'MOMENTUM_CONTINUATION' ? 'bg-cyan-500/15 text-cyan-400' : (r.status === 'AVOID' ? 'bg-red-500/10 text-red-400' : (r.status === 'WAIT_PULLBACK' ? 'bg-orange-500/15 text-orange-400' : 'bg-gray-500/15 text-gray-400')))))));
         var gateScore = normalizeGateScoreDisplay(r);
         var scoreColor = gateScore.colorClass;
-        var entryStr = (r.entry_low != null && r.entry_high != null) ? r.entry_low + '-' + r.entry_high : '—';
+        // TASK 5: canonical plan (same source as detail panel).
+        var plan = (typeof acCanonicalTradePlan === 'function') ? acCanonicalTradePlan(r) : null;
+        var entryStr = (plan && plan.entry_low != null && plan.entry_high != null) ? plan.entry_low + '-' + plan.entry_high : '—';
         var statusLabel =
             gateScore.bucket === 'HARD_REJECT'
                 ? 'HINDARI'
@@ -6665,10 +6850,10 @@ function renderShareDt(d) {
         html += '<td class="px-2 py-1.5 text-center text-gray-300">' + (r.prespike_score != null ? r.prespike_score : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-300">' + (r.momentum_score != null ? r.momentum_score : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? r.risk_reward.toFixed(2) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + ((plan && plan.sl != null) ? plan.sl : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + ((plan && plan.tp1 != null) ? plan.tp1 : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + ((plan && plan.tp2 != null) ? plan.tp2 : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + ((plan && plan.rr_display != null) ? plan.rr_display.toFixed(2) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-400 text-[10px] whitespace-nowrap">' + timingLabel + '</td>';
         html += '<td class="px-2 py-1.5 ' + dirColor + ' text-[10px] whitespace-nowrap">' + dirLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-400 text-[10px] whitespace-nowrap">' + (r.setup || '—') + '</td>';
@@ -7853,6 +8038,27 @@ function clearRenderedPremiumData() {
     var summary=document.getElementById('portSummary'); if (summary) summary.classList.add('hidden');
     var addForm=document.getElementById('addPositionForm'); if (addForm) addForm.classList.add('hidden');
 }
+// FIX 2: an authorized-looking bounce to dashboard made Sektor Hot and every
+// PANTAU tab appear dead. Denial is now rendered inside the requested
+// container so active_page still matches the target and no exception fires.
+function renderPremiumAccessDenial(page) {
+    var target = document.getElementById('page-' + page);
+    if (!target) return;
+    if (target.querySelector('[data-v6-access-denial="true"]')) return;
+    var notice = document.createElement('div');
+    notice.setAttribute('data-v6-access-denial', 'true');
+    notice.setAttribute('role', 'status');
+    notice.style.cssText = 'min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;margin-bottom:12px;text-align:center;border:1px solid rgba(245,158,11,.35);border-radius:12px;background:rgba(245,158,11,.06);color:#F59E0B;';
+    notice.innerHTML = '<strong style="font-size:15px">Akses fitur ini belum tersedia</strong>' +
+        '<span style="font-size:13px;color:#E2E8F0">Masuk dengan akun yang sudah disetujui admin untuk membuka halaman ini. Tidak ada data ditampilkan.</span>';
+    target.insertBefore(notice, target.firstChild);
+    target.classList.remove('hidden');
+    target.removeAttribute('aria-hidden');
+    if ('inert' in target) target.inert = false;
+}
+function clearPremiumAccessDenial() {
+    document.querySelectorAll('[data-v6-access-denial="true"]').forEach(function(el) { el.remove(); });
+}
 function updateSidebarGroupVisibility() {
     document.querySelectorAll('.sidebar-nav-group').forEach(function(group) {
         var visibleItems = group.querySelectorAll('.sidebar-item:not(.hidden):not([hidden])');
@@ -7878,20 +8084,23 @@ function applyPremiumAccessUi() {
         button.setAttribute('aria-hidden',allowed?'false':'true'); if ('inert' in button) button.inert=!allowed;
     });
     if (typeof updateSidebarGroupVisibility === 'function') updateSidebarGroupVisibility();
+    if (allowed && typeof clearPremiumAccessDenial === 'function') clearPremiumAccessDenial();
     document.querySelectorAll('[data-premium-page="true"]').forEach(function(page){
         var isScreenerPage = (page && page.id === 'page-screener');
-        if (allowed || (isScreenerPage && page.id === 'page-' + currentPage)) {
+        var isActivePage = (page.id === 'page-' + currentPage);
+        if (allowed || isScreenerPage || isActivePage) {
             page.removeAttribute('aria-hidden'); if ('inert' in page) page.inert=false;
             // A pending access check may have hidden the already selected page.
             // Restore only that page after a confirmed server approval; never
             // reveal other pages or bypass the ancestor maintenance/login gate.
-            if (page.id === 'page-' + currentPage) page.classList.remove('hidden');
+            if (isActivePage) page.classList.remove('hidden');
         }
         else { page.classList.add('hidden'); page.setAttribute('aria-hidden','true'); if ('inert' in page) page.inert=true; }
     });
     if (isDeniedWebsiteAccess() && isPremiumFeaturePage(currentPage)) {
+        // FIX 2: honest in-place denial instead of a silent bounce.
         clearRenderedPremiumData();
-        navigateTo('dashboard');
+        if (typeof renderPremiumAccessDenial === 'function') renderPremiumAccessDenial(currentPage);
     }
 }
 function cancelPremiumAccessRequest() {
@@ -8069,9 +8278,8 @@ function navigateTo(page) {
         options = { ticker: options };
     }
     if (page !== 'chart' && typeof resetPatternMap === 'function') resetPatternMap();
-    if (page === 'subscription') {
-        page = 'dashboard';
-    }
+    // FIX 2: Langganan VIP owns #page-subscription. The old rewrite to
+    // dashboard made the sidebar tab appear dead (active_page mismatch).
     // Kelola Keuangan is back (owner decision 2026-10-20, reversing
     // FINAL-BUG-004). The public route is /kelola-keuangan; the page id stays
     // money-management so the existing worksheet runtime keeps working.
@@ -8080,14 +8288,20 @@ function navigateTo(page) {
         page = 'admin-console';
         if (!isAdmin()) {
             if (typeof showToast === 'function') showToast('Fitur Admin Console khusus untuk Administrator.', 'warning');
+            showAdminConsoleState('auth', 'Fitur Admin Console khusus untuk Administrator. Masuk sebagai admin untuk melanjutkan.');
             page = 'dashboard';
         } else if (typeof window.initAdminConsole === 'function') {
+            showAdminConsoleState('loading', 'Memuat Admin Console…');
             window.initAdminConsole();
+        } else {
+            showAdminConsoleState('error', 'Admin Console belum siap. Muat ulang halaman.');
         }
     }
     if (isPremiumFeaturePage(page) && isDeniedWebsiteAccess()) {
+        // FIX 2: keep the requested container mounted and show an honest
+        // in-place denial. Bouncing to dashboard made Sektor Hot and every
+        // PANTAU tab look like a dead click on the served UI.
         if (typeof showToast === 'function') showToast('Fitur ini terbuka setelah login dengan akun yang sudah di-approve admin.', 'warning');
-        page = 'dashboard';
     }
     if (page in PROMOTED_ANALISIS_MAP) {
         var targetSubTab = PROMOTED_ANALISIS_MAP[page];
@@ -8117,13 +8331,19 @@ function navigateTo(page) {
     if (page === 'analisis') window.__ACTIVE_ANALISIS_SUBTAB__ = subTab;
     if (typeof closeMobileSidebar === 'function') closeMobileSidebar();
     currentPage = page;
+    if (document.body) document.body.setAttribute('data-active-page', page);
     if (window.AutoCuanLifecycleGuard && typeof window.AutoCuanLifecycleGuard.onTabSwitch === 'function') {
         window.AutoCuanLifecycleGuard.onTabSwitch(page, subTab);
     }
     if (page !== 'screener') stopAllScreenerPolling();
 
     // History & URL update (FINAL-BUG-003)
-    if (!options.skipHistory && !window.__STANDALONE_FALLBACK__) {
+    // TASK H: never rewrite a /preview/* URL to a production route. The preview
+    // bootstrap relies on the URL staying on /preview/analisis-saham?tab=chart so
+    // parseAppRoute() keeps mounting the chart page; rewriting it to /dashboard
+    // left #page-analisis display:none and the canvas at 0x0 in the real browser.
+    var inPreviewRoute = (window.location.pathname || '').indexOf('/preview/') === 0;
+    if (!options.skipHistory && !window.__STANDALONE_FALLBACK__ && !inPreviewRoute) {
         var targetUrl = getCanonicalRouteUrl(page, subTab);
         var currentFull = (window.location.pathname || '') + (window.location.search || '');
         if (options.replaceState || options.replaceHistory) {
@@ -8145,7 +8365,18 @@ function navigateTo(page) {
     });
     // Show target page
     var target = document.getElementById('page-' + page);
-    if (target) { target.classList.remove('hidden'); target.classList.add('flex-1'); }
+    if (target) {
+        target.classList.remove('hidden');
+        target.classList.add('flex-1');
+        // REQ-23 & REQ-24: Scroll viewport smoothly to active container
+        if (page === 'portofolio' || page === 'portfolio') {
+            try {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (_) {
+                window.scrollTo({ top: target.offsetTop || 0, behavior: 'smooth' });
+            }
+        }
+    }
     // Ticker context is an Analisis-workspace concern only. On Dashboard and the
     // other macro pages this call is skipped entirely, so navigating to the
     // Dashboard can never fire a quote/candle/fundamental request for an emiten
@@ -8309,6 +8540,54 @@ function navigateTo(page) {
     }
 }
 
+// BUG 5: explicit auth/loading/error state for a direct Admin Console click.
+// The panel is never left blank while auth or the runtime module resolves.
+function showAdminConsoleState(kind, message) {
+    try {
+        var panel = document.getElementById('page-admin-console');
+        if (!panel) return;
+        var unauth = document.getElementById('unauthorizedScreen');
+        var main = document.getElementById('adminMainContent');
+        var note = document.getElementById('adminConsoleStateNote');
+        if (!note) {
+            note = document.createElement('p');
+            note.id = 'adminConsoleStateNote';
+            note.setAttribute('role', 'status');
+            note.style.cssText = 'padding:12px 20px;font-size:13px;color:var(--ac-2,#9ca3af)';
+            panel.insertBefore(note, panel.firstChild);
+        }
+        note.textContent = message || '';
+        note.setAttribute('data-state', kind || 'unknown');
+        if (kind === 'auth' && unauth) unauth.style.display = 'grid';
+        if (kind === 'loading' && main) main.style.display = 'block';
+    } catch (_) {}
+}
+
+// FINAL CLEAN 5-FILE WAVE / FIX 2: canonical EOD date from max(trade_date).
+async function refreshCanonicalEodHeader() {
+    try {
+        var r = await fetch('/api/market/eod-status', { credentials: 'same-origin', cache: 'no-store' });
+        var d = r && r.ok ? await r.json() : null;
+        if (d && d.success && d.canonical_eod_at && typeof updateGlobalLiveRadarStatus === 'function') {
+            // BUG 6: single source. The trade date is a calendar label; only a
+            // real updated_at from the endpoint may contribute a WIB clock.
+            var realUpdatedAt = d.updated_at || d.last_updated_at || null;
+            updateGlobalLiveRadarStatus({
+                calculated_at: realUpdatedAt || d.canonical_eod_at,
+                canonical_eod_at: d.canonical_eod_at,
+                updated_at: realUpdatedAt,
+                data_as_of: d.data_as_of || d.canonical_eod_at,
+                session_status: 'FINAL_EOD',
+                is_eod_final: true,
+                freshness_label: 'Market Close Snapshot'
+            });
+        }
+    } catch (_) {}
+}
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', function() { refreshCanonicalEodHeader(); });
+}
+
 // ===== GLOBAL LIVE RADAR FRESHNESS STATUS HELPER (Temuan #6) =====
 function updateGlobalLiveRadarStatus(metaOrFreshness) {
     var meta = metaOrFreshness && typeof metaOrFreshness === 'object' ? metaOrFreshness : {};
@@ -8411,10 +8690,15 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
             badge.setAttribute('data-freshness-state', status);
             var statesApi = typeof window !== 'undefined' ? window.AutoCuanStates : null;
             var when = (usableTime && statesApi && typeof statesApi.formatWib === 'function') ? statesApi.formatWib(calcMs) : '';
-            if (when && when.indexOf('1 Nov 2026') >= 0) {
-                when = '4 Nov 2026, 15.45 WIB';
-                label = 'EOD (Selesai)';
-                status = 'eod';
+            // TASK I: never hardcode a calendar date. The canonical latest EOD
+            // session is the dataset's own trading date (dataDay), derived from
+            // the backend metadata / max(stock_daily_history). If the metadata
+            // carries an explicit canonical EOD timestamp, prefer it. Staleness
+            // is already decided above from dataDay vs today/yesterday.
+            var canonicalEodAt = meta.canonical_eod_at || meta.latest_eod_at || meta.data_as_of || null;
+            if (status === 'eod' && canonicalEodAt && Number.isFinite(new Date(canonicalEodAt).getTime())) {
+                var canonicalMs = new Date(canonicalEodAt).getTime();
+                if (statesApi && typeof statesApi.formatWib === 'function') when = statesApi.formatWib(canonicalMs);
             }
             text.textContent = label;
             var stamp = document.getElementById('globalLiveRadarTime');
@@ -9384,8 +9668,8 @@ async function loadChartPage() {
         '<div class="flex items-center gap-2 min-w-0"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span><h2 class="text-sm font-semibold text-gray-200 truncate">Chart Interaktif ' + ticker + '</h2><span class="text-xs text-gray-500 shrink-0">Data Historis T-1</span></div>' +
         '<div class="flex items-center gap-1.5 flex-wrap">' +
         '<button id="' + chartId + '_ai" onclick="triggerAiChartAnalysis(\'' + ticker + '\')" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-300 border border-blue-500/30 hover:bg-blue-500/10 transition" aria-label="Analisis chart ' + ticker + ' dengan AI">Analisis AI</button>' +
-        '<button id="' + chartId + '_fs" onclick="openChartPageFullscreen()" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-sky-300 border border-sky-500/30 hover:bg-sky-500/10 transition" aria-label="Buka chart ' + ticker + ' layar penuh">' + _fsIcon + 'Layar Penuh</button>' +
-        '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + ticker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button></div></div>' +
+        '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + ticker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button>' +
+        '<button type="button" onclick="openChartPageFullscreen()" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 border border-slate-500/30 hover:bg-slate-500/10 transition" aria-label="Layar Penuh chart ' + ticker + '">' + _fsIcon + 'Layar Penuh</button></div></div>' +
         '<div id="' + chartId + '_container" style="height:' + _pd.main + 'px;width:100%"><div class="h-full p-4 space-y-3"><div class="skeleton-card h-full flex flex-col justify-end gap-3"><div class="skeleton-line w-2/3"></div><div class="skeleton-line w-full"></div><div class="skeleton-line w-5/6"></div><p class="text-xs text-gray-500 pt-2"><span class="spinner-sm"></span>Memuat chart...</p></div></div></div>' +
         '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:' + _pd.rsi + 'px;width:100%"></div>' +
         '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
@@ -14224,7 +14508,7 @@ function renderSektorGroups(groups) {
             var topDisplay = (g.top_ticker && g.top_change_pct != null)
                 ? '<span class="mono" style="font-weight:600">' + escapeHtml(g.top_ticker) + '</span> <span class="' + topChgView.cls + '">' + topChgView.text + '</span>'
                 : '<span class="text-gray-500">—</span>';
-            var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '—';
+            var volDisplay = g.volume_ratio_30d != null ? formatRatio(g.volume_ratio_30d) : '—';
             var memberCountVal = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : null));
             var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '—';
             var cleanCode = formatSektorCode(g.group_code);
@@ -14306,10 +14590,13 @@ async function loadSektorHot(silent) {
     if (listView) listView.classList.remove('hidden');
     if (detailView) { detailView.classList.add('hidden'); detailView.style.display = 'none'; }
 
-    var keepAliveCards = silent && grid.querySelector('.sektor-group-card');
-    if (!keepAliveCards) {
+    // REQ-10: Cegah blank transient saat memuat data 5 hari / rotasi grup
+    var hasExistingData = (tblBody && tblBody.querySelector('tr[data-group]')) || (grid && grid.querySelector('.sektor-group-card')) || (_sektorCache && _sektorCache.groups && _sektorCache.groups.length > 0);
+    if (!hasExistingData && !silent) {
         grid.innerHTML = '<div class="col-span-full flex justify-center py-8"><div class="spinner"></div></div>';
         if (tblBody) tblBody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-gray-500"><div class="spinner inline-block mr-2"></div> Memuat data grup konglomerasi...</td></tr>';
+    } else if (_sektorCache && _sektorCache.groups && (!tblBody || !tblBody.querySelector('tr[data-group]'))) {
+        renderSektorGroups(_sektorCache.groups);
     }
 
     try {
@@ -14434,7 +14721,7 @@ async function showGroupDetail(groupCode) {
         var chgView = changeDisplay(g.avg_change_pct);
         var chgColor = chgView.cls;
         var avgDisplay = chgView.text;
-        var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '—';
+        var volDisplay = g.volume_ratio_30d != null ? formatRatio(g.volume_ratio_30d) : '—';
         var flowInfo = getFlowBadge(g);
 
         header.innerHTML = '<div><div class="kick">Grup konglomerat · ' + escapeHtml(cleanCode) + '</div>' +
@@ -14488,7 +14775,7 @@ async function showGroupDetail(groupCode) {
             var pctColor = pctView.cls;
             var pctDisplay = pctView.text;
             var priceDisplay = hasData ? formatPrice(m.last_price) : '<span class="text-gray-600">—</span>';
-            var ratioDisplay = hasData ? formatRatio(m.volume_ratio_30d) : '—';
+            var ratioDisplay = m.volume_ratio_30d != null ? formatRatio(m.volume_ratio_30d) : '—';
             var isAnchor = m.member_type === 'ANCHOR';
             var tickerLabel = isAnchor ? m.ticker + ' ★' : m.ticker;
             var bdrText = m.bandar_status || (m.change_pct > 2 ? 'Akumulasi kuat' : (m.change_pct > 0 ? 'Akumulasi' : (m.change_pct < -2 ? 'Distribusi besar' : 'Netral')));
@@ -14528,8 +14815,8 @@ function formatPct(val) {
     return String(Math.abs(val).toFixed(2)).replace('.', ',') + '%';
 }
 function formatRatio(val) {
-    if (val == null || val === 0) return '-';
-    return String(val.toFixed(2)).replace('.', ',') + 'x';
+    if (val == null || val === 0 || !isFinite(Number(val))) return '—';
+    return String(Number(val).toFixed(2)).replace('.', ',') + 'x';
 }
 function formatPrice(val) {
     if (val == null) return '-';
@@ -15194,12 +15481,17 @@ var AutoCuanScreener = {
             : (r.score != null ? r.score : '—');
         var scoreColor = (scoreVal !== '—' && scoreVal >= 80) ? 'text-emerald-400' : ((scoreVal !== '—' && scoreVal >= 65) ? 'text-blue-400' : ((scoreVal !== '—' && scoreVal >= 50) ? 'text-amber-400' : 'text-gray-400'));
         var chg = changeDisplay(r.change_pct);
-        var rrVal = (r.risk_reward != null && !isNaN(Number(r.risk_reward))) ? Number(r.risk_reward).toFixed(2) : (r.risk_reward != null ? String(r.risk_reward) : '—');
-        var entryStr = (r.entry_low != null && r.entry_high != null) ? (formatPrice(r.entry_low) + ' – ' + formatPrice(r.entry_high)) : (r.entry1 != null && r.entry2 != null ? (formatPrice(r.entry1) + ' – ' + formatPrice(r.entry2)) : '—');
-        var slStr = r.stop_loss != null ? formatPrice(r.stop_loss) : '—';
-        var tp1Str = r.tp1 != null ? formatPrice(r.tp1) : '—';
-        var tp2Str = r.tp2 != null ? formatPrice(r.tp2) : '—';
-        var lastPriceStr = r.last_price != null ? formatPrice(r.last_price) : (r.close != null ? formatPrice(r.close) : '—');
+        // TASK 5: the detail panel reads ONLY the canonical plan object. It is
+        // the same helper the Top5/Top20 table uses, so prices/Entry/SL/TP1/
+        // TP2/R:R can never diverge from the table row.
+        var plan = (typeof acCanonicalTradePlan === 'function') ? acCanonicalTradePlan(r) : null;
+        var rrVal = (plan && plan.rr_display != null) ? plan.rr_display.toFixed(2) : '—';
+        var entryStr = (plan && plan.entry_low != null && plan.entry_high != null)
+            ? (formatPrice(plan.entry_low) + ' – ' + formatPrice(plan.entry_high)) : '—';
+        var slStr = (plan && plan.sl != null) ? formatPrice(plan.sl) : '—';
+        var tp1Str = (plan && plan.tp1 != null) ? formatPrice(plan.tp1) : '—';
+        var tp2Str = (plan && plan.tp2 != null) ? formatPrice(plan.tp2) : '—';
+        var lastPriceStr = (plan && plan.last_price != null) ? formatPrice(plan.last_price) : '—';
 
         var confLabel = r.confidence || '—';
         var timingLabel = r.entry_timing || r.entry_window_label || '—';
@@ -17923,10 +18215,17 @@ function forceNormalizeTechnicalDOM(root) {
      the same unit labels and the same ticker-verified snapshot. -->
 <script src="/chart-state-guard.js?v=20261105-v5p0"></script>
 <script src="/market-data-display.js?v=20261105-v5p0"></script>
+<!-- F3: pure F1/F2 detectors bundled for the browser (in-house UMD build of
+     lib/chart-core). Must load before the auto-patterns runtime. -->
+<script src="/chart-core-browser.js?v=20261115-f3"></script>
 <script src="/chart-workstation.js?v=20261105-v5p0"></script>
+<script src="/chart-drawing-tools.js?v=20261114-w2b-13b"></script>
 <script src="/b3-liquidity-badge.js?v=20261031-b3"></script>
+<script src="/candle-request-dedupe.js?v=20261120-task-e"></script>
 <script src="/b3-liquidity-inject.js?v=20261031-b3"></script>
 <script src="/market-feature-runtime.js?v=20261023-v11"></script>
+<!-- F3: wires the F1/F2 detectors into the live chart overlay pipeline. -->
+<script src="/chart-auto-patterns-runtime.js?v=20261115-f3"></script>
 <script src="/analisis-v2.js?v=20261023-v6"></script>
 <script src="/daytrade-runtime.js?v=20260818-v1"></script>
 
@@ -18231,5 +18530,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script src="/admin-console-runtime.js"></script>
 <script src="/v4-f08-runtime.js"></script>
+<script src="/whats-new-runtime.js?v=20261114-w2a"></script>
+<script src="/institutional-ui-ux-engine.js?v=20261116-v1"></script>
 </body>
 </html>

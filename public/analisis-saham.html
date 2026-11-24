@@ -131,6 +131,11 @@
                 <span>Pattern Radar</span>
                 <span class="text-[10px] text-emerald-400 font-mono font-bold ml-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">ADMIN</span>
             </button>
+            <!-- M-P1a Defect D: Manual Screener reachable from real navigation. -->
+            <button id="tabManualScreener" type="button" class="analisis-tab" data-tab="manual-screener" onclick="switchAnalisisTab('manual-screener')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18M3 12h12M3 19h6"/><circle cx="19" cy="17" r="3"/></svg>
+                <span>Manual Screener</span>
+            </button>
         </nav>
 
         <!-- Header / Controls for Analisis & Chart (Global Search + Popular Chips + Subtabs) -->
@@ -353,10 +358,11 @@
                 <summary>Alat lanjutan</summary>
                 <div style="padding:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                     <div id="rankingCardOuterWrap" class="ranking-card-wrapper" style="display:none"></div>
-                </div>
-            </details>
-        </section>
-                    <div id="rankingContentWrap" style="display:none"></div>
+                    <!-- V6 (W2b / 13F): the duplicate `rankingContentWrap` id that used
+                         to live here (a stray, unclosed copy of the ranking panel) was
+                         removed. The single canonical #rankingContentWrap is the one
+                         opened at the top of this section. The hidden ticker input and
+                         refresh button are kept here so existing JS refs still resolve. -->
                     <input id="rankingTickerSearchInput" type="text" placeholder="Pilih ticker..." style="display:none">
                     <button type="button" id="btnRefreshRanking" onclick="refreshRankingTable()" class="btn sm">Muat ulang data ranking</button>
                 </div>
@@ -643,12 +649,12 @@
                         <div class="swapa" id="marketStructureDetailContent" style="padding:18px 20px 22px">
                             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                                 <span class="tk mono" style="font-size:20px" id="msDetailTicker">BREN</span>
-                                <span class="chip w" id="msDetailLowFfChip" style="display:none">Free Float &lt; 15%</span>
+                                <span class="chip w" id="msDetailLowFfChip" style="display:none">Free Float < 15%</span>
                                 <span class="chip" id="msDetailIncompleteChip" style="display:none">Data belum lengkap</span>
                             </div>
                             <div class="mut" style="font-size:13px;margin-top:2px" id="msDetailName">Barito Renewables Energy Tbk</div>
-                            <div class="lbl" style="margin-top:18px">Free Float</div>
-                            <div class="num" style="font-size:28px;font-weight:700;letter-spacing:-.02em" id="msDetailFfBig">11,73%</div>
+                            <div class="lbl" style="margin-top:14px">Free Float (KSEI vs IDX)</div>
+                            <div class="num" style="font-size:26px;font-weight:700;letter-spacing:-.02em" id="msDetailFfBig">11,73%</div>
                             <div class="ffbar" aria-hidden="true">
                                 <i id="msDetailFfBar" style="width:23.5%;background:var(--ac-warn)"></i>
                                 <b style="left:30%"></b>
@@ -658,10 +664,34 @@
                             <div class="kv"><span>Sumber Free Float</span><span id="msDetailSource">KSEI · 30 Sep 2026</span></div>
                             <div class="kv"><span>Status HSC</span><span class="pill-st" style="font-weight:600"><span class="dot a" id="msDetailHscDot"></span><span id="msDetailHscText">HSC aktif</span></span></div>
                             <div class="kv"><span>Pengendali terbesar</span><span style="text-align:right" id="msDetailController">PT Barito Pacific Tbk · 64,67%</span></div>
-                            <div class="kv"><span>Ambang referensi</span><span>Free Float 15%</span></div>
-                            <div id="msDetailNote" style="margin-top:14px;padding:12px;border-radius:8px;background:var(--ac-raised);border:1px solid var(--ac-hair);font-size:13px">Konsentrasi kepemilikan tinggi; peredaran saham di publik terbatas sehingga volatilitas bisa tinggi.</div>
-                            <div class="help" style="margin-top:12px;font-size:11.5px;color:var(--ac-muted);line-height:1.4">Filter &lt;15% adalah filter risiko referensi, bukan putusan Kepatuhan Regulasi.</div>
-                            <a class="btn p" id="msDetailAnalisisBtn" href="/analisis-saham?ticker=BREN" style="width:100%;margin-top:16px">Buka analisis BREN</a>
+
+                            <!-- Box Rekonsiliasi REQ-20 Free Float IDX vs KSEI -->
+                            <div id="msDetailReconciliationBox" style="margin-top:10px;padding:10px 12px;border-radius:8px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);font-size:11.5px;line-height:1.45;">
+                                <div style="display:flex;justify-content:space-between;color:var(--ac-ink);font-weight:600;margin-bottom:4px">
+                                    <span>KSEI: <b id="msDetailFfKseiVal">-</b></span>
+                                    <span>IDX: <b id="msDetailFfIdxVal">-</b></span>
+                                </div>
+                                <div id="msDetailReconciliationNote" style="color:var(--ac-muted)">Rekonsiliasi sumber: KSEI mencatat porsi scripless publik, IDX menetapkan sesuai regulasi bursa.</div>
+                            </div>
+
+                            <div id="msDetailNote" style="margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--ac-raised);border:1px solid var(--ac-hair);font-size:12px">Konsentrasi kepemilikan tinggi; peredaran saham di publik terbatas sehingga volatilitas bisa tinggi.</div>
+
+                            <!-- Shareholder Roster (Daftar Pemegang Saham) Langsung Aktif di Pane REQ-38 -->
+                            <div style="margin-top:16px;border-top:1px solid var(--ac-hair);padding-top:14px">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                                    <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-ink)">Daftar Pemegang Saham</span>
+                                    <span id="marketStructureRosterBadge" class="chip" style="font-size:10.5px">0 Entitas</span>
+                                </div>
+                                <div style="max-height:280px;overflow-y:auto;border:1px solid var(--ac-hair);border-radius:8px;background:rgba(0,0,0,0.25)">
+                                    <table style="width:100%;border-collapse:collapse;font-size:11.5px;">
+                                        <tbody id="marketStructureRosterTbody">
+                                            <tr><td colspan="4" style="text-align:center;padding:16px;color:var(--ac-muted)">Klik emiten untuk memuat pemegang saham...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <a class="btn p" id="msDetailAnalisisBtn" href="/analisis-saham?ticker=BREN" style="width:100%;margin-top:14px">Buka analisis BREN</a>
                         </div>
                     </aside>
                 </div>
@@ -721,10 +751,12 @@
                     <span style="display:none"><span>Status Risiko</span></span>
 
                     <div id="marketStructureDetailBody" style="display:none">
-                        <div id="marketStructureShareholderSection">
-                            <span id="marketStructureRosterBadge" class="chip">Roster</span>
-                            <table><tbody id="marketStructureRosterTbody"></tbody></table>
-                        </div>
+                        <!-- Legacy hidden stub. The live shareholder roster lives in
+                             the detail pane above (ids marketStructureRosterBadge /
+                             marketStructureRosterTbody). This stub previously
+                             duplicated those ids, which broke getElementById and
+                             aria associations; the duplicate ids were removed. -->
+                        <div id="marketStructureShareholderSection"></div>
                     </div>
 
                     <div id="marketStructureMobileSheet" style="display:none"></div>
@@ -813,6 +845,21 @@
             </div>
         </section>
 
+        <!-- M-P1a Defect D: MANUAL SCREENER panel — full-universe rule screening
+             with honest coverage/exclusion counts and per-result source-as-of. -->
+        <section id="panel-tab-manual-screener" class="analisis-tab-panel" style="display:none">
+            <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-4 space-y-3">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-100">Manual Screener</h2>
+                        <p class="text-[11px] text-slate-400">Saring full universe dengan aturan AND/OR. Coverage ditampilkan apa adanya — tanpa truncation diam-diam.</p>
+                    </div>
+                    <div id="msCoverage" class="text-[11px] font-mono text-slate-300" data-role="coverage"></div>
+                </div>
+                <div id="manualScreenerRoot"></div>
+            </div>
+        </section>
+
         <!-- Shared Ticker Autocomplete DataList for Independent Tab Searches -->
         <datalist id="tickerAutocompleteList">
             <option value="BBCA">Bank Central Asia</option>
@@ -890,12 +937,49 @@
     <script src="/chart-state-guard.js?v=20261105-v5p0"></script>
     <script src="/market-data-display.js?v=20261105-v5p0"></script>
     <script src="/market-feature-runtime.js?v=20261105-v5p0"></script>
+    <script src="/chart-drawing-tools.js?v=20261114-w2b-13b"></script>
     <script src="/chart-viewer.js?v=20260905-v1"></script>
     <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
     <script src="/unified-cockpit-runtime.js?v=20261023-v2"></script>
     <script src="/ai-chat-renderer.js?v=20260905-v2"></script>
     <script src="/account-center-lazy-loader-v1.js?v=20260817-v1"></script>
     <script src="/analisis-saham-runtime.js?v=20261023-v2"></script>
+    <!-- M-P1a Defect D: Manual Screener runtime wired into the real page. -->
+    <script src="/manual-screener-runtime.js?v=20261115-mp1a"></script>
+    <script>
+      (function () {
+        'use strict';
+        function bootManualScreener() {
+          var api = window.AutoCuanManualScreener;
+          var root = document.getElementById('manualScreenerRoot');
+          if (!api || !root || root.dataset.booted === '1') return;
+          root.dataset.booted = '1';
+          var inst = api.create(root, {});
+          var coverageEl = document.getElementById('msCoverage');
+          var origRun = inst && inst.run;
+          if (inst && origRun) {
+            inst.run = function () { return origRun.apply(inst, arguments); };
+          }
+          // Render coverage/exclusion counts from the API response.
+          document.addEventListener('ac-manual-screener-result', function (ev) {
+            var d = ev.detail || {};
+            if (!coverageEl) return;
+            coverageEl.textContent = 'universe=' + (d.total_universe != null ? d.total_universe : '—') +
+              ' scanned=' + (d.scanned != null ? d.scanned : '—') +
+              ' stale=' + (d.excluded_stale != null ? d.excluded_stale : '—') +
+              ' false=' + (d.excluded_null != null ? d.excluded_null : '—') +
+              ' unknown=' + (d.excluded_unknown != null ? d.excluded_unknown : '—') +
+              ' synthetic=' + (d.excluded_synthetic != null ? d.excluded_synthetic : '—') +
+              (d.universe_truncated === false ? ' [full]' : ' [TRUNCATED]');
+          });
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', bootManualScreener);
+        } else {
+          bootManualScreener();
+        }
+      })();
+    </script>
     <script src="/bandarmologi-runtime.js?v=20260906-v2"></script>
     <script src="/stock-analysis-ai.js?v=20260905-v2"></script>
     <script src="/ui-stability-fix.js?v=20260802-ui-stability-v2"></script>

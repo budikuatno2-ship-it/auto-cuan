@@ -10,6 +10,7 @@
  */
 
 const sectorRadar = require('../lib/sector-radar');
+const sectorVolumeRatio = require('../lib/sector-volume-ratio');
 
 let _cachedSektor = null;
 let _cachedAt = 0;
@@ -39,7 +40,7 @@ function buildSektorData(query) {
       scanned_count: 964,
       failed_count: 0
     },
-    groups: radarGroups
+    groups: sectorVolumeRatio.enrichGroupsWithVolumeRatios(radarGroups)
   };
   _cachedAt = now;
 

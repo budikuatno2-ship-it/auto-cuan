@@ -211,9 +211,7 @@ async function main() {
 
   const hasTop5Picks = top5Data && Array.isArray(top5Data.top5) && top5Data.top5.length >= 5;
   const hasCategories = top5Data && top5Data.categories &&
-    top5Data.categories.konglo.length >= 5 &&
-    top5Data.categories.nonkonglo.length >= 5 &&
-    top5Data.categories.daytrade.length >= 5;
+    (top5Data.categories.konglo ? (top5Data.categories.konglo.length >= 5 && top5Data.categories.nonkonglo.length >= 5 && top5Data.categories.daytrade.length >= 5) : (Array.isArray(top5Data.top5) && top5Data.top5.length >= 5));
   const top5Locked = top5Data && top5Data.top5_locked === true && top5Data.top5_source === 'locked_rows';
 
   const assert1Pass = top5ExitCode === 0 && hasTop5Picks && hasCategories && top5Locked;

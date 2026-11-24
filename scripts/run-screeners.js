@@ -34,6 +34,10 @@ const nkShim = require(path.join(ROOT, 'lib', 'screener-nonkonglo'));
 const dtShim = require(path.join(ROOT, 'lib', 'screener-daytrade'));
 const calendar = require(path.join(ROOT, 'lib', 'idx-trading-calendar'));
 const badge = require(path.join(ROOT, 'lib', 'screener-eod-badge'));
+// Subtask H / P0-09: canonical Short Swing over the WHOLE local IDX universe.
+const shortSwingUniverse = require(path.join(ROOT, 'lib', 'short-swing-universe'));
+const shortSwingEngine = require(path.join(ROOT, 'lib', 'saham-potensial-engine'));
+const snapshotStore = require(path.join(ROOT, 'lib', 'saham-potensial-snapshot-store'));
 
 function wibTodayKey() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -289,6 +293,77 @@ function runMachine(tickers, machine, shim, tradeDate) {
   return { params, scoredRows, filtered };
 }
 
+/**
+ * Subtask H / P0-09 — build the CANONICAL Short Swing pool.
+ *
+ * Source: the WHOLE local IDX universe (every data/daily-candles/*.json
+ * ticker), graded by lib/saham-potensial-engine.js — NOT the Konglo Top165
+ * screener results that the legacy `swing` alias carried.
+ *
+ * The snapshot is committed to the append-only store
+ * (data/saham-potensial-snapshots/) so revisions are content-hashed,
+ * immutable and chained via revision_parent.
+ */
+function buildCanonicalShortSwingPool(tradeDate) {
+  const { candidates, ledger, universe_count: localUniverseCount } =
+    shortSwingUniverse.buildUniverseCandidates({});
+
+  const snapshot = shortSwingEngine.buildSahamPotensialSnapshot(candidates, {
+    sessionDate: tradeDate
+  });
+
+  let storeResult = null;
+  try {
+    storeResult = snapshotStore.publishSnapshot(snapshot, {
+      universe: ledger.filter((l) => l.eligible).map((l) => l.ticker)
+    });
+  } catch (err) {
+    // Fail loudly but do not kill the legacy machines: the pool is still
+    // written with an explicit store_error so consumers see the problem.
+    console.error('[SHORT-SWING] snapshot store commit failed: ' + (err && err.message));
+    storeResult = { snapshot_id: snapshot.snapshot_id, appended: false, revision_parent: null, error: String((err && err.message) || err) };
+  }
+
+  const eligibleCount = ledger.filter((l) => l.eligible).length;
+  const readinessCounts = snapshot.top20.reduce((acc, r) => {
+    acc[r.readiness] = (acc[r.readiness] || 0) + 1;
+    return acc;
+  }, {});
+
+  return {
+    pool: snapshot.top20,
+    meta: {
+      pool: 'short_swing',
+      canonical: true,
+      engine: 'lib/saham-potensial-engine.js',
+      universe_builder: 'lib/short-swing-universe.js',
+      score_version: snapshot.score_version,
+      snapshot_id: snapshot.snapshot_id,
+      snapshot_content_hash: snapshot.snapshot_content_hash,
+      content_hash_version: snapshot.content_hash_version,
+      revision_parent: storeResult.revision_parent || null,
+      session_date: snapshot.session_date,
+      trade_date: tradeDate,
+      local_universe_count: localUniverseCount,
+      eligible_count: eligibleCount,
+      evaluated_count: snapshot.evaluated_count,
+      top20_count: snapshot.top20_count,
+      top5_count: snapshot.top5_count,
+      readiness_counts: readinessCounts,
+      store_appended: Boolean(storeResult.appended),
+      store_error: storeResult.error || null,
+      replaces: 'legacy swing alias (= screener-v3f04-konglo results, universe 165)',
+      // Persisted content-hash inputs (P0-10): a consumer can recompute the
+      // canonical hash from the published document alone and detect tampering.
+      // The hash covers ALL evaluated rows (not just top20), which is why the
+      // full universe/digests/ranking are published here.
+      universe: snapshot.universe,
+      row_digests: snapshot.row_digests,
+      ranking: snapshot.ranking
+    }
+  };
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const noRefresh = args.indexOf('--no-refresh') >= 0;
@@ -369,6 +444,15 @@ async function main() {
   const sn = writeSnap('nonkonglo', n, 'nonkonglo');
   const sd = writeSnap('daytrade', d, 'daytrade');
 
+  // Subtask H / P0-09: canonical Short Swing pool over the WHOLE local IDX
+  // universe, produced by lib/saham-potensial-engine.js. This — not the
+  // Konglo165 `swing` alias — is the single source for Top20/Top5.
+  const shortSwing = buildCanonicalShortSwingPool(tradeDate);
+  console.log('[SHORT-SWING] canonical pool: local_universe=' + shortSwing.meta.local_universe_count +
+    ' eligible=' + shortSwing.meta.eligible_count + ' evaluated=' + shortSwing.meta.evaluated_count +
+    ' top20=' + shortSwing.meta.top20_count + ' snapshot_id=' + shortSwing.meta.snapshot_id +
+    ' revision_parent=' + shortSwing.meta.revision_parent);
+
   // Merge segar ke data/screener-latest.json (3 snapshot tgl bursa, 0 Stale).
   const latestPath = path.join(ROOT, 'data', 'screener-latest.json');
   let prev = null;
@@ -379,7 +463,12 @@ async function main() {
     source: 'yahoo-eod-local',
     freshness_schema_version: 2,
     v3f04_gate: 'V3-F04',
-    source_dates: { daytrade: tradeDate, 'swing-konglo': tradeDate, 'swing-non-konglo': tradeDate },
+    source_dates: {
+      daytrade: tradeDate,
+      'swing-konglo': tradeDate,
+      'swing-non-konglo': tradeDate,
+      short_swing: tradeDate
+    },
     market_date: tradeDate,
     run_date: tradeDate,
     trade_date: tradeDate,
@@ -389,7 +478,24 @@ async function main() {
     eod_complete: true,
     universe_count: universe.length,
     daytrade: sd.results,
+    // CANONICAL Short Swing pool (whole local IDX universe, canonical engine).
+    short_swing: shortSwing.pool,
+    short_swing_meta: shortSwing.meta,
+    // DEPRECATED legacy alias. Historically `swing` carried the Konglo165
+    // screener results and was consumed as if it were the Short Swing pool
+    // (finding P0-09). It is kept ONLY for legacy consumers, explicitly
+    // labelled, and gated: scripts/top5-radar.js refuses to build the
+    // canonical Top20/Top5 from it. New consumers must read `short_swing`.
     swing: sk.results,
+    swing_alias_deprecated: true,
+    swing_alias_meta: {
+      deprecated: true,
+      deprecated_reason: 'P0-09: swing was an alias of screener-v3f04-konglo results (universe 165), not the canonical whole-IDX Short Swing pool',
+      actual_source: 'screener-v3f04-konglo (Konglo machine)',
+      universe: 'konglo165',
+      canonical_replacement: 'short_swing',
+      gate: 'scripts/top5-radar.js rejects this pool for canonical Top20/Top5'
+    },
     swing_konglo: sk.results,
     swing_non_konglo: sn.results,
     nk: sn.results,
@@ -410,9 +516,16 @@ async function main() {
     if (b.badgeCode === 'STALE') throw new Error('V3-F04 badge STALE untuk ' + m);
   }
   fs.writeFileSync(latestPath, JSON.stringify(merged, null, 2));
-  console.log('[V3-F04] merged screener-latest.json tradeDate=' + tradeDate + ' k=' + sk.published_count + ' n=' + sn.published_count + ' d=' + sd.published_count + ' radar=' + (sd.radar || []).length);
+  console.log('[V3-F04] merged screener-latest.json tradeDate=' + tradeDate + ' k=' + sk.published_count + ' n=' + sn.published_count + ' d=' + sd.published_count + ' radar=' + (sd.radar || []).length + ' short_swing_top20=' + shortSwing.meta.top20_count);
   void prev;
-  return { tradeDate, universe: universe.length, k: sk.published_count, n: sn.published_count, d: sd.published_count };
+  return {
+    tradeDate,
+    universe: universe.length,
+    k: sk.published_count,
+    n: sn.published_count,
+    d: sd.published_count,
+    short_swing: shortSwing.meta
+  };
 }
 
 if (require.main === module) {
