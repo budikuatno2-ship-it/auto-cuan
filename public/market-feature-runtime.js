@@ -1206,7 +1206,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             sLpm.setData(ws.calculateLPMSeries(candles));
         }
         if (showForeign) {
-            var sForeign = bandarChart.addLineSeries({ color: '#3b82f6', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Foreign Flow' });
+            var sForeign = bandarChart.addLineSeries({ color: '#3b82f6', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Foreign Flow', priceScaleId: 'foreign_scale' });
+            bandarChart.priceScale('foreign_scale').applyOptions({ scaleMargins: { top: 0.15, bottom: 0.1 } });
             sForeign.setData(ws.calculateForeignFlowCumulative(candles));
         }
         if (showCMF) {

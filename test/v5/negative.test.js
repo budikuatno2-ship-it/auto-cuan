@@ -1477,14 +1477,18 @@ const N21 = {
     if (!src.ok) throw new SkipControl('public/market-feature-runtime.js unreadable');
     const lines = src.lines;
 
+    // Target the chart series creation (addLineSeries/addHistogramSeries with
+    // title 'Foreign Flow'), not the helper `calculateForeignFlowCumulative` call
+    // that lives in a data-building block 300+ lines earlier.
     let foreignIndex = -1;
     for (let i = 0; i < lines.length; i += 1) {
-      if (/calculateForeignFlowCumulative\(/.test(lines[i]) && !lines[i].trim().startsWith('//')) { foreignIndex = i; break; }
+      if (/addLineSeries\(/.test(lines[i]) && /title:\s*'Foreign Flow'/.test(lines[i]) && !lines[i].trim().startsWith('//')) { foreignIndex = i; break; }
     }
-    if (foreignIndex < 0) throw new SkipControl('no foreign-flow series created in this module');
+    if (foreignIndex < 0) throw new SkipControl('no foreign-flow chart series created in this module');
 
-    const block = lines.slice(foreignIndex, foreignIndex + 40).join('\n');
-    const scaleMatch = /priceScaleId:\s*'([^']+)'/.exec(block);
+    // The series line itself carries priceScaleId when properly isolated.
+    const seriesLine = lines[foreignIndex];
+    const scaleMatch = /priceScaleId:\s*'([^']+)'/.exec(seriesLine);
     const violations = [];
     if (!scaleMatch) {
       violations.push({ line: foreignIndex + 1, reason: 'foreign series declares no priceScaleId — it inherits the main price scale' });
