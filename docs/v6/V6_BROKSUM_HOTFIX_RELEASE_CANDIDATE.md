@@ -1,8 +1,8 @@
 # V6 BROKSUM HOTFIX RELEASE CANDIDATE
 
-**Document Identification:** `docs/v6/V6_BROKSUM_HOTFIX_RELEASE_CANDIDATE.md`  
-**Classification:** OPERATIONAL INTEGRITY & RESILIENCE DIRECTIVE  
-**Target Subsystems:** Cron Wrapper Execution, Daily Broker Runner Logic, Quota Preflight Guard, Multi-Day Historical Gap Catchup.  
+**Document Identification:** `docs/v6/V6_BROKSUM_HOTFIX_RELEASE_CANDIDATE.md`
+**Classification:** OPERATIONAL INTEGRITY & RESILIENCE DIRECTIVE
+**Target Subsystems:** Cron Wrapper Execution, Daily Broker Runner Logic, Quota Preflight Guard, Multi-Day Historical Gap Catchup.
 **Release Readiness:** Candidate Ready for Review & Deployment (PR V6 Scope).
 
 ---
@@ -66,7 +66,7 @@ function pendingDates(now = new Date(), options = {}) {
   // Safely check up to maxLookback trading days (default: 3 days on regular evening, 5 on --final)
   const isFinal = Boolean(options && (options.final || (options.argv && options.argv.includes('--final'))));
   const maxLookback = isFinal ? 5 : 2;
-  
+
   let current = dateKey;
   for (let i = 0; i < maxLookback; i++) {
     const prev = calendar.previousTradingDay(current, holidays);
@@ -107,5 +107,5 @@ Before promoting this candidate to production VPS:
 
 ---
 
-**Ratified by:** Auto-Cuan V6 Architecture & Debug Directorate  
+**Ratified by:** Auto-Cuan V6 Architecture & Debug Directorate
 **Date:** 2026-11-11

@@ -1,7 +1,7 @@
 # DRAF PULL REQUEST V6: AUTO-CUAN V6 PRODUCTION RECOVERY & AUDIT STABILIZATION
 
-**Target Branch:** `feat/daytrade-screener-v1` (BUKAN `main`)  
-**Source Branch:** `feat/v6-recovery`  
+**Target Branch:** `feat/daytrade-screener-v1` (BUKAN `main`)
+**Source Branch:** `feat/v6-recovery`
 **Status Pengujian:** HISTORICAL (2026-11-10) — 33 / 33 Unit & Regression Tests Lulus pada saat dokumen ini ditulis. **Bukan status V6 saat ini.** Lihat banner bertanggal di bawah.
 **Dokumentasi Terkait:**
 - Matriks Audit & Verifikasi: [`docs/v6/V6_VERIFICATION.md`](docs/v6/V6_VERIFICATION.md)

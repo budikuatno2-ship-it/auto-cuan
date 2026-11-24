@@ -1,9 +1,9 @@
 # Auto-Cuan V6 Independent Review Package — README
 
-**Run Package ID:** {{RUN_ID}}  
-**Generated Date:** {{GEN_DATE}}  
-**Repository Baseline Commit:** `ae5d18924955217c7e74d1d7909b3ef12f471d00`  
-**Candidate HEAD Commit:** `ae5d18924955217c7e74d1d7909b3ef12f471d00` + working tree modifications  
+**Run Package ID:** {{RUN_ID}}
+**Generated Date:** {{GEN_DATE}}
+**Repository Baseline Commit:** `ae5d18924955217c7e74d1d7909b3ef12f471d00`
+**Candidate HEAD Commit:** `ae5d18924955217c7e74d1d7909b3ef12f471d00` + working tree modifications
 **Overall Regression Test Suite:** V6 = 375/375 PASS (28 files, 0 failures).
 **Legacy suites (honest):** batch 181/183 (2 pre-existing), v5 72/76 (4 pre-existing), v5-phase3 0/1 (1 pre-existing). See `V6_TEST_RESULTS_ALL.md`.
 **Security & Credential Audit:** PASS (0 secrets, 0 API tokens, 0 private keys)

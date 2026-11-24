@@ -1,10 +1,10 @@
 # PROPOSAL RUNBOOK PRODUKSI TERKOREKSI & AMAN (V6 RELEASE CANDIDATE)
-**Dokumen:** [`docs/v6/V6_CORRECTED_SAFE_PRODUCTION_RUNBOOK.md`](docs/v6/V6_CORRECTED_SAFE_PRODUCTION_RUNBOOK.md)  
-**Waktu Penyusunan:** Senin, 16 November 2026, 16:40:00 WIB  
-**Target Host Remote:** `ubuntu@168.110.221.197` (`auto-cuan-vnic`)  
-**Path Aplikasi Target:** `/home/ubuntu/auto-cuan`  
-**Status Eksekusi Remote:** **HOLD / TERTANGGUH MENUNGGU PERSETUJUAN RESMI OWNER (0 MUTASI REMOTE)**  
-**Koreksi Defect Register:** Memperbaiki Cacat R06, R07, R08, R09, R14, P0-RUNBOOK-01..03, P1-OPS-01..02, P1-RELEASE-01  
+**Dokumen:** [`docs/v6/V6_CORRECTED_SAFE_PRODUCTION_RUNBOOK.md`](docs/v6/V6_CORRECTED_SAFE_PRODUCTION_RUNBOOK.md)
+**Waktu Penyusunan:** Senin, 16 November 2026, 16:40:00 WIB
+**Target Host Remote:** `ubuntu@168.110.221.197` (`auto-cuan-vnic`)
+**Path Aplikasi Target:** `/home/ubuntu/auto-cuan`
+**Status Eksekusi Remote:** **HOLD / TERTANGGUH MENUNGGU PERSETUJUAN RESMI OWNER (0 MUTASI REMOTE)**
+**Koreksi Defect Register:** Memperbaiki Cacat R06, R07, R08, R09, R14, P0-RUNBOOK-01..03, P1-OPS-01..02, P1-RELEASE-01
 
 ---
 
@@ -47,7 +47,7 @@
 ### 2.2 Koreksi R07: Rehidrasi Riil Database Tanpa Perintah Semu `console.log`
 - **Cacat Lama (Runbook Bahaya):**
   Runbook lama mengklaim melakukan rehidrasi data tail 9 hari hanya dengan memanggil:
-  `node -e "const db=require('./lib/hybrid-supabase-client');console.log('Rehydrating KV market_rows...');"`  
+  `node -e "const db=require('./lib/hybrid-supabase-client');console.log('Rehydrating KV market_rows...');"`
   Perintah ini adalah **rehidrasi semu** yang hanya mencetak string ke konsol tanpa menulis 1 baris pun data ke database.
 - **Koreksi Teruji (Runbook Aman):**
   Menggunakan runner sinkronisasi data riil berbasis transaksi terverifikasi:
@@ -77,7 +77,7 @@
 ### 2.3 Koreksi R08: Interpreter Shell Bash untuk Berkas Script `.sh`
 - **Cacat Lama (Runbook Bahaya):**
   Approval #9 memanggil:
-  `node deploy/vps/telegram-monitor-local.sh --selftest`  
+  `node deploy/vps/telegram-monitor-local.sh --selftest`
   File `.sh` memiliki shebang `#!/usr/bin/env bash` dan berisi sintaks shell. Menjalankannya dengan interpreter Node.js menyebabkan runtime syntax error.
 - **Koreksi Teruji (Runbook Aman):**
   Eksekusi wajib menggunakan interpreter bash asli dengan isolasi dry-run:

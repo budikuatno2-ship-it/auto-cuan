@@ -1,8 +1,8 @@
 # V6 Release Blockers & Production Approval Checklist
 
-**Date:** 2026-11-10T14:28:00+07:00 (Asia/Jakarta)  
-**Author:** Auto-Cuan Review & Engineering Team  
-**Review Target:** Auto-Cuan V6 Release  
+**Date:** 2026-11-10T14:28:00+07:00 (Asia/Jakarta)
+**Author:** Auto-Cuan Review & Engineering Team
+**Review Target:** Auto-Cuan V6 Release
 **Status:** ALL LOCAL FIXES VERIFIED — PRODUCTION ACTIONS REQUIRE EXPLICIT APPROVAL
 
 ---
