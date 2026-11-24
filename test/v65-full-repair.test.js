@@ -177,4 +177,14 @@ test('V6.5-7: expectedCompletedEodDate treats post-midnight T-1 weekday as fresh
   assert.doesNotMatch(v4f08Src, /winRatePct\s*:\s*75\.0/);
   assert.doesNotMatch(v4f08Src, /change_pct \|\| 1\.5/);
   assert.doesNotMatch(v4f08Src, /'87,5%'/);
+
+  const dtAlarm = require('../lib/daytrade-snapshot-alarm');
+  const postMidnightNow = new Date('2026-11-24T17:30:00.000Z'); // 2026-11-25 00:30 WIB
+  assert.equal(dtAlarm.resolveLastTradingDay(postMidnightNow), '2026-11-24');
+  assert.equal(dtAlarm.evaluate({
+    marketOpen: false,
+    snapshotDate: '2026-11-24',
+    snapshotMtime: postMidnightNow,
+    now: postMidnightNow
+  }).shouldAlert, false);
 });
