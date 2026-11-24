@@ -27,10 +27,12 @@ test('Unified Cockpit: HTML structure contains 2-column cockpit with all require
   assert.ok(indexHtml.includes('UnifiedCockpit.handleUnifiedAnalisisSubmit()'), 'Submit handler hooked up');
   assert.ok(indexHtml.includes('UnifiedCockpit.handleUnifiedChartAiSubmit()'), 'AI Chart button in top bar hooked up');
 
-  // Primary Column (Chart + Subtabs + Results + Ranking)
+  // Primary Column (Chart + Results + Ranking)
   assert.ok(indexHtml.includes('id="unifiedChartContainer"'), '#unifiedChartContainer exists');
-  assert.ok(indexHtml.includes('id="tabAnalisisText"'), '#tabAnalisisText subtab button exists');
-  assert.ok(indexHtml.includes('id="tabAnalisisVision"'), '#tabAnalisisVision subtab button exists');
+  // Owner-mandated clean-tab contract: the duplicate 6-sub-tab bar was removed
+  // from all pages; sidebar owns those menus. Assert the duplicate bar is absent.
+  assert.ok(!indexHtml.includes('id="tabAnalisisText"'), '#tabAnalisisText duplicate subtab button absent');
+  assert.ok(!indexHtml.includes('id="tabAnalisisVision"'), '#tabAnalisisVision duplicate subtab button absent');
   assert.ok(indexHtml.includes('id="panelAnalisisText"'), '#panelAnalisisText panel exists');
   assert.ok(indexHtml.includes('id="panelAnalisisVision"'), '#panelAnalisisVision panel exists');
   assert.ok(indexHtml.includes('id="analisisResult"'), '#analisisResult preserved for text analysis format');
