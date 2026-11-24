@@ -150,7 +150,7 @@ function defaultToleranceMin(jobName) {
 
 function isOkHeartbeatStatus(status) {
   const s = String(status || '').toUpperCase();
-  return s === 'OK' || s === 'LOCK_BUSY' || s === 'FORBIDDEN_WINDOW_SKIP' || s === 'SCHEDULED_SKIP';
+  return s === 'OK' || s === 'LOCK_BUSY' || s === 'FORBIDDEN_WINDOW_SKIP' || s === 'SCHEDULED_SKIP' || s === 'BLOCKED';
 }
 
 function classifyHeartbeat(hb, nowMs, toleranceMin) {
