@@ -334,18 +334,18 @@
   function rangeCheck(hz, plan, rng) {
     if (hz === 'inv') return { cls: '', v: 'Tidak dipakai', s: 'Rentang 10 hari terlalu pendek untuk horizon 1 sampai 6 bulan' };
     if (!rng) return { cls: '', v: '—', s: 'Rentang belum tersedia (riwayat kurang dari 60 sesi)' };
-    
+
     // REQ-13: Validasi matematis percentile p10-p90 vs Target Harga (TP1, TP2) dan Stop Loss (SL)
     // Target harga dikatakan berada di luar rentang jika TP > p90 ATAU TP < p10 (di bawah batas bawah rentang)
     var tpOut = null;
     var tpOutReason = null;
-    
+
     var tp2 = plan.tp2 ? Number(plan.tp2) : null;
     var tp1 = plan.tp1 ? Number(plan.tp1) : null;
     var sl = plan.sl ? Number(plan.sl) : null;
     var p10 = Number(rng.p10);
     var p90 = Number(rng.p90);
-    
+
     if (tp2 != null) {
       if (tp2 > p90) { tpOut = 'TP2'; tpOutReason = '> p90'; }
       else if (tp2 < p10) { tpOut = 'TP2'; tpOutReason = '< p10'; }
@@ -354,7 +354,7 @@
       if (tp1 > p90) { tpOut = 'TP1'; tpOutReason = '> p90'; }
       else if (tp1 < p10) { tpOut = 'TP1'; tpOutReason = '< p10'; }
     }
-    
+
     var s = 'p10 ' + Math.round(p10).toLocaleString('id-ID') + ' – p90 ' + Math.round(p90).toLocaleString('id-ID');
     if (tpOut) {
       var targetVal = (tpOut === 'TP2' ? tp2 : tp1);
@@ -365,7 +365,7 @@
     } else if (sl != null && sl > p90) {
       s += ' · SL di atas p90';
     }
-    
+
     var isInside = !tpOut;
     return {
       cls: isInside ? 'ok' : 'w',

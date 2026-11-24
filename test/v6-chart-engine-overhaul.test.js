@@ -107,7 +107,7 @@ test('Chart Engine: REQ-11 & REQ-12 - Proteksi Plan Usang / Deviasi Entry vs Quo
 
 test('Chart Engine: REQ-14 - Clean Presentation & Anti-Clutter Contract', () => {
   const runtimeCode = fs.readFileSync(path.join(__dirname, '../public/market-feature-runtime.js'), 'utf8');
-  
+
   // Verifikasi perlindungan label overlap pada mode simpel
   assert.ok(runtimeCode.includes('isSimpleMode'), 'market-feature-runtime harus memeriksa mode simpel');
   assert.ok(runtimeCode.includes('isSimplePreset'), 'market-feature-runtime harus memeriksa mode preset simpel pada fibonacci');
