@@ -228,13 +228,18 @@ function buildForeignFlowMultiDayCache(dbPath) {
     for (const r of fStmt.iterate()) {
       try {
         const j = JSON.parse(r.row_json);
-        const parts = String(r.row_key || '').split('\x1f');
-        const tk = String(j.ticker || j.stock_code || parts[0] || '').trim().toUpperCase();
-        const dt = String(j.trade_date || j.date || parts[1] || '').slice(0, 10);
+        const parts = String(r.row_key || '').split(/[\x1f\s]+/);
+        const tk = String(j.ticker || j.stock_code || (j._fetch_meta && j._fetch_meta.ticker) || parts[0] || '').trim().toUpperCase();
+        const dt = String(j.broker_start_date || j.broker_end_date || j.trade_date || j.date || (j._fetch_meta && j._fetch_meta.trade_date) || parts[1] || '').slice(0, 10);
         if (!/^[A-Z]{4}$/.test(tk) || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) continue;
         if (dt > maxForeignDate) maxForeignDate = dt;
-        const net = Number(j.net_val ?? j.net_value ?? j.foreign_net ?? j.net_buy ?? 0);
-        if (!Number.isFinite(net)) continue;
+        let net = null;
+        if (Array.isArray(j.brokers) && j.brokers.length > 0) {
+          net = j.brokers.reduce((s, b) => s + Number((b && (b.nval ?? b.net_val ?? ((Number(b.bval) || 0) - (Number(b.sval) || 0)))) || 0), 0);
+        } else if (j.net_val != null || j.net_value != null || j.foreign_net != null || j.net_buy != null) {
+          net = Number(j.net_val ?? j.net_value ?? j.foreign_net ?? j.net_buy);
+        }
+        if (net == null || !Number.isFinite(net)) continue;
         if (!byTicker.has(tk)) byTicker.set(tk, []);
         byTicker.get(tk).push({ dt, net });
       } catch (_) {}
