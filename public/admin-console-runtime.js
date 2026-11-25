@@ -158,9 +158,15 @@
         setV('quotaFloorNight', cfg.reserveFloorWeekdayNight);
         setV('quotaFloorWeekend', cfg.reserveFloorWeekend);
         var setQF = function(id, v) { var e = document.getElementById(id); if (e) e.value = (v == null ? '' : v); };
-        setQF('qf-maxQuota', cfg.maxQuota != null ? cfg.maxQuota : (q.maxQuota != null ? q.maxQuota : q.limit));
-        setQF('qf-weekdayBackfill', cfg.weekdayBackfillLimit != null ? cfg.weekdayBackfillLimit : q.weekdayBackfillLimit);
-        setQF('qf-weekendBackfill', cfg.weekendBackfillLimit != null ? cfg.weekendBackfillLimit : q.weekendBackfillLimit);
+        var liveProviderCap = (hasValidLimit && Number(q.limit) > 0) ? Number(q.limit) : null;
+        var effectiveCap = (cfg.dailyLimitOverride != null && Number.isFinite(Number(cfg.dailyLimitOverride)))
+          ? Number(cfg.dailyLimitOverride)
+          : (liveProviderCap != null ? liveProviderCap : (cfg.maxQuota != null ? cfg.maxQuota : q.maxQuota));
+        var rawWdBf = cfg.weekdayBackfillLimit != null ? Number(cfg.weekdayBackfillLimit) : (q.weekdayBackfillLimit != null ? Number(q.weekdayBackfillLimit) : null);
+        var rawWeBf = cfg.weekendBackfillLimit != null ? Number(cfg.weekendBackfillLimit) : (q.weekendBackfillLimit != null ? Number(q.weekendBackfillLimit) : null);
+        setQF('qf-maxQuota', effectiveCap);
+        setQF('qf-weekdayBackfill', (rawWdBf != null && effectiveCap != null) ? Math.min(rawWdBf, effectiveCap) : rawWdBf);
+        setQF('qf-weekendBackfill', (rawWeBf != null && effectiveCap != null) ? Math.min(rawWeBf, effectiveCap) : rawWeBf);
         setQF('qf-reserveFloor', cfg.reserveFloorWeekday != null ? cfg.reserveFloorWeekday : cfg.reserveFloorWeekdayDaytime);
         var hsMap = { '23:40': 0, '23:45': 1, '23:50': 2 };
         var hs = document.getElementById('qf-hardStop');
@@ -1188,10 +1194,11 @@
       var tb = document.getElementById('qf-status-tbody');
       if (!tb || !q) return;
       var cfg = q.config || {};
+      var dispMax = (q.limit != null && Number(q.limit) > 0) ? Number(q.limit) : (q.maxQuota != null ? q.maxQuota : q.limit);
       var rows = [
-        ['Batas Kuota Harian Maksimal', (q.maxQuota != null ? q.maxQuota : q.limit), (q.limit > 0 ? 'g' : 'r')],
-        ['Batas Backfill Hari Kerja', q.weekdayBackfillLimit, 'i'],
-        ['Batas Backfill Akhir Pekan', q.weekendBackfillLimit, 'i'],
+        ['Batas Kuota Harian Maksimal', dispMax, (q.limit > 0 ? 'g' : 'r')],
+        ['Batas Backfill Hari Kerja', (q.weekdayBackfillLimit != null && dispMax != null) ? Math.min(Number(q.weekdayBackfillLimit), Number(dispMax)) : q.weekdayBackfillLimit, 'i'],
+        ['Batas Backfill Akhir Pekan', (q.weekendBackfillLimit != null && dispMax != null) ? Math.min(Number(q.weekendBackfillLimit), Number(dispMax)) : q.weekendBackfillLimit, 'i'],
         ['Cadangan Wajib Hari Kerja', (cfg.reserveFloorWeekday != null ? cfg.reserveFloorWeekday : ''), 'm'],
         ['Jam Hard Stop Malam', (cfg.hardStopWIB || '23:50 WIB'), 'm'],
         ['Ambang Batas Stale', (q.staleThresholdMinutes === 0 ? 'Mati (0)' : (q.staleThresholdMinutes + ' mnt')), 'm'],
