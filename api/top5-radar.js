@@ -13,8 +13,27 @@ const fs = require('fs');
 const path = require('path');
 
 const readiness = require('../lib/readiness-engine.js');
+const chartT1Policy = require('../lib/chart-t1-policy.js');
 
 const TOP5_FILE = path.resolve(__dirname, '..', 'data', 'top5-radar.json');
+
+function expectedCompletedEodDate(nowMs) {
+  const d = new Date(Number.isFinite(nowMs) ? nowMs : Date.now());
+  const todayWib = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(d);
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(d);
+  const get = (t) => (parts.find((p) => p.type === t) || {}).value || '';
+  const wd = get('weekday').toLowerCase();
+  const mins = Number(get('hour') || 0) * 60 + Number(get('minute') || 0);
+  const isWeekend = wd.startsWith('sat') || wd.startsWith('sun');
+  if (isWeekend || mins < (16 * 60 + 30)) {
+    return (typeof chartT1Policy.previousWeekday === 'function' && chartT1Policy.previousWeekday(todayWib)) || todayWib;
+  }
+  return todayWib;
+}
 
 let _cachedData = null;
 let _cachedAt = 0;
@@ -59,7 +78,14 @@ const CANONICAL_READINESS_FLOOR_REASON = 'CANONICAL_READINESS_NOT_READY';
 function revalidatePick(pick, now, context) {
   if (!pick || typeof pick !== 'object') return pick;
 
-  const result = readiness.evaluate(pick, { now });
+  const pickTradeDay = String(pick.trade_date || pick.date || pick.market_date || pick.session_date || '').slice(0, 10);
+  const expectedEod = expectedCompletedEodDate(now);
+  // Before 16:30 WIB on a trading day (or on weekends/holidays), the latest
+  // completed EOD session (T-1) is up to ~40-88h after 00:00 WIB of that session.
+  const evalOpts = (pickTradeDay && expectedEod && pickTradeDay >= expectedEod)
+    ? { now, maxStalenessMinutes: 96 * 60 }
+    : { now };
+  const result = readiness.evaluate(pick, evalOpts);
   let status = result.status;
   const reasons = result.reasons.slice();
 

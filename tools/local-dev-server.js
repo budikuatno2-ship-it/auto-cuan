@@ -52,6 +52,51 @@ function getApiP95Ms() {
   return p95;
 }
 
+let _canonicalDbStatusCache = null;
+let _canonicalDbStatusCacheAt = 0;
+let _canonicalDbQuickCheckOk = null;
+let _canonicalDbQuickCheckAt = 0;
+
+function readCanonicalDbStatus() {
+  const nowMs = Date.now();
+  if (_canonicalDbStatusCache && (nowMs - _canonicalDbStatusCacheAt < 60000)) {
+    return _canonicalDbStatusCache;
+  }
+  const { DatabaseSync } = require('node:sqlite');
+  const fsMod = require('node:fs');
+  const candidates = [process.env.AUTO_CUAN_MARKET_DB,
+    '/home/ubuntu/auto-cuan-data/market.sqlite',
+    path.join(__dirname, '..', 'data', 'market.sqlite')].filter(Boolean);
+  const dbPath = candidates.find(x => fsMod.existsSync(x));
+  if (!dbPath) return { ok: false, error: 'DB_UNAVAILABLE', maxDate: null, updatedAt: null };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const db = new DatabaseSync(dbPath, { readOnly: true });
+    try {
+      try { db.exec('PRAGMA busy_timeout=15000;'); } catch (_) {}
+      const row = db.prepare("SELECT max(json_extract(row_json, '$.trade_date')) AS max_date FROM market_rows WHERE table_name = 'stock_daily_history'").get();
+      const u = db.prepare("SELECT max(json_extract(row_json, '$.updated_at')) AS updated_at FROM market_rows WHERE table_name = 'stock_daily_history'").get();
+      let quickOk = _canonicalDbQuickCheckOk;
+      if (quickOk === null || (nowMs - _canonicalDbQuickCheckAt >= 300000)) {
+        const qc = db.prepare('PRAGMA quick_check').get();
+        quickOk = Boolean(qc && (qc.quick_check === 'ok' || Object.values(qc)[0] === 'ok'));
+        _canonicalDbQuickCheckOk = quickOk;
+        _canonicalDbQuickCheckAt = nowMs;
+      }
+      const maxDate = row && row.max_date ? String(row.max_date).slice(0, 10) : null;
+      const updatedAt = u && u.updated_at ? String(u.updated_at) : null;
+      const resObj = { ok: Boolean(maxDate && quickOk), db_ok: Boolean(quickOk), maxDate, updatedAt };
+      _canonicalDbStatusCache = resObj;
+      _canonicalDbStatusCacheAt = nowMs;
+      return resObj;
+    } catch (err) {
+      if (attempt === 1) return { ok: false, error: String((err && err.message) || err), db_ok: false, maxDate: null, updatedAt: null };
+    } finally {
+      try { db.close(); } catch (_) {}
+    }
+  }
+  return { ok: false, db_ok: false, maxDate: null, updatedAt: null };
+}
+
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return;
   try {
@@ -855,53 +900,7 @@ const server = http.createServer(async (req, res) => {
     return res.end(html);
   }
 
-    let _canonicalDbStatusCache = null;
-    let _canonicalDbStatusCacheAt = 0;
-    let _canonicalDbQuickCheckOk = null;
-    let _canonicalDbQuickCheckAt = 0;
-
-    function readCanonicalDbStatus() {
-      const nowMs = Date.now();
-      if (_canonicalDbStatusCache && (nowMs - _canonicalDbStatusCacheAt < 60000)) {
-        return _canonicalDbStatusCache;
-      }
-      const { DatabaseSync } = require('node:sqlite');
-      const fsMod = require('node:fs');
-      const candidates = [process.env.AUTO_CUAN_MARKET_DB,
-        '/home/ubuntu/auto-cuan-data/market.sqlite',
-        path.join(__dirname, '..', 'data', 'market.sqlite')].filter(Boolean);
-      const dbPath = candidates.find(x => fsMod.existsSync(x));
-      if (!dbPath) return { ok: false, error: 'DB_UNAVAILABLE', maxDate: null, updatedAt: null };
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const db = new DatabaseSync(dbPath, { readOnly: true });
-        try {
-          try { db.exec('PRAGMA busy_timeout=15000;'); } catch (_) {}
-          const row = db.prepare("SELECT max(json_extract(row_json, '$.trade_date')) AS max_date FROM market_rows WHERE table_name = 'stock_daily_history'").get();
-          const u = db.prepare("SELECT max(json_extract(row_json, '$.updated_at')) AS updated_at FROM market_rows WHERE table_name = 'stock_daily_history'").get();
-          let quickOk = _canonicalDbQuickCheckOk;
-          if (quickOk === null || (nowMs - _canonicalDbQuickCheckAt >= 300000)) {
-            const qc = db.prepare('PRAGMA quick_check').get();
-            quickOk = Boolean(qc && (qc.quick_check === 'ok' || Object.values(qc)[0] === 'ok'));
-            _canonicalDbQuickCheckOk = quickOk;
-            _canonicalDbQuickCheckAt = nowMs;
-          }
-          const maxDate = row && row.max_date ? String(row.max_date).slice(0, 10) : null;
-          const updatedAt = u && u.updated_at ? String(u.updated_at) : null;
-          const resObj = { ok: Boolean(maxDate && quickOk), db_ok: Boolean(quickOk), maxDate, updatedAt };
-          _canonicalDbStatusCache = resObj;
-          _canonicalDbStatusCacheAt = nowMs;
-          return resObj;
-        } catch (err) {
-          if (attempt === 1) return { ok: false, error: String((err && err.message) || err), db_ok: false, maxDate: null, updatedAt: null };
-        } finally {
-          try { db.close(); } catch (_) {}
-        }
-      }
-      return { ok: false, db_ok: false, maxDate: null, updatedAt: null };
-    }
-
-    // FINAL CLEAN 5-FILE WAVE / FIX 2: canonical EOD date from the read-only
-    // market.sqlite stock_daily_history max(trade_date). No provider call.
+    // FINAL CLEAN 5-FILE WAVE / FIX 2: canonical EOD date from cached module helper
     if (pathname === '/api/market/eod-status') {
       try {
         const st = readCanonicalDbStatus();
