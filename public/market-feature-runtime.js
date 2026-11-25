@@ -820,7 +820,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
     }
 
-    // Floating Canvas Header Overlay
+    // Floating Canvas Header Overlay (on mobile <= 640px, docks cleanly above canvas so it never overlaps ▲ high/candles)
     container.style.position = 'relative';
     var headerEl = document.getElementById(chartId + '_canvas_header');
     if (!headerEl) {
@@ -828,7 +828,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         headerEl.id = chartId + '_canvas_header';
         headerEl.className = 'chart-canvas-floating-header';
         headerEl.style.cssText = 'position:absolute; top:8px; left:10px; z-index:12; pointer-events:none; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; line-height:1.45; text-shadow:0 1px 3px rgba(0,0,0,0.9);';
-        container.appendChild(headerEl);
+        container.insertBefore(headerEl, container.firstChild);
     }
 
     // Values that do not depend on the hovered bar, computed once per render.
@@ -867,23 +867,38 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             : 'EOD';
         var eodHtml = '<span class="ac-eod" style="font-weight:600;color:var(--ac-2, #9ca3af)">' + eodLabel + '</span>';
         if (isMobile) {
-            // Leave room for the right price scale (axis tags like "▲ 6.850") so Foreign/CMF never collide.
+            // Flow cleanly above canvas on narrow phones so Foreign/CMF never collide with ▲ max-price or candles.
+            headerEl.style.position = 'relative';
+            headerEl.style.top = 'auto';
+            headerEl.style.left = 'auto';
+            headerEl.style.padding = '6px 8px';
+            headerEl.style.background = 'rgba(13,17,23,0.92)';
+            headerEl.style.borderBottom = '1px solid rgba(55,65,81,0.35)';
             headerEl.style.fontSize = '10px';
-            headerEl.style.maxWidth = 'calc(100% - 88px)';
-            headerEl.style.overflow = 'hidden';
+            headerEl.style.maxWidth = '100%';
+            headerEl.style.overflow = 'visible';
             headerEl.innerHTML =
-                '<div class="flex items-center gap-1 text-[10px] font-bold text-slate-100 flex-nowrap overflow-hidden" style="color:#f8fafc;white-space:nowrap;">' +
+                '<div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
                     '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' + eodHtml + prov +
                     '<span data-k="close"></span>' +
                 '</div>' +
-                '<div class="text-[10px] text-gray-300 font-medium flex flex-nowrap justify-between gap-2" style="white-space:nowrap;">' +
+                '<div class="text-[10px] text-gray-300 font-medium flex flex-wrap items-center gap-x-3 gap-y-0.5">' +
                     '<span>Vol <b style="color:#f1f5f9;" data-k="vol"></b></span>' +
-                    '<span>Corr <b style="color:#38bdf8;">' + corrTxt + '</b> · Par <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
+                    '<span>Corr F <b style="color:#38bdf8;">' + corrTxt + '</b> · Par F <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
                 '</div>' +
-                '<div class="text-[10px] font-medium flex items-center gap-1 truncate" style="color:#10b981;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + lpmTxt + '</b></div>' +
-                '<div class="text-[10px] font-medium flex items-center gap-1 truncate" style="color:#3b82f6;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign <b style="color:#60a5fa;" data-k="foreign"></b></div>' +
-                '<div class="text-[10px] font-medium flex items-center gap-1 truncate" style="color:#f97316;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
+                '<div class="text-[10px] font-medium flex flex-wrap items-center gap-x-3 gap-y-0.5" data-row="bandar">' +
+                    '<span class="inline-flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + lpmTxt + '</b></span>' +
+                    '<span class="inline-flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign <b style="color:#60a5fa;" data-k="foreign"></b></span>' +
+                    '<span class="inline-flex items-center gap-1" style="color:#f97316;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></span>' +
+                '</div>';
         } else {
+            headerEl.style.position = 'absolute';
+            headerEl.style.top = '8px';
+            headerEl.style.left = '10px';
+            headerEl.style.padding = '0';
+            headerEl.style.background = 'transparent';
+            headerEl.style.borderBottom = 'none';
+            headerEl.style.overflow = 'visible';
             headerEl.style.fontSize = '12px';
             headerEl.style.maxWidth = 'calc(100% - 92px)';
             headerEl.innerHTML =
