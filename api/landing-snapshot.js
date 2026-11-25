@@ -26,12 +26,12 @@ function pickRow(r, fallbackHorizonLabel) {
   if (!r || typeof r !== 'object') return null;
   const ticker = String(r.ticker || '').toUpperCase().trim();
   const lastPrice = num(r.last_price != null ? r.last_price : r.close);
-  if (!ticker || lastPrice == null || lastPrice < 50) return null;
+  if (!ticker || lastPrice == null || lastPrice < 1) return null;
   const entryLow = num(r.entry_low != null ? r.entry_low : r.entry2);
   const entryHigh = num(r.entry_high != null ? r.entry_high : r.entry1);
   const sl = num(r.stop_loss != null ? r.stop_loss : r.sl);
-  if (entryLow != null && entryLow < 50) return null;
-  if (sl != null && sl < 50) return null;
+  if (entryLow != null && entryLow < 1) return null;
+  if (sl != null && sl < 1) return null;
   return {
     ticker,
     emiten: r.emiten || r.company_name || ticker,

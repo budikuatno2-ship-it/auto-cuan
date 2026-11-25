@@ -36,7 +36,7 @@ test('V6.5.3 Telegram Three-Horizon recap avoids legacy Konglo wording and enfor
   assert.match(msg, /SHORT SWING \(3–10H\)/);
   assert.match(msg, /SWING \(7–30H\)/);
   assert.match(msg, /PWON/);
-  assert.doesNotMatch(msg, /\bRELF\b/, 'stocks below Rp 50 must be excluded');
+  assert.match(msg, /\bRELF\b/, 'Kloter 1 All-Price >= Rp 1 includes sub-Rp 50 candidates passing R/R');
   assert.doesNotMatch(msg, /Konglo/i, 'legacy Konglo/Non-Konglo label must not appear');
   assert.match(msg, /Disclaimer/i);
 });
@@ -47,7 +47,7 @@ test('V6.5.3 Admin Console & Screener HTML/CSS/JS invariants', () => {
   const adminRuntime = fs.readFileSync(path.join(ROOT, 'public', 'admin-console-runtime.js'), 'utf8');
 
   assert.match(indexHtml, /__AC_CANONICAL_EOD_DATE__/);
-  assert.match(indexHtml, /pxVal < 50/);
+  assert.match(indexHtml, /pxVal < 1/);
   assert.match(indexHtml, /A\+ BESOK/);
   assert.match(indexHtml, /A\+ SHORT/);
   assert.match(acCss, /\.scr-rr-slot\s*\{[^}]*gap:\s*6px 14px/);

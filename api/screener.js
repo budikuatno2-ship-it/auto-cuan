@@ -454,8 +454,9 @@ function buildCategory(spec, backtestMap, today, now) {
   const tradeDate = pickText(doc.trade_date, doc.market_date, doc.run_date);
   base.trade_date = tradeDate;
   const expectedEodDate = expectedCompletedEodDate(now);
+  const srcDates = (doc.source_dates && typeof doc.source_dates === 'object') ? doc.source_dates : (canonicalMeta && canonicalMeta.source_dates) || null;
   // The clock is injected into the readiness engine, never read inside it.
-  const origin = { file: useCanonical ? canonicalScreener.SNAPSHOT_REL : relFile, tradeDate, today, expectedEodDate, now };
+  const origin = { file: useCanonical ? canonicalScreener.SNAPSHOT_REL : relFile, tradeDate, today, expectedEodDate, sourceDates: srcDates, now };
 
   const rawResults = Array.isArray(doc.results) ? doc.results : [];
   const rawRadar = Array.isArray(doc.radar)
@@ -500,7 +501,14 @@ function buildCategory(spec, backtestMap, today, now) {
   } else {
     base.data_status = DATA_STATUS.AVAILABLE;
   }
-  if (base.data_status !== DATA_STATUS.NOT_PUBLISHED && isKnown(tradeDate) && tradeDate < expectedEodDate) {
+  // Also check if awaiting Arjum Broksum release pre-21:00 WIB so synchronized T-1 complete EOD stays AVAILABLE
+  const prevWeekdayEod = chartT1Policy.previousWeekday(expectedEodDate);
+  const wibParts = typeof chartT1Policy.getJakartaClockParts === 'function' ? chartT1Policy.getJakartaClockParts(now) : null;
+  const beforeBroksumRelease = wibParts ? ((wibParts.hour * 60 + wibParts.minute) < (21 * 60)) : false;
+  const isWaitingTodayBroksum = beforeBroksumRelease && isKnown(tradeDate) && tradeDate === prevWeekdayEod &&
+    origin.sourceDates && origin.sourceDates.broksum_all === tradeDate;
+
+  if (base.data_status !== DATA_STATUS.NOT_PUBLISHED && isKnown(tradeDate) && tradeDate < expectedEodDate && !isWaitingTodayBroksum) {
     base.data_status = DATA_STATUS.STALE;
     base.status_reason = base.status_reason || 'SOURCE_TRADE_DATE_IS_BEFORE_EXPECTED_EOD';
   }
@@ -650,6 +658,7 @@ module.exports = async function handler(req, res) {
     }
 
     const canonicalThreeHorizon = canonicalScreener.getCanonicalThreeHorizon ? canonicalScreener.getCanonicalThreeHorizon() : null;
+    const canonicalThreeHorizonMeta = canonicalScreener.getCanonicalScreenerMeta ? canonicalScreener.getCanonicalScreenerMeta() : null;
     const responseData = Object.assign({}, payload, {
       count: filtered.length,
       results: filtered,
@@ -658,18 +667,47 @@ module.exports = async function handler(req, res) {
 
     if (category && canonicalThreeHorizon && canonicalThreeHorizon[category]) {
       const hz = canonicalThreeHorizon[category];
-      const includeFca = String(query.raw || query.include_fca || '') === '1';
       const rawTop20 = Array.isArray(hz.top20) ? hz.top20 : [];
-      const cleanTop20 = includeFca ? rawTop20 : rawTop20.filter((r) => {
-        if (!r) return false;
+      // Kloter 1 V6.5.5: All-Price IDX policy (>= Rp 1); only validate positive finite levels
+      const cleanTop20 = rawTop20.filter((r) => {
+        if (!r || !r.ticker) return false;
         const px = Number(r.last_price != null ? r.last_price : r.close);
         const eLow = Number(r.entry_low != null ? r.entry_low : (r.entry2 != null ? r.entry2 : px));
         const slPx = Number(r.sl != null ? r.sl : r.stop_loss);
-        if (!Number.isFinite(px) || px < 50) return false;
-        if (Number.isFinite(eLow) && eLow > 0 && eLow < 50) return false;
-        if (Number.isFinite(slPx) && slPx > 0 && slPx < 50) return false;
+        if (!Number.isFinite(px) || px < 1) return false;
+        if (Number.isFinite(eLow) && eLow > 0 && eLow < 1) return false;
+        if (Number.isFinite(slPx) && slPx > 0 && slPx < 1) return false;
         return true;
       });
+      const hzTradeDate = hz.session_date || (canonicalMeta && canonicalMeta.trade_date) || responseData.trade_date;
+      if (hzTradeDate) {
+        responseData.trade_date = hzTradeDate;
+        responseData.date = hzTradeDate;
+        responseData.market_date = hzTradeDate;
+        if (responseData.meta) responseData.meta.trading_date = hzTradeDate;
+      }
+      if (canonicalThreeHorizonMeta && canonicalThreeHorizonMeta.source_dates && responseData.meta) {
+        responseData.meta.source_dates = canonicalThreeHorizonMeta.source_dates;
+      }
+      if (cleanTop20.length > 0 && responseData.data_status === DATA_STATUS.STALE) {
+        const wibNow = typeof chartT1Policy.getJakartaClockParts === 'function' ? chartT1Policy.getJakartaClockParts(Date.now()) : null;
+        const pre21 = wibNow ? ((wibNow.hour * 60 + wibNow.minute) < (21 * 60)) : false;
+        const srcDates = canonicalThreeHorizonMeta && canonicalThreeHorizonMeta.source_dates;
+        const expToday = expectedCompletedEodDate(Date.now());
+        if (pre21 && srcDates && srcDates.broksum_all === hzTradeDate && hzTradeDate === chartT1Policy.previousWeekday(expToday)) {
+          responseData.data_status = DATA_STATUS.AVAILABLE;
+          responseData.stale = false;
+          responseData.session_status = 'FINAL_EOD';
+          responseData.is_eod_final = true;
+          responseData.eod_complete = true;
+          responseData.freshness_label = 'fresh';
+          if (responseData.meta) {
+            responseData.meta.stale = false;
+            responseData.meta.session_status = 'FINAL_EOD';
+            responseData.meta.is_eod_final = true;
+          }
+        }
+      }
       responseData.horizon = category;
       responseData.results = cleanTop20;
       responseData.top5 = cleanTop20.slice(0, 5);

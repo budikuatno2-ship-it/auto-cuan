@@ -80,9 +80,15 @@ function revalidatePick(pick, now, context) {
 
   const pickTradeDay = String(pick.trade_date || pick.date || pick.market_date || pick.session_date || '').slice(0, 10);
   const expectedEod = expectedCompletedEodDate(now);
-  // Before 16:30 WIB on a trading day (or on weekends/holidays), the latest
-  // completed EOD session (T-1) is up to ~40-88h after 00:00 WIB of that session.
-  const evalOpts = (pickTradeDay && expectedEod && pickTradeDay >= expectedEod)
+  const prevEod = (typeof chartT1Policy.previousWeekday === 'function' && chartT1Policy.previousWeekday(expectedEod)) || expectedEod;
+  const wibClock = typeof chartT1Policy.getJakartaClockParts === 'function' ? chartT1Policy.getJakartaClockParts(now) : null;
+  const beforeBroksumPublish = wibClock ? (wibClock.hour * 60 + wibClock.minute) < (21 * 60) : false;
+  const effectiveExpectedEod = (beforeBroksumPublish && context && context.sourceDates && context.sourceDates.broksum_all === prevEod)
+    ? prevEod
+    : expectedEod;
+  // Before 16:30 WIB on a trading day (or pre-21:00 WIB awaiting Broksum, or weekends/holidays),
+  // the latest completed EOD session is up to ~40-96h after 00:00 WIB of that session.
+  const evalOpts = (pickTradeDay && effectiveExpectedEod && pickTradeDay >= effectiveExpectedEod)
     ? { now, maxStalenessMinutes: 96 * 60 }
     : { now };
   const result = readiness.evaluate(pick, evalOpts);
@@ -181,7 +187,8 @@ function loadTop5Data() {
         served.data_status === 'NOT_PUBLISHED';
       const revalidateCtx = {
         publicationBlocked,
-        blockReason: served.status_reason || served.data_status || 'UNKNOWN'
+        blockReason: served.status_reason || served.data_status || 'UNKNOWN',
+        sourceDates: served.source_dates || null
       };
 
       // Enforce the readiness verdict on the way out. The file is treated as

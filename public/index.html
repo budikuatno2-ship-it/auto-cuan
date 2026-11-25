@@ -13581,7 +13581,7 @@ function applyScreenerUiFilters(type, results) {
     var rows = (source || []).filter(function(r) {
         if (!r || !r.ticker) return false;
         var pxVal = Number(r.last_price != null ? r.last_price : r.close);
-        if (!showRaw && isFinite(pxVal) && pxVal > 0 && pxVal < 50) return false;
+        if (!isFinite(pxVal) || pxVal < 1) return false;
         var ticker = normalizeFilterToken(r.ticker);
         if (f.ticker && ticker.indexOf(f.ticker) === -1) return false;
         var risk = getRiskLabel(r);
@@ -14261,7 +14261,7 @@ function renderKgCardGrid(results) {
         _kgCardData[r.ticker] = r;
         var isSafetyBlocked = r.corporate_action_guard === 'BLOCKED' || Boolean(r.safety_lock) || (r.last_price && r.stop_loss && r.last_price < r.stop_loss);
         var tier = r.swing_tier || '';
-        var tierShort = swingTierShort(tier);
+        var tierShort = swingTierShort(tier, r);
         var tierCls = swingTierColor(tier);
         var tierTitle = swingTierTitle(tier);
         if (isSafetyBlocked) {
@@ -14379,7 +14379,7 @@ function renderNkCardGrid(results) {
         _nkCardData[r.ticker] = r;
         var isSafetyBlocked = r.corporate_action_guard === 'BLOCKED' || Boolean(r.safety_lock) || (r.last_price && r.stop_loss && r.last_price < r.stop_loss);
         var tier = r.swing_tier || '';
-        var tierShort = swingTierShort(tier);
+        var tierShort = swingTierShort(tier, r);
         var tierCls = swingTierColor(tier);
         var tierTitle = swingTierTitle(tier);
         if (isSafetyBlocked) {
@@ -15398,9 +15398,9 @@ async function switchThreeHorizon(horizonKey) {
     }
     var descEl = document.getElementById('scrModeDesc');
     var labels = {
-        potensi_besok: 'Potensi Besok (1–5H) · Lonjakan volume & breakout cepat + fraksi tick IDX (SL 2–7%, R/R ≥ 1,5x).',
-        short_swing: 'Short Swing (3–10H) · Uptrend sehat RSI 45–70 + arus bandar/asing (SL 2,5–10%, R/R ≥ 1,5x).',
-        swing: 'Swing (7–30H) · Tren struktural di atas MA50 + likuiditas tebal (SL 3–15%, R/R ≥ 1,8x).'
+        potensi_besok: 'Potensi Besok (1–5H) · Lonjakan volume & breakout cepat + All-Price ≥ Rp 1 + fraksi IDX (SL 2–7%, R/R ≥ 1,5x).',
+        short_swing: 'Short Swing (3–10H) · Uptrend sehat RSI 42–72 + Bandar/Domestik/Asing + All-Price ≥ Rp 1 (SL 2,5–10%, R/R ≥ 1,5x).',
+        swing: 'Swing (7–30H) · Tren struktural MA50 atau base akumulasi + likuiditas tebal + All-Price ≥ Rp 1 (SL 3–15%, R/R ≥ 1,8x).'
     };
     if (descEl && labels[key]) descEl.textContent = labels[key];
     try {
@@ -15566,7 +15566,7 @@ var SWING_TIER_UNKNOWN_COLOR = 'bg-gray-500/10 text-gray-400';
 
 function swingTierShort(tier, rowOrHorizon) {
     if (tier === 'A_PLUS_SWING') {
-        var hz = (rowOrHorizon && typeof rowOrHorizon === 'object' ? (rowOrHorizon.horizon || rowOrHorizon.screener_type) : rowOrHorizon) || _activeThreeHorizon || 'short_swing';
+        var hz = (rowOrHorizon && typeof rowOrHorizon === 'object' ? (rowOrHorizon.horizon || rowOrHorizon.screener_type) : rowOrHorizon) || (typeof _activeThreeHorizon !== 'undefined' ? _activeThreeHorizon : 'swing');
         if (hz === 'potensi_besok') return 'A+ BESOK';
         if (hz === 'short_swing') return 'A+ SHORT';
         return 'A+ SWING';

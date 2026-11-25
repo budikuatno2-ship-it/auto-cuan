@@ -53,15 +53,21 @@ function makeBrokerSeries(candles, days = 20) {
   }));
 }
 
-test('V6.5.4-1: blocks < Rp 50 AND stocks with close < Rp 50 in last 20 trading sessions (WMUU pattern)', () => {
+test('V6.5.5-K1: allows All-Price >= Rp 1 including < Rp 50 stocks with recent sub-50 closes when liquid & valid IDX ticks', () => {
   const cfg = threeHorizonStore.DEFAULT_CONFIG;
-  const candles = genCandles(60, 52, 0.2, 50000000, 2.5, null, true);
+  const candles = genCandles(60, 46, 0.25, 400000000, 2.4, null, true);
+  candles[candles.length - 1].close = 47;
+  candles[candles.length - 1].high = 49;
+  candles[candles.length - 1].low = 45;
   const latestDate = candles[candles.length - 1].time;
   const broker = makeBrokerSeries(candles);
-  for (const hKey of threeHorizonStore.HORIZON_KEYS) {
-    const res = buildHorizonCandidate('WMUU', candles, broker, broker, cfg.horizons[hKey], latestDate, 'Widodo Makmur', false, cfg.horizons[hKey].minRr);
-    assert.equal(res, null, `${hKey} must reject WMUU-like recent <50 close`);
-  }
+  const res = buildHorizonCandidate('WMUU', candles, broker, broker, cfg.horizons.potensi_besok, latestDate, 'Widodo Makmur', false, cfg.horizons.potensi_besok.minRr);
+  assert.ok(res, 'potensi_besok must admit valid liquid Rp 47 candidate');
+  assert.equal(res.last_price, 47);
+  assert.ok(res.sl >= 1 && res.sl < res.entry_low && res.entry_low <= res.entry_high && res.entry_high < res.tp1 && res.tp1 < res.tp2);
+  assert.equal(idxTick.isIdxTickValid(res.sl), true);
+  assert.equal(idxTick.isIdxTickValid(res.entry_low), true);
+  assert.equal(idxTick.isIdxTickValid(res.tp1), true);
 });
 
 test('V6.5.4-2: rejects extreme SL beyond horizon band instead of forcing SL=-28% and keeps IDX ticks + ordering', () => {
@@ -86,12 +92,12 @@ test('V6.5.4-2: rejects extreme SL beyond horizon band instead of forcing SL=-28
     const hCfg = cfg.horizons[hKey];
     const cand = buildHorizonCandidate('TEST', healthyCandles, hBroker, hBroker, hCfg, hDate, 'Test Tbk', false, hCfg.minRr);
     if (!cand) continue;
-    assert.ok(cand.sl >= 50 && cand.sl < cand.entry_low && cand.entry_low <= cand.entry_high && cand.entry_high < cand.tp1 && cand.tp1 < cand.tp2);
-    assert.equal(idxTick.isValidIdxTick(cand.entry_low), true);
-    assert.equal(idxTick.isValidIdxTick(cand.entry_high), true);
-    assert.equal(idxTick.isValidIdxTick(cand.sl), true);
-    assert.equal(idxTick.isValidIdxTick(cand.tp1), true);
-    assert.equal(idxTick.isValidIdxTick(cand.tp2), true);
+    assert.ok(cand.sl >= 1 && cand.sl < cand.entry_low && cand.entry_low <= cand.entry_high && cand.entry_high < cand.tp1 && cand.tp1 < cand.tp2);
+    assert.equal(idxTick.isIdxTickValid(cand.entry_low), true);
+    assert.equal(idxTick.isIdxTickValid(cand.entry_high), true);
+    assert.equal(idxTick.isIdxTickValid(cand.sl), true);
+    assert.equal(idxTick.isIdxTickValid(cand.tp1), true);
+    assert.equal(idxTick.isIdxTickValid(cand.tp2), true);
     assert.ok(cand.sl_pct >= hCfg.slMinPct - 0.05 && cand.sl_pct <= hCfg.slMaxPct + 0.05);
     assert.ok(cand.tp1_pct >= hCfg.tp1MinPct - 0.05 && cand.tp1_pct <= hCfg.tp1MaxPct + 0.05);
     assert.ok(cand.rr >= hCfg.minRr);

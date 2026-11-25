@@ -73,18 +73,25 @@
     var volActualText = volRatio !== null ? (volRatio.toFixed(2) + 'x') : DATA_MISSING;
     var volThresholdText = 'Min ' + minVolRatio.toFixed(1) + 'x';
 
-    // 3. Tren Harga / MA20 (atau MA50 untuk Swing 7-30H)
+    // 3. Tren Harga / MA20 (atau MA50 / Base Akumulasi untuk Swing 7-30H)
     var lastPrice = toNum(signal.last_price || signal.close);
     var ma20 = toNum(signal.ma20);
     var ma50 = toNum(signal.ma50);
     var priceVsMa20 = null;
     var ma20Passed = null;
     var ma20ActualText = DATA_MISSING;
-    var ma20ThresholdText = isSwingLong && ma50 !== null ? 'Harga > MA50' : 'Harga ≥ MA20';
-    if (isSwingLong && lastPrice !== null && ma50 !== null && ma50 > 0) {
-      var priceVsMa50 = ((lastPrice - ma50) / ma50) * 100;
-      ma20Passed = lastPrice > ma50;
-      ma20ActualText = (priceVsMa50 >= 0 ? '+' : '') + priceVsMa50.toFixed(1) + '% vs MA50 (' + Math.round(ma50).toLocaleString('id-ID') + ')';
+    var ma20ThresholdText = isSwingLong ? 'Harga > MA50 / Base EMA20' : 'Harga ≥ MA20';
+    if (isSwingLong && lastPrice !== null && (ma50 !== null || ma20 !== null)) {
+      if (ma50 !== null && ma50 > 0 && lastPrice > ma50) {
+        var priceVsMa50 = ((lastPrice - ma50) / ma50) * 100;
+        ma20Passed = true;
+        ma20ActualText = '+' + priceVsMa50.toFixed(1) + '% vs MA50 (' + Math.round(ma50).toLocaleString('id-ID') + ')';
+      } else if (ma20 !== null && ma20 > 0) {
+        priceVsMa20 = ((lastPrice - ma20) / ma20) * 100;
+        var hasAccumBase = lastPrice >= ma20 * 0.99 && (toNum(signal.bandar_score) == null || toNum(signal.bandar_score) >= 55);
+        ma20Passed = hasAccumBase;
+        ma20ActualText = (priceVsMa20 >= 0 ? '+' : '') + priceVsMa20.toFixed(1) + '% vs MA20 · Base';
+      }
     } else if (lastPrice !== null && ma20 !== null && ma20 > 0) {
       priceVsMa20 = ((lastPrice - ma20) / ma20) * 100;
       ma20Passed = priceVsMa20 >= -2.0;
@@ -202,6 +209,66 @@
         note: rrNoteText || noteFor(rrPassed, 'Potensi target reward melebihi batas risiko', 'R/R di bawah standar ideal')
       }
     ];
+
+    // Real Multi-Pillar Gates (Broksum ALL/Domestik, Foreign Flow, Insider/FreeFloat)
+    var bandarSc = toNum(signal.bandar_score);
+    var cr3Pct = toNum(signal.cr3_pct);
+    var domSc = toNum(signal.domestic_score);
+    var domNet = toNum(signal.domestic_net);
+    if (bandarSc !== null || domSc !== null || domNet !== null) {
+      var bdParts = [];
+      if (bandarSc !== null) bdParts.push('Skor ' + Math.round(bandarSc));
+      if (cr3Pct !== null) bdParts.push('CR3 ' + cr3Pct.toFixed(0) + '%');
+      if (domSc !== null) bdParts.push('Dom ' + Math.round(domSc));
+      else if (domNet !== null) bdParts.push('Dom ' + fmtRpCompact(domNet));
+      gates.push({
+        id: 'bandar',
+        title: 'Bandar & Domestik (ALL-F)',
+        shortTitle: 'Bandar',
+        actual: bdParts.join(' · ') || DATA_MISSING,
+        threshold: 'Akumulasi Terverifikasi (≥ 50)',
+        passed: bandarSc !== null ? bandarSc >= 50 : null,
+        unverified: bandarSc === null,
+        note: noteFor(bandarSc !== null ? bandarSc >= 50 : null, 'Akumulasi bandar & domestik terkonfirmasi', 'Arus akumulasi bandar netral/lemah')
+      });
+    }
+
+    var foreignSc = toNum(signal.foreign_flow_score != null ? signal.foreign_flow_score : signal.foreign_score);
+    var foreignNet = toNum(signal.foreign_net);
+    if (foreignSc !== null || foreignNet !== null) {
+      var fnParts = [];
+      if (foreignSc !== null) fnParts.push('Skor ' + Math.round(foreignSc));
+      if (foreignNet !== null) fnParts.push('Net ' + fmtRpCompact(foreignNet));
+      gates.push({
+        id: 'foreign',
+        title: 'Arus Asing (Foreign Flow)',
+        shortTitle: 'Foreign',
+        actual: fnParts.join(' · ') || DATA_MISSING,
+        threshold: 'Dukungan Arus Asing (≥ 45)',
+        passed: foreignSc !== null ? foreignSc >= 45 : null,
+        unverified: foreignSc === null,
+        note: noteFor(foreignSc !== null ? foreignSc >= 45 : null, 'Foreign flow mendukung pergerakan harga', 'Tekanan net sell asing perlu dipantau')
+      });
+    }
+
+    var freeFloat = toNum(signal.free_float_pct);
+    var insSig = signal.insider_signal ? String(signal.insider_signal) : null;
+    if (freeFloat !== null || insSig !== null) {
+      var kParts = [];
+      if (freeFloat !== null) kParts.push('FF ' + freeFloat.toFixed(1) + '%');
+      if (insSig) kParts.push('Insider ' + insSig);
+      var kPass = insSig === 'SELL_30D' ? false : (freeFloat !== null || insSig !== null ? true : null);
+      gates.push({
+        id: 'ownership',
+        title: 'Insider & Struktur KSEI',
+        shortTitle: 'Insider/FF',
+        actual: kParts.join(' · '),
+        threshold: 'Kepemilikan & Insider Terpantau',
+        passed: kPass,
+        unverified: kPass === null,
+        note: insSig === 'BUY_30D' ? 'Tercatat aksi beli insider 30H terakhir' : (insSig === 'SELL_30D' ? 'Tercatat jual insider 30H — waspada suplai' : 'Struktur saham KSEI terpantau')
+      });
+    }
 
     var passedCount = gates.filter(function (g) { return g.passed === true; }).length;
     var totalCount = gates.length;
