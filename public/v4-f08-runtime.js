@@ -398,7 +398,20 @@
     } catch (_) {}
   }
 
-  // 4. Track Record 6-Metrics
+  // 4. Track Record 6-Metrics (fallback only when renderTrackRecordUI has not rendered)
+  function isMetricUnset(el) {
+    if (!el) return false;
+    var txt = String(el.textContent || '').trim();
+    return !txt || txt === '—' || txt === '-';
+  }
+
+  function formatResolvedRate(denom, pctVal, legacyStr, count) {
+    if (!(denom > 0)) return '—';
+    if (pctVal != null) return Number(pctVal).toFixed(1).replace('.', ',') + '%';
+    if (legacyStr != null) return legacyStr;
+    return ((count / denom) * 100).toFixed(1).replace('.', ',') + '%';
+  }
+
   async function checkAndApplyTrackRecord() {
     var pTr = $('page-trackrecord');
     if (!pTr || pTr.classList.contains('hidden')) return;
@@ -412,24 +425,41 @@
     var mSlSub = $('trMetricSlSub');
     var mExp = $('trMetricExp');
 
-    if (mTotal && (mTotal.textContent === '—' || mTotal.textContent === '-' || !mTotal.textContent.trim())) {
+    if (mTotal && isMetricUnset(mTotal)) {
       try {
         var res = await fetch('/api/track-record', { cache: 'no-cache' });
         var data = null;
         if (res.ok) data = await res.json();
+        // Do not overwrite if track-record-runtime.js populated the cards while fetch was in flight.
+        if (!isMetricUnset(mTotal)) return;
         if (data && data.summary) {
           var s = data.summary;
-          if (mTotal) mTotal.textContent = (s.total_signals != null ? Number(s.total_signals) : 0).toLocaleString('id-ID');
-          if (mDone) mDone.textContent = (s.total_resolved != null ? Number(s.total_resolved) : 0).toLocaleString('id-ID');
-          if (mAct) mAct.textContent = (Number(s.running_signals || 0) + Number(s.waiting_signals || 0)).toLocaleString('id-ID');
-          if (mHit) mHit.textContent = (Number(s.tp1_hits || 0) + Number(s.tp2_hits || 0)).toLocaleString('id-ID');
-          if (mHitSub) mHitSub.textContent = (s.resolved_win_rate != null ? s.resolved_win_rate : '—') + ' dari ' + (s.total_resolved != null ? Number(s.total_resolved) : 0).toLocaleString('id-ID') + ' selesai';
-          if (mSl) mSl.textContent = (s.sl_hits != null ? Number(s.sl_hits) : 0).toLocaleString('id-ID');
-          if (mSlSub) mSlSub.textContent = (s.sl_rate != null ? s.sl_rate : '—') + ' dari ' + (s.total_resolved != null ? Number(s.total_resolved) : 0).toLocaleString('id-ID') + ' selesai';
-          if (mExp) mExp.textContent = (s.expired_signals != null ? Number(s.expired_signals) : 0).toLocaleString('id-ID');
+          var total = s.total_signals != null ? Number(s.total_signals) : 0;
+          var done = s.total_resolved != null ? Number(s.total_resolved) : 0;
+          var act = s.floating_open != null
+            ? Number(s.floating_open)
+            : ((s.entered != null || s.waiting != null)
+              ? (Number(s.entered || 0) + Number(s.waiting || 0))
+              : (Number(s.running_signals || 0) + Number(s.waiting_signals || 0)));
+          var hit = Number(s.tp1_hits || 0) + Number(s.tp2_hits || 0);
+          var sl = s.sl_hits != null ? Number(s.sl_hits) : 0;
+          var exp = s.expired_signals != null
+            ? Number(s.expired_signals)
+            : (s.expired != null ? Number(s.expired) : Math.max(0, done - hit - sl));
+          var hitPct = formatResolvedRate(done, s.win_rate_on_resolved_pct, s.resolved_win_rate, hit);
+          var slPct = formatResolvedRate(done, s.loss_rate_on_resolved_pct, s.sl_rate, sl);
+
+          if (mTotal) mTotal.textContent = (s.total_signals != null ? total.toLocaleString('id-ID') : '—');
+          if (mDone) mDone.textContent = done.toLocaleString('id-ID');
+          if (mAct) mAct.textContent = act.toLocaleString('id-ID');
+          if (mHit) mHit.textContent = hit.toLocaleString('id-ID');
+          if (mHitSub) mHitSub.textContent = hitPct !== '—' ? (hitPct + ' dari ' + done.toLocaleString('id-ID') + ' selesai') : '—';
+          if (mSl) mSl.textContent = sl.toLocaleString('id-ID');
+          if (mSlSub) mSlSub.textContent = slPct !== '—' ? (slPct + ' dari ' + done.toLocaleString('id-ID') + ' selesai') : '—';
+          if (mExp) mExp.textContent = exp.toLocaleString('id-ID');
 
           var chip = $('trProvenanceChip');
-          if (chip) chip.textContent = 'dari ' + s.total_signals.toLocaleString('id-ID') + ' sinyal terakhir';
+          if (chip && s.total_signals != null) chip.textContent = 'dari ' + total.toLocaleString('id-ID') + ' sinyal terakhir';
         }
       } catch (_) {}
     }

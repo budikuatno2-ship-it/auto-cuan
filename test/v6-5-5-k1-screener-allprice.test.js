@@ -298,3 +298,10 @@ test('K1-7: Dashboard Top 5 switcher caches all 3 horizons & guards in-flight ho
   assert.match(html, /\['potensi_besok', 'short_swing', 'swing'\]\.forEach/);
   assert.match(html, /if \(container\) \{ while \(container\.children\.length > 1\)/);
 });
+
+test('K1-8: v4-f08 Track Record fallback reads floating_open/entered+waiting and does not clobber track-record-runtime.js', () => {
+  const runtimeSrc = fs.readFileSync(path.join(ROOT, 'public', 'v4-f08-runtime.js'), 'utf8');
+  assert.match(runtimeSrc, /s\.floating_open != null/);
+  assert.match(runtimeSrc, /s\.entered != null \|\| s\.waiting != null/);
+  assert.match(runtimeSrc, /if \(!isMetricUnset\(mTotal\)\) return;/);
+});
