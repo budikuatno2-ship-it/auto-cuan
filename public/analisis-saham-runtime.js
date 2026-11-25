@@ -2368,6 +2368,18 @@
     }
 
     var meta = FINANCIAL_META[ticker];
+    var hasServerFinancialData = Boolean(
+      (cached && (cached.financial_statements || cached.statements)) ||
+      (f && f.data_available) ||
+      coverageCount > 0
+    );
+    if (!meta && hasServerFinancialData) {
+      meta = {
+        name: (cached && (cached.company_name || cached.name)) || ('PT ' + ticker + ' Tbk'),
+        sector: (f && f.sector) || (cached && cached.sector) || 'Emiten BEI',
+        warn: ''
+      };
+    }
 
     // Update Ticker chips
     if (typeof document.querySelectorAll === 'function') {
@@ -2548,7 +2560,11 @@
 
     var subtitle = byId('financialStatementsSubtitle');
     if (subtitle) {
-      subtitle.textContent = meta.name + ' · ' + (fr === 0 ? per.length + ' kuartal · ' + per[0].lab + ' s.d. ' + per[per.length - 1].lab : per.length + ' tahun buku · ' + per[0].lab + ' s.d. ' + per[per.length - 1].lab);
+      if (per && per.length > 0) {
+        subtitle.textContent = meta.name + ' · ' + (fr === 0 ? per.length + ' kuartal · ' + per[0].lab + ' s.d. ' + per[per.length - 1].lab : per.length + ' tahun buku · ' + per[0].lab + ' s.d. ' + per[per.length - 1].lab);
+      } else {
+        subtitle.textContent = meta.name + ' · Ringkasan valuasi server';
+      }
     }
 
     // Tabs indicators

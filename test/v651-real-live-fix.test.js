@@ -121,4 +121,22 @@ test('FIX 5-10: Cron catchup-0015 removed, JOB_USES_QUOTA=0 fail-closed, Watchli
 
   const pat = read('public/pattern-stable-runtime.js');
   assert.match(pat, /safety:\s*\{\s*actionable:\s*isAct/, 'Pattern Radar attaches real actionable flag');
+
+  // Visual-truth V6.5.1 hotfix checks
+  const idxHtml = read('public/index.html');
+  const admHtml = read('public/admin-console.html');
+  for (const [fname, doc] of [['public/index.html', idxHtml], ['public/admin-console.html', admHtml]]) {
+    const t7 = doc.indexOf('id="panelTab7"');
+    const t8 = doc.indexOf('id="panelTab8"');
+    assert.ok(t7 > 0 && t8 > t7, `${fname}: panelTab7 precedes panelTab8`);
+    const between = doc.slice(t7, t8);
+    assert.match(between, /<\/div>\s*<!-- TAB 8: KEAMANAN/, `${fname}: panelTab7 must close before panelTab8`);
+  }
+  assert.doesNotMatch(idxHtml, /Swing 3&ndash;7 hari/, 'en-dash Swing 3–7 hari removed from Screener scope');
+
+  const anaRt = read('public/analisis-saham-runtime.js');
+  assert.match(anaRt, /hasServerFinancialData/, 'Financial UI uses live server snapshot even when static FINANCIAL_META is null');
+
+  const admRt = read('public/admin-console-runtime.js');
+  assert.match(admRt, /liveProviderCap/, 'Admin quota panel caps inputs to live provider telemetry');
 });
