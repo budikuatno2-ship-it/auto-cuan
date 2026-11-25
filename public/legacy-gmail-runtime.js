@@ -133,6 +133,10 @@
  }
  async function check(){
   bonusCopy(null);
+  if(root.__AUTOCUAN_AUTHENTICATED_SESSION__&&root.__AUTOCUAN_AUTHENTICATED_SESSION__.google_link_state==='unavailable'){
+   if(dialog&&dialog.open)dialog.close();
+   return {success:true,google_link_state:'unavailable',google_linked:null,required:false};
+  }
   if(root.__AUTOCUAN_AUTHENTICATED_SESSION__&&root.__AUTOCUAN_AUTHENTICATED_SESSION__.google_link_state==='unlinked'&&(root.__AUTOCUAN_AUTHENTICATED_SESSION__.google_link_required===true||root.__AUTOCUAN_AUTHENTICATED_SESSION__.email_required===true)){
    var requiredDialog=mount();
    if(!requiredDialog.open)requiredDialog.showModal();

@@ -671,7 +671,12 @@ html #appContent #page-analisis .cw-scale { display: inline-flex; gap: 4px; }
 html #appContent #page-analisis .cw-scale .vbtn { min-width: 30px; padding: 0 8px; font-family: var(--ac-font-mono); }
 
 /* Chart legend (inline colours were written for a dark chart) */
-html #appContent #page-analisis .chart-canvas-floating-header { text-shadow: none !important; font-family: var(--ac-font-mono) !important; }
+html #appContent #page-analisis .chart-canvas-floating-header { background: var(--ac-raised) !important; border-bottom: 1px solid var(--ac-hair) !important; color: var(--ac-ink) !important; text-shadow: none !important; font-family: var(--ac-font-mono) !important; }
+html:not(.dark):not(.is-dark) #appContent #page-analisis [id$="_container"] [style*="text-shadow"] { text-shadow: none !important; }
+html:not(.dark):not(.is-dark) #appContent #page-analisis [id$="_container"] [style*="color:#94a3b8"] { color: var(--ac-2) !important; }
+html:not(.dark):not(.is-dark) #appContent #page-analisis [id$="_container"] [style*="color:#fb923c"] { color: var(--ac-warn-t) !important; }
+html:not(.dark):not(.is-dark) #appContent #page-analisis [id$="_container"] [style*="color:#38bdf8"] { color: var(--ac-info) !important; }
+html:not(.dark):not(.is-dark) #appContent #page-analisis [id$="_container"] [style*="color:#a78bfa"] { color: #6d28d9 !important; }
 html #appContent #page-analisis .chart-canvas-floating-header, html #appContent #page-analisis .chart-canvas-floating-header .text-gray-300, html #appContent #page-analisis .chart-canvas-floating-header .text-slate-100 { color: var(--ac-ink) !important; }
 html #appContent #page-analisis .chart-canvas-floating-header .text-gray-400 { color: var(--ac-2) !important; }
 html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#f8fafc"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#f1f5f9"] { color: var(--ac-ink) !important; }
@@ -687,24 +692,27 @@ html.cw-one-screen-open .mm, html.cw-one-screen-open #acBottomBar { display: non
 
 /* FINAL POLISH TASK 3 / FIX 1: compact drawing-toolbar pills with mobile
    horizontal scroll so the tools never collide with the OHLCV legend at 390px. */
-.ac-draw-toolbar { display: flex !important; flex-wrap: nowrap !important; gap: 6px !important; overflow-x: auto !important; overscroll-behavior-x: contain; scrollbar-width: none; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+.ac-draw-toolbar { display: inline-flex !important; flex-wrap: nowrap !important; gap: 6px !important; overflow-x: auto !important; overscroll-behavior-x: contain; scrollbar-width: none; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; background: var(--ac-raised) !important; border: 1px solid var(--ac-hair) !important; border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; }
 .ac-draw-toolbar::-webkit-scrollbar { display: none; }
 .ac-draw-toolbar .ac-draw-btn {
   display: inline-flex !important; align-items: center; justify-content: center;
   flex: 0 0 auto; white-space: nowrap; gap: 4px;
-  padding: 4px 8px !important; border: 1px solid var(--ac-hair, rgba(255,255,255,.14)) !important;
-  border-radius: 6px !important; line-height: 1.2;
+  padding: 4px 8px !important; background: var(--ac-surface) !important; color: var(--ac-ink) !important; border: 1px solid var(--ac-hair) !important;
+  border-radius: 6px !important; line-height: 1.2; font-size: 12px; font-weight: 500; cursor: pointer;
 }
+.ac-draw-toolbar .ac-draw-btn:hover { background: var(--ac-hover) !important; }
+.ac-draw-toolbar .ac-draw-btn.on,
+.ac-draw-toolbar .ac-draw-btn[aria-pressed="true"] { background: var(--ac-brand) !important; color: #ffffff !important; border-color: var(--ac-brand) !important; }
 @media (max-width: 640px) {
-  .ac-draw-toolbar { top: auto !important; bottom: 0 !important; padding: 5px 8px !important; gap: 4px !important; }
-  .ac-draw-toolbar .ac-draw-btn { font-size: 11px !important; padding: 4px 7px !important; }
+  .ac-draw-toolbar { position: static !important; top: auto !important; bottom: auto !important; flex-wrap: wrap !important; overflow-x: visible !important; padding: 6px 8px !important; gap: 4px !important; }
+  .ac-draw-toolbar .ac-draw-btn { font-size: 11px !important; padding: 5px 8px !important; min-height: 36px; }
 }
-/* FIX 1: 390x844 mode bar — smaller padding/font so "Investor" is never
-   clipped or touching "Pro". The mode group scrolls horizontally instead. */
+/* FIX 1: 390x844 mode bar — wrap cleanly so none of the 5 modes or TF
+   buttons are clipped at the right edge on narrow mobile viewports. */
 @media (max-width: 430px) {
   html #appContent #page-analisis .cw-bar { padding: 8px 10px; gap: 6px 8px; }
   html #appContent #page-analisis .cw-group { gap: 4px 6px; }
-  html #appContent #page-analisis .cw-seg { display: inline-flex; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+  html #appContent #page-analisis .cw-seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; }
   html #appContent #page-analisis .cw-seg button { height: 32px; padding: 0 7px; font-size: 11px; letter-spacing: -.01em; white-space: nowrap; flex: 0 0 auto; }
   html #appContent #page-analisis .cw-l { font-size: 10px; }
 }

@@ -7733,9 +7733,15 @@ async function fetchLatestPriceForMonitor(supabase, ticker, pck) {
     pck = ticker;
     ticker = pck.ticker;
   }
-  // 1. First check daytrade_screener_latest (provides rich intraday OHLCV if present)
+  var pickDate = (pck && pck.date) ? String(pck.date).slice(0, 10) : '';
+  function isStaleBeforePick(at) {
+    if (!pickDate || !at) return false;
+    var atDate = String(at).slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(atDate) && atDate < pickDate;
+  }
+  // 1. First check daytrade_screener_latest (provides rich intraday OHLCV if present and not older than pick)
   var dt = await supabase.from('daytrade_screener_latest').select('last_price,open_price,high_price,low_price,calculated_at').eq('ticker', ticker).maybeSingle();
-  if (dt.data && dt.data.last_price != null) {
+  if (dt.data && dt.data.last_price != null && !isStaleBeforePick(dt.data.calculated_at)) {
     return { last: toNum(dt.data.last_price), open: toNum(dt.data.open_price), high: toNum(dt.data.high_price), low: toNum(dt.data.low_price), at: dt.data.calculated_at, bestEffort: false, source: 'daytrade_screener_latest' };
   }
 
@@ -7749,8 +7755,9 @@ async function fetchLatestPriceForMonitor(supabase, ticker, pck) {
 
   if (monitorSource === 'swing_konglo' || monitorSource === 'daily_top5' || monitorSource === 'top5' || monitorSource.indexOf('konglo') >= 0) {
     var sk = await supabase.from('swing_screener_latest').select('last_price,calculated_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
-    if (sk.data && sk.data.last_price != null) {
-      return { last: toNum(sk.data.last_price), open: null, high: null, low: null, at: sk.data.price_asof || sk.data.calculated_at || sk.data.price_date, bestEffort: false, source: 'swing_screener_latest' };
+    var skAt = sk.data ? (sk.data.price_asof || sk.data.calculated_at || sk.data.price_date) : null;
+    if (sk.data && sk.data.last_price != null && !isStaleBeforePick(skAt)) {
+      return { last: toNum(sk.data.last_price), open: null, high: null, low: null, at: skAt, bestEffort: false, source: 'swing_screener_latest' };
     }
   }
 
@@ -7759,28 +7766,46 @@ async function fetchLatestPriceForMonitor(supabase, ticker, pck) {
     // Requesting it made PostgREST reject the whole read, so this price source
     // silently never resolved. published_at is the real recency column.
     var snk = await supabase.from('swing_screener_non_konglo_latest').select('last_price,published_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
-    if (snk.data && snk.data.last_price != null) {
-      return { last: toNum(snk.data.last_price), open: null, high: null, low: null, at: snk.data.price_asof || snk.data.published_at || snk.data.price_date, bestEffort: false, source: 'swing_screener_non_konglo_latest' };
+    var snkAt = snk.data ? (snk.data.price_asof || snk.data.published_at || snk.data.price_date) : null;
+    if (snk.data && snk.data.last_price != null && !isStaleBeforePick(snkAt)) {
+      return { last: toNum(snk.data.last_price), open: null, high: null, low: null, at: snkAt, bestEffort: false, source: 'swing_screener_non_konglo_latest' };
     }
   }
 
-  // 3. Fallback search across all swing screener tables if source is unknown or not found in primary
+  // 3. Check canonical EOD stock_daily_history BEFORE old screener/foreign_watchlist snapshots
+  try {
+    var sdh = await supabase.from('stock_daily_history').select('close,open,high,low,trade_date').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(1);
+    if (sdh && sdh.data && sdh.data[0] && sdh.data[0].close != null && !isStaleBeforePick(sdh.data[0].trade_date)) {
+      return {
+        last: toNum(sdh.data[0].close),
+        open: toNum(sdh.data[0].open),
+        high: toNum(sdh.data[0].high),
+        low: toNum(sdh.data[0].low),
+        at: sdh.data[0].trade_date,
+        bestEffort: false,
+        source: 'stock_daily_history'
+      };
+    }
+  } catch (_) {}
+
+  // 4. Fallback search across remaining swing screener tables (never older than pick.date)
   var skFallback = await supabase.from('swing_screener_latest').select('last_price,calculated_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
-  if (skFallback.data && skFallback.data.last_price != null) {
-    return { last: toNum(skFallback.data.last_price), open: null, high: null, low: null, at: skFallback.data.price_asof || skFallback.data.calculated_at || skFallback.data.price_date, bestEffort: false, source: 'swing_screener_latest' };
+  var skFbAt = skFallback.data ? (skFallback.data.price_asof || skFallback.data.calculated_at || skFallback.data.price_date) : null;
+  if (skFallback.data && skFallback.data.last_price != null && !isStaleBeforePick(skFbAt)) {
+    return { last: toNum(skFallback.data.last_price), open: null, high: null, low: null, at: skFbAt, bestEffort: false, source: 'swing_screener_latest' };
   }
 
-  // BUG-F8-06 (fallback path): same non-existent calculated_at column.
   var snkFallback = await supabase.from('swing_screener_non_konglo_latest').select('last_price,published_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
-  if (snkFallback.data && snkFallback.data.last_price != null) {
-    return { last: toNum(snkFallback.data.last_price), open: null, high: null, low: null, at: snkFallback.data.price_asof || snkFallback.data.published_at || snkFallback.data.price_date, bestEffort: false, source: 'swing_screener_non_konglo_latest' };
+  var snkFbAt = snkFallback.data ? (snkFallback.data.price_asof || snkFallback.data.published_at || snkFallback.data.price_date) : null;
+  if (snkFallback.data && snkFallback.data.last_price != null && !isStaleBeforePick(snkFbAt)) {
+    return { last: toNum(snkFallback.data.last_price), open: null, high: null, low: null, at: snkFbAt, bestEffort: false, source: 'swing_screener_non_konglo_latest' };
   }
 
-  // 4. Final fallback to foreign_watchlist_daily
+  // 5. Final fallback to foreign_watchlist_daily ONLY when date >= pick.date (never 3-month-stale prices)
   var f = await supabase.from('foreign_watchlist_daily').select('close,trade_date').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(1);
-  // Daily close is a best-effort fallback only. Do not synthesize intraday high/low,
-  // because doing so can fabricate entry/TP/SL touches that never occurred.
-  if (f.data && f.data[0]) return { last: toNum(f.data[0].close), open: null, high: null, low: null, at: f.data[0].trade_date, bestEffort: true, source: 'foreign_watchlist_daily.close' };
+  if (f.data && f.data[0] && f.data[0].close != null && !isStaleBeforePick(f.data[0].trade_date)) {
+    return { last: toNum(f.data[0].close), open: null, high: null, low: null, at: f.data[0].trade_date, bestEffort: true, source: 'foreign_watchlist_daily.close' };
+  }
   return { last: null, open: null, high: null, low: null, at: null, bestEffort: true, source: 'unavailable' };
 }
 
@@ -9133,7 +9158,7 @@ function classifyWebTop5History(normalized, px) {
     };
   }
 
-  // Legacy status-only rows without persisted timestamps.
+  // Legacy & Three-Horizon terminal status rows.
   if (status === 'TP2_HIT') {
     return { bucket: 'tp', status: 'TP2_HIT', status_label: 'TP2 tercapai', status_note: 'TP2 tercatat.', tp1_hit: true, tp2_hit: true, sl_hit: false };
   }
@@ -9143,18 +9168,27 @@ function classifyWebTop5History(normalized, px) {
   if (status === 'SL_HIT') {
     return { bucket: 'failed', status: 'SL_HIT', status_label: 'SL kena', status_note: 'SL tercatat.', tp1_hit: false, tp2_hit: false, sl_hit: true };
   }
+  if (status === 'AMBIGUOUS_SAME_BAR' || status === 'EXPIRED_NO_ENTRY' || status === 'TIME_EXIT' || status === 'INVALIDATED_BEFORE_ENTRY') {
+    return { bucket: 'failed', status: status, status_label: status, status_note: 'Sinyal selesai (' + status + ').', tp1_hit: false, tp2_hit: false, sl_hit: status === 'AMBIGUOUS_SAME_BAR' };
+  }
 
   // Without persisted chronology, simultaneous high/low ambiguity remains
   // conservatively SL-first rather than inventing an optimistic winner.
-  var slHit = !!(normalized.sl != null && low != null && low <= normalized.sl);
-  var tp2Hit = !slHit && !!(normalized.tp2 != null && high != null && high >= normalized.tp2);
-  var tp1Hit = !slHit && !tp2Hit && !!(normalized.tp1 != null && high != null && high >= normalized.tp1);
+  var pxDate = px && px.at ? String(px.at).slice(0, 10) : '';
+  var rowDate = normalized.date ? String(normalized.date).slice(0, 10) : '';
+  var pxSameOrNewer = !rowDate || !pxDate || pxDate >= rowDate;
+  var slHit = pxSameOrNewer && !!(normalized.sl != null && low != null && low <= normalized.sl);
+  var tp2Hit = pxSameOrNewer && !slHit && !!(normalized.tp2 != null && high != null && high >= normalized.tp2);
+  var tp1Hit = pxSameOrNewer && !slHit && !tp2Hit && !!(normalized.tp1 != null && high != null && high >= normalized.tp1);
   var hasPrice = !!(px && px.last != null);
 
   if (tp2Hit) return { bucket: 'tp', status: 'TP2_HIT', status_label: 'TP2 tercapai', status_note: 'TP2 tersentuh', tp1_hit: true, tp2_hit: true, sl_hit: false };
   if (tp1Hit) return { bucket: 'tp', status: 'TP1_HIT', status_label: 'TP1 tercapai', status_note: 'TP1 tersentuh', tp1_hit: true, tp2_hit: false, sl_hit: false };
   if (slHit) return { bucket: 'failed', status: 'SL_HIT', status_label: 'SL kena', status_note: 'SL tersentuh', tp1_hit: false, tp2_hit: false, sl_hit: true };
-  if (!hasPrice) return { bucket: 'active', status: 'PRICE_LIMITED', status_label: 'Data harga terbatas', status_note: 'Data harga terbaru belum tersedia', tp1_hit: false, tp2_hit: false, sl_hit: false };
+  if (status === 'ENTERED' || status === 'WAITING_ENTRY' || status === 'ACTIVE_TRACKING') {
+    return { bucket: 'active', status: status, status_label: status === 'WAITING_ENTRY' ? 'Menunggu Entry' : 'Masuk Area Entry (Aktif)', status_note: 'Dipantau aktif', tp1_hit: false, tp2_hit: false, sl_hit: false };
+  }
+  if (!hasPrice) return { bucket: 'active', status: 'PRICE_LIMITED', status_label: 'Aktif dipantau', status_note: 'Menunggu bar berikutnya', tp1_hit: false, tp2_hit: false, sl_hit: false };
 
   return { bucket: 'active', status: 'ACTIVE_TRACKING', status_label: 'Aktif dipantau', status_note: 'Belum TP/SL', tp1_hit: false, tp2_hit: false, sl_hit: false };
 }
@@ -9248,7 +9282,7 @@ function getPersistedWebTop5HistoryBucket(row) {
   if (tp1At != null && (slAt == null || tp1At <= slAt)) return 'tp';
   if (slAt != null) return 'failed';
   if (status === 'TP2_HIT' || status === 'TP1_HIT') return 'tp';
-  if (status === 'SL_HIT') return 'failed';
+  if (status === 'SL_HIT' || status === 'AMBIGUOUS_SAME_BAR' || status === 'EXPIRED_NO_ENTRY' || status === 'TIME_EXIT' || status === 'INVALIDATED_BEFORE_ENTRY') return 'failed';
   return null;
 }
 
@@ -9359,11 +9393,12 @@ async function handleWebTop5History(req, res, supabase) {
       .limit(300);
     if (q.error) throw new Error(q.error.message);
     var rows = (q.data || []).filter(function(r) {
-      return (
-        (showArchived || !((r.raw_payload || {}).history_archived_at)) &&
-        telegramDelivery.monitorRowIsPublicNotificationEligible(r) &&
-        isTop5PickRow(r)
-      );
+      if (!(showArchived || !((r.raw_payload || {}).history_archived_at))) return false;
+      if (!isTop5PickRow(r)) return false;
+      var raw = (r && r.raw_payload) || {};
+      var mSrc = String(r.monitor_source || raw.monitor_source || '').trim().toLowerCase();
+      if (mSrc === 'three_horizon_top5' || r.is_locked || r.locked || raw.web_daily_locked_at) return true;
+      return telegramDelivery.monitorRowIsPublicNotificationEligible(r);
     });
     var _historyStartMs = Date.now();
     var collections = await buildWebTop5HistoryCollections(rows, limit, function(r) {

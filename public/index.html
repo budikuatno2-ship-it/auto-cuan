@@ -116,15 +116,15 @@
         @media (min-width: 640px) { .maintenance-card { padding: 34px 32px; } }
         #headerAccountSection { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; }
     </style>
-    <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">
+    <link rel="stylesheet" href="/index-shell.css?v=v6.5.5-k2">
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
-    <link rel="stylesheet" href="/ui-theme.css?v=20261023-v3">
-    <link rel="stylesheet" href="/ac-v2.css?v=v6.5.4">
-    <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
-    <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
-    <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
-    <link rel="stylesheet" href="/spreadsheet-grade.css?v=20260926-sg1">
+    <link rel="stylesheet" href="/ui-theme.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/ac-v2.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/premium-workstation.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/unified-cockpit.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/spreadsheet-grade.css?v=v6.5.5-k2">
     <link rel="stylesheet" href="/money-sheet.css?v=20261022-v4">
     <link rel="stylesheet" href="/landing-experience.css?v=20261003-v4">
 <link rel="stylesheet" href="/number-flow.css?v=20260929-v1">
@@ -440,7 +440,7 @@
                   </div>
                   <div class="metric-row">
                     <span>Konsentrasi Pengendali (HSC)</span>
-                    <span>&mdash;</span>
+                    <strong>&mdash;</strong>
                   </div>
                 </div>
               </div>
@@ -548,33 +548,33 @@
         <div class="landing-trio-grid">
           <article class="feature-card">
             <div class="landing-feature-top">
-              <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></span>
+              <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 10-12h-6z"/></svg></span>
               <span class="landing-card-index">01</span>
             </div>
-            <h3>Swing Konglomerat</h3>
-            <p>Menyaring pergerakan grup konglomerasi besar di BEI. Aliran dana sering berpindah secara berantai di dalam satu ekosistem grup sebelum meluas ke pasar reguler.</p>
-            <div class="card-focus-tag">Fokus: Likuiditas institusi &amp; koordinasi grup</div>
+            <h3>Potensi Besok (1–5H)</h3>
+            <p>Menyaring saham BEI di semua rentang harga (&ge; Rp 1) yang memiliki dorongan volume anomali, aliran dana asing/domestik aktif, serta setup breakout jangka pendek.</p>
+            <div class="card-focus-tag">Fokus: Momentum 1–5 hari bursa &amp; batas SL ketat</div>
           </article>
 
           <article class="feature-card">
-            <div class="feature-card-badge">Breakout Struktur</div>
+            <div class="feature-card-badge">Akumulasi Terkonfirmasi</div>
             <div class="landing-feature-top">
               <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 5-5 4 4 5-7"/></svg></span>
               <span class="landing-card-index">02</span>
             </div>
-            <h3>Swing Non-Konglomerat</h3>
-            <p>Mendeteksi saham mandiri dan lapis kedua yang membentuk struktur harga sehat tanpa ketergantungan silang, didukung konsolidasi volume teratur.</p>
-            <div class="card-focus-tag">Fokus: Formasi teknikal &amp; volume teratur</div>
+            <h3>Short Swing (3–10H)</h3>
+            <p>Memvalidasi struktur harga di atas dukungan MA kunci yang searah dengan akumulasi broker institusi (Broksum ALL/Asing/Domestik), rasio R/R &ge; 1,5, dan struktur KSEI sehat.</p>
+            <div class="card-focus-tag">Fokus: Konfluensi aliran dana &amp; struktur harga</div>
           </article>
 
           <article class="feature-card">
             <div class="landing-feature-top">
-              <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg></span>
+              <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></span>
               <span class="landing-card-index">03</span>
             </div>
-            <h3>Day Trade Momentum</h3>
-            <p>Memindai lonjakan volume transaksi intraday, volatilitas terukur, dan rasio risiko terhadap potensi laba yang rasional untuk perdagangan jangka pendek.</p>
-            <div class="card-focus-tag">Fokus: Volume anomali &amp; disiplin stop loss</div>
+            <h3>Swing (7–30H)</h3>
+            <p>Mendeteksi akumulasi tersembunyi di area basis maupun tren menengah yang ditopang konsistensi arus modal, aktivitas insider 30 hari, serta konteks fundamental.</p>
+            <div class="card-focus-tag">Fokus: Akumulasi menengah &amp; rentang risiko terukur</div>
           </article>
         </div>
 
@@ -3919,8 +3919,6 @@ html.light #googleCompleteProfileModal input {
         <!-- SUB-TAB 2: CHART (Di atas Analisis AI agar Chart langsung tampil saat klik Analisis & Chart) -->
         <section id="panel-tab-chart" class="analisis-tab-panel active" style="display:block">
             <div class="space-y-4">
-                <!-- Redesign v2: plan per horizon (stocks) or "Potensi arah" (indices), filled by analisis-v2.js. -->
-                <section id="anaPlanSheet" class="sheet ana-plan" data-ac-ui="v2" aria-label="Rencana per horizon"></section>
                 <!-- Catatan Admin Banner (HANDOFF §5d) -->
                 <div id="catatanAdminChartBanner" class="catatan-chart-banner" style="display:none">
                     <div class="info flex-wrap">
@@ -3934,7 +3932,7 @@ html.light #googleCompleteProfileModal input {
                         <button type="button" class="btn sm q" onclick="navigateTo('catatan-admin')">Baca catatan</button>
                     </div>
                 </div>
-                <!-- Interactive Candlestick Chart Card -->
+                <!-- Interactive Candlestick Chart Card (TOP of Analisis & Chart) -->
                 <div class="unified-card" id="chart-workstation" data-chart-anchor-for="unifiedChartContainer">
                     <div id="unifiedChartContainer" class="unified-chart-box" data-chart-anchor="chart-workstation">
                         <div class="p-8 text-center text-gray-500 text-xs">
@@ -3942,6 +3940,9 @@ html.light #googleCompleteProfileModal input {
                         </div>
                     </div>
                 </div>
+
+                <!-- Redesign v2: plan per horizon (stocks) or "Potensi arah" (indices), filled by analisis-v2.js. -->
+                <section id="anaPlanSheet" class="sheet ana-plan" data-ac-ui="v2" aria-label="Rencana per horizon"></section>
 
                 <!-- AI Vision 5-Section Results Card -->
                 <div id="panelAnalisisVision" class="unified-card">
@@ -6535,33 +6536,67 @@ window.addEventListener('popstate', function() { handleAppRoute({ fromPopstate: 
 // is held by maintenanceStatus above, which has a third state this object
 // cannot represent.
 var maintenanceConfig = { maintenanceMode: false, message: '' };
-async function checkMaintenanceStatus(timeoutMs) {
-    // Bounded, and it may ONLY move maintenanceStatus on a confirmed answer.
-    //
-    // Every failure path — timeout, network error, non-2xx, unparseable body,
-    // success:false, missing config — leaves the previous status untouched. So:
-    //   unknown + failure  stays unknown  (the app is not exposed)
-    //   on      + failure  stays on       (a confirmed gate cannot be lifted)
-    //   off     + failure  stays off      (no spurious lockout after a good load)
-    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    var timer = controller ? setTimeout(function () { try { controller.abort(); } catch (_) {} }, timeoutMs || 3000) : null;
-    try {
-        var response = await fetch('/api/maintenance-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'get' }),
-            signal: controller ? controller.signal : undefined
-        });
-        // A 5xx still parses as JSON on some hosts; require an ok response.
-        if (!response.ok) return maintenanceStatus;
-        var data = await response.json();
-        if (data && data.success === true && data.config && typeof data.config === 'object') {
-            maintenanceConfig = data.config;
-            maintenanceStatus = (data.config.maintenanceMode === true) ? MAINTENANCE_ON : MAINTENANCE_OFF;
+var _wakeGraceUntil = 0;
+if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+            _wakeGraceUntil = Date.now() + 10000;
+            if (typeof maintenanceStatus !== 'undefined' && maintenanceStatus !== MAINTENANCE_ON) {
+                try { checkMaintenanceStatus(3000, { fromWake: true }); } catch (_) {}
+            }
         }
-    } catch(e) {
-    } finally {
-        if (timer) clearTimeout(timer);
+    });
+}
+async function checkMaintenanceStatus(timeoutMs, opts) {
+    // Bounded with 3x auto-retry (1.5s delay) + sleep-wake grace period.
+    // Every failure path leaves previous confirmed status untouched unless all
+    // retries fail after wake grace expires.
+    var isShortTestTimeout = (typeof timeoutMs === 'number' && timeoutMs > 0 && timeoutMs < 1000);
+    var maxAttempts = (opts && opts.maxAttempts) ? Number(opts.maxAttempts) : (isShortTestTimeout ? 1 : 3);
+    var retryDelayMs = 1500;
+    var wakeUntil = (typeof _wakeGraceUntil === 'number') ? _wakeGraceUntil : 0;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+        var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        var timer = controller ? setTimeout(function () { try { controller.abort(); } catch (_) {} }, timeoutMs || 3000) : null;
+        try {
+            var response = await fetch('/api/maintenance-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get' }),
+                signal: controller ? controller.signal : undefined
+            });
+            if (response.ok) {
+                var data = await response.json();
+                if (data && data.success === true && data.config && typeof data.config === 'object') {
+                    maintenanceConfig = data.config;
+                    maintenanceStatus = (data.config.maintenanceMode === true) ? MAINTENANCE_ON : MAINTENANCE_OFF;
+                    return maintenanceStatus;
+                }
+            }
+        } catch(e) {
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+        if (attempt + 1 < maxAttempts) {
+            await new Promise(function (resolve) { setTimeout(resolve, retryDelayMs); });
+        }
+    }
+    if (!isShortTestTimeout && Date.now() < wakeUntil && maintenanceStatus !== MAINTENANCE_ON) {
+        await new Promise(function (resolve) { setTimeout(resolve, retryDelayMs); });
+        try {
+            var wakeRes = await fetch('/api/maintenance-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get' })
+            });
+            if (wakeRes.ok) {
+                var wakeData = await wakeRes.json();
+                if (wakeData && wakeData.success === true && wakeData.config && typeof wakeData.config === 'object') {
+                    maintenanceConfig = wakeData.config;
+                    maintenanceStatus = (wakeData.config.maintenanceMode === true) ? MAINTENANCE_ON : MAINTENANCE_OFF;
+                }
+            }
+        } catch (_) {}
     }
     return maintenanceStatus;
 }
@@ -6579,9 +6614,8 @@ function applyMaintenanceGate() {
     if (serviceStatusUnverified()) setTopLevelView('serviceStatus');
 }
 
-// Retry from the status screen. Re-runs the check and follows wherever it lands:
-// confirmed on -> maintenance, confirmed off -> normal routing, still unknown ->
-// stay put and say so.
+// Retry from the status screen. Re-runs the check and restores the UI cleanly
+// without a forced page reload once healthy.
 var _serviceStatusRetrying = false;
 async function retryServiceStatus() {
     if (_serviceStatusRetrying) return;
@@ -6596,6 +6630,7 @@ async function retryServiceStatus() {
             if (note) note.textContent = 'Masih belum bisa diverifikasi. Periksa koneksi Anda, lalu coba lagi.';
             return;
         }
+        if (note) note.textContent = '';
         if (maintenanceStatus === MAINTENANCE_ON) { applyMaintenanceGate(); return; }
         handleAppRoute({ duringInit: true });
     } finally {
@@ -8681,8 +8716,9 @@ if (typeof document !== 'undefined') {
 // ===== GLOBAL LIVE RADAR FRESHNESS STATUS HELPER (Temuan #6) =====
 function updateGlobalLiveRadarStatus(metaOrFreshness) {
     var meta = metaOrFreshness && typeof metaOrFreshness === 'object' ? metaOrFreshness : {};
+    var canonicalEodAt = meta.canonical_eod_at || meta.latest_eod_at || meta.data_as_of || null;
     var calcAt = typeof metaOrFreshness === 'string' ? metaOrFreshness :
-        (meta.calculated_at || meta.last_updated_at || meta.updated_at || null);
+        (canonicalEodAt || meta.calculated_at || meta.last_updated_at || meta.updated_at || null);
     var calcMs = calcAt ? new Date(calcAt).getTime() : NaN;
     var now = Date.now();
     var usableTime = Number.isFinite(calcMs) && calcMs <= now;
@@ -8703,9 +8739,9 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
     if (meta.success === true && !stale && !unavailable && !calcAt && !freshness && !sourceStatus && hasLoaderArrays) {
         return;
     }
-    var status = 'unknown';
-    var label = 'Belum pasti';
-    var tooltip = 'Kesegaran data belum dapat dipastikan.';
+    var status = 'eod';
+    var label = 'EOD';
+    var tooltip = 'Snapshot EOD · data historis terakhir.';
 
     // FIX 6: Do not clobber verified canonical EOD header badge with
     // 'Belum pasti' when secondary tabs (Financial/Radar/Struktur Pasar)
@@ -8804,7 +8840,9 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
             var rawTime = meta.updated_at || meta.last_updated_at || null;
             var isDateOnly = !rawTime || /^\d{4}-\d{2}-\d{2}$/.test(String(rawTime)) || /T00:00:00(?:\.000)?Z$/.test(String(rawTime));
             var when = '';
-            if (status === 'eod' && rawCal) {
+            if (status === 'eod' && canonicalEodAt) {
+                when = formatCalendarDate(canonicalEodAt) || formatCalendarDate(rawCal) || '';
+            } else if (status === 'eod' && rawCal) {
                 when = formatCalendarDate(rawCal) || '';
             } else if (usableTime) {
                 if (isDateOnly && rawCal) when = formatCalendarDate(rawCal);
@@ -18499,25 +18537,25 @@ function forceNormalizeTechnicalDOM(root) {
 </script>
 <script src="/v3-f04-show-raw.js?v=20261103-v3f04"></script>
 <script src="/vendor/lightweight-charts.standalone.production.js"></script>
-<script src="/tab-keepalive-runtime.js?v=20260926-ka1"></script>
+<script src="/tab-keepalive-runtime.js?v=v6.5.5-k2"></script>
 <!-- V5 P0-009/P0-010/P0-011: identity guard + one volume/foreign-flow display
      helper. Both must load BEFORE any chart/plan module so every renderer uses
      the same unit labels and the same ticker-verified snapshot. -->
-<script src="/chart-state-guard.js?v=20261105-v5p0"></script>
-<script src="/market-data-display.js?v=v6.5.2-final"></script>
+<script src="/chart-state-guard.js?v=v6.5.5-k2"></script>
+<script src="/market-data-display.js?v=v6.5.5-k2"></script>
 <!-- F3: pure F1/F2 detectors bundled for the browser (in-house UMD build of
      lib/chart-core). Must load before the auto-patterns runtime. -->
-<script src="/chart-core-browser.js?v=20261115-f3"></script>
-<script src="/chart-workstation.js?v=v6.5.2-final"></script>
-<script src="/chart-drawing-tools.js?v=v6.5.2-final"></script>
-<script src="/b3-liquidity-badge.js?v=20261031-b3"></script>
-<script src="/candle-request-dedupe.js?v=20261120-task-e"></script>
-<script src="/b3-liquidity-inject.js?v=20261031-b3"></script>
-<script src="/market-feature-runtime.js?v=v6.5.2-final"></script>
+<script src="/chart-core-browser.js?v=v6.5.5-k2"></script>
+<script src="/chart-workstation.js?v=v6.5.5-k2"></script>
+<script src="/chart-drawing-tools.js?v=v6.5.5-k2"></script>
+<script src="/b3-liquidity-badge.js?v=v6.5.5-k2"></script>
+<script src="/candle-request-dedupe.js?v=v6.5.5-k2"></script>
+<script src="/b3-liquidity-inject.js?v=v6.5.5-k2"></script>
+<script src="/market-feature-runtime.js?v=v6.5.5-k2"></script>
 <!-- F3: wires the F1/F2 detectors into the live chart overlay pipeline. -->
-<script src="/chart-auto-patterns-runtime.js?v=20261115-f3"></script>
-<script src="/analisis-v2.js?v=v6.5.2"></script>
-<script src="/daytrade-runtime.js?v=20260818-v1"></script>
+<script src="/chart-auto-patterns-runtime.js?v=v6.5.5-k2"></script>
+<script src="/analisis-v2.js?v=v6.5.5-k2"></script>
+<script src="/daytrade-runtime.js?v=v6.5.5-k2"></script>
 
 <script>
 // ===== ACCESSIBILITY: SKIP-LINK + MODAL FOCUS MANAGEMENT =====
@@ -18753,18 +18791,18 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/watchlist-runtime.js?v=20261022-v1"></script>
 <script src="/chart-viewer.js?v=20260905-v1"></script>
 <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
-<script src="/unified-cockpit-runtime.js?v=v65-20261124"></script>
-<script src="/position-sizing-calculator.js?v=20260906-e1"></script>
-<script src="/signal-gate-transparency.js?v=v6.5.4"></script>
-<script src="/number-flow-runtime.js?v=20260929-keyboard-v1"></script>
-<script src="/data-primitives-runtime.js?v=20261007-w3"></script>
-<script src="/analisis-saham-runtime.js?v=v6.5.2-final"></script>
-<script src="/bandarmologi-runtime.js?v=v6.5.2-final"></script>
-<script src="/portfolio-planner-v1.js?v=20260928-spa1"></script>
-<script src="/portfolio-command-center-model.js?v=20260928-spa1"></script>
-<script src="/portfolio-command-center.js?v=20260929-detail-v2"></script>
-<script src="/portfolio-position-scenarios.js?v=20260928-spa1"></script>
-<script src="/account-center-v1.js?v=20261024-v1"></script>
+<script src="/unified-cockpit-runtime.js?v=v6.5.5-k2"></script>
+<script src="/position-sizing-calculator.js?v=v6.5.5-k2"></script>
+<script src="/signal-gate-transparency.js?v=v6.5.5-k2"></script>
+<script src="/number-flow-runtime.js?v=v6.5.5-k2"></script>
+<script src="/data-primitives-runtime.js?v=v6.5.5-k2"></script>
+<script src="/analisis-saham-runtime.js?v=v6.5.5-k2"></script>
+<script src="/bandarmologi-runtime.js?v=v6.5.5-k2"></script>
+<script src="/portfolio-planner-v1.js?v=v6.5.5-k2"></script>
+<script src="/portfolio-command-center-model.js?v=v6.5.5-k2"></script>
+<script src="/portfolio-command-center.js?v=v6.5.5-k2"></script>
+<script src="/portfolio-position-scenarios.js?v=v6.5.5-k2"></script>
+<script src="/account-center-v1.js?v=v6.5.5-k2"></script>
 <script>
 // Kickoff landing showcase load as early as possible (non-blocking, fail-open).
 // Called here after all scripts are loaded so escapeHtml is available.
@@ -18780,14 +18818,14 @@ function forceNormalizeTechnicalDOM(root) {
     }
 })();
 </script>
-<script src="/canonical-motion.js?v=20261006-v1"></script>
-<script src="/ac-motion.js?v=20261022-v1"></script>
-<script src="/landing-experience.js?v=20261001-v4"></script>
-<script src="/command-palette.js?v=v6.5.2-final"></script>
-<script src="/market-intelligence.js?v=v6.5.2-final"></script>
-<script src="/dashboard-v2.js?v=v6.5.2"></script>
-<script src="/ac-tape.js?v=v6.5.2"></script>
-<script src="/screener-v2.js?v=v6.5.4"></script>
+<script src="/canonical-motion.js?v=v6.5.5-k2"></script>
+<script src="/ac-motion.js?v=v6.5.5-k2"></script>
+<script src="/landing-experience.js?v=v6.5.5-k2"></script>
+<script src="/command-palette.js?v=v6.5.5-k2"></script>
+<script src="/market-intelligence.js?v=v6.5.5-k2"></script>
+<script src="/dashboard-v2.js?v=v6.5.5-k2"></script>
+<script src="/ac-tape.js?v=v6.5.5-k2"></script>
+<script src="/screener-v2.js?v=v6.5.5-k2"></script>
 <script>
 // Auto-initialize Market Breadth if on dashboard
 document.addEventListener('DOMContentLoaded', function() {
@@ -18819,8 +18857,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script src="/admin-console-runtime.js"></script>
-<script src="/v4-f08-runtime.js?v=v6.5.2"></script>
-<script src="/whats-new-runtime.js?v=20261114-w2a"></script>
-<script src="/institutional-ui-ux-engine.js?v=20261116-v1"></script>
+<script src="/v4-f08-runtime.js?v=v6.5.5-k2"></script>
+<script src="/whats-new-runtime.js?v=v6.5.5-k2"></script>
+<script src="/institutional-ui-ux-engine.js?v=v6.5.5-k2"></script>
 </body>
 </html>

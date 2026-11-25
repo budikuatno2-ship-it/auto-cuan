@@ -372,7 +372,7 @@
       toolbar.setAttribute('role', 'toolbar');
       toolbar.setAttribute('aria-label', 'Alat gambar chart');
       toolbar.style.cssText = 'position:relative;z-index:13;display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;overflow-x:auto;overscroll-behavior-x:contain;' +
-        'background:rgba(15,20,28,0.92);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 10px;';
+        'background:var(--ac-raised, rgba(15,20,28,0.92));color:var(--ac-ink, #e2e8f0);border:1px solid var(--ac-hair, rgba(255,255,255,0.12));border-radius:8px;padding:6px 10px;';
       if (container.parentNode) {
         container.parentNode.insertBefore(toolbar, container);
       } else {
@@ -393,11 +393,11 @@
         var cls = 'ac-draw-btn' + (state.tool === t ? ' on' : '');
         var pill = TOOL_LABELS[t] || t;
         html += '<button type="button" class="' + cls + '" data-tool="' + t + '"' + on +
-          ' style="display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:1px solid rgba(255,255,255,.14);border-radius:6px;line-height:1.2;white-space:nowrap;"' +
+          ' style="display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;background:var(--ac-surface, rgba(255,255,255,0.06));color:var(--ac-ink, #e2e8f0);border:1px solid var(--ac-hair, rgba(255,255,255,.14));border-radius:6px;line-height:1.2;white-space:nowrap;"' +
           ' aria-label="' + TOOL_LABELS[t] + '" title="' + TOOL_LABELS[t] + '">' + pill + '</button>';
       });
-      html += '<button type="button" class="ac-draw-btn" data-action="delete" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:1px solid rgba(255,255,255,.14);border-radius:6px;line-height:1.2;white-space:nowrap;" aria-label="Hapus gambar terpilih" title="Hapus (Delete)">Hapus</button>';
-      html += '<button type="button" class="ac-draw-btn" data-action="clear" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:1px solid rgba(255,255,255,.14);border-radius:6px;line-height:1.2;white-space:nowrap;" aria-label="Hapus semua gambar" title="Hapus semua">Bersihkan</button>';
+      html += '<button type="button" class="ac-draw-btn" data-action="delete" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;background:var(--ac-surface, rgba(255,255,255,0.06));color:var(--ac-ink, #e2e8f0);border:1px solid var(--ac-hair, rgba(255,255,255,.14));border-radius:6px;line-height:1.2;white-space:nowrap;" aria-label="Hapus gambar terpilih" title="Hapus (Delete)">Hapus</button>';
+      html += '<button type="button" class="ac-draw-btn" data-action="clear" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;background:var(--ac-surface, rgba(255,255,255,0.06));color:var(--ac-ink, #e2e8f0);border:1px solid var(--ac-hair, rgba(255,255,255,.14));border-radius:6px;line-height:1.2;white-space:nowrap;" aria-label="Hapus semua gambar" title="Hapus semua">Bersihkan</button>';
       toolbar.innerHTML = html;
     }
     renderToolbar();

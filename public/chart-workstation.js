@@ -159,10 +159,10 @@
   // width so a 390x844 phone never gets a taller-than-wide candle pane.
   var MODE_LAYOUT = Object.freeze({
     simpel: Object.freeze({ priceDesktop: 400, priceMobile: 380, subpanes: Object.freeze({ volume: 90 }) }),
-    scalping: Object.freeze({ priceDesktop: 380, priceMobile: 360, subpanes: Object.freeze({ volume: 80, rsi14: 110 }) }),
-    swing: Object.freeze({ priceDesktop: 380, priceMobile: 360, subpanes: Object.freeze({ volume: 75, macd: 110, rsi14: 95 }) }),
-    investor: Object.freeze({ priceDesktop: 380, priceMobile: 360, subpanes: Object.freeze({ volume: 75, foreign_flow: 110, obv: 100 }) }),
-    pro: Object.freeze({ priceDesktop: 380, priceMobile: 360, subpanes: Object.freeze({ volume: 75, rsi14: 110, macd: 110, bandar_foreign: 110, obv: 100 }) })
+    scalping: Object.freeze({ priceDesktop: 360, priceMobile: 360, subpanes: Object.freeze({ volume: 70, rsi14: 110 }) }),
+    swing: Object.freeze({ priceDesktop: 360, priceMobile: 360, subpanes: Object.freeze({ volume: 65, macd: 85, rsi14: 80 }) }),
+    investor: Object.freeze({ priceDesktop: 360, priceMobile: 360, subpanes: Object.freeze({ volume: 58, foreign_flow: 74, obv: 68 }) }),
+    pro: Object.freeze({ priceDesktop: 360, priceMobile: 360, subpanes: Object.freeze({ volume: 58, rsi14: 75, macd: 75, bandar_foreign: 80, obv: 72 }) })
   });
   var CLEAN_CHART = Object.freeze({
     MAX_PRICE_TAGS: 5,
@@ -265,7 +265,7 @@
       patterns: Object.freeze({ maxMarkers: 0, families: Object.freeze([]) }),
       subpanes: Object.freeze(['volume', 'foreign_flow', 'obv']),
       layout: MODE_LAYOUT.investor,
-      foreignFlowSource: 'arjum_broker_summary_all/foreign',
+      foreignFlowSource: 'broker_summary_all/foreign',
       volumeOnRightAxis: false,
       defaultTimeframe: '1T',
       allowedTimeframes: Object.freeze(['1T', '6B', '1D', '1W'])
@@ -292,16 +292,14 @@
   // every default preset. The 14 families remain available manually in the
   // Mode & Layer drawer. No candlestick/pivot spam, no ZigZag mesh, no XABCD
   // projection, no LPM dots, no stacked ATR boxes in the default view.
+  var TOP_PATTERN_FAMILIES = Object.freeze(['sr', 'smc_structure', 'order_blocks']);
   var AUTO_PATTERN_PRESET_DEFAULTS = {
     simpel: [],
     scalping: [],
     swing: [],
     investor: [],
-    pro: []
+    pro: ['sr', 'smc_structure', 'order_blocks']
   };
-  // Highest-confidence patterns available for manual opt-in in Pro. Every
-  // family stays off until explicitly selected in the drawer.
-  var TOP_PATTERN_FAMILIES = Object.freeze(['sr', 'smc_structure', 'order_blocks']);
 
   // ============================================================
   // 5 DYNAMIC MODE STRATEGY CONFIGURATIONS
@@ -1827,10 +1825,13 @@
     var w = host ? host.clientWidth : 0;
     if (!(w > 0)) return;
     var subs = [
+      [reg.volChart, chartId + '_vol_container'],
       [reg.rsiChart, chartId + '_rsi'],
       [reg.intensityChart, chartId + '_intensity_container'],
       [reg.rotationChart, chartId + '_rotation_container'],
       [reg.bandarChart, chartId + '_bandar_container'],
+      [reg.macdChart, chartId + '_macd_container'],
+      [reg.obvChart, chartId + '_obv_container'],
       [reg.oscChart, chartId + '_osc_container']
     ];
     if (reg.mainChart) {
@@ -2382,16 +2383,31 @@
       // BATCH 1 / BUG 1: deterministic right-axis budget. Last price + R + S
       // + at most one key level. No parity fallback, no volume number.
       var isKey = it.key === 'entry' || it.key === 'sl' || it.key === 'tp1' || it.key === 'tp2';
+      var guard = defaultRoot && defaultRoot.AutoCuanRightAxisGuard;
+      var chartIdKey = series.__acChartId || 'mainChart';
       var axisLabelVisible = false;
-      if (isKey) {
-        if (axisBadgeCount < CLEAN_CHART.MAX_RIGHT_AXIS_BADGES) {
+      if (guard && typeof guard.canPlace === 'function') {
+        if (isKey || (!keyBadgeUsed && axisBadgeCount < CLEAN_CHART.MAX_RIGHT_AXIS_BADGES)) {
+          axisLabelVisible = guard.canPlace(chartIdKey, series, it.price, 22, CLEAN_CHART.MAX_RIGHT_AXIS_BADGES);
+          if (axisLabelVisible) {
+            axisBadgeCount++;
+            if (!isKey) keyBadgeUsed = true;
+          }
+        }
+      } else {
+        if (isKey) {
+          if (axisBadgeCount < CLEAN_CHART.MAX_RIGHT_AXIS_BADGES && !isColliding) {
+            axisLabelVisible = true;
+            axisBadgeCount++;
+          } else if (axisBadgeCount === 0) {
+            axisLabelVisible = true;
+            axisBadgeCount++;
+          }
+        } else if (!keyBadgeUsed && axisBadgeCount < CLEAN_CHART.MAX_RIGHT_AXIS_BADGES && !isColliding) {
           axisLabelVisible = true;
           axisBadgeCount++;
+          keyBadgeUsed = true;
         }
-      } else if (!keyBadgeUsed && axisBadgeCount < CLEAN_CHART.MAX_RIGHT_AXIS_BADGES) {
-        axisLabelVisible = true;
-        axisBadgeCount++;
-        keyBadgeUsed = true;
       }
       try {
         var line = series.createPriceLine({
@@ -2400,7 +2416,7 @@
           lineWidth: 1,
           lineStyle: it.lineStyle,
           axisLabelVisible: axisLabelVisible,
-          title: staggeredTitle
+          title: axisLabelVisible ? staggeredTitle : ''
         });
         if (line) created.push(line);
       } catch (_) {}
