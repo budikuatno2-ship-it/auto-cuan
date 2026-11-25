@@ -71,64 +71,94 @@
       if(window.acUpdateLandingCalc) window.acUpdateLandingCalc();
     }catch(_){}
   }
-  async function loadV3F07Snapshot(){
-    var pill=document.querySelector('.preview-sample-pill');
-    try{
-      var res=await fetch('/api/landing-snapshot',{method:'GET',cache:'no-cache'});
-      if(!res.ok) throw new Error('http '+res.status);
-      var data=await res.json();
-      if(!data||data.success!==true||!data.snapshot) throw new Error('invalid');
-      var snap=data.snapshot;
-      var picks=Array.isArray(snap.top_picks)?snap.top_picks:[];
-      var dts=Array.isArray(snap.dt_signals)?snap.dt_signals:[];
-      var first=picks[0]||null;
-      // Panel 1: skor + rencana
-      var scoreEl=document.querySelector('.preview-pane .score-number');
-      if(scoreEl&&first&&first.score!=null) scoreEl.textContent=String(first.score);
-      var detStrong=document.querySelector('.preview-pane .score-details strong');
-      if(detStrong&&first) detStrong.textContent=first.ticker+' - Siap Swing - '+String(snap.trade_date||'')+' FINAL_EOD';
-      var detP=document.querySelector('.preview-pane .score-details p');
-      if(detP&&first) detP.textContent='Skor '+first.score+' dari mesin '+(first.machine||'screener')+'. Entry '+fmtRp(first.entry_low)+' - '+fmtRp(first.entry_high)+'. Bukan rekomendasi transaksi.';
-      var planRow=document.querySelector('.preview-plan-row');
-      if(planRow&&first){
-        var divs=planRow.querySelectorAll('div');
-        if(divs[0]&&divs[0].querySelector('strong')) divs[0].querySelector('strong').textContent=fmtRp(first.entry_low)+' - '+fmtRp(first.entry_high);
-        if(divs[1]&&divs[1].querySelector('strong')) divs[1].querySelector('strong').textContent=fmtRp(first.tp)+(first.tp&&first.entry_high?' ('+pct(first.tp,first.entry_high)+')':'');
-        if(divs[2]&&divs[2].querySelector('strong')) divs[2].querySelector('strong').textContent=fmtRp(first.sl)+(first.sl&&first.entry_high?' ('+pct(first.sl,first.entry_high)+')':'');
-        if(divs[3]&&divs[3].querySelector('strong')&&first.rr!=null) divs[3].querySelector('strong').textContent=String(first.rr).replace('.',',')+'x';
+  function renderLandingHorizon(snap, horizonKey) {
+    if (!snap) return;
+    var hMap = snap.horizons || {};
+    var chosenKey = hMap[horizonKey] ? horizonKey : (hMap.short_swing ? 'short_swing' : (hMap.potensi_besok ? 'potensi_besok' : null));
+    var hzObj = chosenKey ? hMap[chosenKey] : null;
+    var picks = (hzObj && Array.isArray(hzObj.top5) && hzObj.top5.length) ? hzObj.top5 : (Array.isArray(snap.top_picks) ? snap.top_picks : []);
+    var dts = (hMap.potensi_besok && Array.isArray(hMap.potensi_besok.top5) && hMap.potensi_besok.top5.length)
+      ? hMap.potensi_besok.top5
+      : (Array.isArray(snap.dt_signals) ? snap.dt_signals : []);
+    var first = picks[0] || null;
+
+    var paneTag = document.querySelector('.preview-pane .preview-pane-tag');
+    if (paneTag && hzObj && hzObj.label) paneTag.textContent = hzObj.label;
+
+    var scoreEl = document.querySelector('.preview-pane .score-number');
+    if (scoreEl && first && first.score != null) scoreEl.textContent = String(first.score);
+    var detStrong = document.querySelector('.preview-pane .score-details strong');
+    if (detStrong && first) detStrong.textContent = first.ticker + ' - ' + (first.holding_label || (hzObj && hzObj.label) || 'Three-Horizon') + ' - ' + String(snap.trade_date || '') + ' FINAL_EOD';
+    var detP = document.querySelector('.preview-pane .score-details p');
+    if (detP && first) detP.textContent = 'Skor ' + first.score + ' (' + (first.holding_label || (hzObj && hzObj.label) || 'Horizon') + '). Entry ' + fmtRp(first.entry_low) + ' - ' + fmtRp(first.entry_high) + '. Bukan rekomendasi transaksi.';
+
+    var planRow = document.querySelector('.preview-plan-row');
+    if (planRow && first) {
+      var divs = planRow.querySelectorAll('div');
+      if (divs[0] && divs[0].querySelector('strong')) divs[0].querySelector('strong').textContent = fmtRp(first.entry_low) + ' - ' + fmtRp(first.entry_high);
+      if (divs[1] && divs[1].querySelector('strong')) divs[1].querySelector('strong').textContent = fmtRp(first.tp) + (first.tp && first.entry_high ? ' (' + pct(first.tp, first.entry_high) + ')' : '');
+      if (divs[2] && divs[2].querySelector('strong')) divs[2].querySelector('strong').textContent = fmtRp(first.sl) + (first.sl && first.entry_high ? ' (' + pct(first.sl, first.entry_high) + ')' : '');
+      if (divs[3] && divs[3].querySelector('strong') && first.rr != null) divs[3].querySelector('strong').textContent = '1 : ' + Number(first.rr).toFixed(2).replace('.', ',');
+    }
+
+    var flowStats = document.querySelectorAll('.preview-flow-stats .flow-stat');
+    var radar = dts[0] || first || null;
+    if (flowStats.length >= 2 && radar) {
+      if (flowStats[0].querySelector('strong')) flowStats[0].querySelector('strong').textContent = radar.ticker + ' - ' + fmtRp(radar.last_price != null ? radar.last_price : radar.entry);
+      if (flowStats[0].querySelector('small')) flowStats[0].querySelector('small').textContent = 'Potensi Besok (1–5H) · RR 1:' + (radar.rr != null ? Number(radar.rr).toFixed(2) : '-');
+      if (flowStats[1].querySelector('strong')) flowStats[1].querySelector('strong').textContent = 'SL ' + fmtRp(radar.sl);
+      if (flowStats[1].querySelector('small')) flowStats[1].querySelector('small').textContent = 'TP1 ' + fmtRp(radar.tp) + ' · Entry ' + fmtRp(radar.entry_high || radar.entry);
+    }
+
+    var metricRows = document.querySelectorAll('.preview-metrics-list .metric-row');
+    picks.slice(0, 5).forEach(function (p, i) {
+      if (metricRows[i]) {
+        var sp = metricRows[i].querySelector('span');
+        var st = metricRows[i].querySelector('strong');
+        if (sp) sp.textContent = p.ticker + ' - ' + fmtRp(p.last_price) + (p.change_pct != null ? ' (' + String(p.change_pct).replace('.', ',') + '%)' : '');
+        if (st) st.textContent = 'Skor ' + p.score + ' · R/R 1:' + (p.rr != null ? Number(p.rr).toFixed(2) : '-');
       }
-      // Panel 2: day-trade / radar
-      var flowStats=document.querySelectorAll('.preview-flow-stats .flow-stat');
-      var radar=dts[0]||null;
-      if(flowStats.length>=2&&radar){
-        if(flowStats[0].querySelector('strong')) flowStats[0].querySelector('strong').textContent=radar.ticker+' - '+fmtRp(radar.last_price!=null?radar.last_price:radar.entry);
-        if(flowStats[0].querySelector('small')) flowStats[0].querySelector('small').textContent='Sinyal: '+(radar.signal_type||'WATCH')+' - RR '+(radar.rr!=null?radar.rr:'-');
-        if(flowStats[1].querySelector('strong')) flowStats[1].querySelector('strong').textContent='SL '+fmtRp(radar.sl);
-        if(flowStats[1].querySelector('small')) flowStats[1].querySelector('small').textContent='Target '+fmtRp(radar.tp)+' - Entry '+fmtRp(radar.entry);
-      }
-      // Panel 3: top picks list (tulis ulang metric rows bila ada 3 baris)
-      var metricRows=document.querySelectorAll('.preview-metrics-list .metric-row');
-      picks.slice(0,3).forEach(function(p,i){
-        if(metricRows[i]){
-          var sp=metricRows[i].querySelector('span');
-          var st=metricRows[i].querySelector('strong');
-          if(sp) sp.textContent=p.ticker+' - '+fmtRp(p.last_price)+(p.change_pct!=null?' ('+String(p.change_pct).replace('.',',')+'%)':'');
-          if(st) st.textContent='Skor '+p.score+' - RR '+(p.rr!=null?p.rr:'-');
+    });
+  }
+
+  async function loadV3F07Snapshot() {
+    var pill = document.querySelector('.preview-sample-pill');
+    try {
+      var res = await fetch('/api/landing-snapshot', { method: 'GET', cache: 'no-cache' });
+      if (!res.ok) throw new Error('http ' + res.status);
+      var data = await res.json();
+      if (!data || data.success !== true || !data.snapshot) throw new Error('invalid');
+      var snap = data.snapshot;
+      window.__acLandingSnapshot = snap;
+      var activeSubEl = document.querySelector('[data-c3sub].active');
+      var initHorizon = (activeSubEl && activeSubEl.getAttribute('data-c3sub')) || 'short_swing';
+      renderLandingHorizon(snap, initHorizon);
+
+      if (pill) { pill.innerHTML = 'SNAPSHOT EOD &middot; DATA BURSA RIIL ' + String(snap.trade_date || ''); pill.setAttribute('aria-label', 'Snapshot EOD riil'); }
+      var foot = document.querySelector('.preview-provenance-desc');
+      if (foot) {
+        if (snap.horizons) {
+          var pbC = snap.horizons.potensi_besok ? snap.horizons.potensi_besok.published_count : 0;
+          var ssC = snap.horizons.short_swing ? snap.horizons.short_swing.published_count : 0;
+          var swC = snap.horizons.swing ? snap.horizons.swing.published_count : 0;
+          foot.textContent = 'Snapshot EOD riil ' + String(snap.trade_date || '') + ' FINAL_EOD Three-Horizon (Potensi Besok ' + pbC + ', Short Swing ' + ssC + ', Swing ' + swC + '). Bukan rekomendasi transaksi.';
+        } else {
+          foot.textContent = 'Snapshot EOD riil ' + String(snap.trade_date || '') + ' FINAL_EOD. Bukan rekomendasi transaksi.';
         }
-      });
-      if(pill){ pill.innerHTML='SNAPSHOT EOD &middot; DATA BURSA RIIL '+String(snap.trade_date||''); pill.setAttribute('aria-label','Snapshot EOD riil'); }
-      var foot=document.querySelector('.preview-provenance-desc');
-      if(foot) foot.textContent='Snapshot EOD riil '+String(snap.trade_date||'')+' FINAL_EOD dari 3 mesin screener (Konglo '+(snap.konglo?snap.konglo.published_count:'-')+', Non-Konglo '+(snap.nonkonglo?snap.nonkonglo.published_count:'-')+', Day-Trade radar '+(snap.daytrade?snap.daytrade.radar_count:'-')+'). Bukan rekomendasi transaksi.';
-      var tag=document.querySelector('.preview-provenance-tag');
-      if(tag) tag.textContent='SNAPSHOT EOD MEJA KERJA '+String(snap.trade_date||'');
-    }catch(err){
-      if(pill){ pill.textContent='SNAPSHOT EOD BELUM TERSEDIA'; }
+      }
+      var tag = document.querySelector('.preview-provenance-tag');
+      if (tag) tag.textContent = 'SNAPSHOT EOD MEJA KERJA ' + String(snap.trade_date || '');
+    } catch (err) {
+      if (pill) { pill.textContent = 'SNAPSHOT EOD BELUM TERSEDIA'; }
       blankLandingPreview();
     }
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',loadV3F07Snapshot);
+  window.acRenderLandingHorizon = function (horizonKey) {
+    if (window.__acLandingSnapshot) renderLandingHorizon(window.__acLandingSnapshot, horizonKey);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadV3F07Snapshot);
   else loadV3F07Snapshot();
-  window.acV3F07ReloadSnapshot=loadV3F07Snapshot;
+  window.acV3F07ReloadSnapshot = loadV3F07Snapshot;
 })();
 
 /* V3-F08 — Halaman Analisis AI: matriks angka + Fibonacci riil + chat kuantitatif (/api/ai/chat). */

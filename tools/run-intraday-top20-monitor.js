@@ -32,26 +32,31 @@ function readJsonSafe(fp) {
 
 function collectTopTickers(threeHorizonDoc, screenerDoc) {
   const map = new Map();
-  const ingestList = (rows) => {
+  const ingestList = (rows, horizonKey) => {
     if (!Array.isArray(rows)) return;
     for (const r of rows) {
       const t = String(r && (r.ticker || r.code) || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
       if (!t || map.has(t)) continue;
       map.set(t, {
         ticker: t,
-        entry_min: Number(r.entry_min || r.entryMin || r.close || 0) || null,
-        entry_max: Number(r.entry_max || r.entryMax || r.close || 0) || null,
-        stop_loss: Number(r.stop_loss || r.stopLoss || 0) || null,
-        tp1: Number(r.tp1 || r.target_1 || 0) || null
+        horizon_key: r.horizon_key || r.horizon || horizonKey || null,
+        max_holding_days: Number(r.holding_days_max || r.max_holding_days || 5),
+        last_price: Number(r.last_price || r.close || 0) || null,
+        entry_min: Number(r.entry_low || r.entry2 || r.entry_min || r.entryMin || r.close || 0) || null,
+        entry_max: Number(r.entry_high || r.entry1 || r.entry_max || r.entryMax || r.close || 0) || null,
+        stop_loss: Number(r.stop_loss || r.sl || r.stopLoss || 0) || null,
+        tp1: Number(r.tp1 || r.target_1 || 0) || null,
+        tp2: Number(r.tp2 || r.target_2 || 0) || null
       });
     }
   };
   if (threeHorizonDoc && threeHorizonDoc.horizons) {
     for (const key of ['potensi_besok', 'short_swing', 'swing']) {
-      ingestList(threeHorizonDoc.horizons[key] && threeHorizonDoc.horizons[key].picks);
+      const h = threeHorizonDoc.horizons[key];
+      ingestList((h && (h.top5 || h.picks || h.top20)) || [], key);
     }
   }
-  if (screenerDoc && Array.isArray(screenerDoc.picks)) ingestList(screenerDoc.picks);
+  if (screenerDoc && Array.isArray(screenerDoc.picks)) ingestList(screenerDoc.picks, null);
   return Array.from(map.values()).slice(0, 20);
 }
 
@@ -135,12 +140,31 @@ async function main(argv = process.argv.slice(2), opts = {}) {
   const targets = collectTopTickers(threeDoc, screenerDoc);
 
   if (dryRun || targets.length === 0) {
+    const alertPreviews = targets.slice(0, 5).map((row) => {
+      const samplePx = row.last_price || row.entry_max;
+      return {
+        ticker: row.ticker,
+        horizon_key: row.horizon_key,
+        max_holding_days: row.max_holding_days,
+        entry_min: row.entry_min,
+        entry_max: row.entry_max,
+        stop_loss: row.stop_loss,
+        tp1: row.tp1,
+        zone_status_at_last_close: classifyZoneStatus(samplePx, row),
+        simulated_tp1_trigger: classifyZoneStatus(row.tp1, row),
+        simulated_sl_trigger: classifyZoneStatus(row.stop_loss, row)
+      };
+    });
     const out = {
       ok: true,
-      dryRun,
+      dryRun: true,
+      telegramSent: 0,
+      broadcastEnabled: false,
       marketOpen: isOpen,
+      trade_date: threeDoc && threeDoc.trade_date || null,
       monitored: targets.length,
       tickers: targets.map((t) => t.ticker),
+      alertPreviews,
       arjumQuotaUsed: 0
     };
     console.log(JSON.stringify(out));

@@ -8689,7 +8689,7 @@ function isTop5PickRow(row) {
     ''
   ).trim().toLowerCase().replace(/\s+/g, '_');
 
-  if (source === 'daily_top5' || source === 'top5') return true;
+  if (source === 'daily_top5' || source === 'top5' || source === 'three_horizon_top5') return true;
 
   var lockSource = String(raw.lock_source || '').trim().toLowerCase();
   if (
@@ -9333,6 +9333,9 @@ async function buildWebTop5HistoryCollections(rows, limit, priceFetcher) {
   };
 }
 
+var _webTop5HistoryCache = {};
+var WEB_TOP5_HISTORY_CACHE_TTL_MS = 30 * 1000;
+
 async function handleWebTop5History(req, res, supabase) {
   if (!(await isDashboardScreenerLoggedIn(req, supabase))) {
     return sendDashboardScreenerGate(res, { limit: 0, show_archived: false, data_source: 'redacted_guest_dashboard' });
@@ -9342,9 +9345,15 @@ async function handleWebTop5History(req, res, supabase) {
     if (!isFinite(limit) || limit <= 0) limit = 100;
     if (limit > 300) limit = 300;
     var showArchived = String(req.query.show_archived || '') === '1';
+    var isAdminCaller = await isDashboardAdminUser(req, supabase);
+    var cacheKey = (isAdminCaller ? 'adm' : 'usr') + ':' + limit + ':' + (showArchived ? '1' : '0');
+    var cached = _webTop5HistoryCache[cacheKey];
+    if (cached && (Date.now() - cached.at < WEB_TOP5_HISTORY_CACHE_TTL_MS)) {
+      return res.status(200).json(cached.payload);
+    }
     var q = await supabase.from('telegram_daily_picks')
       .select('*')
-      .or('monitor_source.in.(daily_top5,top5),monitor_source.is.null')
+      .or('monitor_source.in.(daily_top5,top5,three_horizon_top5),monitor_source.is.null')
       .order('date', { ascending: false })
       .order('id', { ascending: false })
       .limit(300);
@@ -9364,7 +9373,7 @@ async function handleWebTop5History(req, res, supabase) {
     var tpRows = collections.tp_history;
     // Part B: Admin-only diagnostics for TP History (safe counts only, no raw payload/debug)
     var adminHistoryDiagnostics = undefined;
-    if (await isDashboardAdminUser(req, supabase)) {
+    if (isAdminCaller) {
       var allRowsCount = rows.length;
       var rowsWithTpStatus = rows.filter(function(r) { return String(r.status || '').toUpperCase().indexOf('TP') >= 0; }).length;
       var rowsWithHitTp1At = rows.filter(function(r) { return !!r.hit_tp1_at; }).length;
@@ -9384,7 +9393,9 @@ async function handleWebTop5History(req, res, supabase) {
         note: tpRows.length === 0 && rowsWithHitTp1At === 0 ? 'TP History kosong karena monitor belum pernah menyimpan hit_tp1_at/hit_tp2_at, ATAU harga belum pernah mencapai TP saat data terakhir dicek.' : null
       };
     }
-    return res.status(200).json(sanitizeTop5ResponseForAudience({ success: true, rows: activeHistory, history: activeHistory, active_history: activeHistory, tp_history: tpRows, count: activeHistory.length, tp_count: tpRows.length, limit: limit, show_archived: showArchived, dedupe: 'active_ticker_latest_date_id_after_status_filter', data_source: 'telegram_daily_picks.locked_rows', admin_history_diagnostics: adminHistoryDiagnostics }, { allowAdminPreview: false }));
+    var responsePayload = sanitizeTop5ResponseForAudience({ success: true, rows: activeHistory, history: activeHistory, active_history: activeHistory, tp_history: tpRows, count: activeHistory.length, tp_count: tpRows.length, limit: limit, show_archived: showArchived, dedupe: 'active_ticker_latest_date_id_after_status_filter', data_source: 'telegram_daily_picks.locked_rows', admin_history_diagnostics: adminHistoryDiagnostics }, { allowAdminPreview: false });
+    _webTop5HistoryCache[cacheKey] = { at: Date.now(), payload: responsePayload };
+    return res.status(200).json(responsePayload);
   } catch (e) {
     return res.status(200).json({ success: false, rows: [], history: [], count: 0, error: e.message || String(e) });
   }
@@ -9404,12 +9415,20 @@ async function handleWebTop5HistoryArchive(req, res, supabase) {
   return res.status(200).json({ success: true, id: id, archived_at: archivedAt });
 }
 
+var _trackRecordActionCache = {};
+var TRACK_RECORD_ACTION_CACHE_TTL_MS = 30 * 1000;
+
 async function handleTrackRecord(req, res, supabase) {
   try {
     var limit = parseInt((req.query && req.query.limit) || '500', 10);
     if (!isFinite(limit) || limit <= 0) limit = 500;
     if (limit > 1000) limit = 1000;
     var categoryFilter = (req.query && (req.query.category || req.query.source)) || null;
+    var cacheKey = limit + ':' + (categoryFilter || 'all');
+    var cached = _trackRecordActionCache[cacheKey];
+    if (cached && (Date.now() - cached.at < TRACK_RECORD_ACTION_CACHE_TTL_MS)) {
+      return res.status(200).json(cached.payload);
+    }
 
     var q = await supabase.from('telegram_daily_picks')
       .select('*')
@@ -9437,6 +9456,7 @@ async function handleTrackRecord(req, res, supabase) {
       });
     }
 
+    _trackRecordActionCache[cacheKey] = { at: Date.now(), payload: result };
     return res.status(200).json(result);
   } catch (err) {
     return res.status(200).json({
@@ -10147,15 +10167,15 @@ function buildMonitorProgressLabel(pick, px) {
 function getMonitorDateRange() {
   var now = getJakartaNow();
   var dates = [];
-  // Go back up to 10 days to catch swing picks that may take days to hit
-  for (var i = 0; i < 10; i++) {
+  // V6.5.4: support Potensi Besok (5H), Short Swing (10H), and Swing (30H) across up to 48 calendar / 32 trading days
+  for (var i = 0; i < 48; i++) {
     var d = new Date(now);
     d.setDate(d.getDate() - i);
     var day = d.getUTCDay();
     if (day >= 1 && day <= 5) { // Only weekdays
       dates.push(d.toISOString().slice(0, 10));
     }
-    if (dates.length >= 7) break; // Max 7 trading days
+    if (dates.length >= 32) break; // Max 32 trading days
   }
   return dates;
 }

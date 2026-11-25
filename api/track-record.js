@@ -54,6 +54,8 @@ const MIN_WIN_RATE_SAMPLE = 10;
 const MAX_SIGNAL_ROWS = 50;
 
 let _cachedTrackRecord = null;
+let _cachedTrackRecordAt = 0;
+const TRACK_RECORD_CACHE_TTL_MS = 30 * 1000;
 
 /* -------------------------------------------------------------------------- */
 /* Source read                                                                */
@@ -264,8 +266,11 @@ function buildSignalRow(row, index) {
 /* Payload                                                                    */
 /* -------------------------------------------------------------------------- */
 
-function buildTrackRecordPayload() {
-  if (_cachedTrackRecord) return _cachedTrackRecord;
+function buildTrackRecordPayload(options = {}) {
+  const now = Date.now();
+  if (!options.force && _cachedTrackRecord && (now - _cachedTrackRecordAt < TRACK_RECORD_CACHE_TTL_MS)) {
+    return _cachedTrackRecord;
+  }
 
   // Independent live signal ledger is the authoritative track-record source.
   // If present, it wins over backtest statistics (which carry no per-trade
@@ -273,6 +278,7 @@ function buildTrackRecordPayload() {
   const liveRes = readLiveLedger();
   if (liveRes && liveRes.success && Array.isArray(liveRes.data) && liveRes.data.length > 0) {
     _cachedTrackRecord = liveLedger.buildLiveTrackRecord(liveRes.data);
+    _cachedTrackRecordAt = now;
     return _cachedTrackRecord;
   }
 
@@ -398,6 +404,7 @@ function buildTrackRecordPayload() {
   };
 
   _cachedTrackRecord = payload;
+  _cachedTrackRecordAt = now;
   return payload;
 }
 

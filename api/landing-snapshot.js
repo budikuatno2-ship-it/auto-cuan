@@ -1,10 +1,9 @@
 'use strict';
 /**
- * V3-F07 — /api/landing-snapshot (publik, tanpa auth).
- * Menyajikan snapshot EOD riil dari 3 mesin screener V3-F04
- * (data/screener-v3f04-{konglo,nonkonglo,daytrade}.json).
- * 0 mock, 0 sintetis: seluruh angka berasal dari file EOD 2026-11-03 FINAL_EOD.
- * Gagal jujur bila file hilang/korup (success:false), tidak pernah mengarang.
+ * V3-F07 / V6.5.4 — /api/landing-snapshot (publik, tanpa auth).
+ * Menyajikan snapshot EOD riil Three-Horizon terbaru (`data/three-horizon-latest.json`)
+ * dengan fallback ke snapshot v3f04 hanya jika file Three-Horizon belum ada.
+ * 0 mock, 0 sintetis. Gagal jujur bila file hilang/korup (success:false).
  */
 const fs = require('fs');
 const path = require('path');
@@ -18,30 +17,115 @@ function readJson(p) {
 }
 
 function num(v) {
+  if (v == null || v === '') return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-function pickRow(r) {
+function pickRow(r, fallbackHorizonLabel) {
   if (!r || typeof r !== 'object') return null;
   const ticker = String(r.ticker || '').toUpperCase().trim();
-  if (!ticker) return null;
+  const lastPrice = num(r.last_price != null ? r.last_price : r.close);
+  if (!ticker || lastPrice == null || lastPrice < 50) return null;
+  const entryLow = num(r.entry_low != null ? r.entry_low : r.entry2);
+  const entryHigh = num(r.entry_high != null ? r.entry_high : r.entry1);
+  const sl = num(r.stop_loss != null ? r.stop_loss : r.sl);
+  if (entryLow != null && entryLow < 50) return null;
+  if (sl != null && sl < 50) return null;
   return {
     ticker,
+    emiten: r.emiten || r.company_name || ticker,
     score: num(r.score != null ? r.score : r.conviction_score),
-    last_price: num(r.last_price != null ? r.last_price : r.close),
-    entry_low: num(r.entry_low),
-    entry_high: num(r.entry_high),
-    entry: num(r.entry_high != null ? r.entry_high : r.last_price),
+    last_price: lastPrice,
+    entry_low: entryLow,
+    entry_high: entryHigh,
+    entry: num(entryHigh != null ? entryHigh : lastPrice),
     tp: num(r.tp1 != null ? r.tp1 : r.tp),
-    sl: num(r.stop_loss != null ? r.stop_loss : r.sl),
+    tp2: num(r.tp2),
+    sl,
     rr: num(r.risk_reward != null ? r.risk_reward : r.rr),
     change_pct: num(r.change_pct),
-    status: r.status != null ? String(r.status) : null,
-    machine: r.machine != null ? String(r.machine) : null,
+    volume_ratio: num(r.volume_ratio_20d != null ? r.volume_ratio_20d : r.volume_ratio),
+    rsi14: num(r.rsi14),
+    status: r.status != null ? String(r.status) : 'READY',
+    holding_label: r.holding_label || fallbackHorizonLabel || null,
+    horizon: r.horizon || r.horizon_key || null,
+    signal_age_status: r.signal_age_status || 'BARU',
+    signal_age_label: r.signal_age_label || 'BARU',
+    machine: r.holding_label || r.horizon_label || r.machine || fallbackHorizonLabel || 'Three-Horizon EOD',
     trade_date: r.trade_date != null ? String(r.trade_date) : null
   };
 }
+
+function buildThreeHorizonLanding(threeDoc) {
+  if (!threeDoc || !threeDoc.horizons || !threeDoc.trade_date) return null;
+  const tradeDate = String(threeDoc.trade_date).slice(0, 10);
+  const hMap = threeDoc.horizons;
+  const specs = [
+    { key: 'potensi_besok', label: 'Potensi Besok (1–5H)' },
+    { key: 'short_swing', label: 'Short Swing (3–10H)' },
+    { key: 'swing', label: 'Swing (7–30H)' }
+  ];
+
+  const horizonsOut = {};
+  const sectors = [];
+  for (const s of specs) {
+    const src = hMap[s.key] || {};
+    const list = (Array.isArray(src.top20) ? src.top20 : (Array.isArray(src.picks) ? src.picks : []))
+      .map((r) => pickRow(r, src.holding_label || s.label))
+      .filter(Boolean);
+    horizonsOut[s.key] = {
+      key: s.key,
+      label: src.holding_label || s.label,
+      published_count: list.length,
+      universe_count: num(src.universe_count) || list.length,
+      max_holding_days: num(src.holding_days_max),
+      top5: list.slice(0, 5)
+    };
+    let sumChg = 0; let cnt = 0; let leader = list[0] ? list[0].ticker : null;
+    for (const r of list) {
+      if (r.change_pct != null) { sumChg += r.change_pct; cnt += 1; }
+    }
+    sectors.push({
+      name: s.label,
+      key: s.key,
+      change_pct: cnt > 0 ? Math.round((sumChg / cnt) * 100) / 100 : null,
+      leader
+    });
+  }
+
+  const primaryList = (horizonsOut.short_swing && horizonsOut.short_swing.top5.length)
+    ? horizonsOut.short_swing.top5
+    : ((horizonsOut.potensi_besok && horizonsOut.potensi_besok.top5) || []);
+  const dtSource = (horizonsOut.potensi_besok && horizonsOut.potensi_besok.top5) || [];
+  const dtSignals = dtSource.slice(0, 3).map((r) => ({
+    ticker: r.ticker,
+    signal_type: r.status || 'READY',
+    entry: r.entry,
+    tp: r.tp,
+    sl: r.sl,
+    rr: r.rr,
+    last_price: r.last_price,
+    change_pct: r.change_pct,
+    created_at: tradeDate
+  }));
+
+  return {
+    trade_date: tradeDate,
+    session_status: 'FINAL_EOD',
+    is_eod_final: true,
+    sectors,
+    dt_signals: dtSignals,
+    top_picks: primaryList.slice(0, 5),
+    horizons: horizonsOut,
+    generated_at: threeDoc.generated_at || new Date().toISOString(),
+    source: 'three-horizon-latest'
+  };
+}
+
+let _cachedLandingPayload = null;
+let _cachedLandingAt = 0;
+const LANDING_CACHE_TTL_MS = 30 * 1000;
 
 module.exports = async function handler(req, res) {
   try {
@@ -52,7 +136,33 @@ module.exports = async function handler(req, res) {
       res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
       return res.end(JSON.stringify({ success: false, error: 'Method tidak didukung.' }));
     }
+
+    const now = Date.now();
+    if (_cachedLandingPayload && (now - _cachedLandingAt < LANDING_CACHE_TTL_MS)) {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=30');
+      return res.end(_cachedLandingPayload);
+    }
+
     const root = path.resolve(__dirname, '..');
+    const threeDoc = readJson(path.join(root, 'data', 'three-horizon-latest.json'));
+    const threeSnap = buildThreeHorizonLanding(threeDoc);
+    if (threeSnap) {
+      const bodyStr = JSON.stringify({
+        success: true,
+        stale: false,
+        updated_at: threeSnap.generated_at,
+        snapshot: threeSnap
+      });
+      _cachedLandingPayload = bodyStr;
+      _cachedLandingAt = now;
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=30');
+      return res.end(bodyStr);
+    }
+
     const k = readJson(path.join(root, 'data', 'screener-v3f04-konglo.json'));
     const n = readJson(path.join(root, 'data', 'screener-v3f04-nonkonglo.json'));
     const d = readJson(path.join(root, 'data', 'screener-v3f04-daytrade.json'));
@@ -72,88 +182,38 @@ module.exports = async function handler(req, res) {
       res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
       return res.end(JSON.stringify({ success: false, error: 'Snapshot EOD belum final.' }));
     }
-    const kRows = Array.isArray(k.results) ? k.results.map(pickRow).filter(Boolean) : [];
-    const nRows = Array.isArray(n.results) ? n.results.map(pickRow).filter(Boolean) : [];
-    const dPub = Array.isArray(d.results) ? d.results.map(pickRow).filter(Boolean) : [];
-    const dRadarRaw = Array.isArray(d.radar) ? d.radar : [];
-    const dRadar = dRadarRaw.map((r) => {
-      const base = pickRow(r);
-      if (!base) return null;
-      base.volume_ratio = num(r.volume_ratio_20d != null ? r.volume_ratio_20d : r.volume_ratio);
-      base.rsi = num(r.rsi14 != null ? r.rsi14 : r.rsi);
-      return base;
-    }).filter(Boolean);
-
-    // Sektor: ringkasan riil per mesin (rata-rata change + leader skor tertinggi).
-    function sectorOf(name, rows) {
-      if (!rows.length) return { name, change_pct: null, leader: null };
-      let sum = 0; let cnt = 0; let leader = null; let best = -Infinity;
-      for (const r of rows) {
-        if (r.change_pct != null) { sum += r.change_pct; cnt += 1; }
-        if (r.score != null && r.score > best) { best = r.score; leader = r.ticker; }
-      }
-      const avg = cnt > 0 ? Math.round((sum / cnt) * 100) / 100 : null;
-      return { name, change_pct: avg, leader };
-    }
-    const sectors = [
-      sectorOf('KONGLO-165', kRows),
-      sectorOf('NONKONGLO-165', nRows),
-      sectorOf('DAY-TRADE-165', dPub.length ? dPub : dRadar)
-    ];
-
-    // Sinyal day-trade: published bila ada, bila 0 pakai radar WAIT (jujur, status asli).
+    const kRows = Array.isArray(k.results) ? k.results.map((r) => pickRow(r, 'Short Swing')).filter(Boolean) : [];
+    const nRows = Array.isArray(n.results) ? n.results.map((r) => pickRow(r, 'Swing')).filter(Boolean) : [];
+    const dPub = Array.isArray(d.results) ? d.results.map((r) => pickRow(r, 'Potensi Besok')).filter(Boolean) : [];
+    const dRadar = (Array.isArray(d.radar) ? d.radar : []).map((r) => pickRow(r, 'Potensi Besok')).filter(Boolean);
     const dtSource = dPub.length ? dPub : dRadar.slice(0, 3);
     const dtSignals = dtSource.slice(0, 3).map((r) => ({
-      ticker: r.ticker,
-      signal_type: dPub.length ? (r.status || 'TRADE') : (dRadarRaw.find((x) => String(x.ticker).toUpperCase() === r.ticker)?.status || 'WATCH'),
-      entry: r.entry,
-      tp: r.tp,
-      sl: r.sl,
-      rr: r.rr,
-      last_price: r.last_price,
-      change_pct: r.change_pct,
-      created_at: tradeDate
+      ticker: r.ticker, signal_type: r.status || 'WATCH', entry: r.entry, tp: r.tp, sl: r.sl, rr: r.rr,
+      last_price: r.last_price, change_pct: r.change_pct, created_at: tradeDate
     }));
-
-    // Top picks gabungan konglo+nonkonglo urut skor desc (maks 5).
-    const combined = kRows.concat(nRows).filter((r) => r.score != null)
-      .sort((a, b) => b.score - a.score).slice(0, 5);
-    const topPicks = combined.map((r) => ({
-      ticker: r.ticker,
-      score: r.score,
-      last_price: r.last_price,
-      entry_low: r.entry_low,
-      entry_high: r.entry_high,
-      tp: r.tp,
-      sl: r.sl,
-      rr: r.rr,
-      change_pct: r.change_pct,
-      machine: r.machine
-    }));
-
-    const snapshot = {
-      trade_date: tradeDate,
-      session_status: 'FINAL_EOD',
-      is_eod_final: true,
-      sectors,
-      dt_signals: dtSignals,
-      top_picks: topPicks,
-      konglo: { published_count: k.published_count, universe_count: k.universe_count },
-      nonkonglo: { published_count: n.published_count, universe_count: n.universe_count },
-      daytrade: { published_count: d.published_count, radar_count: dRadar.length },
-      generated_at: new Date().toISOString(),
-      source: 'eod-screener-v3f04'
-    };
-
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
-    return res.end(JSON.stringify({
+    const combined = kRows.concat(nRows).filter((r) => r.score != null).sort((a, b) => b.score - a.score).slice(0, 5);
+    const bodyStr = JSON.stringify({
       success: true,
       stale: false,
       updated_at: k.calculated_at || k.updated_at || new Date().toISOString(),
-      snapshot
-    }));
+      snapshot: {
+        trade_date: tradeDate,
+        session_status: 'FINAL_EOD',
+        is_eod_final: true,
+        sectors: [],
+        dt_signals: dtSignals,
+        top_picks: combined,
+        konglo: { published_count: k.published_count, universe_count: k.universe_count },
+        nonkonglo: { published_count: n.published_count, universe_count: n.universe_count },
+        daytrade: { published_count: d.published_count, radar_count: dRadar.length },
+        generated_at: new Date().toISOString(),
+        source: 'eod-screener-v3f04'
+      }
+    });
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=30');
+    return res.end(bodyStr);
   } catch (e) {
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
