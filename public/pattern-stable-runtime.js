@@ -305,11 +305,6 @@
         target.innerHTML = '';
         target.appendChild(pNode);
       }
-      var active = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-        ? root.UnifiedCockpit.getActiveTicker() : '';
-      if (active && active !== state.filterTicker) {
-        state.filterTicker = active;
-      }
       if (!hydrateCache()) scan(false);
       render();
     };
@@ -515,6 +510,7 @@
         var radarData = await json('/api/pattern-radar', 5000).catch(function () { return null; });
         if (radarData && Array.isArray(radarData.patterns) && radarData.patterns.length > 0) {
           state.rows = radarData.patterns.map(function(p) {
+            var isAct = Boolean(p.actionable || p.xbConfirmation === 'CONFIRMED' || p.status === 'CONFIRMED' || p.status === 'ACTIVE' || p.status === 'READY');
             return {
               ticker: p.ticker,
               candidate: {
@@ -530,6 +526,7 @@
               classicPatterns: [{ label: p.pattern, bias: p.bias, confidence: (p.confidence / 100), reason: 'Formasi aktif ' + p.pattern }],
               // FIX 4: real canonical candles make the inline SVG drawable.
               context: { ticker: p.ticker, timeframe: '1D', dataDate: p.dataDate, candles: p.candles || [] },
+              safety: { actionable: isAct, reason: isAct ? 'Setup terkonfirmasi' : 'Pantau konfirmasi breakout' },
               dataDate: p.dataDate,
               currentPrice: p.currentPrice,
               data_source: p.data_source,

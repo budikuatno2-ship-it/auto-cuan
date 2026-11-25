@@ -45,14 +45,21 @@ function atomicWriteJson(filePath, obj) {
 
 function loadKongloSet() {
   const set = new Set();
+  const groupByTicker = new Map();
   try {
     const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'conglomerates.json'), 'utf8'));
     for (const g of cfg.conglomerates || []) {
+      const gCode = String(g.group_code || g.group_name || '').trim().toUpperCase().replace(/_GROUP$/, '');
       for (const m of g.members || []) {
-        if (m && m.ticker) set.add(String(m.ticker).trim().toUpperCase());
+        if (m && m.ticker) {
+          const tk = String(m.ticker).trim().toUpperCase();
+          set.add(tk);
+          if (gCode && !groupByTicker.has(tk)) groupByTicker.set(tk, gCode);
+        }
       }
     }
   } catch (_) {}
+  set.groupByTicker = groupByTicker;
   return set;
 }
 
@@ -379,19 +386,52 @@ function run(options = {}) {
     });
 
     // Attach horizon fields onto top20 & ensure top5 points to exact slice
-    const enrichedTop20 = snap.top20.map((row, idx) => Object.assign({}, row, {
-      rank: idx + 1,
-      horizon: hKey,
-      horizon_label: hCfg.label,
-      holding_label: hCfg.holdingLabel,
-      intraday_status: 'OPEN',
-      trade_date: maxTradeDate,
-      calculated_at: generatedAt,
-      price_asof: maxTradeDate,
-      price_date: maxTradeDate,
-      price_source: 'sqlite_market_rows',
-      is_konglo: kongloSet.has(row.ticker)
-    }));
+    const candByTicker = new Map(candidates.map((c) => [c.ticker, c]));
+    const groupByTicker = kongloSet.groupByTicker || new Map();
+    const enrichedTop20 = snap.top20.map((row, idx) => {
+      const c = candByTicker.get(row.ticker) || {};
+      const numScore = Number(row.score || 0);
+      const rrNum = Number(row.risk_reward || row.rr || c.rr || 0);
+      const swingTier = numScore >= 85 ? 'A_PLUS_SWING'
+        : numScore >= 75 ? 'TRADE_CANDIDATE'
+        : numScore >= 65 ? 'SWING_READY'
+        : 'WATCHLIST';
+      const conf = numScore >= 85 ? 'A+' : numScore >= 75 ? 'A' : numScore >= 65 ? 'B' : 'C';
+      const volR = c.volume_ratio != null ? c.volume_ratio : (row.volume_ratio != null ? row.volume_ratio : null);
+      const rsiV = c.rsi14 != null ? c.rsi14 : (row.rsi14 != null ? row.rsi14 : null);
+      const reasonParts = [
+        hCfg.label,
+        rrNum > 0 ? ('R/R ' + rrNum.toFixed(2) + 'x') : null,
+        volR != null ? ('Vol ' + Number(volR).toFixed(2) + 'x') : null,
+        rsiV != null ? ('RSI ' + Number(rsiV).toFixed(1)) : null
+      ].filter(Boolean);
+      return Object.assign({}, row, {
+        rank: idx + 1,
+        horizon: hKey,
+        horizon_label: hCfg.label,
+        holding_label: hCfg.holdingLabel,
+        group_code: groupByTicker.get(row.ticker) || (kongloSet.has(row.ticker) ? 'KONGLO' : 'NON-KONGLO'),
+        swing_tier: swingTier,
+        confidence: conf,
+        confidence_label: conf === 'A+' ? 'Sangat Tinggi' : (conf === 'A' ? 'Tinggi' : 'Cukup'),
+        rsi14: rsiV,
+        volume_ratio: volR,
+        volume_ratio_avg20: volR,
+        volume_ratio_20d: volR,
+        entry_timing: 'Masih dekat entry',
+        entry_window_label: 'Area entry aktif',
+        direction: Number(row.change_pct || 0) >= 0 ? 'Potensi swing kuat' : 'Bullish moderat',
+        status_reason: reasonParts.join(' · '),
+        final_status: swingTier,
+        intraday_status: 'OPEN',
+        trade_date: maxTradeDate,
+        calculated_at: generatedAt,
+        price_asof: maxTradeDate,
+        price_date: maxTradeDate,
+        price_source: 'sqlite_market_rows',
+        is_konglo: kongloSet.has(row.ticker)
+      });
+    });
 
     horizonSnapshots[hKey] = Object.assign({}, snap, {
       horizon_key: hKey,

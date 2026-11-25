@@ -18,18 +18,40 @@
   var _searchDebounceTimer = null;
 
   var POPULAR_DEFAULTS = [
-    { ticker: 'BBCA', name: 'Bank Central Asia Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: 5950 },
-    { ticker: 'BBRI', name: 'Bank Rakyat Indonesia (Persero) Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: 4850 },
-    { ticker: 'BMRI', name: 'Bank Mandiri (Persero) Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: 6800 },
-    { ticker: 'TLKM', name: 'Telkom Indonesia (Persero) Tbk.', sector: 'Infrastruktur', board: 'UTAMA', lastPrice: 3050 },
-    { ticker: 'ASII', name: 'Astra International Tbk.', sector: 'Perindustrian', board: 'UTAMA', lastPrice: 5100 },
-    { ticker: 'BRPT', name: 'Barito Pacific Tbk.', sector: 'Barang Baku', board: 'UTAMA', lastPrice: 1050 },
-    { ticker: 'ANTM', name: 'Aneka Tambang Tbk.', sector: 'Barang Baku', board: 'UTAMA', lastPrice: 1560 },
-    { ticker: 'BREN', name: 'Barito Renewables Energy Tbk.', sector: 'Energi', board: 'UTAMA', lastPrice: 6850 },
-    { ticker: 'AMMN', name: 'Amman Mineral Internasional Tbk.', sector: 'Barang Baku', board: 'UTAMA', lastPrice: 9250 },
-    { ticker: 'ADRO', name: 'Adaro Energy Indonesia Tbk.', sector: 'Energi', board: 'UTAMA', lastPrice: 3750 },
-    { ticker: 'ICBP', name: 'Indofood CBP Sukses Makmur Tbk.', sector: 'Konsumen Primer', board: 'UTAMA', lastPrice: 11950 },
-    { ticker: 'GOTO', name: 'GoTo Gojek Tokopedia Tbk.', sector: 'Teknologi', board: 'PENGEMBANGAN', lastPrice: 65 }
+    { ticker: 'BBCA', name: 'Bank Central Asia Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: null },
+    { ticker: 'BBRI', name: 'Bank Rakyat Indonesia (Persero) Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: null },
+    { ticker: 'BMRI', name: 'Bank Mandiri (Persero) Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: null },
+    { ticker: 'TLKM', name: 'Telkom Indonesia (Persero) Tbk.', sector: 'Infrastruktur', board: 'UTAMA', lastPrice: null },
+    { ticker: 'ASII', name: 'Astra International Tbk.', sector: 'Perindustrian', board: 'UTAMA', lastPrice: null },
+    { ticker: 'BRPT', name: 'Barito Pacific Tbk.', sector: 'Barang Baku', board: 'UTAMA', lastPrice: null },
+    { ticker: 'ANTM', name: 'Aneka Tambang Tbk.', sector: 'Barang Baku', board: 'UTAMA', lastPrice: null },
+    { ticker: 'BREN', name: 'Barito Renewables Energy Tbk.', sector: 'Energi', board: 'UTAMA', lastPrice: null },
+    { ticker: 'AMMN', name: 'Amman Mineral Internasional Tbk.', sector: 'Barang Baku', board: 'UTAMA', lastPrice: null },
+    { ticker: 'ADRO', name: 'Adaro Energy Indonesia Tbk.', sector: 'Energi', board: 'UTAMA', lastPrice: null },
+    { ticker: 'ICBP', name: 'Indofood CBP Sukses Makmur Tbk.', sector: 'Konsumen Primer', board: 'UTAMA', lastPrice: null },
+    { ticker: 'GOTO', name: 'GoTo Gojek Tokopedia Tbk.', sector: 'Teknologi', board: 'PENGEMBANGAN', lastPrice: null }
+  ];
+
+  var WORKSPACE_PAGES = [
+    { page: 'dashboard', label: 'Dashboard', keywords: 'dashboard ringkasan ihsg utama' },
+    { page: 'analisis', subTab: 'analisis-chart', label: 'Analisis & Chart', keywords: 'analisis chart workstation candlestick ai' },
+    { page: 'screener', label: 'Screener Saham (Three-Horizon)', keywords: 'screener potensi besok short swing' },
+    { page: 'sektor', label: 'Sektor Hot (Konglomerat)', keywords: 'sektor hot konglomerat prajogo djarum salim' },
+    { page: 'analisis', subTab: 'bandarmologi', label: 'Bandarmologi & Broksum', keywords: 'bandarmologi broksum broker summary' },
+    { page: 'analisis', subTab: 'hunter', label: 'Broker Hunter', keywords: 'broker hunter institusi akumulasi' },
+    { page: 'analisis', subTab: 'intel', label: 'Sinyal Intelijen', keywords: 'sinyal intelijen anomali volume' },
+    { page: 'analisis', subTab: 'insider', label: 'Jejaring Insider', keywords: 'insider jaringan kepemilikan pemegang saham' },
+    { page: 'analisis', subTab: 'ranking', label: 'Ranking Harian', keywords: 'ranking harian klasemen pro' },
+    { page: 'analisis', subTab: 'financial', label: 'Financial & Valuasi', keywords: 'financial laporan keuangan pbv q2' },
+    { page: 'analisis', subTab: 'market-structure', label: 'Struktur Pasar KSEI', keywords: 'struktur pasar ksei free float hsc' },
+    { page: 'analisis', subTab: 'pattern', label: 'Pattern Radar', keywords: 'pattern radar xabcd pola' },
+    { page: 'watchlist', label: 'Watchlist & Alert', keywords: 'watchlist pantau alert telegram' },
+    { page: 'portofolio', label: 'Portofolio', keywords: 'portofolio posisi trading plan' },
+    { page: 'trackrecord', label: 'Track Record', keywords: 'track record riwayat sinyal' },
+    { page: 'money-management', label: 'Kelola Keuangan', keywords: 'kelola keuangan anggaran cashflow' },
+    { page: 'catatan-admin', label: 'Catatan Admin', keywords: 'catatan admin riset' },
+    { page: 'news', label: 'Berita Saham', keywords: 'berita news emiten' },
+    { page: 'admin-console', label: 'Admin Console', keywords: 'admin console kuota keamanan audit ksei' }
   ];
 
   function translateSector(sec) {
@@ -172,6 +194,17 @@
 
   async function performSearch(query) {
     var q = String(query || '').trim();
+    try {
+      var resp = await fetch('/api/sector-hot?action=stocks-search&q=' + encodeURIComponent(q) + '&limit=15');
+      var data = await resp.json();
+      if (data && data.success && Array.isArray(data.results)) {
+        _currentResults = data.results;
+        _selectedIndex = 0;
+        renderResults(_currentResults, q ? 'Hasil Pencarian Saham IDX' : 'Saham Pilihan Teraktif (SQLite IDX)');
+        return;
+      }
+    } catch (_) {}
+
     if (!q) {
       _currentResults = POPULAR_DEFAULTS.slice();
       _selectedIndex = 0;
@@ -179,47 +212,47 @@
       return;
     }
 
-    try {
-      var resp = await fetch('/api/sector-hot?action=stocks-search&q=' + encodeURIComponent(q) + '&limit=15');
-      var data = await resp.json();
-      if (data && data.success && Array.isArray(data.results)) {
-        _currentResults = data.results;
-        _selectedIndex = 0;
-        renderResults(_currentResults, `Hasil Pencarian (${data.count} ditemukan)`);
-      } else {
-        renderEmpty();
-      }
-    } catch (_) {
-      // Local fallback search against popular defaults
-      var filtered = POPULAR_DEFAULTS.filter(function (item) {
-        return item.ticker.includes(q.toUpperCase()) ||
-          item.name.toUpperCase().includes(q.toUpperCase()) ||
-          item.sector.toUpperCase().includes(q.toUpperCase());
-      });
-      _currentResults = filtered;
-      _selectedIndex = 0;
-      if (filtered.length > 0) {
-        renderResults(_currentResults, 'Hasil Pencarian');
-      } else {
-        renderEmpty();
-      }
-    }
+    var filtered = POPULAR_DEFAULTS.filter(function (item) {
+      return item.ticker.includes(q.toUpperCase()) ||
+        item.name.toUpperCase().includes(q.toUpperCase()) ||
+        item.sector.toUpperCase().includes(q.toUpperCase());
+    });
+    _currentResults = filtered;
+    _selectedIndex = 0;
+    renderResults(_currentResults, 'Hasil Pencarian');
   }
 
   function renderResults(list, sectionTitle) {
     var container = byId('commandPaletteResults');
-    if (!container) return;
+    var qLower = String((byId('commandPaletteInput') && byId('commandPaletteInput').value) || '').trim().toLowerCase();
+    var matchedPages = qLower ? WORKSPACE_PAGES.filter(function (p) {
+      return p.label.toLowerCase().indexOf(qLower) >= 0 || p.keywords.indexOf(qLower) >= 0;
+    }).slice(0, 5) : WORKSPACE_PAGES.slice(0, 4);
 
-    if (!list || list.length === 0) {
+    if ((!list || list.length === 0) && matchedPages.length === 0) {
       renderEmpty();
       return;
     }
 
-    var html = '<div class="ac-palette-section-title">' + escapeHtml(sectionTitle) + '</div>';
-    list.forEach(function (item, idx) {
+    var html = '';
+    if (matchedPages.length > 0) {
+      html += '<div class="ac-palette-section-title">Navigasi Halaman (19 Menu)</div>';
+      matchedPages.forEach(function (pg) {
+        var subArg = pg.subTab ? (", '" + pg.subTab + "'") : '';
+        html += '<div class="ac-palette-item" role="option" onclick="AutoCuanCommandPalette.close(); if(typeof navigateTo===\'function\') navigateTo(\'' + pg.page + '\'' + subArg + ');">' +
+          '<div class="ac-palette-item-left"><div class="ac-palette-ticker-badge">HAL</div><div class="ac-palette-item-info"><div class="ac-palette-company-name">' + escapeHtml(pg.label) + '</div></div></div>' +
+          '<div class="ac-palette-item-right"><span class="ac-palette-action-hint">Buka &rarr;</span></div></div>';
+      });
+    }
+    if (list && list.length > 0) {
+      html += '<div class="ac-palette-section-title">' + escapeHtml(sectionTitle) + '</div>';
+    }
+    (list || []).forEach(function (item, idx) {
       var isSelected = idx === _selectedIndex;
       var boardBadge = item.board ? '<span class="ac-palette-board-badge">' + escapeHtml(item.board) + '</span>' : '';
-      var priceDisplay = item.lastPrice ? '<span class="ac-palette-price font-mono font-bold" style="color: #f8fafc !important;">Rp ' + item.lastPrice.toLocaleString('id-ID') + '</span>' : '';
+      var priceDisplay = (item.lastPrice != null && Number.isFinite(Number(item.lastPrice)) && Number(item.lastPrice) > 0)
+        ? '<span class="ac-palette-price font-mono font-bold" style="color: #f8fafc !important;">Rp ' + Number(item.lastPrice).toLocaleString('id-ID') + '</span>'
+        : '<span class="ac-palette-price text-xs text-gray-400">SQLite EOD</span>';
 
       html += '<div class="ac-palette-item ' + (isSelected ? 'is-selected' : '') + '" data-ticker="' + escapeHtml(item.ticker) + '" role="option" aria-selected="' + (isSelected ? 'true' : 'false') + '" onclick="AutoCuanCommandPalette.selectTicker(\'' + escapeHtml(item.ticker) + '\')">' +
         '  <div class="ac-palette-item-left">' +

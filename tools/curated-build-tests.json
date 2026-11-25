@@ -771,6 +771,7 @@
   "test/v6-video-regression.test.js",
   "test/v6-yahoo-sqlite-fail-closed.test.js",
   "test/v65-full-repair.test.js",
+  "test/v651-real-live-fix.test.js",
   "test/v6/backfill-decision.test.js",
   "test/v6/broksum-provenance-consumer-wiring.test.js",
   "test/v6/broksum-provenance-guard.test.js",

@@ -363,7 +363,7 @@
     }
     var ctx = canvas.getContext('2d');
 
-    // --- toolbar ------------------------------------------------------------
+    // --- toolbar (docked cleanly above canvas container so OHLCV legend never collides) ---
     var toolbar = document.getElementById(id + '_draw_toolbar');
     if (!toolbar) {
       toolbar = document.createElement('div');
@@ -371,14 +371,13 @@
       toolbar.className = 'ac-draw-toolbar';
       toolbar.setAttribute('role', 'toolbar');
       toolbar.setAttribute('aria-label', 'Alat gambar chart');
-      // FIX 1: separate pill buttons, 6px gap, 4px 8px padding, visible border,
-      // 6px radius. Horizontal scroll + foldable on mobile keeps the toolbar
-      // clear of the OHLCV legend (which owns the top-left corner).
-      // Legacy compact fallback values were gap:4px / border-radius:8px;
-      // superseded by the FIX 1 pill contract below.
-      toolbar.style.cssText = 'position:absolute;top:8px;right:10px;z-index:13;display:inline-flex;gap:6px;max-width:calc(100% - 20px);overflow-x:auto;overscroll-behavior-x:contain;' +
-        'background:rgba(15,20,28,0.94);border:1px solid rgba(255,255,255,0.14);border-radius:6px;padding:4px;';
-      container.appendChild(toolbar);
+      toolbar.style.cssText = 'position:relative;z-index:13;display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;overflow-x:auto;overscroll-behavior-x:contain;' +
+        'background:rgba(15,20,28,0.92);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 10px;';
+      if (container.parentNode) {
+        container.parentNode.insertBefore(toolbar, container);
+      } else {
+        container.appendChild(toolbar);
+      }
     }
     var TOOL_LABELS = {
       trendline: 'Garis Tren',

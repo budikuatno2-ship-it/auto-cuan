@@ -17,6 +17,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
+const kseiStore = require('../lib/ksei-ownership-store');
 const OWNERSHIP_PATH = path.join(ROOT, 'data', 'insider-network', 'ownership_30sep2026.json');
 const HSC_OVERRIDES_PATH = path.join(ROOT, 'data', 'market-structure-manual-overrides.json');
 
@@ -85,8 +86,10 @@ function buildStrukturPasarData() {
     return { data: _cachedStrukturPasar, buffer: _cachedBuffer };
   }
 
-  let list = [];
-  if (fs.existsSync(OWNERSHIP_PATH)) {
+  const loaded = kseiStore.loadActiveOwnership(ROOT);
+  let list = Array.isArray(loaded.items) ? loaded.items.slice() : [];
+  const activeAsOf = (loaded.meta && loaded.meta.as_of) || '2026-09-30';
+  if (!list.length && fs.existsSync(OWNERSHIP_PATH)) {
     try { list = JSON.parse(fs.readFileSync(OWNERSHIP_PATH, 'utf8')) || []; } catch (_) {}
   }
 
@@ -250,7 +253,8 @@ function buildStrukturPasarData() {
     universe: formatted,
     rows: formatted,
     data: formatted,
-    as_of: '2026-09-30'
+    as_of: activeAsOf,
+    source: (loaded.meta && loaded.meta.source) || 'KSEI'
   };
   _cachedBuffer = Buffer.from(JSON.stringify(_cachedStrukturPasar));
   _cachedAt = now;

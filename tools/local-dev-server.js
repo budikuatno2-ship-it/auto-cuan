@@ -328,7 +328,7 @@ const MIME_TYPES = {
 const servePublic = createStaticResponder({
   rootDir: PUBLIC_DIR,
   mimeTypes: MIME_TYPES,
-  cacheControl: 'public, max-age=3600, stale-while-revalidate=86400'
+  cacheControl: 'public, max-age=0, must-revalidate'
 });
 const serveData = createStaticResponder({ rootDir: DATA_DIR, mimeTypes: MIME_TYPES, maxBytes: 2*1024*1024 });
 
@@ -390,10 +390,15 @@ const ROUTE_DEFAULT_QUERY = {
   '/chart': { page: 'chart' }
 };
 
-async function parseBody(req) {
+async function parseBody(req, maxBytes = 2 * 1024 * 1024) {
   if (req._parsedBody !== undefined) return req._parsedBody;
   const chunks = [];
+  let total = 0;
   for await (const chunk of req) {
+    total += chunk.length;
+    if (total > maxBytes) {
+      throw Object.assign(new Error('Payload terlalu besar.'), { statusCode: 413 });
+    }
     chunks.push(chunk);
   }
   const raw = Buffer.concat(chunks);
@@ -1044,26 +1049,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     // V6 (Subtask C): `/api/admin/quota-settings` is now a REAL authorized
-    // handler (api/admin/quota-settings.js). The old local stub that called
-    // saveConfig(patch, 'budi') is REMOVED; the generic API_DIR loader below
-    // resolves and runs the real handler (same-origin + admin + audit + readback).
-    if (PREVIEW_MOCKS_ENABLED && (endpointName === 'admin/security-audit' || endpointName === 'security-audit')) {
-      const parsedBody = await parseBody(req);
-      const action = parsedBody && parsedBody.action;
-      if (req.method === 'GET' || !action) {
-        return res.status(200).json({
-          success: true,
-          attacks: [
-            { at: '2026-11-04T09:35:12.000Z', ip: '198.51.100.44', rule: 'SQLi Probe', target: "/api/quote?ticker=' OR 1=1--", ua: 'sqlmap/1.7.2#stable', status: 'DIBLOKIR OTOMATIS', blocked: true },
-            { at: '2026-11-04T09:32:05.000Z', ip: '203.0.113.88', rule: 'Path Traversal', target: '/data/../../etc/passwd', ua: 'python-requests/2.31.0', status: 'DIBLOKIR OTOMATIS', blocked: true },
-            { at: '2026-11-04T09:28:40.000Z', ip: '192.0.2.145', rule: 'Aggressive Scanner', target: '/admin-console.php', ua: 'Nikto/2.1.6', status: 'DIBLOKIR OTOMATIS', blocked: true },
-            { at: '2026-11-04T09:15:22.000Z', ip: '198.51.100.10', rule: 'Brute Force Login', target: '/api/login-user', ua: 'Go-http-client/1.1', status: 'DIBLOKIR OTOMATIS', blocked: true },
-            { at: '2026-11-04T08:50:18.000Z', ip: '203.0.113.19', rule: 'Sensitive Probe', target: '/.env', ua: 'curl/7.88.1', status: 'DIBLOKIR OTOMATIS', blocked: true }
-          ]
-        });
-      }
-      return res.status(200).json({ success: true, message: 'Operasi forensik berhasil.' });
-    }
+    // handler (api/admin/quota-settings.js). `/api/admin/security-audit` also
+    // runs the real canonical handler below (api/admin/security-audit.js).
 
     // Support local admin / portfolio session authorization for SPA verification
     // (development only - BUG-RT-03). In production the request falls through to
@@ -1807,7 +1794,8 @@ const server = http.createServer(async (req, res) => {
       try {
         if (process.env.NODE_ENV !== "test" && process.env.NODE_ENV !== "production" && !process.env.FAST_CACHE) { try { delete require.cache[require.resolve(apiFile)]; } catch(_) {} } const handler = require(apiFile);
         req.query = Object.fromEntries(parsedUrl.searchParams.entries());
-        req.body = await parseBody(req);
+        const bodyCap = endpointName === 'admin/struktur-pasar/upload' ? 16 * 1024 * 1024 : 2 * 1024 * 1024;
+        req.body = await parseBody(req, bodyCap);
 
         // On-demand fetch broker summary from VPS when requested ticker is not on local disk
         if (endpointName === 'sector-hot' && req.query.action === 'bandarmologi' && req.query.ticker) {

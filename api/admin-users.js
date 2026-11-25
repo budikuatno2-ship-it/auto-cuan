@@ -681,13 +681,14 @@ async function handler(req, res) {
     const auth = requireAdminSession(req);
     if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
     try {
-      const fs = require('fs');
-      const path = require('path');
-      const fp = path.resolve(__dirname, '..', 'data', 'completeness', 'forecast.json');
-      const forecast = JSON.parse(fs.readFileSync(fp, 'utf8'));
+      const adminSvc = require('../lib/admin-console-service');
+      const forecast = adminSvc.getBackfillForecast();
+      if (!forecast) {
+        return res.status(404).json({ success: false, error: 'Forecast belum tersedia.' });
+      }
       return res.status(200).json({ success: true, forecast });
     } catch (e) {
-      return res.status(404).json({ success: false, error: 'Forecast belum tersedia.' });
+      return res.status(500).json({ success: false, error: 'Gagal menghitung forecast backfill.' });
     }
   }
 

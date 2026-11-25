@@ -230,9 +230,16 @@
           var cond = String(activeAlert.condition_type || activeAlert.condition || '').toUpperCase();
           var targetPrice = activeAlert.target_price != null ? Number(activeAlert.target_price) : 0;
           var tFmt = targetPrice ? targetPrice.toLocaleString('id-ID') : '—';
+          var alertLabelMap = {
+            TP_HIT: 'Target Profit ',
+            ENTRY_ZONE: 'Area Beli ',
+            SL_HIT: 'Stop Loss ',
+            BREAKOUT: 'Breakout ',
+            SUPPORT_TEST: 'Uji Support '
+          };
           alertText = (cond === 'PRICE_ABOVE' || cond === 'ABOVE') ? ('Saat ≥ ' + tFmt) :
                       ((cond === 'PRICE_BELOW' || cond === 'BELOW') ? ('Saat ≤ ' + tFmt) :
-                      (cond ? (cond + ' ' + tFmt) : ('Target ' + tFmt)));
+                      (alertLabelMap[cond] ? (alertLabelMap[cond] + tFmt) : ('Target ' + tFmt)));
           alertDot = 'g';
           if (hasCanonicalPrice && targetPrice) {
             var dist = ((targetPrice - item.last_price) / item.last_price) * 100;

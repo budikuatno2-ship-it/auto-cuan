@@ -761,23 +761,28 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
 
         // REQ-14: Mencegah label bertumpuk bila support/resistance berdekatan dengan trading plan
         var isSimpleMode = (activeMode === 'simpel' || activeMode === 'Simple');
+        var _axisBadgesRemaining = 3; // Reserve slot 1 for last close; cap total right-axis badges <= 4
         if (resPrice > 0 && isFinite(resPrice)) {
+            var showResBadge = (!isSimpleMode || !plan) && _axisBadgesRemaining > 0;
+            if (showResBadge) _axisBadgesRemaining--;
             candleSeries.createPriceLine({
                 price: resPrice,
                 color: '#3b82f6',
                 lineWidth: 1.5,
                 lineStyle: 3,
-                axisLabelVisible: !isSimpleMode || !plan,
+                axisLabelVisible: showResBadge,
                 title: acLevelTitle('Resistance', _narrow)
             });
         }
         if (supPrice > 0 && isFinite(supPrice)) {
+            var showSupBadge = (!isSimpleMode || !plan) && _axisBadgesRemaining > 0;
+            if (showSupBadge) _axisBadgesRemaining--;
             candleSeries.createPriceLine({
                 price: supPrice,
                 color: '#10b981',
                 lineWidth: 1.5,
                 lineStyle: 3,
-                axisLabelVisible: !isSimpleMode || !plan,
+                axisLabelVisible: showSupBadge,
                 title: acLevelTitle('Support', _narrow)
             });
         }
@@ -1004,10 +1009,13 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     // is slow. The full entry is written again at the end.
     _chartRegistry[chartId] = Object.assign(_chartRegistry[chartId] || {}, { chartId: chartId, variant: variant, mainChart: chart, candleSeries: candleSeries, allSeries: _allSeries, ticker: ticker || '', lastClose: candles && candles.length ? candles[candles.length - 1].close : null, dims: dims, observers: _observers });
 
-    // Fibonacci level overlay (from quote API) — uses createPriceLine for direct chart visibility
+    // Fibonacci levels only shown when layer 'fibonacci' is active, NOT on Simpel mode, and NOT on Index (IHSG)
     var fibQuote = null;
+    var isSimplePreset = (wsState && (wsState.activePreset === 'simpel' || wsState.activePreset === 'Simple'));
     try {
-        var fibTicker = ticker || chartId.replace('ychart_', '').replace(/^\d+$/, '');
+        var fibTicker = (showFib && !_isIndexChart && !isSimplePreset)
+            ? (ticker || chartId.replace('ychart_', '').replace(/^\d+$/, ''))
+            : null;
         if (fibTicker) {
         // Bounded wait: a slow quote must not hold the rest of the chart.
         var _fibAbort = typeof AbortController === 'function' ? new AbortController() : null;
@@ -1033,19 +1041,19 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             var visibleMin = priceMin - priceRange * 0.15;
             var visibleMax = priceMax + priceRange * 0.15;
 
-            // REQ-14: Visual clutter reduction. Pada mode simpel atau bila ada banyak garis,
-            // batasi axisLabelVisible pada level fibonacci kunci (50% & 61.8%) agar tidak menumpuk dengan S/R atau Entry.
-            var isSimplePreset = (wsState && (wsState.activePreset === 'simpel' || wsState.activePreset === 'Simple'));
+            var _fibBadgeBudget = typeof _axisBadgesRemaining === 'number' ? Math.max(0, Math.min(2, _axisBadgesRemaining)) : 2;
             for (var fi = 0; fi < fibPriceLines.length; fi++) {
                 var fpl = fibPriceLines[fi];
                 if (fpl.val != null && fpl.val >= visibleMin && fpl.val <= visibleMax) {
                     var isKeyFib = (fpl.label === 'Fib 50' || fpl.label === 'Fib 61,8');
+                    var showFibAxisLabel = isKeyFib && _fibBadgeBudget > 0;
+                    if (showFibAxisLabel) _fibBadgeBudget--;
                     candleSeries.createPriceLine({
                         price: fpl.val,
                         color: fpl.color,
                         lineWidth: 1,
                         lineStyle: 2,
-                        axisLabelVisible: !isSimplePreset || isKeyFib,
+                        axisLabelVisible: showFibAxisLabel,
                         title: _narrow ? '' : fpl.label
                     });
                 }
@@ -1150,22 +1158,24 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     }
 
     var intensityContainer = document.getElementById(chartId + '_intensity_container');
+    var _intH = 90;
     if (!intensityContainer) {
         intensityContainer = document.createElement('div');
         intensityContainer.id = chartId + '_intensity_container';
-        intensityContainer.className = 'relative w-full rounded-lg overflow-hidden border border-dark-700/60 bg-[#0b0e14]';
-        intensityContainer.style.height = '65px';
+        intensityContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
         subpanelsWrapper.appendChild(intensityContainer);
     }
+    intensityContainer.style.height = _intH + 'px';
 
     var rotationContainer = document.getElementById(chartId + '_rotation_container');
+    var _rotH = 90;
     if (!rotationContainer) {
         rotationContainer = document.createElement('div');
         rotationContainer.id = chartId + '_rotation_container';
-        rotationContainer.className = 'relative w-full rounded-lg overflow-hidden border border-dark-700/60 bg-[#0b0e14]';
-        rotationContainer.style.height = '65px';
+        rotationContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
         subpanelsWrapper.appendChild(rotationContainer);
     }
+    rotationContainer.style.height = _rotH + 'px';
 
     var intensityChart = null;
     var rotationChart = null;
@@ -1177,15 +1187,16 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var _effectiveShowForeign = showForeign || _modeShowForeign;
 
     // FINAL POLISH TASK 1: non-price curves live in their own subpane.
+    var _bandarH = Math.max((dims.subpanes && (dims.subpanes.foreign_flow || dims.subpanes.bandar_foreign)) || 110, 105);
     if ((showLPM || _effectiveShowForeign || showCMF) && ws && candles.length >= 5) {
         var bandarContainer = document.getElementById(chartId + '_bandar_container');
         if (!bandarContainer) {
             bandarContainer = document.createElement('div');
             bandarContainer.id = chartId + '_bandar_container';
-            bandarContainer.className = 'relative w-full rounded-lg overflow-hidden border border-dark-700/60 bg-[#0b0e14]';
-            bandarContainer.style.height = '80px';
+            bandarContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
             subpanelsWrapper.appendChild(bandarContainer);
         }
+        bandarContainer.style.height = _bandarH + 'px';
         bandarContainer.style.display = 'block';
         // FIX 1: real numeric legend from the canonical foreign-flow series.
         var _ffSeries = _effectiveShowForeign ? ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow) : [];
@@ -1197,10 +1208,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         bandarContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#94a3b8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _bandarLegend + '</div>';
         bandarChart = LightweightCharts.createChart(bandarContainer, {
             width: _cwWidth,
-            height: 80,
+            height: _bandarH - 2,
             layout: acChartLayout(_th),
             grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.15, bottom: 0.1 } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
             timeScale: { visible: false },
             crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
             handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
@@ -1212,7 +1223,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
         if (_effectiveShowForeign) {
             var sForeign = bandarChart.addLineSeries({ color: '#3b82f6', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Foreign Flow', priceScaleId: 'foreign_scale' });
-            try { bandarChart.priceScale('foreign_scale').applyOptions({ scaleMargins: { top: 0.15, bottom: 0.1 } }); } catch (_) {}
+            try { bandarChart.priceScale('foreign_scale').applyOptions({ scaleMargins: { top: 0.22, bottom: 0.12 } }); } catch (_) {}
             sForeign.setData(_ffSeries);
         }
         if (showCMF) {
@@ -1230,15 +1241,16 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var showRSI = wsState ? wsState.isLayerActive('rsi14') : false;
     var showMACD = wsState ? wsState.isLayerActive('macd') : false;
     var oscChart = null;
+    var _oscH = Math.max((dims.subpanes && (dims.subpanes.rsi14 || dims.subpanes.macd)) || 110, 105);
     if ((showRSI || showMACD) && ws && candles.length >= 26) {
         var oscContainer = document.getElementById(chartId + '_osc_container');
         if (!oscContainer) {
             oscContainer = document.createElement('div');
             oscContainer.id = chartId + '_osc_container';
-            oscContainer.className = 'relative w-full rounded-lg overflow-hidden border border-dark-700/60 bg-[#0b0e14]';
-            oscContainer.style.height = '90px';
+            oscContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
             subpanelsWrapper.appendChild(oscContainer);
         }
+        oscContainer.style.height = _oscH + 'px';
         oscContainer.style.display = 'block';
         // FIX 1: real numeric legend in the pane corner (computed from the
         // canonical series, never a placeholder). RSI active value + 30/70
@@ -1254,10 +1266,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         oscContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#94a3b8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _oscLegend + '</div>';
         oscChart = LightweightCharts.createChart(oscContainer, {
             width: _cwWidth,
-            height: 90,
+            height: _oscH - 2,
             layout: acChartLayout(_th),
             grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.12, bottom: 0.08 } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
             timeScale: { visible: false },
             crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
             handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
@@ -1288,15 +1300,16 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
 
     var showOBV = ((_activeMode === 'investor' || _activeMode === 'pro') || (wsState && wsState.isLayerActive('obv'))) && !_isIndexChart;
     var obvChart = null;
+    var _obvH = Math.max((dims.subpanes && dims.subpanes.obv) || 100, 95);
     if (showOBV && ws && typeof ws.calculateOBV === 'function' && candles.length >= 5) {
         var obvContainer = document.getElementById(chartId + '_obv_container');
         if (!obvContainer) {
             obvContainer = document.createElement('div');
             obvContainer.id = chartId + '_obv_container';
-            obvContainer.className = 'relative w-full rounded-lg overflow-hidden border border-dark-700/60 bg-[#0b0e14]';
-            obvContainer.style.height = '75px';
+            obvContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
             subpanelsWrapper.appendChild(obvContainer);
         }
+        obvContainer.style.height = _obvH + 'px';
         obvContainer.style.display = 'block';
         var _obvSeriesData = ws.calculateOBV(candles);
         var _obvLast = _obvSeriesData.length ? Number(_obvSeriesData[_obvSeriesData.length - 1].value) : null;
@@ -1307,10 +1320,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         obvContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#a78bfa; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _obvLegend + '</div>';
         obvChart = LightweightCharts.createChart(obvContainer, {
             width: _cwWidth,
-            height: 75,
+            height: _obvH - 2,
             layout: acChartLayout(_th),
             grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.15, bottom: 0.1 } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
             timeScale: { visible: false },
             crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
             handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
@@ -1329,10 +1342,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         intensityContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#c084fc; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">INTENSITY (Aktivitas Bandar)</div>';
         intensityChart = LightweightCharts.createChart(intensityContainer, {
             width: _cwWidth,
-            height: 65,
+            height: _intH - 2,
             layout: acChartLayout(_th),
             grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.15, bottom: 0.1 } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
             timeScale: { visible: false },
             crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
             handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
@@ -1350,10 +1363,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         rotationContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#34d399; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">VOLUME ROTATION (Akumulasi / Distribusi / Transisi)</div>';
         rotationChart = LightweightCharts.createChart(rotationContainer, {
             width: _cwWidth,
-            height: 65,
+            height: _rotH - 2,
             layout: acChartLayout(_th),
             grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.15, bottom: 0.1 } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
             timeScale: { visible: false },
             crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
             handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },

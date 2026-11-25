@@ -3472,9 +3472,10 @@
       };
     }
     if (m !== 'simple' && m !== 'swing' && m !== 'investor' && m !== 'pro') m = 'pro';
+    var showZigZag = opts.zigzag !== false && opts.zigzag !== 'off';
     var smc = calculateV3F09SMC(rawCandles);
     var x = calculateV3F09XABCD(rawCandles);
-    var zz = calculateV3F09ZigZag(rawCandles);
+    var zz = showZigZag ? calculateV3F09ZigZag(rawCandles) : { pivots: [], projection: null };
     var sr = calculateV3F09SR(rawCandles);
     var W = 800, Hh = 320;
 
@@ -3659,7 +3660,7 @@
         }
         if (smc.supplyOB) s += obRectSvg(smc.supplyOB, 'supply');
         if (smc.demandOB) s += obRectSvg(smc.demandOB, 'demand');
-        s += zigzagSvg();
+        if (showZigZag) s += zigzagSvg();
       } else if (!hasPriceScale()) {
         s += emptyStateSvg('data candle tidak cukup untuk skala harga');
       }
@@ -3769,8 +3770,16 @@
     var inst = _workstationInstances[chartId];
     if (!ticker && inst) ticker = inst.ticker;
     if ((!rawCandles || !rawCandles.length) && inst) rawCandles = inst.dailyCandles;
+    var state = inst && inst.state;
+    var wantsZigzag = Boolean(state && (state.isLayerActive('zigzag') || (state.activeAutoPatterns && state.activeAutoPatterns.has && state.activeAutoPatterns.has('zigzag'))));
+    var wantsOverlay = Boolean(state && (state.isLayerActive('zigzag') || state.isLayerActive('classic_patterns') || (state.activeAutoPatterns && state.activeAutoPatterns.size > 0)));
+    if (!wantsOverlay) {
+      host.innerHTML = '';
+      host.setAttribute('data-mode', 'clean');
+      return;
+    }
     var theme = _v3f09ThemeByChart[chartId] || 'dark';
-    var ov = buildV3F09Overlay(ticker || 'BBCA', rawCandles || [], mode || 'pro', theme);
+    var ov = buildV3F09Overlay(ticker || 'BBCA', rawCandles || [], mode || 'pro', theme, { zigzag: wantsZigzag });
     host.innerHTML = ov.svg;
     host.setAttribute('data-mode', ov.mode);
     host.setAttribute('data-theme', ov.theme);

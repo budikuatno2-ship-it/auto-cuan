@@ -80,6 +80,8 @@ html.light #acAccountCenter,
   font: 14px/1.45 var(--ac-font-sans);
 }
 #appContent > .page-content.ac-page[data-ac-ui="v2"].hidden { display: none !important; }
+/* Ensure sticky header never overlaps page title headings (.ph) */
+#appContent > .page-content.ac-page[data-ac-ui="v2"] .ph { scroll-margin-top: 72px; padding-top: 4px; }
 /* The canvas page owns its gutter (32px, 16px on phones); the legacy
    #appContent padding would add 12-18px on top of it. */
 #appContent:has(> .page-content.ac-page[data-ac-ui="v2"]:not(.hidden)) { padding-inline: 0 !important; padding-top: 0 !important; }
@@ -169,6 +171,8 @@ html.is-dark [data-ac-ui="v2"] .vbtn.p { color: #06140E; }
    column. Constrain only this table so every column stays inside the container
    at desktop width; narrow viewports keep the existing .tw horizontal scroll. */
 #page-admin-console .admin-schedule-tbl { table-layout: fixed; min-width: 0 !important; width: 100% !important; }
+#page-admin-console #adminNavTabs,
+#page-admin-console .utabs { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; overflow-x: visible !important; }
 #page-admin-console .admin-schedule-tbl th,
 #page-admin-console .admin-schedule-tbl td { overflow: hidden; text-overflow: clip; }
 #page-admin-console .admin-schedule-tbl th:nth-child(1),
@@ -621,7 +625,7 @@ html #appContent #page-analisis .ana-quote.is-flat { color: var(--ac-2) !importa
 html #appContent #page-analisis .ana-quote.is-flat .ana-px { color: var(--ac-ink); }
 html #appContent #page-analisis .ana-chips { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; }
 html #appContent #page-analisis .ana-chips .vbtn { height: 30px; padding: 0 10px; font: 600 12px var(--ac-font-mono); }
-html #appContent #page-analisis .ana-sub { display: inline-grid !important; grid-auto-flow: column; padding: 3px; background: var(--ac-hover); border-radius: 9px; }
+html #appContent #page-analisis .ana-sub { display: inline-flex !important; flex-wrap: wrap; gap: 2px; max-width: 100%; padding: 3px; background: var(--ac-hover); border-radius: 9px; }
 html #appContent #page-analisis .ana-sub .analisis-subtab { height: 30px; padding: 0 14px; border: 0 !important; border-radius: 6px !important; background: transparent !important; box-shadow: none !important; color: var(--ac-2) !important; font: 600 13px var(--ac-font-sans) !important; }
 html #appContent #page-analisis .ana-sub .analisis-subtab.active { background: var(--ac-surface) !important; color: var(--ac-ink) !important; box-shadow: 0 0 0 1px var(--ac-hair), 0 1px 2px rgba(0, 0, 0, .06) !important; }
 html #appContent #page-analisis .ana-sub .analisis-subtab.hidden { display: none !important; }

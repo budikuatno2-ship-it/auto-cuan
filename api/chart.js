@@ -48,7 +48,32 @@ const {
 } = require('../lib/ihsg-validation');
 const { LAST_PROVEN_TRADING_DATE, evaluateDataGovernance } = require('../lib/data-governance-policy');
 
-const { readCandleSeries } = require('../lib/local-market-subset-store');
+const { readCandleSeries, readForeignFlowSeries } = require('../lib/local-market-subset-store');
+
+function calcSeriesMA(prices, period) {
+  if (!Array.isArray(prices) || prices.length < period || period <= 0) return null;
+  let sum = 0;
+  for (let i = prices.length - period; i < prices.length; i++) {
+    const v = Number(prices[i]);
+    if (!Number.isFinite(v)) return null;
+    sum += v;
+  }
+  return Math.round((sum / period) * 100) / 100;
+}
+
+function calcSeriesRSI(prices, period) {
+  if (!Array.isArray(prices) || prices.length < period + 1) return null;
+  let gains = 0;
+  let losses = 0;
+  for (let i = prices.length - period; i < prices.length; i++) {
+    const diff = Number(prices[i]) - Number(prices[i - 1]);
+    if (diff > 0) gains += diff;
+    else losses -= diff;
+  }
+  if (losses === 0) return 100;
+  const rs = (gains / period) / (losses / period);
+  return Math.round((100 - 100 / (1 + rs)) * 100) / 100;
+}
 
 function normalizeTicker(raw) {
   let ticker = String(raw == null ? '' : raw).toUpperCase().trim().replace(/\.JK$/i, '');
@@ -125,7 +150,29 @@ function buildChartResponse(ticker, now, opts) {
   const dataStatus = isStale ? 'stale' : 'ok';
 
   const refIndex = Math.max(0, clean.length - 20);
-  const trend = Number(last.close) >= Number(clean[refIndex].close) ? 'UPTREND' : 'DOWNTREND';
+  const closePrices = clean.map((k) => Number(k.close));
+  const ma20 = calcSeriesMA(closePrices, 20);
+  const ma50 = calcSeriesMA(closePrices, 50);
+  const ma100 = calcSeriesMA(closePrices, 100);
+  const ma200 = calcSeriesMA(closePrices, 200);
+  const rsi14 = calcSeriesRSI(closePrices, 14);
+  const win20 = clean.slice(-20);
+  const support20 = Math.round(Math.min(...win20.map((k) => Number(k.low != null ? k.low : k.close))));
+  const trend = ma20 != null
+    ? (Number(last.close) >= ma20 ? 'Bullish (Di atas MA20)' : 'Bearish (Di bawah MA20)')
+    : (Number(last.close) >= Number(clean[refIndex].close) ? 'UPTREND' : 'DOWNTREND');
+  let foreignFlow = [];
+  if (ticker !== 'IHSG') {
+    try {
+      foreignFlow = readForeignFlowSeries(ticker, { asOf: options.asOf || null });
+    } catch (_) {
+      foreignFlow = [];
+    }
+  }
+  const latestFf = foreignFlow.length ? foreignFlow[foreignFlow.length - 1] : null;
+  const bandarAccumulation = latestFf && latestFf.foreign_net != null && Number.isFinite(Number(latestFf.foreign_net))
+    ? Number(latestFf.foreign_net)
+    : null;
 
   return {
     statusCode: 200,
@@ -163,12 +210,16 @@ function buildChartResponse(ticker, now, opts) {
         volume: k.volume,
         provenance: k.provenance
       })),
+      foreignFlow,
       metrics: {
-        support: Math.round(Number(last.low)),
+        support: support20,
         trend,
-        // JUJUR: endpoint ini tidak menghitung akumulasi bandar. Konstanta
-        // 1250000000 yang lama adalah fabrikasi; sekarang null.
-        bandarAccumulation: null
+        ma20,
+        ma50,
+        ma100,
+        ma200,
+        rsi14,
+        bandarAccumulation
       }
     }
   };
