@@ -290,3 +290,11 @@ test('K1-6: syncLiveSignalLedger & syncTelegramDailyPicksDb do not re-insert dup
   assert.equal(dbInserts, 0);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
+
+test('K1-7: Dashboard Top 5 switcher caches all 3 horizons & guards in-flight horizon switches + chatMessages null guard', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  assert.match(html, /function buildDashHorizonPayload\(/);
+  assert.match(html, /_dashboardTop5InFlightHorizon === targetHorizon/);
+  assert.match(html, /\['potensi_besok', 'short_swing', 'swing'\]\.forEach/);
+  assert.match(html, /if \(container\) \{ while \(container\.children\.length > 1\)/);
+});

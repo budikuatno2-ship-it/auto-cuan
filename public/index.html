@@ -11690,7 +11690,7 @@ function switchSession(sessionId) {
     var session = getActiveSession();
     // Clear chat messages
     var container = document.getElementById('chatMessages');
-    while (container.children.length > 1) { container.removeChild(container.lastChild); }
+    if (container) { while (container.children.length > 1) { container.removeChild(container.lastChild); } }
     // Restore session context
     if (session) {
         activeTicker = session.activeTicker || null;
@@ -11840,7 +11840,7 @@ function clearChat() {
     activeTicker = null; activeCompanyName = null; pendingAnalysisRequest = null;
     resetBrokerSummaryContext();
     var container = document.getElementById('chatMessages');
-    while (container.children.length > 1) { container.removeChild(container.lastChild); }
+    if (container) { while (container.children.length > 1) { container.removeChild(container.lastChild); } }
     saveSessions();
     renderSidebarSessions();
     showToast('Chat dihapus.', 'success');
@@ -17517,16 +17517,41 @@ async function archiveTop5History(id) {
     loadTop5History(true);
 }
 
+function buildDashHorizonPayload(horizonKey, rows, scrRes, picksRes) {
+    var top5Rows = Array.isArray(rows) ? rows.slice(0, 5) : [];
+    var metaDate = (top5Rows[0] && (top5Rows[0].trade_date || top5Rows[0].session_date)) || (scrRes && scrRes.meta && scrRes.meta.trading_date) || (scrRes && scrRes.trade_date) || null;
+    var metaCalc = (top5Rows[0] && top5Rows[0].calculated_at) || (scrRes && scrRes.meta && scrRes.meta.calculated_at) || (scrRes && scrRes.calculated_at) || new Date().toISOString();
+    var labelMap = { potensi_besok: 'Potensi Besok (1–5H)', short_swing: 'Short Swing (3–10H)', swing: 'Swing (7–30H)' };
+    return {
+        success: true,
+        horizon: horizonKey,
+        date: metaDate,
+        trading_date: metaDate,
+        top5: top5Rows,
+        picks: top5Rows,
+        monitor: (picksRes && Array.isArray(picksRes.monitor)) ? picksRes.monitor : [],
+        top5_locked: true,
+        top5_source: 'locked_rows',
+        is_eod_final: true,
+        last_updated_at: metaCalc,
+        monitor_last_updated_at: (picksRes && picksRes.monitor_last_updated_at) || metaCalc,
+        monitor_source_label: (picksRes && picksRes.monitor_source_label) || 'daily lock fallback',
+        update_note: 'Top 5 Radar Terkunci · Horizon ' + (labelMap[horizonKey] || labelMap.short_swing) + ' (' + (metaDate || 'EOD') + ').',
+        _fetchedAt: Date.now()
+    };
+}
+var _dashboardTop5InFlightHorizon = null;
 async function loadDashboardTop5Monitor(silent, opts) {
     opts = opts || {};
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
     var targetHorizon = normalizeDashTop5Mode(opts.horizon || _dashTop5Mode);
     var modeCached = _dashTop5CacheByMode[targetHorizon];
     if (!opts.force && modeCached && Date.now() - (modeCached._fetchedAt || 0) < 45000 && modeCached.top5_source !== 'awaiting_locked_rows') {
+        _dashboardTop5Cache = { at: Date.now(), data: modeCached };
         renderDashboardTop5MonitorData(modeCached);
         return;
     }
-    if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
+    if (_dashboardTop5InFlight && _dashboardTop5InFlightHorizon === targetHorizon) return _dashboardTop5InFlight;
     var _topEl = document.getElementById('dashboardTop5List');
     var _monEl = document.getElementById('dashboardMonitorList');
     if (_topEl && !silent) _topEl.innerHTML = dashboardSkeletonHtml(3, 'Memuat Top 5...');
@@ -17537,6 +17562,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
         if (topCheck && topCheck.innerHTML.indexOf('Memuat Top 5') >= 0) topCheck.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Masih memuat data Top 5...</div>';
         if (monCheck && monCheck.innerHTML.indexOf('Memuat monitor') >= 0) monCheck.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Masih memuat data monitor...</div>';
     }, 5000);
+    _dashboardTop5InFlightHorizon = targetHorizon;
     _dashboardTop5InFlight = (async function() {
     try {
         var scrUrl = '/api/screener?horizon=' + encodeURIComponent(targetHorizon) + '&t=' + Date.now();
@@ -17555,26 +17581,22 @@ async function loadDashboardTop5Monitor(silent, opts) {
                 ? scrRes.three_horizon[targetHorizon].top5
                 : (scrRes && Array.isArray(scrRes.results) && scrRes.results.length ? scrRes.results.slice(0, 5) : []));
 
+        if (scrRes && scrRes.three_horizon) {
+            ['potensi_besok', 'short_swing', 'swing'].forEach(function (hKey) {
+                var hzBlock = scrRes.three_horizon[hKey];
+                var hzRows = hKey === targetHorizon && scrTop5.length > 0
+                    ? scrTop5
+                    : (hzBlock && Array.isArray(hzBlock.top5) && hzBlock.top5.length > 0
+                        ? hzBlock.top5
+                        : (hzBlock && Array.isArray(hzBlock.top20) ? hzBlock.top20.slice(0, 5) : []));
+                if (hzRows.length > 0) {
+                    _dashTop5CacheByMode[hKey] = buildDashHorizonPayload(hKey, hzRows, scrRes, picksRes);
+                }
+            });
+        }
+
         if (scrTop5.length > 0) {
-            var metaDate = (scrTop5[0] && (scrTop5[0].trade_date || scrTop5[0].session_date)) || (scrRes.meta && scrRes.meta.trading_date) || scrRes.trade_date || null;
-            var metaCalc = (scrTop5[0] && scrTop5[0].calculated_at) || (scrRes.meta && scrRes.meta.calculated_at) || scrRes.calculated_at || new Date().toISOString();
-            data = {
-                success: true,
-                horizon: targetHorizon,
-                date: metaDate,
-                trading_date: metaDate,
-                top5: scrTop5.slice(0, 5),
-                picks: scrTop5.slice(0, 5),
-                monitor: (picksRes && Array.isArray(picksRes.monitor)) ? picksRes.monitor : [],
-                top5_locked: true,
-                top5_source: 'locked_rows',
-                is_eod_final: true,
-                last_updated_at: metaCalc,
-                monitor_last_updated_at: (picksRes && picksRes.monitor_last_updated_at) || metaCalc,
-                monitor_source_label: (picksRes && picksRes.monitor_source_label) || 'daily lock fallback',
-                update_note: 'Top 5 Radar Terkunci · Horizon ' + (targetHorizon === 'potensi_besok' ? 'Potensi Besok (1–5H)' : (targetHorizon === 'swing' ? 'Swing (7–30H)' : 'Short Swing (3–10H)')) + ' (' + (metaDate || 'EOD') + ').',
-                _fetchedAt: Date.now()
-            };
+            data = _dashTop5CacheByMode[targetHorizon] || buildDashHorizonPayload(targetHorizon, scrTop5, scrRes, picksRes);
         } else if (picksRes && picksRes.success) {
             data = Object.assign({}, picksRes, { _fetchedAt: Date.now() });
         } else {
@@ -17582,10 +17604,13 @@ async function loadDashboardTop5Monitor(silent, opts) {
         }
 
         if (!(data.top5_source === 'awaiting_locked_rows' && isLoggedInUser())) {
-            _dashboardTop5Cache = { at: Date.now(), data: data };
             _dashTop5CacheByMode[targetHorizon] = data;
+            var activeData = _dashTop5CacheByMode[_dashTop5Mode] || data;
+            _dashboardTop5Cache = { at: Date.now(), data: activeData };
+            renderDashboardTop5MonitorData(activeData);
+        } else {
+            renderDashboardTop5MonitorData(data);
         }
-        renderDashboardTop5MonitorData(data);
     } catch (e) {
         try {
             var snapRes = await fetchDashboardJson('/api/landing-snapshot', {}, 5000);
@@ -17610,7 +17635,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = '';
         if (mon) mon.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
-    } finally { clearTimeout(_fallbackTimer); _dashboardTop5InFlight = null; }
+    } finally { clearTimeout(_fallbackTimer); _dashboardTop5InFlight = null; _dashboardTop5InFlightHorizon = null; }
     })();
     return _dashboardTop5InFlight;
 }
@@ -17646,7 +17671,8 @@ function switchDashTop5(mode) {
     var ind = document.getElementById('dashTop5Ind');
     if (ind) ind.className = 'ind k' + (_dashTop5Mode === 'potensi_besok' ? 0 : (_dashTop5Mode === 'short_swing' ? 1 : 2));
     var cached = _dashTop5CacheByMode[_dashTop5Mode];
-    if (cached && Date.now() - (cached._fetchedAt || 0) < 45000) {
+    if (cached && Date.now() - (cached._fetchedAt || 0) < 45000 && cached.top5_source !== 'awaiting_locked_rows') {
+        _dashboardTop5Cache = { at: Date.now(), data: cached };
         renderDashboardTop5MonitorData(cached);
         return;
     }
