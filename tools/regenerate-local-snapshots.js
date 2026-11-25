@@ -1034,7 +1034,9 @@ function run(options = {}) {
         volR != null ? ('Vol ' + Number(volR).toFixed(2) + 'x') : null,
         rsiV != null ? ('RSI ' + Number(rsiV).toFixed(1)) : null,
         c.domestic_net != null ? ('Dom ' + (c.domestic_net >= 0 ? '+' : '') + Math.round(c.domestic_net / 1e6) + 'jt') : null,
-        c.insider_signal && c.insider_signal !== 'NEUTRAL' ? ('Insider ' + c.insider_signal) : null
+        c.insider_signal && c.insider_signal !== 'NEUTRAL'
+          ? (c.insider_signal === 'BUY_30D' ? 'Insider Beli 30H' : (c.insider_signal === 'SELL_30D' ? 'Insider Jual 30H' : ('Insider ' + c.insider_signal)))
+          : null
       ].filter(Boolean);
       return Object.assign({}, row, {
         rank: idx + 1,

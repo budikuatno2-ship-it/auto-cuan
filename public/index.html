@@ -2675,7 +2675,7 @@ html.light #googleCompleteProfileModal input {
         </div>
         <div class="prov">
             <span><b>Penyebut</b> hanya sinyal yang selesai dievaluasi</span>
-            <span><b>Aturan</b> sinyal kedaluwarsa setelah 10 hari bursa</span>
+            <span><b>Aturan Three-Horizon</b> batas pantau 5 / 10 / 30 hari bursa</span>
         </div>
     </section>
 
@@ -17021,8 +17021,9 @@ function isDashboardUnsafeActionable(r) {
     ];
     var values = [getRiskLabel(r), getActionLabel(r)];
     keys.forEach(function(key) { values.push(r[key]); });
-    var text = values.map(function(value) { return safeDisplayText(value, ''); }).filter(Boolean).join(' ').toLowerCase();
-    return /(^|[^a-z0-9])(hindari|avoid|sell)([^a-z0-9]|$)/.test(text)
+    var text = values.map(function(value) { return safeDisplayText(value, ''); }).filter(Boolean).join(' ').toLowerCase()
+        .replace(/insider\s+(?:sell|buy)_?30[dh]?/g, '');
+    return /(^|[^a-z0-9_])(hindari|avoid|sell)([^a-z0-9_]|$)/.test(text)
         || /(^|[^a-z0-9])low[_\s-]?tp([^a-z0-9]|$)/.test(text)
         || /(^|[^a-z0-9])very[_\s-]?high([_\s-]?risk)?([^a-z0-9]|$)/.test(text);
 }
@@ -17048,7 +17049,10 @@ function dashboardExcludedHtml(excluded) {
         var risk = getRiskLabel(r) || '';
         var reason = getSignalReason(r);
         var parts = [safeDisplayText(action, '')];
-        if (risk) parts.push('Risiko ' + safeDisplayText(risk, ''));
+        if (risk) {
+            var riskTxt = safeDisplayText(risk, '');
+            parts.push(/^risiko\b/i.test(riskTxt) ? riskTxt : ('Risiko ' + riskTxt));
+        }
         if (reason) parts.push(safeDisplayText(reason, ''));
         return '<span><b class="mono">' + escapeHtml(r.ticker || '-') + '</b> · ' + escapeHtml(parts.filter(Boolean).join(', ')) + '</span>';
     }).join('') + '</div></details>';
