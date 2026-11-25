@@ -10,12 +10,12 @@
     <title>Analisis Saham | Auto-Cuan</title>
     <link rel="preload" href="/fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/geist-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/fonts/ac-fonts.css?v=20261020-v1">
-    <link rel="stylesheet" href="/tailwind-build.css?v=20260813-tw-v1">
-    <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">
-    <link rel="stylesheet" href="/ui-theme.css?v=20261016-fase8-v1">
-    <link rel="stylesheet" href="/spreadsheet-grade.css?v=20260926-sg1">
-    <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
+    <link rel="stylesheet" href="/fonts/ac-fonts.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/tailwind-build.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/index-shell.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/ui-theme.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/spreadsheet-grade.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/unified-cockpit.css?v=v6.5.5-k2">
     <style>
         body { background-color: #0b0e14; color: #f3f4f6; font-family: var(--ac-font-sans, 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif); min-height: 100dvh; display: flex; flex-direction: column; }
         .app-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(11,14,20,0.95); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 50; flex-wrap: nowrap; gap: 12px; }
@@ -187,6 +187,44 @@
             </div>
         </div>
 
+        <!-- SUB-TAB 2: CHART (Candlestick Interaktif + Tombol Analisis AI + Hasil Vision) -->
+        <section id="panel-tab-chart" class="analisis-tab-panel active" style="display:block">
+            <div class="space-y-4">
+                <!-- Interactive Candlestick Chart Card -->
+                <div class="unified-card" id="chart-workstation" data-chart-anchor-for="unifiedChartContainer">
+                    <div id="unifiedChartContainer" class="unified-chart-box" data-chart-anchor="chart-workstation">
+                        <div class="p-8 text-center text-gray-500 text-xs">
+                            <span class="spinner-sm"></span> Menyiapkan chart interaktif...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Vision 5-Section Results Card -->
+                <div id="panelAnalisisVision" class="unified-card">
+                    <div class="unified-card-header">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                            <h2 class="text-sm font-bold text-gray-200">Hasil Analisis Chart (AI Vision)</h2>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25">Gemini 4</span>
+                        </div>
+                        <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition flex items-center gap-1.5">
+                            <span>🤖 Analisis Ulang</span>
+                        </button>
+                    </div>
+                    <div class="p-3 sm:p-4">
+                        <div id="unifiedAiChartResultWrap" class="overflow-y-auto max-h-[560px] scrollbar-thin">
+                            <div class="text-center py-10 text-gray-500">
+                                <span class="text-3xl mb-2 block">🤖</span>
+                                <p class="text-sm font-semibold text-gray-300">Belum ada analisis chart visual AI</p>
+                                <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Gunakan tab ini untuk menganalisis tren, level kunci, candlestick, volume, dan risiko secara visual.</p>
+                                <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="mt-3 px-4 py-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition">Mulai Analisis Visual Chart</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- ===== TAB 1: INDUK ANALISIS & CHART (SUBPANEL AI) ===== -->
         <section id="panel-tab-analisis" class="analisis-tab-panel active">
             <!-- SUB-PANEL 1: ANALISIS AI (Cockpit Grid) -->
@@ -266,44 +304,6 @@
                                 <button id="analysisSendBtn" type="button" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                                 </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SUB-TAB 2: CHART (Candlestick Interaktif + Tombol Analisis AI + Hasil Vision, NO Text Analysis) -->
-        <section id="panel-tab-chart" class="analisis-tab-panel" style="display:none">
-            <div class="space-y-4">
-                <!-- Interactive Candlestick Chart Card -->
-                <div class="unified-card">
-                    <div id="unifiedChartContainer" class="unified-chart-box">
-                        <div class="p-8 text-center text-gray-500 text-xs">
-                            <span class="spinner-sm"></span> Menyiapkan chart interaktif...
-                        </div>
-                    </div>
-                </div>
-
-                <!-- AI Vision 5-Section Results Card -->
-                <div id="panelAnalisisVision" class="unified-card">
-                    <div class="unified-card-header">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
-                            <h2 class="text-sm font-bold text-gray-200">Hasil Analisis Chart (AI Vision)</h2>
-                            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25">Gemini 4</span>
-                        </div>
-                        <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition flex items-center gap-1.5">
-                            <span>🤖 Analisis Ulang</span>
-                        </button>
-                    </div>
-                    <div class="p-3 sm:p-4">
-                        <div id="unifiedAiChartResultWrap" class="overflow-y-auto max-h-[560px] scrollbar-thin">
-                            <div class="text-center py-10 text-gray-500">
-                                <span class="text-3xl mb-2 block">🤖</span>
-                                <p class="text-sm font-semibold text-gray-300">Belum ada analisis chart visual AI</p>
-                                <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Gunakan tab ini untuk menganalisis tren, level kunci, candlestick, volume, dan risiko secara visual.</p>
-                                <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="mt-3 px-4 py-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition">Mulai Analisis Visual Chart</button>
                             </div>
                         </div>
                     </div>
@@ -934,18 +934,18 @@
     <!-- SCRIPTS -->
     <!-- V5 P0-009/P0-010/P0-011: identity guard + one volume/foreign-flow
          display helper, loaded before every chart/plan module. -->
-    <script src="/chart-state-guard.js?v=20261105-v5p0"></script>
-    <script src="/market-data-display.js?v=20261105-v5p0"></script>
-    <script src="/market-feature-runtime.js?v=v6.5.2-final"></script>
-    <script src="/chart-drawing-tools.js?v=v6.5.2-final"></script>
-    <script src="/chart-viewer.js?v=20260905-v1"></script>
-    <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
-    <script src="/unified-cockpit-runtime.js?v=v6.5.2-final"></script>
-    <script src="/ai-chat-renderer.js?v=20260905-v2"></script>
-    <script src="/account-center-lazy-loader-v1.js?v=20260817-v1"></script>
-    <script src="/analisis-saham-runtime.js?v=v6.5.2-final"></script>
+    <script src="/chart-state-guard.js?v=v6.5.5-k2"></script>
+    <script src="/market-data-display.js?v=v6.5.5-k2"></script>
+    <script src="/market-feature-runtime.js?v=v6.5.5-k2"></script>
+    <script src="/chart-drawing-tools.js?v=v6.5.5-k2"></script>
+    <script src="/chart-viewer.js?v=v6.5.5-k2"></script>
+    <script src="/chart-analysis-runtime.js?v=v6.5.5-k2"></script>
+    <script src="/unified-cockpit-runtime.js?v=v6.5.5-k2"></script>
+    <script src="/ai-chat-renderer.js?v=v6.5.5-k2"></script>
+    <script src="/account-center-lazy-loader-v1.js?v=v6.5.5-k2"></script>
+    <script src="/analisis-saham-runtime.js?v=v6.5.5-k2"></script>
     <!-- M-P1a Defect D: Manual Screener runtime wired into the real page. -->
-    <script src="/manual-screener-runtime.js?v=20261115-mp1a"></script>
+    <script src="/manual-screener-runtime.js?v=v6.5.5-k2"></script>
     <script>
       (function () {
         'use strict';
@@ -980,15 +980,15 @@
         }
       })();
     </script>
-    <script src="/bandarmologi-runtime.js?v=20260906-v2"></script>
-    <script src="/stock-analysis-ai.js?v=20260905-v2"></script>
-    <script src="/ui-stability-fix.js?v=20260802-ui-stability-v2"></script>
-    <script src="/pattern-map.js?v=20260802-pattern-map-v3"></script>
-    <script src="/pattern-visual.js?v=20260813-pattern-visual-v1"></script>
-    <script src="/pattern-safety-hardening-v1.js?v=v6.5.2-final"></script>
-    <script src="/pattern-direction-safety.js?v=v6.5.2-final"></script>
-    <script src="/pattern-stable-runtime.js?v=v6.5.2-final"></script>
-    <script src="/command-palette.js?v=v6.5.2-final"></script>
-    <script src="/market-intelligence.js?v=v6.5.2-final"></script>
+    <script src="/bandarmologi-runtime.js?v=v6.5.5-k2"></script>
+    <script src="/stock-analysis-ai.js?v=v6.5.5-k2"></script>
+    <script src="/ui-stability-fix.js?v=v6.5.5-k2"></script>
+    <script src="/pattern-map.js?v=v6.5.5-k2"></script>
+    <script src="/pattern-visual.js?v=v6.5.5-k2"></script>
+    <script src="/pattern-safety-hardening-v1.js?v=v6.5.5-k2"></script>
+    <script src="/pattern-direction-safety.js?v=v6.5.5-k2"></script>
+    <script src="/pattern-stable-runtime.js?v=v6.5.5-k2"></script>
+    <script src="/command-palette.js?v=v6.5.5-k2"></script>
+    <script src="/market-intelligence.js?v=v6.5.5-k2"></script>
 </body>
 </html>

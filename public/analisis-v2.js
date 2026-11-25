@@ -202,17 +202,41 @@
     });
   }
 
+  var _rowsCache = {};
+  var _rowsInFlight = {};
+  var _plansInFlight = {};
+  var ROWS_CACHE_MS = 60 * 1000;
+
+  function hasClientSessionAuth(headers) {
+    if (headers && (headers.Authorization || headers.authorization)) return true;
+    if (root.__AUTOCUAN_PREVIEW_MOCKS__ || root.currentUser || root.__adminAuthed) return true;
+    if (typeof doc !== 'undefined' && doc && typeof doc.cookie === 'string') {
+      if (doc.cookie.indexOf('ac_sess=') !== -1 || doc.cookie.indexOf('ac_admin=') !== -1) return true;
+      return false;
+    }
+    return true;
+  }
+
   function fetchRows(url) {
     var headers = typeof root.getAuthHeaders === 'function' ? root.getAuthHeaders() : {};
-    return fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now(), { headers: headers })
-      .then(function (r) { return r.status === 403 ? null : r.json(); })
+    if (!hasClientSessionAuth(headers)) return Promise.resolve([]);
+    var now = Date.now();
+    var hit = _rowsCache[url];
+    if (hit && (now - hit.at) < ROWS_CACHE_MS) return Promise.resolve(hit.rows);
+    if (_rowsInFlight[url]) return _rowsInFlight[url];
+    var p = fetch(url, { headers: headers, credentials: 'same-origin' })
+      .then(function (r) { return (!r || r.status === 401 || r.status === 403 || r.status === 429) ? null : r.json(); })
       .then(function (d) {
         if (!d || d.success === false) return [];
         var rows = [];
         ['results', 'rows', 'data'].forEach(function (k) { if (Array.isArray(d[k])) rows = rows.concat(d[k]); });
+        _rowsCache[url] = { at: Date.now(), rows: rows };
         return rows;
       })
-      .catch(function () { return []; });
+      .catch(function () { return []; })
+      .finally(function () { delete _rowsInFlight[url]; });
+    _rowsInFlight[url] = p;
+    return p;
   }
   function findRow(rows, t, src) {
     var hit = (rows || []).find(function (r) { return String((r && r.ticker) || '').toUpperCase().replace(/\.JK$/, '') === t; });
@@ -286,7 +310,8 @@
     if (!t) return Promise.resolve({ scalp: null, swing: null, inv: null });
     var c = cache[t];
     if (c && Date.now() - c.at < CACHE_MS) return Promise.resolve(c.plans);
-    return Promise.all([
+    if (_plansInFlight[t]) return _plansInFlight[t];
+    var req = Promise.all([
       fetchRows('/api/sector-hot?action=screener'),
       fetchRows('/api/sector-hot?action=nk-screener-results'),
       fetchRows('/api/sector-hot?action=daytrade-screener')
@@ -318,7 +343,11 @@
       };
       if (hasCandlesFor(t)) cache[t] = { at: Date.now(), plans: plans };
       return plans;
+    }).finally(function () {
+      delete _plansInFlight[t];
     });
+    _plansInFlight[t] = req;
+    return req;
   }
 
   // Lot arithmetic on server levels: sell half at TP1, the rest at TP2, buy
@@ -739,7 +768,13 @@
     add({ color: pos, lineWidth: upMain ? 3 : 1, lineStyle: upMain ? 0 : 2 }, [{ time: t0, value: ix.c0 }, { time: days[Math.min(days.length - 1, Math.round(days.length * 0.6))], value: ix.upT.v }]);
     add({ color: neg, lineWidth: dnMain ? 3 : 1, lineStyle: dnMain ? 0 : 2 }, [{ time: t0, value: ix.c0 }, { time: days[Math.min(days.length - 1, Math.round(days.length * 0.6))], value: ix.dnT.v }]);
     var short = root.innerWidth < 520;
-    var line = function (price, title, color) { try { overlay.lines.push(e.candleSeries.createPriceLine({ price: price, color: color, lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: title })); } catch (_) {} };
+    var guard = root.AutoCuanRightAxisGuard;
+    var line = function (price, title, color) {
+      try {
+        var showAxis = guard ? guard.canPlace(id, e.candleSeries, price, 20, 4) : true;
+        overlay.lines.push(e.candleSeries.createPriceLine({ price: price, color: color, lineWidth: 1, lineStyle: 3, axisLabelVisible: showAxis, title: showAxis ? title : '' }));
+      } catch (_) {}
+    };
     ix.R.forEach(function (v, i) { line(v, (short ? 'R' : '▲ R') + (i + 1), pos); });
     ix.S.forEach(function (v, i) { line(v, (short ? 'S' : '▼ S') + (i + 1), neg); });
     overlay.id = id;

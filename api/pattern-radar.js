@@ -302,16 +302,47 @@ function getCachedPatterns() {
   return fresh;
 }
 
+let _patternJsonBuf = null;
+let _patternJsonSig = null;
+
+function getCachedPatternsBuffer() {
+  const result = getCachedPatterns();
+  const sig = (_patternCacheSig || (result && result.as_of) || 'mem');
+  if (_patternJsonBuf && _patternJsonSig === sig && result && result.success) {
+    return { result, buf: _patternJsonBuf };
+  }
+  const payload = Object.assign({}, result, { ms: 0, as_of: (result && result.as_of) || new Date().toISOString() });
+  const buf = Buffer.from(JSON.stringify(payload), 'utf8');
+  if (result && result.success) {
+    _patternJsonBuf = buf;
+    _patternJsonSig = sig;
+  }
+  return { result: payload, buf };
+}
+
 module.exports = async function handler(req, res) {
   try {
     const t0 = Date.now();
     const forceRefresh = req && req.query && (req.query.refresh === '1' || req.query.nocache === '1');
-    const result = forceRefresh ? scanAllPatterns() : getCachedPatterns();
-    const ms = Date.now() - t0;
-    const payload = Object.assign({}, result, { ms, as_of: result.as_of || new Date().toISOString() });
+    let payload;
+    let cachedBuf = null;
+    if (forceRefresh) {
+      const result = scanAllPatterns();
+      payload = Object.assign({}, result, { ms: Date.now() - t0, as_of: result.as_of || new Date().toISOString() });
+    } else {
+      const cached = getCachedPatternsBuffer();
+      payload = cached.result;
+      cachedBuf = cached.buf;
+    }
     if (res && typeof res.setHeader === 'function') {
-      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Cache-Control', 'no-store');
+    }
+    if (cachedBuf && res && res.socket && typeof res.end === 'function') {
+      res.statusCode = 200;
+      res.setHeader('Content-Length', cachedBuf.length);
+      res.end(cachedBuf);
+      return;
     }
     if (res && typeof res.status === 'function') return res.status(200).json(payload);
     return payload;

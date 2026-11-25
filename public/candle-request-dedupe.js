@@ -27,16 +27,39 @@
     }
   }
 
+  function safeFetchOptions(options) {
+    if (!options || typeof options !== 'object') return undefined;
+    var copy = {};
+    var hasKey = false;
+    for (var k in options) {
+      // Do not tie a shared inflight request to one caller's transient AbortSignal
+      if (Object.prototype.hasOwnProperty.call(options, k) && k !== 'signal') {
+        copy[k] = options[k];
+        hasKey = true;
+      }
+    }
+    return hasKey ? copy : undefined;
+  }
+
+  function makeSharedPair(master) {
+    function getClone() {
+      return (master && typeof master.clone === 'function') ? master.clone() : master;
+    }
+    return {
+      get response() { return getClone(); },
+      get clone() { return getClone(); }
+    };
+  }
+
   function fetchCandlesOnce(url, options) {
     var key = keyFor(url);
     var now = Date.now();
     var hit = inflight[key];
     if (hit && (now - hit.at) < TTL_MS && hit.promise) return hit.promise;
 
-    var promise = root.fetch(url, options).then(function (response) {
-      // Cache the Response clone so every caller can parse it independently.
-      var clone = (response && typeof response.clone === 'function') ? response.clone() : response;
-      return { response: response, clone: clone };
+    var promise = root.fetch(url, safeFetchOptions(options)).then(function (response) {
+      // Keep the master Response body unread and vend a fresh clone to every caller.
+      return makeSharedPair(response);
     }).catch(function (err) {
       if (inflight[key] && inflight[key].promise === promise) delete inflight[key];
       throw err;

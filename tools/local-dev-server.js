@@ -255,9 +255,9 @@ function getPreviewInjectionHtml(module, options = {}) {
         localStorage.setItem('autocuan_entered_app', 'true');
         if (!localStorage.getItem('autocuan_portfolio_positions') || localStorage.getItem('autocuan_portfolio_positions') === '[]') {
           localStorage.setItem('autocuan_portfolio_positions', JSON.stringify([
-            { ticker: 'BBCA', shares: 5000, avgPrice: 10100, currentPrice: 10250, targetPrice: 10950, stopLoss: 9950, entryDate: '2026-09-20', strategy: 'Swing Konglomerat', notes: 'Kandidat Top 5 Radar' },
-            { ticker: 'MEDC', shares: 15000, avgPrice: 1380, currentPrice: 1420, targetPrice: 1540, stopLoss: 1350, entryDate: '2026-09-24', strategy: 'Day Trade Momentum', notes: 'Akumulasi broker asing' },
-            { ticker: 'TLKM', shares: 8000, avgPrice: 3120, currentPrice: 3150, targetPrice: 3350, stopLoss: 3020, entryDate: '2026-09-22', strategy: 'Swing Non-Konglomerat', notes: 'Undervalued dividend play' }
+            { ticker: 'BBCA', shares: 5000, avgPrice: 5425, currentPrice: 5550, targetPrice: 5950, stopLoss: 5250, entryDate: '2026-11-18', strategy: 'Short Swing (3-10H)', notes: 'Kandidat Top 5 Radar' },
+            { ticker: 'MEDC', shares: 15000, avgPrice: 1380, currentPrice: 1420, targetPrice: 1540, stopLoss: 1350, entryDate: '2026-11-20', strategy: 'Potensi Besok (1-5H)', notes: 'Akumulasi broker asing' },
+            { ticker: 'TLKM', shares: 8000, avgPrice: 3120, currentPrice: 3150, targetPrice: 3350, stopLoss: 3020, entryDate: '2026-11-19', strategy: 'Swing (7-30H)', notes: 'Struktur akumulasi EMA20' }
           ]));
         }
       } catch (_) {}
@@ -1900,6 +1900,16 @@ const server = http.createServer(async (req, res) => {
   // attempt — answers 404 so the existence of protected files is never
   // revealed. Premium data stays reachable through authenticated API
   // endpoints, never through /data/.
+  if (pathname === '/cache/ctrlk-search-index.json') {
+    const cacheFp = path.join(DATA_DIR, 'cache', 'ctrlk-search-index.json');
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      if (fs.existsSync(cacheFp)) return res.end(fs.readFileSync(cacheFp));
+    } catch (_) {}
+    return res.end('{"items":[]}');
+  }
   if (pathname.startsWith('/data/')) {
     if (!isAllowedDataPath(pathname)) {
       res.statusCode = 404;

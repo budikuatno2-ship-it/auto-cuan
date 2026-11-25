@@ -313,7 +313,7 @@
     if (typeof root.chartDims !== 'function' || root.chartDims.__acV5) return Boolean(root.chartDims && root.chartDims.__acV5);
     var original = root.chartDims;
     var replacement = function (variant, viewportWidth, viewportHeight) {
-      if (variant !== 'fullscreen') return original(variant, viewportWidth, viewportHeight);
+      if (variant !== 'fullscreen') return original.apply(this, arguments);
       var box = visualBox();
       var width = Number(viewportWidth) > 0 ? Number(viewportWidth) : box.width;
       var body = doc.querySelector('.ac-viewer-body');
