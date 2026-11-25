@@ -164,6 +164,7 @@ async function main(options = {}) {
         id: row.id,
         ticker: row.ticker,
         date: pickToEval.date,
+        horizon_key: (row.raw_payload && row.raw_payload.horizon_key) || '',
         maxHoldingDays,
         status: result.currentState,
         exitDate: result.exitDate,
@@ -200,11 +201,18 @@ async function main(options = {}) {
       if (fs.existsSync(ledgerPath)) {
         const parsed = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
         if (Array.isArray(parsed)) {
-          const byKey = new Map(plan.map((p) => [`${p.ticker}:${p.date}`, p]));
+          const hzOf = (p) => String(p.horizonKey || p.horizon_key || '').trim().toLowerCase();
+          const byId = new Map(plan.filter((p) => p.id != null).map((p) => [String(p.id), p]));
+          const byKey = new Map(plan.map((p) => [`${p.ticker}:${p.date}:${hzOf(p)}`, p]));
+          const byFallbackKey = new Map(plan.map((p) => [`${p.ticker}:${p.date}`, p]));
           let changed = false;
           for (const row of parsed) {
-            const k = `${String(row.ticker || '').toUpperCase()}:${lifecycleEngine.normalizeDateYmd(row.date)}`;
-            const upd = byKey.get(k);
+            const rHz = String(row.horizon_key || (row.raw_payload && row.raw_payload.horizon_key) || '').trim().toLowerCase();
+            const td = lifecycleEngine.normalizeDateYmd(row.date);
+            const tk = String(row.ticker || '').toUpperCase();
+            const upd = (row.id != null && byId.get(String(row.id)))
+              || byKey.get(`${tk}:${td}:${rHz}`)
+              || byFallbackKey.get(`${tk}:${td}`);
             if (!upd) continue;
             row.status = upd.status;
             row.is_final = upd.isTerminal;

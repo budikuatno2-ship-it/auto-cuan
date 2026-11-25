@@ -223,64 +223,68 @@ function renderTrackRecordUI(data) {
     var sum = data.summary || {};
     var unavailable = sum.unavailable_reason || null;
 
-    // 1. Summary Cards
+    // 1. Summary Cards (supports both live ledger and historical backtest payloads)
+    var totalLiveOrBt = sum.total_signals != null ? sum.total_signals : sum.total_trades_simulated;
     var elTotal = document.getElementById('trTotalSignals');
     if (elTotal) {
-        // The backtest file has no per-trade ledger, so a "total sinyal" count
-        // does not exist. Show the real ticker/trade count instead of a zero.
-        elTotal.textContent = sum.total_trades_simulated != null
-            ? trNum(sum.total_trades_simulated, ' Trade')
+        elTotal.textContent = totalLiveOrBt != null
+            ? trNum(totalLiveOrBt, sum.total_signals != null ? ' Sinyal' : ' Trade')
             : '—';
     }
 
     var elTotalSub = document.getElementById('trTotalSignalsSub');
     if (elTotalSub) {
-        elTotalSub.textContent = sum.total_tickers_tested != null
-            ? trNum(sum.total_tickers_tested, ' ticker diuji · ') + trNum(sum.qualified_tickers, ' sampel memadai')
-            : (unavailable ? 'Tidak tersedia di sumber' : '—');
+        if (sum.total_signals != null) {
+            elTotalSub.textContent = trNum(sum.floating_open != null ? sum.floating_open : ((sum.waiting || 0) + (sum.entered || 0)), ' aktif · ') + trNum(sum.total_resolved || 0, ' selesai');
+        } else {
+            elTotalSub.textContent = sum.total_tickers_tested != null
+                ? trNum(sum.total_tickers_tested, ' ticker diuji · ') + trNum(sum.qualified_tickers, ' sampel memadai')
+                : (unavailable ? 'Tidak tersedia di sumber' : '—');
+        }
     }
 
+    var resolvedWr = sum.win_rate_on_resolved_pct != null ? sum.win_rate_on_resolved_pct : (sum.win_rate_pct != null ? sum.win_rate_pct : sum.win_rate_tp1);
     var elWr1 = document.getElementById('trWinRateTp1');
     if (elWr1) {
-        elWr1.textContent = sum.win_rate_pct != null
-            ? trNum(sum.win_rate_pct, '%')
-            : (sum.win_rate_tp1 != null ? trNum(sum.win_rate_tp1, '%') : '—');
+        elWr1.textContent = resolvedWr != null ? trNum(resolvedWr, '%') : '—';
     }
 
     var elTp1Sub = document.getElementById('trTp1HitsSub');
     if (elTp1Sub) {
-        // Hit count is genuinely unknown; the weighted rate's basis is not.
         elTp1Sub.textContent = sum.tp1_hits != null
-            ? trNum(sum.tp1_hits) + ' dari ' + trNum(sum.total_signals) + ' total sinyal'
+            ? trNum(sum.tp1_hits) + ' TP1 + ' + trNum(sum.tp2_hits || 0) + ' TP2 dari ' + trNum(sum.total_resolved != null ? sum.total_resolved : sum.total_signals) + ' selesai'
             : 'Rata-rata tertimbang jumlah trade' + (sum.min_win_rate_sample != null ? ' · min sampel ' + sum.min_win_rate_sample : '');
     }
 
     var elWr2 = document.getElementById('trWinRateTp2');
-    if (elWr2) elWr2.textContent = sum.win_rate_tp2 != null ? trNum(sum.win_rate_tp2, '%') : '—';
+    var tp2Rate = sum.win_rate_tp2 != null ? sum.win_rate_tp2 : ((sum.total_resolved > 0 && sum.tp2_hits != null) ? Number(((sum.tp2_hits / sum.total_resolved) * 100).toFixed(1)) : null);
+    if (elWr2) elWr2.textContent = tp2Rate != null ? trNum(tp2Rate, '%') : '—';
 
     var elTp2Sub = document.getElementById('trTp2HitsSub');
     if (elTp2Sub) elTp2Sub.textContent = sum.tp2_hits != null
         ? trNum(sum.tp2_hits) + ' target maksimal'
         : 'Tidak ada kolom outcome TP2 di sumber';
 
+    var resolvedSlRate = sum.loss_rate_on_resolved_pct != null ? sum.loss_rate_on_resolved_pct : sum.sl_rate;
     var elSl = document.getElementById('trSlRate');
-    if (elSl) elSl.textContent = sum.sl_rate != null ? trNum(sum.sl_rate, '%') : '—';
+    if (elSl) elSl.textContent = resolvedSlRate != null ? trNum(resolvedSlRate, '%') : '—';
 
     var elSlSub = document.getElementById('trSlHitsSub');
     if (elSlSub) elSlSub.textContent = sum.sl_hits != null
-        ? trNum(sum.sl_hits) + ' dari ' + trNum(sum.total_signals) + ' total sinyal'
+        ? trNum(sum.sl_hits) + ' dari ' + trNum(sum.total_resolved != null ? sum.total_resolved : sum.total_signals) + ' selesai'
         : 'Tidak ada kolom outcome SL di sumber';
 
     var elBestGain = document.getElementById('trBestGain');
     var elBestGainSub = document.getElementById('trBestGainSub');
-    var bestGain = sum.best_gain || null;
-    if (elBestGain) elBestGain.textContent = bestGain ? ('+' + bestGain.gain_pct + '%') : '-';
+    var bestGain = sum.best_gain || sum.best_net_gain || null;
+    var bestPct = bestGain ? (bestGain.net_gain_pct != null ? bestGain.net_gain_pct : bestGain.gain_pct) : null;
+    if (elBestGain) elBestGain.textContent = bestPct != null ? ('+' + bestPct + '%') : '-';
     if (elBestGainSub) elBestGainSub.textContent = bestGain ? (bestGain.ticker + ' · ' + formatWibDate(bestGain.date)) : 'Belum ada data';
 
     // Canvas Metrics & Composition Sheet (TrackRecord.dc.html)
     var signals = data.signals || [];
     var totalSignals = sum.total_signals != null ? sum.total_signals : signals.length;
-    var actSignals = (sum.running_signals || 0) + (sum.waiting_signals || 0);
+    var actSignals = sum.floating_open != null ? sum.floating_open : ((sum.entered || 0) + (sum.waiting || 0) || ((sum.running_signals || 0) + (sum.waiting_signals || 0)));
     var doneSignals = sum.total_resolved != null ? sum.total_resolved : Math.max(0, totalSignals - actSignals);
     var tp1Hits = sum.tp1_hits || 0;
     var tp2Hits = sum.tp2_hits || 0;
