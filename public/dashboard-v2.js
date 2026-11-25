@@ -140,7 +140,8 @@
       } else if (chgEl) { chgEl.innerHTML = NIL; }
       if (trendEl) {
         var bar = q.latestBarDate || q.actual_data_date;
-        trendEl.textContent = bar ? ' · bar ' + shortDate(bar) + (q.t1_verified === false ? ', belum terverifikasi' : '') : '';
+        var isStaleOrMissing = !q.last || q.t1_status === 'stale' || q.t1_status === 'missing';
+        trendEl.textContent = bar ? ' · bar ' + shortDate(bar) + (isStaleOrMissing ? ', data belum lengkap' : '') : '';
       }
     }).catch(function () {
       if (lastEl) lastEl.innerHTML = NIL;

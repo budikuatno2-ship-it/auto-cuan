@@ -52,7 +52,7 @@
   var STALE_DEVIATION_MAX = 0.25;
   var HZ = {
     scalp: { l: 'Scalping', h: 'hari ini sampai 2 sesi', stop: 'Keluar bila TP1 belum tersentuh dalam 2 sesi', src: 'Level dari engine Day Trade' },
-    swing: { l: 'Swing', h: '3 sampai 7 hari bursa', stop: 'Tinjau ulang bila belum bergerak dalam 7 hari bursa', src: 'Level dari engine Swing (Konglo / Non-Konglo)' },
+    swing: { l: 'Swing', h: '3 sampai 7 hari bursa', stop: 'Tinjau ulang bila belum bergerak dalam 7 hari bursa', src: 'Level dari engine Short Swing & Swing Three-Horizon' },
     inv: { l: 'Investor', h: '1 sampai 6 bulan', stop: 'Tinjau ulang setiap laporan keuangan kuartalan', src: 'Level deterministik valuasi wajar & MA200' }
   };
   // Chart mode -> horizon (Pro keeps the last choice).

@@ -120,7 +120,7 @@
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
     <link rel="stylesheet" href="/ui-theme.css?v=20261023-v3">
-    <link rel="stylesheet" href="/ac-v2.css?v=20261023-v11">
+    <link rel="stylesheet" href="/ac-v2.css?v=v6.5.2">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
@@ -1585,10 +1585,10 @@ html.light #googleCompleteProfileModal input {
         <div id="dashAdminNotesList" class="an-grid" style="padding:16px 20px 20px"></div>
     </section>
 
-    <!-- Compact Top 5 + Monitor (C4: tab Konglo/Non-Konglo/Day Trade data riil screener) -->
+    <!-- Compact Top 5 + Monitor (Three-Horizon: Potensi Besok / Short Swing / Swing) -->
     <section class="sheet rise d3" aria-labelledby="dashRadarTitle">
-        <div class="sec-h"><h2 id="dashRadarTitle">Top 5 Radar Hari Ini</h2><p id="dashboardTop5LockNote" class="sec-h-note">Belum ada Top 5 final yang terkunci.</p></div>
-        <div class="dash-top5-tabs segx n3" role="tablist" aria-label="Top 5 per mode screener"><span class="ind" id="dashTop5Ind"></span><button type="button" id="dashTop5TabKonglo" class="on" role="tab" aria-selected="true" aria-pressed="true" onclick="switchDashTop5('konglo')">Konglo</button><button type="button" id="dashTop5TabNonKonglo" role="tab" aria-selected="false" aria-pressed="false" onclick="switchDashTop5('nonkonglo')">Non-Konglo</button><button type="button" id="dashTop5TabDayTrade" role="tab" aria-selected="false" aria-pressed="false" onclick="switchDashTop5('daytrade')">Day Trade</button></div>
+        <div class="sec-h"><h2 id="dashRadarTitle">Top 5 Radar Hari Ini</h2><p id="dashboardTop5LockNote" class="sec-h-note">Memuat Top 5 final...</p></div>
+        <div class="dash-top5-tabs segx n3" role="tablist" aria-label="Top 5 Radar per horizon"><span class="ind" id="dashTop5Ind"></span><button type="button" id="dashTop5TabPotensi" class="on" role="tab" aria-selected="true" aria-pressed="true" onclick="switchDashTop5('potensi_besok')">Potensi Besok</button><button type="button" id="dashTop5TabShortSwing" role="tab" aria-selected="false" aria-pressed="false" onclick="switchDashTop5('short_swing')">Short Swing</button><button type="button" id="dashTop5TabSwing" role="tab" aria-selected="false" aria-pressed="false" onclick="switchDashTop5('swing')">Swing</button></div>
         <div id="dashboardTop5List" class="dash-top5">
             <div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p></div>
         </div>
@@ -3927,7 +3927,7 @@ html.light #googleCompleteProfileModal input {
                         <div class="flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full bg-blue-400"></span>
                             <h2 class="text-sm font-bold text-gray-200">Hasil Analisis Chart (AI Vision)</h2>
-                            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25">Gemini 3.8 Flash</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25">Gemini 4</span>
                         </div>
                         <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition flex items-center gap-1.5">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
@@ -3959,7 +3959,7 @@ html.light #googleCompleteProfileModal input {
                         <div class="sec-h flex items-center justify-between p-4 border-b border-[var(--ac-hair)]">
                             <h2 class="text-base font-bold text-[var(--ac-ink)] m-0">Interpretasi model &middot; <span id="anaAiTickerLabel">BBCA</span></h2>
                             <span id="chatActiveTickerTag" class="hidden" style="display:none">BBCA</span>
-                            <span class="text-xs text-[var(--ac-2)]" id="anaAiModelTimestamp">Gemini 2.0 Flash &middot; kunci Anda (BYOK) &middot; Hari ini</span>
+                            <span class="text-xs text-[var(--ac-2)]" id="anaAiModelTimestamp">Gemini 4 &middot; kunci Anda (BYOK) &middot; Hari ini</span>
                         </div>
                         <div style="padding:16px 20px 20px;max-width:760px">
                             <!-- Compatibility holders for legacy test runner contracts -->
@@ -5074,7 +5074,7 @@ html.light #googleCompleteProfileModal input {
         </div>
         <div class="space-y-3 text-xs">
             <p class="text-gray-300 leading-relaxed">
-                Fitur Analisis Chart AI berjalan dengan model <strong>Google Gemini 3.8 Flash</strong> menggunakan API key pribadi Anda (Bring Your Own Key).
+                Fitur Analisis Chart AI berjalan dengan model <strong>Google Gemini 4</strong> menggunakan API key pribadi Anda (Bring Your Own Key).
             </p>
             <div class="p-3 rounded-xl bg-[#0b0e14] border border-gray-800 space-y-2">
                 <div class="font-semibold text-gray-200">Cara Mendapatkan API Key Gratis:</div>
@@ -13258,7 +13258,7 @@ async function fetchManualConfluenceRow(ticker, targetId) {
 }
 
 function getActionLabel(r) { if (!r) return ''; return r.action_label ? safeDisplayText(r.action_label, '') : (r.signal_action_label ? safeDisplayText(r.signal_action_label, '') : normalizeActionLabel(r.telegram_action_label || r.telegram_verdict || r.final_status || r.status || '')); }
-function getSignalQualityGrade(r) { return r ? safeDisplayText(r.quality_grade || r.grade || r.signal_grade || '', '') : ''; }
+function getSignalQualityGrade(r) { return r ? safeDisplayText(r.quality_grade || r.grade || r.signal_grade || r.confidence || '', '') : ''; }
 function getSignalQualityColor(grade) {
     var g = safeDisplayText(grade, '').toUpperCase();
     if (g === 'A' || g === 'A+') return '#6ee7b7';
@@ -13433,7 +13433,7 @@ function getRiskReasonFactors(r) {
     if (/pullback|belum|wait/.test(note)) out.push('Entry not touched yet');
     if (/volume lemah|weak|liquidity|likuiditas/.test(note)) out.push('Volume/liquidity weak');
     if (/stale|data lama/.test(note)) out.push('Stale data');
-    if (!out.length) out.push(getRiskLabel(r) === 'Low Risk' ? 'RR cukup, entry area dekat' : 'Setup perlu konfirmasi lebih kuat');
+    if (!out.length) out.push((getRiskLabel(r) === 'Low Risk' || r.readiness === 'READY' || r.readiness_status === 'READY' || r.swing_tier === 'A_PLUS_SWING') ? 'Skor konfluensi kuat, level plan dan R/R memenuhi syarat' : 'Setup perlu konfirmasi lebih kuat');
     return out.slice(0, 4);
 }
 function getRiskReasonLine(r) {
@@ -13743,7 +13743,7 @@ function renderScrDetailLegacyHtml(r, type) {
     var _l = normalizeDisplayLevels(r);
     var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
     var _rlCol = '#9ca3af'; var _gCol = '#9ca3af';
-    var _grade = getSignalQualityGrade(r) || null;
+    var _grade = getSignalQualityGrade(r) || r.confidence || null;
     var _risk = getRiskLabel(r) || null;
     if (!_risk) {
       var _rr = r.risk_reward || 0;
@@ -13757,7 +13757,7 @@ function renderScrDetailLegacyHtml(r, type) {
     if (_risk) { _risk = normalizeRiskLabel(_risk); _rlCol = getRiskColor(_risk); }
     if (_grade) { _gCol = getSignalQualityColor(_grade); }
     var _setupMeaning = getSetupMeaning(st, type);
-    var _catLabel = type === 'daytrade' ? 'Day Trade' : (type === 'konglo' ? 'Konglo Swing' : 'Non-Konglo Swing');
+    var _catLabel = r.horizon_label || (type === 'potensi_besok' || type === 'daytrade' ? 'Potensi Besok' : (type === 'swing' ? 'Swing' : 'Short Swing'));
     var html = '';
     // --- HEADER: Ticker + Category + Status ---
     html += '<div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1c2333">';
@@ -13939,8 +13939,7 @@ function renderScrDetailLegacyHtml(r, type) {
     // Buttons
     html += '<div style="display:flex;gap:8px;margin-top:4px">';
     html += '<button onclick="closeScrDetail();closeScreenerDetailPane()" class="ac-wave5-detail-btn ac-wave5-detail-btn-muted">Tutup</button>';
-    html += '<a href="/analisis-saham?ticker=' + encodeURIComponent(r.ticker) + '" onclick="closeScrDetail();closeScreenerDetailPane();if(window.navigateToPage){navigateToPage(\'analisis\');if(typeof loadStockAnalysis===\'function\'){loadStockAnalysis(\'' + escapeHtml(r.ticker) + '\');}return false;}" class="ac-wave5-detail-btn ac-wave5-detail-btn-research">Riset &rarr;</a>';
-    html += '<button id="scrDetailOpenChartBtn" onclick="openScreenerInChartWorkstation(\'' + escapeHtml(r.ticker) + '\',\'' + escapeHtml(type) + '\')" class="ac-wave5-detail-btn ac-wave5-detail-btn-chart">Buka di Chart Workstation</button>';
+    html += '<a href="/analisis-saham?ticker=' + encodeURIComponent(r.ticker) + '" onclick="closeScrDetail();closeScreenerDetailPane();if(typeof quickAnalisis===\'function\'){quickAnalisis(\'' + escapeHtml(r.ticker) + '\');return false;}" class="ac-wave5-detail-btn ac-wave5-detail-btn-research">Buka Analisis &amp; Chart &rarr;</a>';
     html += '</div>';
     return html;
 }
@@ -16842,7 +16841,7 @@ function dashShortText(v, max) { var t = safeDisplayText(v, ''); if (!t) return 
 function dashJsString(v) { return String(v || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 function openDashboardPickDetail(ticker) {
     var r = _dashboardPickData[ticker];
-    if (r) openScrDetail(r, /Day Trade/i.test(r.category || '') ? 'daytrade' : 'konglo');
+    if (r) openScrDetail(r, r.horizon || (/Day Trade|Potensi/i.test(r.category || '') ? 'potensi_besok' : (/Swing\s*\(7/i.test(r.category || '') ? 'swing' : 'short_swing')));
 }
 function dashOpenKey(event, ticker) {
     if (!event || event.key === 'Enter' || event.key === ' ') {
@@ -16860,8 +16859,19 @@ function normalizeDashboardPick(p) {
     var raw = p.raw_payload || {};
     var r = Object.assign({}, raw);
     r.ticker = p.ticker || raw.ticker;
-    r.category = p.category || raw.category || raw.source || '-';
-    r.last_price = p.current_price || raw.lastn || raw.last_price;
+    r.category = p.category || p.horizon_label || raw.category || raw.horizon_label || raw.source || '-';
+    r.horizon = p.horizon || raw.horizon || null;
+    r.horizon_label = p.horizon_label || raw.horizon_label || null;
+    r.stock_name = p.stock_name || p.company_name || p.emiten || raw.stock_name || raw.company_name || raw.name || null;
+    r.company_name = r.stock_name;
+    r.name = r.stock_name;
+    r.group_code = p.group_code || raw.group_code || null;
+    r.swing_tier = p.swing_tier || raw.swing_tier || null;
+    r.confidence = p.confidence || raw.confidence || null;
+    r.score = p.score != null ? p.score : (raw.score != null ? raw.score : null);
+    r.change_pct = p.change_pct != null ? p.change_pct : (raw.change_pct != null ? raw.change_pct : null);
+    r.volume_ratio_avg20 = p.volume_ratio_avg20 != null ? p.volume_ratio_avg20 : (p.volume_ratio != null ? p.volume_ratio : (raw.volume_ratio_avg20 != null ? raw.volume_ratio_avg20 : raw.volume_ratio));
+    r.last_price = p.last_price || p.current_price || raw.lastn || raw.last_price || raw.close;
     r.entry1 = p.entry1 || raw.entry1;
     r.entry2 = p.entry2 || raw.entry2;
     r.stop_loss = p.sl || raw.stop_loss || raw.sl;
@@ -17180,9 +17190,12 @@ function renderDashboardTop5(picks) {
         var st = dashStatusOf(action);
         var chg = dashPick(r, ['change_pct', 'price_change_pct', 'pct_change', 'chg_pct', 'daily_change_pct']);
         var volRatio = dashPick(r, ['volume_ratio_avg20', 'volume_ratio_20d', 'volume_ratio', 'fusion_rvol', 'vol_ratio', 'volume_vs_avg20', 'volumeVsAvg20', 'rvol']);
-        var name = dashPick(r, ['stock_name', 'company_name', 'name', 'nama_emiten']);
+        var name = dashPick(r, ['stock_name', 'company_name', 'name', 'nama_emiten', 'emiten']);
+        if (name && String(name).trim().toUpperCase() === String(r.ticker || '').trim().toUpperCase()) {
+            name = (window.IDX_TICKERS && window.IDX_TICKERS[r.ticker]) || '';
+        }
         var group = dashPick(r, ['group_name', 'group_code', 'konglo_group', 'group', 'conglomerate']);
-        var setup = dashPick(r, ['setup_label', 'swing_tier', 'tier_label', 'setup']);
+        var setup = dashPick(r, ['setup_label', 'setup', 'horizon_label', 'swing_tier', 'tier_label']);
         var chgNum = Number(chg);
         var hasChg = chg != null && isFinite(chgNum);
         var rrFmt = function(v) { return v == null ? DASH_NIL : '1 : ' + v.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
@@ -17195,7 +17208,7 @@ function renderDashboardTop5(picks) {
 
         html += '<div class="rk dashboard-decision-row' + (open ? ' sel' : '') + '" data-ticker="' + escapeHtml(r.ticker || '') + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + planId + '" onclick="dashTogglePlan(\'' + tickerJs + '\')" onkeydown="dashPlanKey(event, \'' + tickerJs + '\')">';
         html += '<span class="dash-rank">' + escapeHtml(rank) + '</span>';
-        html += '<span class="dash-rk-id"><span class="tk mono">' + escapeHtml(r.ticker || '-') + '</span>' + (name ? ' <span class="mut dash-rk-name">' + escapeHtml(name) + '</span>' : '') + '<span class="mut dash-rk-group">' + escapeHtml(group || r.category || '') + '</span></span>';
+        html += '<span class="dash-rk-id"><span class="tk mono">' + escapeHtml(r.ticker || '-') + '</span>' + (name ? ' <span class="mut dash-rk-name">' + escapeHtml(name) + '</span>' : '') + (group ? '<span class="mut dash-rk-group">' + escapeHtml(group) + '</span>' : '') + '</span>';
         html += '<span class="dash-rk-setup">' + escapeHtml(setup || r.category || '-') + '</span>';
         html += '<span class="r num mono dash-strong">' + dashFmtPrice(r.last_price) + '</span>';
         html += '<span class="r num dash-strong' + (hasChg ? (chgNum > 0 ? ' pos' : chgNum < 0 ? ' neg' : '') : '') + '">' + (hasChg ? dashPctText(chgNum, 2) : DASH_NIL) + '</span>';
@@ -17416,15 +17429,17 @@ async function archiveTop5History(id) {
 async function loadDashboardTop5Monitor(silent, opts) {
     opts = opts || {};
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
-    // Serve cache only if fresh AND contains locked data; stale awaiting_locked_rows must not block fresh fetch.
-    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000 && _dashboardTop5Cache.data.top5_source !== 'awaiting_locked_rows') { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
+    var targetHorizon = normalizeDashTop5Mode(opts.horizon || _dashTop5Mode);
+    var modeCached = _dashTop5CacheByMode[targetHorizon];
+    if (!opts.force && modeCached && Date.now() - (modeCached._fetchedAt || 0) < 45000 && modeCached.top5_source !== 'awaiting_locked_rows') {
+        renderDashboardTop5MonitorData(modeCached);
+        return;
+    }
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
-    // Always clear placeholders to prevent stuck static HTML state
     var _topEl = document.getElementById('dashboardTop5List');
     var _monEl = document.getElementById('dashboardMonitorList');
     if (_topEl && !silent) _topEl.innerHTML = dashboardSkeletonHtml(3, 'Memuat Top 5...');
     if (_monEl && !silent) _monEl.innerHTML = dashboardSkeletonHtml(2, 'Memuat monitor...');
-    // Neutral fallback before the 15s fetch timeout: keep loading state instead of showing empty results early.
     var _fallbackTimer = setTimeout(function() {
         var topCheck = document.getElementById('dashboardTop5List');
         var monCheck = document.getElementById('dashboardMonitorList');
@@ -17433,34 +17448,52 @@ async function loadDashboardTop5Monitor(silent, opts) {
     }, 5000);
     _dashboardTop5InFlight = (async function() {
     try {
-        var _dashFetchUrl = '/api/sector-hot?action=web-daily-picks&t=' + Date.now();
-        var fetched = await fetchDashboardJson(_dashFetchUrl, { headers: getAuthHeaders() }, 15000);
-        var resp = fetched.resp;
-        var data = fetched.data;
-        if ((!data.success || data.auth_required || data.gated) && isLoggedInUser()) {
-            fetched = await fetchDashboardJson(_dashFetchUrl, { headers: getAuthHeaders() }, 15000);
-            resp = fetched.resp;
-            data = fetched.data;
-            if (data && (data.auth_required || data.gated)) throw new Error('Session perlu refresh/login ulang');
+        var scrUrl = '/api/screener?horizon=' + encodeURIComponent(targetHorizon) + '&t=' + Date.now();
+        var picksUrl = '/api/sector-hot?action=web-daily-picks&t=' + Date.now();
+        var settled = await Promise.allSettled([
+            fetchDashboardJson(scrUrl, { headers: getAuthHeaders(), credentials: 'same-origin' }, 15000),
+            fetchDashboardJson(picksUrl, { headers: getAuthHeaders(), credentials: 'same-origin' }, 15000)
+        ]);
+        var scrRes = settled[0].status === 'fulfilled' ? settled[0].value.data : null;
+        var picksRes = settled[1].status === 'fulfilled' ? settled[1].value.data : null;
+
+        var data = null;
+        var scrTop5 = (scrRes && scrRes.success && Array.isArray(scrRes.top5) && scrRes.top5.length > 0)
+            ? scrRes.top5
+            : (scrRes && scrRes.three_horizon && scrRes.three_horizon[targetHorizon] && Array.isArray(scrRes.three_horizon[targetHorizon].top5)
+                ? scrRes.three_horizon[targetHorizon].top5
+                : (scrRes && Array.isArray(scrRes.results) && scrRes.results.length ? scrRes.results.slice(0, 5) : []));
+
+        if (scrTop5.length > 0) {
+            var metaDate = (scrTop5[0] && (scrTop5[0].trade_date || scrTop5[0].session_date)) || (scrRes.meta && scrRes.meta.trading_date) || scrRes.trade_date || null;
+            var metaCalc = (scrTop5[0] && scrTop5[0].calculated_at) || (scrRes.meta && scrRes.meta.calculated_at) || scrRes.calculated_at || new Date().toISOString();
+            data = {
+                success: true,
+                horizon: targetHorizon,
+                date: metaDate,
+                trading_date: metaDate,
+                top5: scrTop5.slice(0, 5),
+                picks: scrTop5.slice(0, 5),
+                monitor: (picksRes && Array.isArray(picksRes.monitor)) ? picksRes.monitor : [],
+                top5_locked: true,
+                top5_source: 'locked_rows',
+                is_eod_final: true,
+                last_updated_at: metaCalc,
+                monitor_last_updated_at: (picksRes && picksRes.monitor_last_updated_at) || metaCalc,
+                monitor_source_label: (picksRes && picksRes.monitor_source_label) || 'daily lock fallback',
+                update_note: 'Top 5 Radar Terkunci · Horizon ' + (targetHorizon === 'potensi_besok' ? 'Potensi Besok (1–5H)' : (targetHorizon === 'swing' ? 'Swing (7–30H)' : 'Short Swing (3–10H)')) + ' (' + (metaDate || 'EOD') + ').',
+                _fetchedAt: Date.now()
+            };
+        } else if (picksRes && picksRes.success) {
+            data = Object.assign({}, picksRes, { _fetchedAt: Date.now() });
+        } else {
+            throw new Error((picksRes && picksRes.error) || 'Gagal memuat Top 5.');
         }
-        // If response is awaiting_locked_rows but user is logged in, retry once with explicit auth headers.
-        // This handles cases where the first request somehow lacked proper auth (race, stale localStorage read).
-        if (data.success && data.top5_source === 'awaiting_locked_rows' && isLoggedInUser()) {
-            var _retryHeaders = { 'X-Username': getUsername(), 'X-User-Id': localStorage.getItem('autocuan_user_id') || '' };
-            var retryFetched = await fetchDashboardJson(_dashFetchUrl, { headers: _retryHeaders }, 15000);
-            if (retryFetched.data && retryFetched.data.success && retryFetched.data.top5_source !== 'awaiting_locked_rows') {
-                data = retryFetched.data;
-            }
-        }
-        if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
-        // Do not cache awaiting_locked_rows for logged-in users — always allow fresh fetch.
+
         if (!(data.top5_source === 'awaiting_locked_rows' && isLoggedInUser())) {
             _dashboardTop5Cache = { at: Date.now(), data: data };
+            _dashTop5CacheByMode[targetHorizon] = data;
         }
-        // The note is owned by renderDashboardTop5MonitorData, which is the only
-        // place that knows whether the panel is about to render rows or an
-        // awaiting-lock state. Setting it here too just painted a contradictory
-        // heading for one frame before that function corrected it.
         renderDashboardTop5MonitorData(data);
     } catch (e) {
         try {
@@ -17491,19 +17524,26 @@ async function loadDashboardTop5Monitor(silent, opts) {
     return _dashboardTop5InFlight;
 }
 
-/* C4: tab Top 5 per mode screener (Konglo/Non-Konglo/Day Trade) — data riil dari
-   web-daily-picks yang sama; filter presentasi di klien, tanpa ubah API/lock. */
-var _dashTop5Mode = 'konglo';
-var _dashTop5CacheByMode = { konglo: null, nonkonglo: null, daytrade: null };
+/* Three-Horizon Top 5 tabs (Potensi Besok | Short Swing | Swing), canonical SQLite rank 1-5 */
+var _dashTop5Mode = 'potensi_besok';
+var _dashTop5CacheByMode = { potensi_besok: null, short_swing: null, swing: null };
+function normalizeDashTop5Mode(mode) {
+    var m = String(mode || '').toLowerCase();
+    if (m === 'konglo' || m === 'potensi_besok') return 'potensi_besok';
+    if (m === 'nonkonglo' || m === 'short_swing') return 'short_swing';
+    if (m === 'daytrade' || m === 'swing') return 'swing';
+    return 'potensi_besok';
+}
 function dashTop5ModeOf(r) {
-    var t = String((r && (r.screener_type || r.source || r.category)) || '').toLowerCase();
-    if (t.indexOf('day') >= 0 || t.indexOf('intraday') >= 0) return 'daytrade';
-    if (t.indexOf('non') >= 0 || t.indexOf('nonkonglo') >= 0) return 'nonkonglo';
-    return 'konglo';
+    var h = String((r && (r.horizon || r.screener_type || r.source || r.category)) || '').toLowerCase();
+    if (h.indexOf('potensi') >= 0 || h.indexOf('day') >= 0) return 'potensi_besok';
+    if (h.indexOf('short') >= 0) return 'short_swing';
+    if (h.indexOf('swing') >= 0) return 'swing';
+    return 'potensi_besok';
 }
 function switchDashTop5(mode) {
-    _dashTop5Mode = (mode === 'nonkonglo' || mode === 'daytrade') ? mode : 'konglo';
-    var tabs = { konglo: 'dashTop5TabKonglo', nonkonglo: 'dashTop5TabNonKonglo', daytrade: 'dashTop5TabDayTrade' };
+    _dashTop5Mode = normalizeDashTop5Mode(mode);
+    var tabs = { potensi_besok: 'dashTop5TabPotensi', short_swing: 'dashTop5TabShortSwing', swing: 'dashTop5TabSwing' };
     Object.keys(tabs).forEach(function (k) {
         var b = document.getElementById(tabs[k]);
         if (!b) return;
@@ -17513,11 +17553,13 @@ function switchDashTop5(mode) {
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
     var ind = document.getElementById('dashTop5Ind');
-    if (ind) ind.className = 'ind k' + (_dashTop5Mode === 'konglo' ? 0 : (_dashTop5Mode === 'nonkonglo' ? 1 : 2));
+    if (ind) ind.className = 'ind k' + (_dashTop5Mode === 'potensi_besok' ? 0 : (_dashTop5Mode === 'short_swing' ? 1 : 2));
     var cached = _dashTop5CacheByMode[_dashTop5Mode];
-    if (cached) { renderDashboardTop5MonitorData(cached); return; }
-    if (_dashboardTop5Cache && _dashboardTop5Cache.data) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
-    loadDashboardTop5Monitor(true);
+    if (cached && Date.now() - (cached._fetchedAt || 0) < 45000) {
+        renderDashboardTop5MonitorData(cached);
+        return;
+    }
+    loadDashboardTop5Monitor(true, { horizon: _dashTop5Mode });
 }
 function renderDashboardTop5MonitorData(data) {
     if (typeof updateGlobalLiveRadarStatus === 'function' && data) updateGlobalLiveRadarStatus(data);
@@ -18349,15 +18391,15 @@ function forceNormalizeTechnicalDOM(root) {
 <!-- F3: pure F1/F2 detectors bundled for the browser (in-house UMD build of
      lib/chart-core). Must load before the auto-patterns runtime. -->
 <script src="/chart-core-browser.js?v=20261115-f3"></script>
-<script src="/chart-workstation.js?v=v65-20261124"></script>
-<script src="/chart-drawing-tools.js?v=20261114-w2b-13b"></script>
+<script src="/chart-workstation.js?v=v6.5.2"></script>
+<script src="/chart-drawing-tools.js?v=v6.5.2"></script>
 <script src="/b3-liquidity-badge.js?v=20261031-b3"></script>
 <script src="/candle-request-dedupe.js?v=20261120-task-e"></script>
 <script src="/b3-liquidity-inject.js?v=20261031-b3"></script>
-<script src="/market-feature-runtime.js?v=v65-20261124"></script>
+<script src="/market-feature-runtime.js?v=v6.5.2"></script>
 <!-- F3: wires the F1/F2 detectors into the live chart overlay pipeline. -->
 <script src="/chart-auto-patterns-runtime.js?v=20261115-f3"></script>
-<script src="/analisis-v2.js?v=v65-20261124"></script>
+<script src="/analisis-v2.js?v=v6.5.2"></script>
 <script src="/daytrade-runtime.js?v=20260818-v1"></script>
 
 <script>
@@ -18626,9 +18668,9 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/landing-experience.js?v=20261001-v4"></script>
 <script src="/command-palette.js?v=20261016-fase8-v1"></script>
 <script src="/market-intelligence.js?v=20261022-v2"></script>
-<script src="/dashboard-v2.js?v=20261023-v2"></script>
-<script src="/ac-tape.js?v=20261022-v1"></script>
-<script src="/screener-v2.js?v=v65-20261124"></script>
+<script src="/dashboard-v2.js?v=v6.5.2"></script>
+<script src="/ac-tape.js?v=v6.5.2"></script>
+<script src="/screener-v2.js?v=v6.5.2"></script>
 <script>
 // Auto-initialize Market Breadth if on dashboard
 document.addEventListener('DOMContentLoaded', function() {
@@ -18660,7 +18702,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script src="/admin-console-runtime.js"></script>
-<script src="/v4-f08-runtime.js"></script>
+<script src="/v4-f08-runtime.js?v=v6.5.2"></script>
 <script src="/whats-new-runtime.js?v=20261114-w2a"></script>
 <script src="/institutional-ui-ux-engine.js?v=20261116-v1"></script>
 </body>

@@ -178,8 +178,7 @@
     html += positionHtml(r);
     html += gatesHtml(r, type);
 
-    html += '<a class="vbtn p scr-open" href="/analisis-saham?ticker=' + encodeURIComponent(r.ticker) + '" onclick="if(typeof closeScrDetail===\'function\')closeScrDetail();if(typeof quickAnalisis===\'function\'){quickAnalisis(\'' + tJs + '\');return false;}">Buka Chart &amp; Analisis</a>';
-    html += '<button type="button" class="vbtn scr-open-ws" onclick="openScreenerInChartWorkstation(\'' + tJs + '\',\'' + esc(type) + '\')">Buka di Chart Workstation</button>';
+    html += '<a class="vbtn p scr-open" href="/analisis-saham?ticker=' + encodeURIComponent(r.ticker) + '" onclick="if(typeof closeScrDetail===\'function\')closeScrDetail();if(typeof quickAnalisis===\'function\'){quickAnalisis(\'' + tJs + '\');return false;}">Buka Analisis &amp; Chart</a>';
     html += '<p class="scr-disclaimer">Bukan rekomendasi. Konfirmasi manual wajib sebelum eksekusi.</p>';
     html += '</div>';
     return html;

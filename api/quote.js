@@ -190,9 +190,24 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
     if (cached) {
       setHeaderSafe(res, 'X-Cache', 'HIT');
       try { var c10e = c10EtagForPayload((typeof cachedQuote !== 'undefined' && cachedQuote) ? cachedQuote : (typeof cached !== 'undefined' ? cached : null)); if (c10e) { setHeaderSafe(res, 'ETag', c10e); var c10inm = req && req.headers && (req.headers['if-none-match'] || req.headers['If-None-Match']); if (c10inm && String(c10inm).split(',').map(function (x) { return x.trim(); }).indexOf(c10e) >= 0) { if (canSendResponse(res)) { res.status(304); res.end(); } return; } } } catch (_) {}
-      setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+      setHeaderSafe(res, 'Cache-Control', 'no-store');
       return res.status(200).json(cached);
     }
+    try {
+      var fsWarm = require('node:fs');
+      var pathWarm = require('node:path');
+      var warmPath = pathWarm.join(__dirname, '..', 'data', 'cache', 'financial-snapshots', ticker + '.json');
+      if (fsWarm.existsSync(warmPath)) {
+        var warmDoc = JSON.parse(fsWarm.readFileSync(warmPath, 'utf8'));
+        if (warmDoc && warmDoc.snapshot) {
+          var warmPayload = { success: true, snapshot: warmDoc.snapshot };
+          hotQuoteCache.set(cacheKey, warmPayload, 5 * 60 * 1000);
+          setHeaderSafe(res, 'X-Cache', 'WARM');
+          setHeaderSafe(res, 'Cache-Control', 'no-store');
+          return res.status(200).json(warmPayload);
+        }
+      }
+    } catch (_) {}
   }
 
   var db = injectedSupabase;

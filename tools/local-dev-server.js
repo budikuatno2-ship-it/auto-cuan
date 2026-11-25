@@ -893,6 +893,9 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname.startsWith('/api/')) {
     const _apiStartNs = process.hrtime.bigint();
+    if (!res.getHeader('Cache-Control')) {
+      res.setHeader('Cache-Control', 'no-store');
+    }
     res.once('finish', () => {
       try {
         const elapsedMs = Number(process.hrtime.bigint() - _apiStartNs) / 1e6;
@@ -1892,6 +1895,15 @@ const PORT = parseInt(process.env.PORT, 10) || 3000;
 const HOST = process.env.HOST || '127.0.0.1';
 
 server.listen(PORT, HOST, () => {
+  if (IS_PRODUCTION_RUNTIME) {
+    setTimeout(() => {
+      try {
+        require('../api/pattern-radar').getCachedPatterns();
+        require('../api/struktur-pasar').buildStrukturPasarData();
+        require('../api/screener').buildScreenerPayload();
+      } catch (_) {}
+    }, 50).unref();
+  }
   console.log('=================================================');
   console.log(' AUTO-CUAN LOCAL DEVELOPMENT SERVER IS RUNNING');
   console.log(' URL: http://' + HOST + ':' + PORT);

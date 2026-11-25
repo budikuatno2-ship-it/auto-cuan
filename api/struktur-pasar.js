@@ -24,7 +24,7 @@ const HSC_OVERRIDES_PATH = path.join(ROOT, 'data', 'market-structure-manual-over
 let _cachedStrukturPasar = null;
 let _cachedBuffer = null;
 let _cachedAt = 0;
-const CACHE_TTL_MS = 30 * 1000;
+const CACHE_TTL_MS = 15 * 60 * 1000;
 
 function invalidateCache() {
   _cachedStrukturPasar = null;

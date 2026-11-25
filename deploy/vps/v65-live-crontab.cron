@@ -20,6 +20,9 @@ MAILTO=""
 5,20,35,50 9-11 * * 5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh intraday-top20-monitor 240 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-intraday-top20-monitor.js
 5,20,35,50 14-15 * * 5 JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh intraday-top20-monitor 240 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-intraday-top20-monitor.js
 
+# ---- PREWARM DAILY CACHE (02:30 WIB; ZERO_QUOTA; nice 19 / ionice 3 for 1 CPU) ----
+30 2 * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh prewarm-cache 600 nice -n 19 ionice -c 3 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/prewarm-daily-cache.js
+
 # ---- WATCHDOG + SECURITY MONITOR (ZERO_QUOTA) ----
 */5 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh watchdog 300 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/watchdog.js
 */5 * * * * JOB_USES_QUOTA=0 /home/ubuntu/auto-cuan/deploy/vps/job-wrapper.sh security-monitor 300 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/security-monitor.js
