@@ -228,3 +228,19 @@ test('K1-4: api/screener & api/top5-radar keep pre-21:00 WIB synchronized T-1 co
   assert.doesNotMatch(html, /pxVal < 50/, 'Legacy pxVal < 50 UI exclusion must be completely removed');
   assert.equal(typeof screenerApi.expectedCompletedEodDate, 'function');
 });
+
+test('K1-5: Dashboard quarantine ignores Insider SELL_30D and Track Record preserves 3-horizon & lifecycle status labels', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  assert.match(html, /insider\\s\+\(\?:sell\|buy\)_\?30/, 'isDashboardUnsafeActionable must strip Insider SELL_30D notes');
+  assert.match(html, /\^risiko\\b/i, 'dashboardExcludedHtml must not double prefix Risiko Risiko Tinggi');
+  assert.doesNotMatch(html, /sinyal kedaluwarsa setelah 10 hari bursa/, 'Track Record footer must describe Three-Horizon 5/10/30 hari bursa');
+
+  const trJs = fs.readFileSync(path.join(ROOT, 'public', 'track-record-runtime.js'), 'utf8');
+  assert.match(trJs, /oLabel\s*=\s*'SUDAH ENTRY'/);
+  assert.match(trJs, /oLabel\s*=\s*'MENUNGGU ENTRY'/);
+  assert.match(trJs, /oLabel\s*=\s*'AMBIGU BAR'/);
+  assert.match(trJs, /indexOf\('short swing'\)/);
+
+  const regenSrc = fs.readFileSync(path.join(ROOT, 'tools', 'regenerate-local-snapshots.js'), 'utf8');
+  assert.match(regenSrc, /Insider Jual 30H/);
+});

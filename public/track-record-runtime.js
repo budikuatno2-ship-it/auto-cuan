@@ -455,11 +455,19 @@ function formatOutcomeLabel(s) {
     if (raw === 'TP2_HIT') return 'TP2 tercapai';
     if (raw === 'TP1_HIT') return 'TP1 tercapai';
     if (raw === 'SL_HIT') return 'Stop Loss terkena';
-    if (raw === 'RUNNING') return 'Berjalan';
-    if (raw === 'ENTRY_HIT') return 'Entry tercapai';
-    if (raw === 'WAITING') return 'Menunggu';
-    if (raw === 'EXPIRED') return 'Sinyal Kedaluwarsa';
+    if (raw === 'RUNNING' || raw === 'ENTRY_HIT' || raw === 'ENTERED') return 'Sudah Entry';
+    if (raw === 'WAITING' || raw === 'WAITING_ENTRY') return 'Menunggu Entry';
+    if (raw === 'AMBIGUOUS' || raw === 'AMBIGUOUS_SAME_BAR') return 'Ambigu Bar';
+    if (raw === 'TIME_EXIT') return 'Batas Waktu';
+    if (raw === 'INVALIDATED' || raw === 'INVALIDATED_BEFORE_ENTRY') return 'Batal Entry';
+    if (raw === 'EXPIRED' || raw === 'EXPIRED_NO_ENTRY' || raw === 'NEVER_ENTERED') return 'Sinyal Kedaluwarsa';
     return 'Status belum dikenali';
+}
+
+function trIsExpiredLike(outcome) {
+    return outcome === 'EXPIRED' || outcome === 'EXPIRED_NO_ENTRY' || outcome === 'NEVER_ENTERED' ||
+        outcome === 'INVALIDATED' || outcome === 'INVALIDATED_BEFORE_ENTRY' || outcome === 'TIME_EXIT' ||
+        outcome === 'AMBIGUOUS' || outcome === 'AMBIGUOUS_SAME_BAR';
 }
 
 function renderTrackRecordTable() {
@@ -483,18 +491,18 @@ function renderTrackRecordTable() {
         if (_trCategoryFilter !== 'all' && sourceCat !== _trCategoryFilter && s.source_short !== _trCategoryFilter) return false;
         var outcome = s.outcome || s.status || '';
         if (canvasStatus !== 'all') {
-            if (canvasStatus === 'act' && outcome !== 'RUNNING' && outcome !== 'WAITING' && outcome !== 'ENTRY_HIT') return false;
+            if (canvasStatus === 'act' && outcome !== 'RUNNING' && outcome !== 'WAITING' && outcome !== 'WAITING_ENTRY' && outcome !== 'ENTRY_HIT' && outcome !== 'ENTERED') return false;
             else if (canvasStatus === 'hit' && outcome !== 'TP1_HIT' && outcome !== 'TP2_HIT') return false;
             else if (canvasStatus === 'sl' && outcome !== 'SL_HIT') return false;
-            else if (canvasStatus === 'exp' && outcome !== 'EXPIRED') return false;
+            else if (canvasStatus === 'exp' && !trIsExpiredLike(outcome)) return false;
         }
         if (statusFilter !== 'all') {
             if (statusFilter === 'TP1_HIT' && outcome !== 'TP1_HIT' && outcome !== 'TP2_HIT') return false;
             else if (statusFilter === 'TP2_HIT' && outcome !== 'TP2_HIT') return false;
             else if (statusFilter === 'SL_HIT' && outcome !== 'SL_HIT') return false;
-            else if (statusFilter === 'RUNNING' && outcome !== 'RUNNING' && outcome !== 'ENTRY_HIT') return false;
-            else if (statusFilter === 'WAITING' && outcome !== 'WAITING') return false;
-            else if (statusFilter === 'EXPIRED' && outcome !== 'EXPIRED') return false;
+            else if (statusFilter === 'RUNNING' && outcome !== 'RUNNING' && outcome !== 'ENTRY_HIT' && outcome !== 'ENTERED') return false;
+            else if (statusFilter === 'WAITING' && outcome !== 'WAITING' && outcome !== 'WAITING_ENTRY') return false;
+            else if (statusFilter === 'EXPIRED' && !trIsExpiredLike(outcome)) return false;
         }
         if (search && String(s.ticker || '').toUpperCase().indexOf(search) === -1) return false;
         return true;
@@ -520,9 +528,9 @@ function renderTrackRecordTable() {
 
     filtered.forEach(function(s, idx) {
         var outcome = s.outcome || s.status || '';
-        var isUnentered = outcome === 'WAITING' || outcome === 'NEVER_ENTERED' || outcome === 'EXPIRED';
-        var isRunningSignal = outcome === 'RUNNING' || outcome === 'ENTRY_HIT';
-        var hasExited = !isUnentered && !isRunningSignal && (outcome.indexOf('TP') !== -1 || outcome === 'SL_HIT');
+        var isUnentered = outcome === 'WAITING' || outcome === 'WAITING_ENTRY' || trIsExpiredLike(outcome);
+        var isRunningSignal = outcome === 'RUNNING' || outcome === 'ENTRY_HIT' || outcome === 'ENTERED';
+        var hasExited = !isUnentered && !isRunningSignal && (outcome.indexOf('TP') !== -1 || outcome === 'SL_HIT' || outcome === 'TIME_EXIT');
         var gainVal = hasExited ? (s.gain_pct != null ? s.gain_pct : null) : null;
         var gainHtml = '-';
         var gainClass = 'ac-num-neutral';
@@ -631,7 +639,17 @@ function renderTrackRecordTable() {
             oCls = 'tp1'; oLabel = 'TP1'; outcomeDesc = 'TP1 tersentuh ' + (formatWibDate(s.hit_date || s.date) || '');
         } else if (outcome === 'SL_HIT') {
             oCls = 'sl'; oLabel = 'STOP LOSS'; outcomeDesc = 'Stop loss tersentuh ' + (formatWibDate(s.hit_date || s.date) || '');
-        } else if (outcome === 'EXPIRED') {
+        } else if (outcome === 'ENTERED' || outcome === 'RUNNING' || outcome === 'ENTRY_HIT') {
+            oCls = 'act'; oLabel = 'SUDAH ENTRY'; outcomeDesc = 'Sudah masuk area entry · dipantau';
+        } else if (outcome === 'WAITING' || outcome === 'WAITING_ENTRY') {
+            oCls = 'mut'; oLabel = 'MENUNGGU ENTRY'; outcomeDesc = 'Menunggu harga masuk area beli';
+        } else if (outcome === 'AMBIGUOUS' || outcome === 'AMBIGUOUS_SAME_BAR') {
+            oCls = 'exp'; oLabel = 'AMBIGU BAR'; outcomeDesc = 'Entry & level keluar tersentuh di bar harian yang sama (belum konklusif)';
+        } else if (outcome === 'TIME_EXIT') {
+            oCls = 'exp'; oLabel = 'BATAS WAKTU'; outcomeDesc = 'Batas waktu pengamatan horizon tercapai';
+        } else if (outcome === 'INVALIDATED' || outcome === 'INVALIDATED_BEFORE_ENTRY') {
+            oCls = 'exp'; oLabel = 'BATAL ENTRY'; outcomeDesc = 'Stop loss tersentuh sebelum masuk area entry';
+        } else if (outcome === 'EXPIRED' || outcome === 'EXPIRED_NO_ENTRY' || outcome === 'NEVER_ENTERED') {
             oCls = 'exp'; oLabel = 'KEDALUWARSA'; outcomeDesc = 'Kedaluwarsa ' + (formatWibDate(s.hit_date || s.date) || '');
         }
 
@@ -651,9 +669,12 @@ function renderTrackRecordTable() {
             rClass = 'r num ' + (isPos ? 'pos' : (isNeg ? 'neg' : 'mut'));
         }
 
-        var modeStr = s.source_label || s.source_short || s.category || 'Swing';
-        if (modeStr.toLowerCase().indexOf('day') !== -1) modeStr = 'Day trade';
-        else if (modeStr.toLowerCase().indexOf('swing') !== -1) modeStr = 'Swing';
+        var modeStr = s.source_label || s.source_short || s.category || 'Swing (7–30H)';
+        var modeLower = String(modeStr).toLowerCase();
+        if (modeLower.indexOf('potensi') === -1 && modeLower.indexOf('short swing') === -1 && modeLower.indexOf('7–30') === -1 && modeLower.indexOf('7-30') === -1) {
+            if (modeLower.indexOf('day') !== -1) modeStr = 'Day trade';
+            else if (modeLower.indexOf('swing') !== -1) modeStr = 'Swing';
+        }
 
         var dateStr = formatCanvasDate(s.date || s.signal_time_wib);
         var durStr = s.duration_text || (s.duration_days != null ? (s.duration_days + ' hari') : '—');
