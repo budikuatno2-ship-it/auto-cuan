@@ -1284,7 +1284,7 @@
 
   function calculateCorrF(candles, foreignFlow, windowPeriod) {
     windowPeriod = windowPeriod || 20;
-    if (!candles || candles.length < 3) return 0.0;
+    if (!candles || candles.length < 3) return null;
     var p = Math.min(candles.length, windowPeriod);
     var slice = candles.slice(-p);
 
@@ -1295,10 +1295,11 @@
       for (var f = 0; f < foreignFlow.length; f++) {
         var item = foreignFlow[f];
         var dt = item.date || item.time || item.trade_date;
-        if (dt) mapByDate[String(dt).slice(0, 10)] = Number(item.foreign_net || item.net || item.net_value || 0);
+        if (dt) mapByDate[String(dt).slice(0, 10)] = Number(item.foreign_net != null ? item.foreign_net : (item.net != null ? item.net : (item.net_value || 0)));
       }
     }
 
+    var nonZeroCount = 0;
     for (var i = 1; i < slice.length; i++) {
       var prev = Number(slice[i - 1].close);
       var curr = Number(slice[i].close);
@@ -1306,11 +1307,12 @@
 
       var dtStr = String(slice[i].time || slice[i].date).slice(0, 10);
       var net = mapByDate[dtStr] != null ? mapByDate[dtStr] : Number(slice[i].foreign_net_value || slice[i].foreign_net || 0);
-      netFlows.push(net);
+      if (Number.isFinite(net) && net !== 0) nonZeroCount++;
+      netFlows.push(Number.isFinite(net) ? net : 0);
     }
 
     var n = priceChanges.length;
-    if (n < 3) return 0.0;
+    if (n < 3 || nonZeroCount < 3) return null;
     var sumA = 0, sumB = 0, sumA2 = 0, sumB2 = 0, sumAB = 0;
     for (var j = 0; j < n; j++) {
       var a = priceChanges[j];
@@ -1323,33 +1325,65 @@
     }
     var denomA = n * sumA2 - sumA * sumA;
     var denomB = n * sumB2 - sumB * sumB;
-    if (denomA <= 0 || denomB <= 0) return 0.0;
+    if (denomA <= 0 || denomB <= 0) return null;
     var r = (n * sumAB - sumA * sumB) / Math.sqrt(denomA * denomB);
     return Math.round(Math.max(-1.0, Math.min(1.0, r)) * 100) / 100;
   }
 
   function calculateParF(candles, brokerSummary, windowPeriod) {
     windowPeriod = windowPeriod || 20;
-    if (!candles || candles.length === 0) return 0.0;
+    if (!candles || candles.length === 0) return null;
     var p = Math.min(candles.length, windowPeriod);
     var slice = candles.slice(-p);
+    var mapByDate = Object.create(null);
+    if (Array.isArray(brokerSummary)) {
+      for (var f = 0; f < brokerSummary.length; f++) {
+        var item = brokerSummary[f];
+        var dt = item && (item.date || item.time || item.trade_date);
+        if (dt) mapByDate[String(dt).slice(0, 10)] = item;
+      }
+    }
     var totalVol = 0;
     var foreignVol = 0;
+    var totalTurnover = 0;
+    var foreignTurnover = 0;
+    var hasForeignData = false;
     for (var i = 0; i < slice.length; i++) {
       var c = slice[i];
       var v = Number(c.volume || 0);
+      var closePx = Number(c.close || 0);
       totalVol += v;
+      var dtKey = String(c.time || c.date || '').slice(0, 10);
+      var ffItem = mapByDate[dtKey];
+      if (ffItem) {
+        var bval = Number(ffItem.bval || 0);
+        var sval = Number(ffItem.sval || 0);
+        var fGrossIdr = (Number.isFinite(bval) ? Math.abs(bval) : 0) + (Number.isFinite(sval) ? Math.abs(sval) : 0);
+        if (fGrossIdr === 0 && ffItem.foreign_net != null) {
+          fGrossIdr = Math.abs(Number(ffItem.foreign_net));
+        }
+        if (fGrossIdr > 0 && closePx > 0 && v > 0) {
+          foreignTurnover += fGrossIdr;
+          totalTurnover += (closePx * v * 2);
+          hasForeignData = true;
+        }
+      }
       var fv = Number(c.foreign_buy || 0) + Number(c.foreign_sell || 0);
       if (fv === 0 && c.foreign_net != null) {
-        // FIX-20: no magic 1.5 gross-up. When only the net is known, the
-        // absolute net is the honest conservative lower bound on gross volume.
         fv = Math.abs(Number(c.foreign_net));
         if (!Number.isFinite(fv)) fv = 0;
       }
+      if (fv > 0) hasForeignData = true;
       foreignVol += fv;
     }
-    if (totalVol <= 0) return 0.0;
-    var ratio = foreignVol > 0 ? (foreignVol / (totalVol * 2)) * 100 : 0.0;
+    if (!hasForeignData) return null;
+    var ratio = null;
+    if (foreignTurnover > 0 && totalTurnover > 0) {
+      ratio = (foreignTurnover / totalTurnover) * 100;
+    } else if (totalVol > 0 && foreignVol > 0) {
+      ratio = (foreignVol / (totalVol * 2)) * 100;
+    }
+    if (ratio == null || !isFinite(ratio)) return null;
     if (ratio > 100) ratio = 100;
     return Math.round(ratio * 10) / 10;
   }

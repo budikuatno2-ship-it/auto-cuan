@@ -598,6 +598,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         lastValueVisible: false, priceLineVisible: false
     });
     candleSeries.setData(candles);
+    var _mobScale = (typeof window !== 'undefined' && window.innerWidth <= 640) || (container.clientWidth <= 640);
+    try { candleSeries.priceScale().applyOptions({ scaleMargins: { top: _mobScale ? 0.25 : 0.14, bottom: 0.08 } }); } catch (_) {}
     var _narrow = (typeof window !== 'undefined' && window.innerWidth < 520) || container.clientWidth < 520;
     var _lp = acLastPrice(candles), _lastLine = null;
     if (_lp) {
@@ -833,11 +835,12 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var _hdrMemo = null;
     function headerMemo() {
         if (_hdrMemo) return _hdrMemo;
+        var ffList = options && options.foreignFlow;
         _hdrMemo = {
-            corr: ws && !_isIndexChart ? ws.calculateCorrF(candles) : null,
-            par: ws && !_isIndexChart ? ws.calculateParF(candles) : null,
+            corr: ws && !_isIndexChart ? ws.calculateCorrF(candles, ffList) : null,
+            par: ws && !_isIndexChart ? ws.calculateParF(candles, ffList) : null,
             lpm: ws ? ws.calculateLPM(candles) : null,
-            fData: ws ? ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow) : null,
+            fData: ws ? ws.calculateForeignFlowCumulative(candles, ffList) : null,
             moneyFlow: ws ? ws.getLatestMoneyFlow(candles) : '0.000'
         };
         return _hdrMemo;
@@ -864,9 +867,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             : 'EOD';
         var eodHtml = '<span class="ac-eod" style="font-weight:600;color:var(--ac-2, #9ca3af)">' + eodLabel + '</span>';
         if (isMobile) {
-            // BATCH 1 / BUG 1: exactly 2 compact lines. Volume and Par F are
-            // separated into different rows so they never collide at 390px.
+            // Leave room for the right price scale (axis tags like "▲ 6.850") so Foreign/CMF never collide.
             headerEl.style.fontSize = '10px';
+            headerEl.style.maxWidth = 'calc(100% - 88px)';
+            headerEl.style.overflow = 'hidden';
             headerEl.innerHTML =
                 '<div class="flex items-center gap-1 text-[10px] font-bold text-slate-100 flex-nowrap overflow-hidden" style="color:#f8fafc;white-space:nowrap;">' +
                     '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' + eodHtml + prov +
@@ -874,13 +878,14 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                 '</div>' +
                 '<div class="text-[10px] text-gray-300 font-medium flex flex-nowrap justify-between gap-2" style="white-space:nowrap;">' +
                     '<span>Vol <b style="color:#f1f5f9;" data-k="vol"></b></span>' +
-                    '<span>Par F <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
+                    '<span>Corr <b style="color:#38bdf8;">' + corrTxt + '</b> · Par <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
                 '</div>' +
-                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#10b981;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + lpmTxt + '</b></div>' +
-                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#3b82f6;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign <b style="color:#60a5fa;" data-k="foreign"></b></div>' +
-                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#f97316;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
+                '<div class="text-[10px] font-medium flex items-center gap-1 truncate" style="color:#10b981;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + lpmTxt + '</b></div>' +
+                '<div class="text-[10px] font-medium flex items-center gap-1 truncate" style="color:#3b82f6;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign <b style="color:#60a5fa;" data-k="foreign"></b></div>' +
+                '<div class="text-[10px] font-medium flex items-center gap-1 truncate" style="color:#f97316;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
         } else {
             headerEl.style.fontSize = '12px';
+            headerEl.style.maxWidth = 'calc(100% - 92px)';
             headerEl.innerHTML =
                 '<div class="flex items-center gap-1.5 text-xs font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
                     '<span>' + (ticker || 'SAHAM') + ' · ' + tf + ' · IDX</span>' + eodHtml + prov +

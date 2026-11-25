@@ -465,8 +465,8 @@ html #appContent #page-screener .screener-tab, html #appContent #page-screener [
 html #appContent #page-screener .screener-tab.active, html #appContent #page-screener [id$="Pane"] .ac-segment.is-active { background: var(--ac-brand-soft) !important; border-color: rgba(15, 116, 88, .3) !important; color: var(--ac-brand) !important; }
 
 /* Tables: canvas .tbl */
-html #appContent #page-screener .ac-split-view { gap: 0 !important; margin: 0 !important; width: auto !important; border-top: 0 !important; align-items: stretch !important; }
-html #appContent #page-screener .ac-split-view__main > div[id$="TableWrap"] { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; scrollbar-gutter: auto !important; max-height: 640px; background: var(--ac-surface) !important; }
+html #appContent #page-screener .ac-split-view { gap: 0 !important; margin: 0 !important; width: auto !important; border-top: 0 !important; align-items: flex-start !important; background: var(--ac-surface) !important; }
+html #appContent #page-screener .ac-split-view__main > div[id$="TableWrap"] { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; scrollbar-gutter: auto !important; max-height: none !important; overflow-y: visible !important; background: var(--ac-surface) !important; }
 html #appContent #page-screener [id$="TableWrap"]::before { display: none !important; content: none !important; }
 html #appContent #page-screener [id$="TableWrap"] table { font-size: 13px !important; color: var(--ac-ink); }
 html #appContent #page-screener [id$="TableWrap"] thead, html #appContent #page-screener [id$="TableWrap"] thead tr { background: var(--ac-raised) !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
@@ -675,7 +675,8 @@ html.cw-one-screen-open .mm, html.cw-one-screen-open #acBottomBar { display: non
 
 /* FINAL POLISH TASK 3 / FIX 1: compact drawing-toolbar pills with mobile
    horizontal scroll so the tools never collide with the OHLCV legend at 390px. */
-.ac-draw-toolbar { display: inline-flex !important; flex-wrap: nowrap !important; gap: 6px !important; overflow-x: auto !important; overscroll-behavior-x: contain; scrollbar-width: thin; max-width: calc(100% - 20px); }
+.ac-draw-toolbar { display: flex !important; flex-wrap: nowrap !important; gap: 6px !important; overflow-x: auto !important; overscroll-behavior-x: contain; scrollbar-width: none; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+.ac-draw-toolbar::-webkit-scrollbar { display: none; }
 .ac-draw-toolbar .ac-draw-btn {
   display: inline-flex !important; align-items: center; justify-content: center;
   flex: 0 0 auto; white-space: nowrap; gap: 4px;
@@ -683,7 +684,8 @@ html.cw-one-screen-open .mm, html.cw-one-screen-open #acBottomBar { display: non
   border-radius: 6px !important; line-height: 1.2;
 }
 @media (max-width: 640px) {
-  .ac-draw-toolbar { top: auto !important; bottom: 8px !important; max-width: calc(100% - 20px); }
+  .ac-draw-toolbar { top: auto !important; bottom: 0 !important; padding: 5px 8px !important; gap: 4px !important; }
+  .ac-draw-toolbar .ac-draw-btn { font-size: 11px !important; padding: 4px 7px !important; }
 }
 /* FIX 1: 390x844 mode bar — smaller padding/font so "Investor" is never
    clipped or touching "Pro". The mode group scrolls horizontally instead. */

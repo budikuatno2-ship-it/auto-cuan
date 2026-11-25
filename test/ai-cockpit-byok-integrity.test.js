@@ -120,7 +120,7 @@ test('PR #537: sanitizeGeminiModel rejects deprecated models and defaults to mod
   const { sanitizeGeminiModel, DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL } = geminiProvider;
 
   // Defaults
-  assert.equal(DEFAULT_GEMINI_MODEL, 'gemini-3.8-flash');
+  assert.equal(DEFAULT_GEMINI_MODEL, 'gemini-4-flash');
   assert.equal(FALLBACK_GEMINI_MODEL, 'gemini-3.1-flash-lite');
 
   // Deprecated models must be redirected to fallback
@@ -136,21 +136,21 @@ test('PR #537: sanitizeGeminiModel rejects deprecated models and defaults to mod
 
   for (const m of deprecated) {
     assert.equal(
-      sanitizeGeminiModel(m, 'gemini-3.8-flash'),
-      'gemini-3.8-flash',
+      sanitizeGeminiModel(m, 'gemini-4-flash'),
+      'gemini-4-flash',
       `Deprecated model ${m} must be sanitized to default`
     );
   }
 
   // Modern models must be preserved
-  assert.equal(sanitizeGeminiModel('gemini-3.8-flash'), 'gemini-3.8-flash');
+  assert.equal(sanitizeGeminiModel('gemini-4-flash'), 'gemini-4-flash');
   assert.equal(sanitizeGeminiModel('gemini-3.1-flash-lite'), 'gemini-3.1-flash-lite');
   assert.equal(sanitizeGeminiModel('gemini-exp-1206'), 'gemini-exp-1206');
 
   // Empty or whitespace returns fallback
-  assert.equal(sanitizeGeminiModel('', 'gemini-3.8-flash'), 'gemini-3.8-flash');
-  assert.equal(sanitizeGeminiModel('   ', 'gemini-3.8-flash'), 'gemini-3.8-flash');
-  assert.equal(sanitizeGeminiModel(null, 'gemini-3.8-flash'), 'gemini-3.8-flash');
+  assert.equal(sanitizeGeminiModel('', 'gemini-4-flash'), 'gemini-4-flash');
+  assert.equal(sanitizeGeminiModel('   ', 'gemini-4-flash'), 'gemini-4-flash');
+  assert.equal(sanitizeGeminiModel(null, 'gemini-4-flash'), 'gemini-4-flash');
 });
 
 // --- 4. PR #525 & #527: BYOK Security: AES-256-GCM, Tamper-Resistance, Validation & Quota ---
@@ -302,9 +302,10 @@ test('PR #528: Unified Cockpit HTML preserves 2-column layout and all companion 
   assert.ok(indexHtml.includes('class="unified-primary-col"'), '.unified-primary-col must exist');
   assert.ok(indexHtml.includes('class="unified-chat-col"'), '.unified-chat-col must exist');
 
-  // Both subtabs exist: Text Analysis & Vision Analysis
-  assert.ok(indexHtml.includes('id="tabAnalisisText"'), '#tabAnalisisText must exist');
-  assert.ok(indexHtml.includes('id="tabAnalisisVision"'), '#tabAnalisisVision must exist');
+  // Clean-tab contract: primary panels + sidebar trigger exist (duplicate subtab bar removed)
+  assert.ok(indexHtml.includes('id="tabAnalisisChart"'), '#tabAnalisisChart sidebar trigger must exist');
+  assert.ok(!indexHtml.includes('id="tabAnalisisText"'), '#tabAnalisisText duplicate subtab button absent');
+  assert.ok(!indexHtml.includes('id="tabAnalisisVision"'), '#tabAnalisisVision duplicate subtab button absent');
   assert.ok(indexHtml.includes('id="panelAnalisisText"'), '#panelAnalisisText must exist');
   assert.ok(indexHtml.includes('id="panelAnalisisVision"'), '#panelAnalisisVision must exist');
 

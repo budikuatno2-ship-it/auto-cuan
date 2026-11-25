@@ -14,12 +14,33 @@
  * carries the real daily candles so the inline SVG renderer can draw the shape.
  */
 
+const fs = require('fs');
 const path = require('path');
 const W = require('../public/chart-workstation.js');
 const tick = require('../lib/idx-tick.js');
 const canonical = require('../lib/canonical-daily-history-source.js');
 
 const ROOT = path.resolve(__dirname, '..');
+const WARM_CACHE_PATH = path.join(ROOT, 'data', 'cache', 'pattern-radar.json');
+let _patternCache = null;
+let _patternCacheSig = null;
+
+function resolveDbSig() {
+  const candidates = [
+    process.env.AUTO_CUAN_MARKET_DB,
+    '/home/ubuntu/auto-cuan-data/market.sqlite',
+    path.join(ROOT, 'data', 'market.sqlite')
+  ].filter(Boolean);
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) {
+        const st = fs.statSync(p);
+        return `${p}|${st.size}|${Math.floor(st.mtimeMs)}`;
+      }
+    } catch (_) {}
+  }
+  return null;
+}
 
 const STOCK_NAMES = {
   'BBCA': 'Bank Central Asia Tbk',
@@ -258,15 +279,39 @@ function scanAllPatterns() {
   };
 }
 
+function getCachedPatterns() {
+  const sig = resolveDbSig();
+  if (_patternCache && sig && _patternCacheSig === sig) {
+    return _patternCache;
+  }
+  try {
+    if (fs.existsSync(WARM_CACHE_PATH)) {
+      const disk = JSON.parse(fs.readFileSync(WARM_CACHE_PATH, 'utf8'));
+      if (disk && disk.success && Array.isArray(disk.patterns) && (!sig || !disk.db_sig || disk.db_sig === sig)) {
+        _patternCache = disk;
+        _patternCacheSig = sig || disk.db_sig || 'disk';
+        return _patternCache;
+      }
+    }
+  } catch (_) {}
+  const fresh = scanAllPatterns();
+  if (fresh && fresh.success) {
+    _patternCache = fresh;
+    _patternCacheSig = sig || 'mem';
+  }
+  return fresh;
+}
+
 module.exports = async function handler(req, res) {
   try {
     const t0 = Date.now();
-    const result = scanAllPatterns();
+    const forceRefresh = req && req.query && (req.query.refresh === '1' || req.query.nocache === '1');
+    const result = forceRefresh ? scanAllPatterns() : getCachedPatterns();
     const ms = Date.now() - t0;
     const payload = Object.assign({}, result, { ms, as_of: result.as_of || new Date().toISOString() });
     if (res && typeof res.setHeader === 'function') {
       res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Cache-Control', 'public, max-age=60');
+      res.setHeader('Cache-Control', 'no-store');
     }
     if (res && typeof res.status === 'function') return res.status(200).json(payload);
     return payload;
@@ -279,3 +324,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.scanAllPatterns = scanAllPatterns;
+module.exports.getCachedPatterns = getCachedPatterns;

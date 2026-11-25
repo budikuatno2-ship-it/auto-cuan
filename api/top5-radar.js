@@ -190,6 +190,9 @@ function loadTop5Data() {
       }, {});
       served.actionable_count = enforced.filter((pick) => pick && pick.action === 'BUY').length;
       served.publication_blocked = publicationBlocked;
+      served.top5_locked = Boolean(!publicationBlocked && enforced.length > 0);
+      served.top5_source = served.top5_locked ? 'locked_rows' : 'awaiting_locked_rows';
+      served.date = served.date || served.trade_date || served.market_date || null;
       served.readiness_enforced_at = new Date(now).toISOString();
       served.readiness_engine = '../lib/readiness-engine.js';
       served.canonical_engine = '../lib/saham-potensial-engine.js';

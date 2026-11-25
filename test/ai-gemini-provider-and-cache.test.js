@@ -423,15 +423,15 @@ test('PR529 follow-up: Gemini primary-path attempts respect a cumulative time bu
   assert.equal(nextGeminiTimeout(exhausted), null, 'an attempt with less than the minimum viable timeout must be skipped');
 });
 
-test('Gemini model configuration: modern default gemini-3.8-flash and sanitization of deprecated models', () => {
-  assert.equal(DEFAULT_GEMINI_MODEL, 'gemini-3.8-flash');
+test('Gemini model configuration: modern default gemini-4-flash and sanitization of deprecated models', () => {
+  assert.equal(DEFAULT_GEMINI_MODEL, 'gemini-4-flash');
   assert.equal(FALLBACK_GEMINI_MODEL, 'gemini-3.1-flash-lite');
   assert.ok(DEPRECATED_GEMINI_MODELS.has('gemini-1.5-flash'));
   assert.ok(DEPRECATED_GEMINI_MODELS.has('gemini-2.5-flash'));
   assert.ok(DEPRECATED_GEMINI_MODELS.has('gemini-3-flash'));
-  assert.equal(sanitizeGeminiModel('gemini-1.5-flash'), 'gemini-3.8-flash');
-  assert.equal(sanitizeGeminiModel('gemini-2.5-flash'), 'gemini-3.8-flash');
-  assert.equal(sanitizeGeminiModel('gemini-3-flash'), 'gemini-3.8-flash');
+  assert.equal(sanitizeGeminiModel('gemini-1.5-flash'), 'gemini-4-flash');
+  assert.equal(sanitizeGeminiModel('gemini-2.5-flash'), 'gemini-4-flash');
+  assert.equal(sanitizeGeminiModel('gemini-3-flash'), 'gemini-4-flash');
   assert.equal(sanitizeGeminiModel('gemini-3.7-flash'), 'gemini-3.7-flash');
-  assert.equal(sanitizeGeminiModel('gemini-3.8-flash'), 'gemini-3.8-flash');
+  assert.equal(sanitizeGeminiModel('gemini-4-flash'), 'gemini-4-flash');
 });

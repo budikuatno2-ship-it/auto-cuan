@@ -259,7 +259,9 @@
 
           html += '<div class="rk dashboard-decision-row' + (open ? ' sel' : '') + '" role="button" tabindex="0"' + statusAttr + ' onclick="if(window.dashTogglePlan) dashTogglePlan(\'' + r.ticker + '\')">';
           html += '<span class="dash-rank">' + (idx + 1) + '</span>';
-          html += '<span class="dash-rk-id"><span class="tk mono font-bold text-emerald-400">' + r.ticker + '</span> <span class="mut dash-rk-name">' + (r.name || r.ticker) + '</span></span>';
+          var dName = r.company_name || r.stock_name || r.name || r.emiten || '';
+          if (String(dName).trim().toUpperCase() === String(r.ticker || '').trim().toUpperCase()) dName = '';
+          html += '<span class="dash-rk-id"><span class="tk mono font-bold text-emerald-400">' + r.ticker + '</span>' + (dName ? ' <span class="mut dash-rk-name">' + dName + '</span>' : '') + '</span>';
           html += '<span class="dash-rk-setup">' + (r.category || 'Swing Ready') + '</span>';
           html += '<span class="r num mono dash-strong">' + pStr + '</span>';
           html += '<span class="r num dash-strong ' + chgCls + '">' + chgText + '</span>';
@@ -346,10 +348,13 @@
             '</div>' +
             '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">';
           (data.volume_anomalies || []).forEach(function(item) {
+            var chgNumV = Number(item.change_pct || 0);
+            var chgStrV = (chgNumV > 0 ? '+' : chgNumV < 0 ? '−' : '') + Math.abs(chgNumV).toFixed(2) + '%';
+            var chgClsV = chgNumV < 0 ? 'text-red-400' : 'text-emerald-400';
             html += '<div class="p-3 rounded-lg bg-dark-700/50 border border-dark-600/40">' +
               '<div class="flex justify-between items-center mb-1"><span class="font-bold text-emerald-400 font-mono text-sm">' + item.ticker + '</span><span class="text-xs font-mono font-bold text-white">Rp ' + item.last_price.toLocaleString('id-ID') + '</span></div>' +
               '<div class="text-[11px] text-gray-400 mb-1">' + item.name + '</div>' +
-              '<div class="flex justify-between items-center text-[11px] pt-1 border-t border-dark-600/30"><span class="text-gray-400">Rasio Volume: <b class="text-emerald-400 font-mono">' + item.volume_ratio.toFixed(2) + 'x</b></span><span class="text-emerald-400 font-mono">+' + item.change_pct.toFixed(2) + '%</span></div>' +
+              '<div class="flex justify-between items-center text-[11px] pt-1 border-t border-dark-600/30"><span class="text-gray-400">Rasio Volume: <b class="text-emerald-400 font-mono">' + item.volume_ratio.toFixed(2) + 'x</b></span><span class="' + chgClsV + ' font-mono">' + chgStrV + '</span></div>' +
             '</div>';
           });
           html += '</div></div>';
@@ -431,8 +436,10 @@
   }
 
   function loopTick() {
-    checkAndApplyScreener();
-    checkAndApplyDashboardTop5();
+    // Primary Dashboard Top 5 & Three-Horizon Screener are owned directly by
+    // public/index.html loaders. Only populate passive Intel/TrackRecord panels
+    // when empty, and never poll the main thread at 300ms.
+    if (document.hidden) return;
     checkAndApplyIntel();
     checkAndApplyTrackRecord();
   }
@@ -444,21 +451,18 @@
       if (sub === 'intel' || t.id === 'tabSinyalIntelijenSub') {
         setTimeout(checkAndApplyIntel, 50);
       }
-      var scrType = t.getAttribute('data-scr-type') || t.id;
-      if (scrType && (scrType.includes('Konglo') || scrType.includes('DayTrade') || scrType.includes('scrType'))) {
-        setTimeout(checkAndApplyScreener, 50);
+      if (t.getAttribute('data-page') === 'trackrecord' || (t.textContent && t.textContent.indexOf('Track Record') >= 0)) {
+        setTimeout(checkAndApplyTrackRecord, 80);
       }
     }
   });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
-      loopTick();
-      setInterval(loopTick, 300);
+      setTimeout(loopTick, 150);
     });
   } else {
-    loopTick();
-    setInterval(loopTick, 300);
+    setTimeout(loopTick, 150);
   }
 
   window.acV4F08RefreshScreener = checkAndApplyScreener;

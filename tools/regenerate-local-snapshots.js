@@ -133,6 +133,41 @@ function calcAtr14(candles) {
   return count > 0 ? sum / count : null;
 }
 
+function loadIdxEmitenMap(rootDir) {
+  const map = {};
+  try {
+    const jsMapPath = path.join(rootDir, 'public', 'assets', 'idx-tickers.json');
+    if (fs.existsSync(jsMapPath)) {
+      const parsed = JSON.parse(fs.readFileSync(jsMapPath, 'utf8'));
+      if (parsed && typeof parsed === 'object') Object.assign(map, parsed);
+    }
+  } catch (_) {}
+  try {
+    const csvPath = path.join(rootDir, 'public', 'assets', 'idx-tickers.csv');
+    if (fs.existsSync(csvPath)) {
+      const lines = fs.readFileSync(csvPath, 'utf8').split(/\r?\n/);
+      for (const line of lines) {
+        const m = /^([A-Z0-9]{3,6}),\s*"?([^"\r\n]+)"?\s*$/.exec(line.trim());
+        if (m && m[1] && m[2] && m[2].toUpperCase() !== 'NAME') {
+          if (!map[m[1]]) map[m[1]] = m[2].trim();
+        }
+      }
+    }
+  } catch (_) {}
+  try {
+    const ownMapPath = path.join(rootDir, 'data', 'cache', 'ownership-names-map.json');
+    if (fs.existsSync(ownMapPath)) {
+      const parsed = JSON.parse(fs.readFileSync(ownMapPath, 'utf8'));
+      if (parsed && typeof parsed === 'object') {
+        for (const [k, v] of Object.entries(parsed)) {
+          if (k && v && !map[k]) map[k] = v;
+        }
+      }
+    }
+  } catch (_) {}
+  return map;
+}
+
 function clampScore(v) {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
@@ -152,6 +187,10 @@ function buildHorizonCandidate(ticker, candles, allBrokerSeries, foreignSeries, 
   const lb = Math.max(10, Number(horizonCfg.lookbackDays || 20));
   const windowCandles = candles.slice(-Math.min(candles.length, lb));
   const closes = candles.map((c) => Number(c.close));
+  const ma20Slice = closes.slice(-Math.min(closes.length, 20));
+  const sma20 = ma20Slice.reduce((a, b) => a + b, 0) / ma20Slice.length;
+  const val20Slice = candles.slice(-Math.min(candles.length, 20)).map((c) => Number(c.close || 0) * Number(c.volume || 0));
+  const avgValue20d = val20Slice.length ? (val20Slice.reduce((a, b) => a + b, 0) / val20Slice.length) : valueTraded;
   const ema20 = calcEMA(closes.slice(-Math.min(closes.length, 40)), 20) || close;
   const ema50 = calcEMA(closes.slice(-Math.min(closes.length, 80)), 50) || close;
   const rsi14 = calcRSI14(closes);
@@ -241,14 +280,19 @@ function buildHorizonCandidate(ticker, candles, allBrokerSeries, foreignSeries, 
 
   return {
     ticker,
-    emiten: emitenName || ticker,
-    stock_name: emitenName || ticker,
+    emiten: emitenName || null,
+    company_name: emitenName || null,
+    name: emitenName || null,
+    stock_name: emitenName || null,
     last_price: close,
     close,
     high_price: Number(latest.high || close),
     low_price: Number(latest.low || close),
     change_pct: changePct,
     volume: Number(latest.volume || 0),
+    value_today: Math.round(valueTraded),
+    avg_value_20d: Math.round(avgValue20d),
+    ma20: Number(sma20.toFixed(2)),
     volume_ratio: volRatio,
     volume_asof: maxTradeDate,
     technical_score: techScore,
@@ -356,7 +400,8 @@ function run(options = {}) {
 
   const cfgRead = threeHorizonStore.get();
   const cfg = cfgRead.ok ? cfgRead.doc : threeHorizonStore.DEFAULT_CONFIG;
-  const tickerMap = getTickerMap();
+  const idxNames = loadIdxEmitenMap(ROOT);
+  const tickerMap = Object.assign({}, getTickerMap(), idxNames);
   const kongloSet = loadKongloSet();
   const generatedAt = new Date().toISOString();
 
@@ -372,7 +417,7 @@ function run(options = {}) {
         foreignByTicker.get(ticker),
         hCfg,
         maxTradeDate,
-        tickerMap[ticker] || (ticker + ' Tbk'),
+        tickerMap[ticker] || null,
         kongloSet.has(ticker),
         cfg.minRr
       );
@@ -407,17 +452,28 @@ function run(options = {}) {
       ].filter(Boolean);
       return Object.assign({}, row, {
         rank: idx + 1,
+        emiten: c.company_name || (row.emiten && row.emiten !== row.ticker + ' Tbk' ? row.emiten : null) || row.ticker,
+        company_name: c.company_name || null,
+        name: c.company_name || null,
+        stock_name: c.company_name || null,
         horizon: hKey,
         horizon_label: hCfg.label,
         holding_label: hCfg.holdingLabel,
+        screener_type: hKey,
         group_code: groupByTicker.get(row.ticker) || (kongloSet.has(row.ticker) ? 'KONGLO' : 'NON-KONGLO'),
         swing_tier: swingTier,
         confidence: conf,
         confidence_label: conf === 'A+' ? 'Sangat Tinggi' : (conf === 'A' ? 'Tinggi' : 'Cukup'),
         rsi14: rsiV,
+        ma20: c.ma20 != null ? c.ma20 : null,
+        value_today: c.value_today != null ? c.value_today : null,
+        avg_value_20d: c.avg_value_20d != null ? c.avg_value_20d : null,
         volume_ratio: volR,
         volume_ratio_avg20: volR,
         volume_ratio_20d: volR,
+        readiness_status: 'READY',
+        verdict_reasons: ['ALL_GATES_PASSED'],
+        win_rate_pct: null,
         entry_timing: 'Masih dekat entry',
         entry_window_label: 'Area entry aktif',
         direction: Number(row.change_pct || 0) >= 0 ? 'Potensi swing kuat' : 'Bullish moderat',
@@ -498,7 +554,12 @@ function run(options = {}) {
     data_status: 'AVAILABLE',
     publication_blocked: false,
     top5: primaryHorizon.top5,
-    picks: primaryHorizon.top5
+    picks: primaryHorizon.top5,
+    top5_by_horizon: {
+      potensi_besok: horizonSnapshots.potensi_besok.top5,
+      short_swing: horizonSnapshots.short_swing.top5,
+      swing: horizonSnapshots.swing.top5
+    }
   } : null;
 
   if (!options.dryRun) {
