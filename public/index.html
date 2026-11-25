@@ -120,7 +120,7 @@
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
     <link rel="stylesheet" href="/ui-theme.css?v=20261023-v3">
-    <link rel="stylesheet" href="/ac-v2.css?v=v6.5.3">
+    <link rel="stylesheet" href="/ac-v2.css?v=v6.5.4">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
@@ -137,7 +137,7 @@
 <link rel="stylesheet" href="/c10-hardening.css?v=20261101-v1">
 <link rel="stylesheet" href="/account-hardening.css?v=20261001-v1">
 <link rel="stylesheet" href="/ac.css?v=20261104-v3f10">
-<script src="/app.js?v=20261104-v3f10" defer></script>
+<script src="/app.js?v=v6.5.4" defer></script>
 </head>
 <body class="min-h-screen text-gray-100">
 <a href="#appMain" id="skipToContentLink" class="skip-link" onclick="return skipToMainContent(event)" onkeydown="if(event.key==='Enter'||event.keyCode===13){return skipToMainContent(event);}">Lewati ke konten utama</a>
@@ -351,10 +351,10 @@
               <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3prev="screener" onclick="acSwitchPreview('screener')">Screener</button>
               <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3prev="bandarmologi" onclick="acSwitchPreview('bandarmologi')">Bandarmologi</button>
             </div>
-            <div class="landing-preview-subtabs" role="tablist" aria-label="Sub-tab Screener: Konglo, Non-Konglo, Day Trade" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-              <button type="button" class="preview-tab active" role="tab" aria-selected="true" data-c3sub="konglo" onclick="acSwitchPreviewSub('konglo')">Konglo</button>
-              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="nonkonglo" onclick="acSwitchPreviewSub('nonkonglo')">Non-Konglo</button>
-              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="daytrade" onclick="acSwitchPreviewSub('daytrade')">Day Trade</button>
+            <div class="landing-preview-subtabs" role="tablist" aria-label="Sub-tab Three-Horizon: Potensi Besok, Short Swing, Swing" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="potensi_besok" onclick="acSwitchPreviewSub('potensi_besok')">Potensi Besok (1–5H)</button>
+              <button type="button" class="preview-tab active" role="tab" aria-selected="true" data-c3sub="short_swing" onclick="acSwitchPreviewSub('short_swing')">Short Swing (3–10H)</button>
+              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="swing" onclick="acSwitchPreviewSub('swing')">Swing (7–30H)</button>
             </div>
             <div class="landing-preview-meta">
               <span class="preview-status-badge">Snapshot EOD Meja Kerja</span>
@@ -1957,10 +1957,10 @@ html.light #googleCompleteProfileModal input {
                 <p id="scrModeDesc">Three-Horizon Screener riil dari SQLite: Potensi Besok (1–5H), Short Swing (3–10H), &amp; Swing (7–30H).</p>
             </div>
             <div class="segx n3 scr-three-horizon" id="threeHorizonTabs" role="group" aria-label="Pilih Horizon Screener">
-                <span class="ind" id="threeHzInd"></span>
-                <button type="button" id="hzBtnPotensiBesok" onclick="switchThreeHorizon('potensi_besok')" class="ac-segment" data-horizon="potensi_besok" aria-pressed="false">Potensi Besok (1–5H)</button>
-                <button type="button" id="hzBtnShortSwing" onclick="switchThreeHorizon('short_swing')" class="ac-segment is-active on" data-horizon="short_swing" aria-pressed="true">Short Swing (3–10H)</button>
-                <button type="button" id="hzBtnSwing" onclick="switchThreeHorizon('swing')" class="ac-segment" data-horizon="swing" aria-pressed="false">Swing (7–30H)</button>
+                <span class="ind k1" id="threeHzInd"></span>
+                <button type="button" id="hzBtnPotensiBesok" onclick="switchThreeHorizon('potensi_besok')" class="ac-segment" data-horizon="potensi_besok" aria-pressed="false" aria-selected="false">Potensi Besok (1–5H)</button>
+                <button type="button" id="hzBtnShortSwing" onclick="switchThreeHorizon('short_swing')" class="ac-segment is-active on" data-horizon="short_swing" aria-pressed="true" aria-selected="true">Short Swing (3–10H)</button>
+                <button type="button" id="hzBtnSwing" onclick="switchThreeHorizon('swing')" class="ac-segment" data-horizon="swing" aria-pressed="false" aria-selected="false">Swing (7–30H)</button>
             </div>
             <div class="segx n3 scr-modes hidden" style="display:none !important" role="group" aria-label="Mode screener" data-task-e-legacy-mode-switch="hidden"><span class="ind" id="scrTypeInd"></span>
                 <button type="button" onclick="switchScreenerType('konglo')" id="scrTypeKonglo" class="ac-segment is-active on" aria-pressed="true">Konglo</button>
@@ -6261,6 +6261,9 @@ window.acSwitchPreviewSub = function (name) {
         });
         var body = document.getElementById('landingPreview');
         if (body) body.setAttribute('data-sub', name);
+        if (typeof window.acRenderLandingHorizon === 'function') {
+            window.acRenderLandingHorizon(name);
+        }
     } catch (_) {}
 };
 var _mataTips = [
@@ -14285,7 +14288,7 @@ function renderKgCardGrid(results) {
         var volR = (r.volume_ratio != null && Number.isFinite(r.volume_ratio)) ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span class="scr-chg-val" style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span>' + acAgeBadgeHtml(r) + '</div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span class="scr-chg-val" style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         var scBreakdown = '';
         if (r.score_before_bandarmologi != null && r.bandar_score_bonus) {
@@ -15371,20 +15374,33 @@ async function loadSwingScreener(silent) {
 }
 
 var _activeThreeHorizon = 'short_swing';
+function acAgeBadgeHtml(r) {
+    if (!r) return '';
+    var st = r.signal_age_status;
+    var lbl = r.signal_age_label || (st === 'LANJUT' ? 'LANJUT H+1' : (st === 'BARU' ? 'BARU' : ''));
+    if (!lbl) return '';
+    return '<span class="ac-age-badge ' + (st === 'LANJUT' ? 'is-lanjut' : 'is-baru') + '">' + escapeHtml(lbl) + '</span>';
+}
 async function switchThreeHorizon(horizonKey) {
     var key = ['potensi_besok', 'short_swing', 'swing'].indexOf(horizonKey) >= 0 ? horizonKey : 'short_swing';
     _activeThreeHorizon = key;
+    if (window.AutoCuanScreener) { window.AutoCuanScreener.selectedTicker = null; }
     document.querySelectorAll('#threeHorizonTabs [data-horizon]').forEach(function(btn) {
         var active = btn.getAttribute('data-horizon') === key;
         btn.classList.toggle('is-active', active);
         btn.classList.toggle('on', active);
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
+    var hzInd = document.getElementById('threeHzInd');
+    if (hzInd) {
+        hzInd.className = 'ind c9-pill' + (key === 'swing' ? ' k2' : (key === 'short_swing' ? ' k1' : ''));
+    }
     var descEl = document.getElementById('scrModeDesc');
     var labels = {
-        potensi_besok: 'Potensi Besok (1–5H) · Akumulasi & breakout jangka sangat pendek + fraksi tick IDX.',
-        short_swing: 'Short Swing (3–10H) · Momentum bandar & asing + R/R minimal 1,5x.',
-        swing: 'Swing (7–30H) · Tren struktural & swing support-resistance + R/R minimal 1,5x.'
+        potensi_besok: 'Potensi Besok (1–5H) · Lonjakan volume & breakout cepat + fraksi tick IDX (SL 2–7%, R/R ≥ 1,5x).',
+        short_swing: 'Short Swing (3–10H) · Uptrend sehat RSI 45–70 + arus bandar/asing (SL 2,5–10%, R/R ≥ 1,5x).',
+        swing: 'Swing (7–30H) · Tren struktural di atas MA50 + likuiditas tebal (SL 3–15%, R/R ≥ 1,8x).'
     };
     if (descEl && labels[key]) descEl.textContent = labels[key];
     try {
@@ -15495,7 +15511,7 @@ function renderScreenerTable(results) {
 
         html += '<tr class="kg-table-row ac-wave5-row border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="selectScreenerRow(\'konglo\', \'' + escapeHtml(r.ticker) + '\', this)" ondblclick="screenerTickerClick(\'' + escapeHtml(r.ticker) + '\')">';
         var _fChipKg = freshnessChipHtml(r);
-        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + screenerResultActionHtml(r.ticker, 'konglo') + (_fChipKg ? '<div class="mt-0.5">' + _fChipKg + '</div>' : '') + '</td>';
+        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + screenerResultActionHtml(r.ticker, 'konglo') + acAgeBadgeHtml(r) + (_fChipKg ? '<div class="mt-0.5">' + _fChipKg + '</div>' : '') + '</td>';
         html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
@@ -17279,7 +17295,7 @@ function renderDashboardTop5(picks) {
 
         html += '<div class="rk dashboard-decision-row' + (open ? ' sel' : '') + '" data-ticker="' + escapeHtml(r.ticker || '') + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + planId + '" onclick="dashTogglePlan(\'' + tickerJs + '\')" onkeydown="dashPlanKey(event, \'' + tickerJs + '\')">';
         html += '<span class="dash-rank">' + escapeHtml(rank) + '</span>';
-        html += '<span class="dash-rk-id"><span class="tk mono">' + escapeHtml(r.ticker || '-') + '</span>' + (name ? ' <span class="mut dash-rk-name">' + escapeHtml(name) + '</span>' : '') + (group ? '<span class="mut dash-rk-group">' + escapeHtml(group) + '</span>' : '') + '</span>';
+        html += '<span class="dash-rk-id"><span class="tk mono">' + escapeHtml(r.ticker || '-') + '</span>' + acAgeBadgeHtml(p) + (name ? ' <span class="mut dash-rk-name">' + escapeHtml(name) + '</span>' : '') + (group ? '<span class="mut dash-rk-group">' + escapeHtml(group) + '</span>' : '') + '</span>';
         html += '<span class="dash-rk-setup">' + escapeHtml(setup || r.category || '-') + '</span>';
         html += '<span class="r num mono dash-strong">' + dashFmtPrice(r.last_price) + '</span>';
         html += '<span class="r num dash-strong' + (hasChg ? (chgNum > 0 ? ' pos' : chgNum < 0 ? ' neg' : '') : '') + '">' + (hasChg ? dashPctText(chgNum, 2) : DASH_NIL) + '</span>';
@@ -18709,7 +18725,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
 <script src="/unified-cockpit-runtime.js?v=v65-20261124"></script>
 <script src="/position-sizing-calculator.js?v=20260906-e1"></script>
-<script src="/signal-gate-transparency.js?v=20261022-v1"></script>
+<script src="/signal-gate-transparency.js?v=v6.5.4"></script>
 <script src="/number-flow-runtime.js?v=20260929-keyboard-v1"></script>
 <script src="/data-primitives-runtime.js?v=20261007-w3"></script>
 <script src="/analisis-saham-runtime.js?v=v6.5.2-final"></script>
@@ -18741,7 +18757,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/market-intelligence.js?v=v6.5.2-final"></script>
 <script src="/dashboard-v2.js?v=v6.5.2"></script>
 <script src="/ac-tape.js?v=v6.5.2"></script>
-<script src="/screener-v2.js?v=v6.5.3"></script>
+<script src="/screener-v2.js?v=v6.5.4"></script>
 <script>
 // Auto-initialize Market Breadth if on dashboard
 document.addEventListener('DOMContentLoaded', function() {

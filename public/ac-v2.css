@@ -407,10 +407,19 @@ html.is-dark #page-dashboard .dash-ses div.done { background: rgba(72, 199, 151,
    ===================================================================== */
 html #appContent #page-screener .scr-ph h1.page-title { margin: 0 !important; font-size: 30px !important; line-height: 1.15 !important; letter-spacing: -.02em !important; font-weight: 700 !important; color: var(--ac-ink) !important; }
 html #appContent #page-screener .scr-ph p { margin: 6px 0 0 !important; color: var(--ac-2) !important; max-width: 640px; line-height: 1.45 !important; font-size: 14px !important; }
-html #appContent #page-screener .scr-modes .ac-segment { margin: 0; border: 0 !important; background: transparent !important; box-shadow: none !important; min-width: 0; height: 30px; padding: 0 14px; border-radius: 6px; font: 600 13px var(--ac-font-sans); color: var(--ac-2) !important; }
-html #appContent #page-screener .scr-modes .ac-segment.on { color: var(--ac-ink) !important; }
-html #appContent #page-screener .scr-modes .ind.k1 { transform: translateX(100%); }
-html #appContent #page-screener .scr-modes .ind.k2 { transform: translateX(200%); }
+html #appContent #page-screener .scr-modes .ac-segment,
+html #appContent #page-screener #threeHorizonTabs .ac-segment { margin: 0; border: 0 !important; background: transparent !important; box-shadow: none !important; min-width: 0; height: 30px; padding: 0 14px; border-radius: 6px; font: 600 13px var(--ac-font-sans); color: var(--ac-2) !important; }
+html #appContent #page-screener .scr-modes .ac-segment.on,
+html #appContent #page-screener #threeHorizonTabs .ac-segment.on { color: var(--ac-ink) !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }
+html #appContent #page-screener .scr-modes .ind.k1,
+html #appContent #page-screener #threeHorizonTabs .ind.k1 { transform: translateX(100%); }
+html #appContent #page-screener .scr-modes .ind.k2,
+html #appContent #page-screener #threeHorizonTabs .ind.k2 { transform: translateX(200%); }
+html.dark #appContent #page-screener #threeHorizonTabs .ac-segment.on { color: #ffffff !important; }
+html.dark #appContent #page-screener #threeHorizonTabs .ind { background: rgba(255, 255, 255, .12) !important; box-shadow: 0 0 0 1px rgba(255, 255, 255, .16), 0 1px 2px rgba(0, 0, 0, .25) !important; }
+.ac-age-badge { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 999px; font: 700 9px/1.35 var(--ac-font-sans); letter-spacing: .03em; margin-left: 5px; vertical-align: middle; }
+.ac-age-badge.is-baru { background: rgba(16, 185, 129, .14); color: #34d399; border: 1px solid rgba(16, 185, 129, .32); }
+.ac-age-badge.is-lanjut { background: rgba(59, 130, 246, .14); color: #93c5fd; border: 1px solid rgba(59, 130, 246, .32); }
 html #appContent #page-screener #screenerContent { display: flex; flex-direction: column; gap: 20px !important; }
 html #appContent #page-screener #screenerContent > * { margin: 0 !important; }
 html #appContent #page-screener #screenerContent.hidden { display: none !important; }

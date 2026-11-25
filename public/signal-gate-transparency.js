@@ -48,61 +48,64 @@
 
   function evaluateGates(signal, type) {
     signal = signal || {};
-    type = String(type || signal.category || '').toLowerCase();
-    var isDayTrade = type.indexOf('day') >= 0 || type.indexOf('dt') >= 0;
-    var isNonKonglo = type.indexOf('non') >= 0 || type.indexOf('nk') >= 0;
-
-    // Ambang diselaraskan dengan gate server (bukan nilai indikatif terpisah):
-    // - likuiditas DT: lib/daytrade-screener-engine.js MIN_VALUE_TODAY 1e9 / MIN_AVG_VALUE_7D 5e8
-    // - RSI: api/sector-hot.js hard filter rsi14 >= 45 && rsi14 <= 70 (null = fail)
-    // - volume/RR: api/sector-hot.js volume_ratio_avg20 >= 1.0, risk_reward >= 1.5 (swing) / 1.2 (DT)
+    type = String(type || signal.horizon || signal.category || '').toLowerCase();
+    var hzKey = String(signal.horizon_key || signal.horizon || '').toLowerCase();
+    var isPotensiBesok = hzKey === 'potensi_besok' || type.indexOf('potensi') >= 0;
+    var isSwingLong = hzKey === 'swing';
+    var isShortSwing = hzKey === 'short_swing';
+    var isDayTrade = !isShortSwing && !isSwingLong && !isPotensiBesok && (type.indexOf('day') >= 0 || type.indexOf('dt') >= 0);
+    var isNonKonglo = !isShortSwing && !isSwingLong && !isPotensiBesok && (type.indexOf('non') >= 0 || type.indexOf('nk') >= 0);
 
     // 1. Likuiditas Gate
     var valToday = toNum(signal.value_today);
     var avg7d = toNum(signal.avg_value_7d);
-    var avgVal20 = toNum(signal.avg_transaction_value_20d);
-    var bestVal = valToday !== null ? valToday : (avg7d !== null ? avg7d : avgVal20);
-    var minValTarget = isNonKonglo ? 10e9 : (isDayTrade ? 1e9 : 5e9); // 10 miliar Non-Konglo, 1 miliar DT, 5 miliar Konglo
+    var avgVal20 = toNum(signal.avg_value_20d != null ? signal.avg_value_20d : signal.avg_transaction_value_20d);
+    var bestVal = isSwingLong ? (avgVal20 !== null ? avgVal20 : valToday) : (valToday !== null ? valToday : (avgVal20 !== null ? avgVal20 : avg7d));
+    var minValTarget = isSwingLong ? 5e9 : (isShortSwing ? 1.5e9 : (isPotensiBesok || isDayTrade ? 1e9 : (isNonKonglo ? 10e9 : 5e9)));
     var liqPassed = bestVal !== null ? bestVal >= minValTarget : null;
     var liqActualText = bestVal !== null ? fmtRpCompact(bestVal) : DATA_MISSING;
-    var liqThresholdText = 'Min ' + fmtRpCompact(minValTarget) + ' (value hari ini)';
+    var liqThresholdText = 'Min ' + fmtRpCompact(minValTarget) + (isSwingLong ? ' (rerata 20H)' : ' (value hari ini)');
 
-    // 2. Akumulasi Volume (Volume Ratio 20D)
+    // 2. Akumulasi Volume (Volume Ratio)
     var volRatio = toNum(signal.volume_ratio_20d != null ? signal.volume_ratio_20d : (signal.volume_ratio != null ? signal.volume_ratio : signal.volume_ratio_avg20));
-    var minVolRatio = isDayTrade ? 1.2 : 1.0;
+    var minVolRatio = isPotensiBesok ? 1.5 : (isDayTrade ? 1.2 : (isSwingLong ? 0.8 : (isShortSwing ? 0.9 : 1.0)));
     var volPassed = volRatio !== null ? volRatio >= minVolRatio : null;
     var volActualText = volRatio !== null ? (volRatio.toFixed(2) + 'x') : DATA_MISSING;
     var volThresholdText = 'Min ' + minVolRatio.toFixed(1) + 'x';
 
-    // 3. Tren Harga / MA20 (selaras guard backend "Di bawah MA20")
+    // 3. Tren Harga / MA20 (atau MA50 untuk Swing 7-30H)
     var lastPrice = toNum(signal.last_price || signal.close);
     var ma20 = toNum(signal.ma20);
+    var ma50 = toNum(signal.ma50);
     var priceVsMa20 = null;
     var ma20Passed = null;
     var ma20ActualText = DATA_MISSING;
-    if (lastPrice !== null && ma20 !== null && ma20 > 0) {
+    var ma20ThresholdText = isSwingLong && ma50 !== null ? 'Harga > MA50' : 'Harga ≥ MA20';
+    if (isSwingLong && lastPrice !== null && ma50 !== null && ma50 > 0) {
+      var priceVsMa50 = ((lastPrice - ma50) / ma50) * 100;
+      ma20Passed = lastPrice > ma50;
+      ma20ActualText = (priceVsMa50 >= 0 ? '+' : '') + priceVsMa50.toFixed(1) + '% vs MA50 (' + Math.round(ma50).toLocaleString('id-ID') + ')';
+    } else if (lastPrice !== null && ma20 !== null && ma20 > 0) {
       priceVsMa20 = ((lastPrice - ma20) / ma20) * 100;
-      ma20Passed = priceVsMa20 >= -2.0; // Izinkan toleransi pullback tipis sampai -2%
+      ma20Passed = priceVsMa20 >= -2.0;
       ma20ActualText = (priceVsMa20 >= 0 ? '+' : '') + priceVsMa20.toFixed(1) + '% vs MA20 (' + Math.round(ma20).toLocaleString('id-ID') + ')';
     }
-    var ma20ThresholdText = 'Harga ≥ MA20';
 
     // 4. Momentum & Keamanan RSI (RSI 14)
     var rsi = toNum(signal.rsi14 != null ? signal.rsi14 : signal.rsi);
+    var rsiMin = isSwingLong ? 40 : (isPotensiBesok ? 38 : 45);
+    var rsiMax = isSwingLong ? 68 : (isPotensiBesok ? 85 : 70);
     var rsiPassed = null;
     var rsiActualText = DATA_MISSING;
     if (rsi !== null) {
-      rsiPassed = rsi >= 45 && rsi <= 70; // Samakan persis dengan hard filter api/sector-hot.js
-      rsiActualText = rsi.toFixed(1) + (rsi > 70 ? ' (Overbought)' : (rsi < 45 ? ' (Oversold)' : ' (Sehat)'));
+      rsiPassed = rsi >= rsiMin && rsi <= rsiMax;
+      rsiActualText = rsi.toFixed(1) + (rsi > rsiMax ? ' (Overbought)' : (rsi < rsiMin ? ' (Lemah)' : ' (Sehat)'));
     }
-    var rsiThresholdText = '45 - 70 (Zona Gate Server)';
+    var rsiThresholdText = rsiMin + ' - ' + rsiMax + ' (Zona Horizon)';
 
-    // 5. Rasio Risiko/Keuntungan (Risk/Reward)
-    // Formula terpadu:
-    // R/R awal = (TP1 - Entry 1) / (Entry 1 - SL)
-    // Sisa R/R = (TP1 - Kini) / (Kini - SL)
+    // 5. Rasio Risiko/Keuntungan (Risk/Reward SSOT berbasis entry1 / entry_high = max_entry)
     var rawRR = toNum(signal.risk_reward != null ? signal.risk_reward : signal.rr);
-    var e1 = toNum(signal.entry1 || signal.entry_low || (signal.levels && (signal.levels.e1 || signal.levels.entry1)));
+    var e1 = toNum(signal.entry1 || signal.entry_high || signal.entry_low || (signal.levels && (signal.levels.e1 || signal.levels.entry1)));
     var sl = toNum(signal.sl || signal.stop_loss || (signal.levels && signal.levels.sl));
     var tp1 = toNum(signal.tp1 || (signal.levels && (signal.levels.t1 || signal.levels.tp1)));
     var kini = toNum(signal.last_price || signal.current_price || signal.close);
@@ -114,8 +117,8 @@
       ? ((tp1 - kini) / (kini - sl))
       : null;
 
-    var minRR = isDayTrade ? 1.2 : 1.5;
-    var minRemainingRR = 1.3;
+    var minRR = toNum(signal.min_rr) || (isSwingLong ? 1.8 : (isDayTrade ? 1.2 : 1.5));
+    var minRemainingRR = Math.min(minRR, 1.3);
 
     var rrPassed = null;
     var rrActualText = DATA_MISSING;

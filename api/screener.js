@@ -661,8 +661,14 @@ module.exports = async function handler(req, res) {
       const includeFca = String(query.raw || query.include_fca || '') === '1';
       const rawTop20 = Array.isArray(hz.top20) ? hz.top20 : [];
       const cleanTop20 = includeFca ? rawTop20 : rawTop20.filter((r) => {
-        const px = Number(r && (r.last_price != null ? r.last_price : r.close));
-        return !(Number.isFinite(px) && px > 0 && px < 50);
+        if (!r) return false;
+        const px = Number(r.last_price != null ? r.last_price : r.close);
+        const eLow = Number(r.entry_low != null ? r.entry_low : (r.entry2 != null ? r.entry2 : px));
+        const slPx = Number(r.sl != null ? r.sl : r.stop_loss);
+        if (!Number.isFinite(px) || px < 50) return false;
+        if (Number.isFinite(eLow) && eLow > 0 && eLow < 50) return false;
+        if (Number.isFinite(slPx) && slPx > 0 && slPx < 50) return false;
+        return true;
       });
       responseData.horizon = category;
       responseData.results = cleanTop20;

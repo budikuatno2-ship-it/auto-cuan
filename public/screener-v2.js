@@ -144,10 +144,13 @@
     var name = r.company_name || r.stock_name || (r.group_code ? 'Grup ' + r.group_code : '');
     var chg = n(r.change_pct);
     var starred = !!(root.__AUTOCUAN_WATCHLIST_SET__ && root.__AUTOCUAN_WATCHLIST_SET__.has(r.ticker));
-    var minRr = isDt ? 1.2 : 1.5;
+    var minRr = n(r.min_rr) || (isDt ? 1.2 : 1.5);
     var entry = (l.e1 && l.e2 && l.e1 !== l.e2) ? px(Math.min(l.e1, l.e2)) + ' – ' + px(Math.max(l.e1, l.e2)) : px(l.e1 || l.e2);
+    var basisPx = l.e1 || last;
     var t = esc(r.ticker);
     var tJs = esc(String(r.ticker || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+    var ageLbl = r.signal_age_label || (r.signal_age_status === 'LANJUT' ? 'LANJUT H+1' : (r.signal_age_status === 'BARU' ? 'BARU' : ''));
+    var ageBadge = ageLbl ? '<span class="ac-age-badge ' + (r.signal_age_status === 'LANJUT' ? 'is-lanjut' : 'is-baru') + '">' + esc(ageLbl) + '</span>' : '';
 
     var html = '<div class="scr-sum" data-ac-ui="v2">';
     // The verdict banner is emitted before the plan so a user reads the status
@@ -158,16 +161,16 @@
         '<b>' + esc(VERDICT_LABEL[verdictKey]) + '</b>' +
         ' <span class="mut">· ' + verdictKey + '</span></p>';
     }
-    html += '<div class="scr-sum-head"><div><div class="scr-sum-id"><span class="tk mono">' + t + '</span>' + (tier || exec ? '<span class="chip b">' + esc([tier, exec ? 'Exec ' + exec : ''].filter(Boolean).join(' · ')) + '</span>' : '') + '</div>' + (name ? '<div class="mut scr-sum-name">' + esc(name) + '</div>' : '') + '</div>';
+    html += '<div class="scr-sum-head"><div><div class="scr-sum-id"><span class="tk mono">' + t + '</span>' + (tier || exec ? '<span class="chip b">' + esc([tier, exec ? 'Exec ' + exec : ''].filter(Boolean).join(' · ')) + '</span>' : '') + ageBadge + '</div>' + (name ? '<div class="mut scr-sum-name">' + esc(name) + (r.holding_label ? ' · ' + esc(r.holding_label) : '') + '</div>' : '') + '</div>';
     html += '<button type="button" class="vbtn sm wl-star-btn scr-star' + (starred ? ' active on-star' : '') + '" data-ticker="' + t + '" aria-pressed="' + starred + '" aria-label="' + (starred ? 'Hapus ' + t + ' dari Watchlist' : 'Simpan ' + t + ' ke Watchlist') + '" title="Simpan ke Watchlist" onclick="window.toggleWatchlistTicker(\'' + tJs + '\', null, event)"><svg width="15" height="15" viewBox="0 0 24 24" fill="' + (starred ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></button></div>';
     html += '<div class="scr-sum-px"><span class="num mono">' + (px(last) ? 'Rp ' + px(last) : NIL) + '</span>' + (chg != null ? '<span class="num ' + (chg > 0 ? 'pos' : chg < 0 ? 'neg' : 'mut') + '">' + (chg > 0 ? '+' : chg < 0 ? '−' : '') + Math.abs(chg).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%</span>' : '') + '<span class="mut num scr-sum-score">Skor <b>' + (score != null ? esc(score) : '—') + '</b></span></div>';
 
-    html += '<div class="ph2">Rencana trading <span class="mut">· basis harga terakhir</span></div>';
+    html += '<div class="ph2">Rencana trading <span class="mut">· basis max entry (' + (px(basisPx) ? 'Rp ' + px(basisPx) : '—') + ')</span></div>';
     html += ladderHtml(l, last);
     html += kv('Area entry', entry, 'mono');
-    html += kv('Stop loss', px(l.sl) ? px(l.sl) + (pct(l.sl, last) ? ' <span class="scr-pct">(' + pct(l.sl, last) + ')</span>' : '') : null, 'mono neg');
-    html += kv('Target 1', px(l.t1) ? px(l.t1) + (pct(l.t1, last) ? ' <span class="scr-pct">(' + pct(l.t1, last) + ')</span>' : '') : null, 'mono pos');
-    html += kv('Target 2', px(l.t2), 'mono pos');
+    html += kv('Stop loss', px(l.sl) ? px(l.sl) + (pct(l.sl, basisPx) ? ' <span class="scr-pct">(' + pct(l.sl, basisPx) + ')</span>' : '') : null, 'mono neg');
+    html += kv('Target 1', px(l.t1) ? px(l.t1) + (pct(l.t1, basisPx) ? ' <span class="scr-pct">(' + pct(l.t1, basisPx) + ')</span>' : '') : null, 'mono pos');
+    html += kv('Target 2', px(l.t2) ? px(l.t2) + (pct(l.t2, basisPx) ? ' <span class="scr-pct">(' + pct(l.t2, basisPx) + ')</span>' : '') : null, 'mono pos');
     html += kv('Risk / Reward', l.rr != null ? '1 : ' + l.rr.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null, 'scr-strong');
     if (l.rr != null && l.rr < minRr) html += '<p class="scr-help warn-t">R/R di bawah batas minimum 1 : ' + String(minRr).replace('.', ',') + '. Tinjau ulang sebelum entry.</p>';
     // The server's rejection reason, not a client-side guess. When the engine

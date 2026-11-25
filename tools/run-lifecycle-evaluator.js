@@ -83,7 +83,7 @@ async function main(options = {}) {
 
   const { data: rows, error } = await supabase
     .from('telegram_daily_picks')
-    .select('id,date,ticker,category,entry1,entry2,tp1,tp2,sl,status,monitor_source')
+    .select('id,date,ticker,category,entry1,entry2,tp1,tp2,sl,status,monitor_source,raw_payload')
     .in('status', ['WAITING', 'WAITING_ENTRY', 'ENTERED', 'RUNNING'])
     .order('date', { ascending: true })
     .limit(limit);
@@ -126,11 +126,14 @@ async function main(options = {}) {
       if (hErr) { stats.errors++; continue; }
       if (!hist || hist.length === 0) { stats.skipped_no_history++; continue; }
 
-      // Standardize pick object
+      // Standardize pick object (carrying horizon metadata so maxHoldingDays is 5/10/30 per horizon)
       const pickToEval = {
         id: row.id,
         date: lifecycleEngine.normalizeDateYmd(row.date),
         ticker: row.ticker,
+        category: row.category,
+        monitor_source: row.monitor_source,
+        raw_payload: row.raw_payload,
         entry1: row.entry1,
         entry2: row.entry2,
         sl: row.sl,
@@ -139,7 +142,10 @@ async function main(options = {}) {
         status: row.status
       };
 
-      const result = lifecycleEngine.evaluateLifecycleHistory(pickToEval, hist, { maxHoldingDays: 5 });
+      const maxHoldingDays = typeof lifecycleEngine.resolveMaxHoldingDays === 'function'
+        ? lifecycleEngine.resolveMaxHoldingDays(pickToEval)
+        : 5;
+      const result = lifecycleEngine.evaluateLifecycleHistory(pickToEval, hist, { maxHoldingDays });
       if (result.currentState === row.status) continue;
 
       if (stats[result.currentState] !== undefined) {
@@ -158,6 +164,7 @@ async function main(options = {}) {
         id: row.id,
         ticker: row.ticker,
         date: pickToEval.date,
+        maxHoldingDays,
         status: result.currentState,
         exitDate: result.exitDate,
         hitField,
@@ -188,6 +195,34 @@ async function main(options = {}) {
       if (uErr) { console.error('Update error id=' + p.id + ': ' + uErr.message); continue; }
       updated++;
     }
+    try {
+      const ledgerPath = path.join(ROOT_DIR, 'data', 'live-signal-ledger.json');
+      if (fs.existsSync(ledgerPath)) {
+        const parsed = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
+        if (Array.isArray(parsed)) {
+          const byKey = new Map(plan.map((p) => [`${p.ticker}:${p.date}`, p]));
+          let changed = false;
+          for (const row of parsed) {
+            const k = `${String(row.ticker || '').toUpperCase()}:${lifecycleEngine.normalizeDateYmd(row.date)}`;
+            const upd = byKey.get(k);
+            if (!upd) continue;
+            row.status = upd.status;
+            row.is_final = upd.isTerminal;
+            row.last_checked_at = new Date().toISOString();
+            row.updated_at = row.last_checked_at;
+            if (upd.hitField && upd.exitDate) {
+              row[upd.hitField] = new Date(upd.exitDate + 'T00:00:00Z').toISOString();
+            }
+            changed = true;
+          }
+          if (changed) {
+            const tmp = ledgerPath + '.' + process.pid + '.tmp';
+            fs.writeFileSync(tmp, JSON.stringify(parsed, null, 2) + '\n', 'utf8');
+            fs.renameSync(tmp, ledgerPath);
+          }
+        }
+      }
+    } catch (_) {}
     console.log('Rows updated: ' + updated + '/' + plan.length);
   } else if (!apply) {
     console.log('Dry-run only. Re-run with --apply to persist.');
