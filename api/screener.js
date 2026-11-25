@@ -658,10 +658,21 @@ module.exports = async function handler(req, res) {
 
     if (category && canonicalThreeHorizon && canonicalThreeHorizon[category]) {
       const hz = canonicalThreeHorizon[category];
+      const includeFca = String(query.raw || query.include_fca || '') === '1';
+      const rawTop20 = Array.isArray(hz.top20) ? hz.top20 : [];
+      const cleanTop20 = includeFca ? rawTop20 : rawTop20.filter((r) => {
+        const px = Number(r && (r.last_price != null ? r.last_price : r.close));
+        return !(Number.isFinite(px) && px > 0 && px < 50);
+      });
       responseData.horizon = category;
-      responseData.results = Array.isArray(hz.top20) ? hz.top20 : [];
-      responseData.top5 = Array.isArray(hz.top5) ? hz.top5 : responseData.results.slice(0, 5);
-      responseData.count = responseData.results.length;
+      responseData.results = cleanTop20;
+      responseData.top5 = cleanTop20.slice(0, 5);
+      responseData.count = cleanTop20.length;
+      if (hz.universe_count != null && responseData.meta) {
+        responseData.meta.universe_count = hz.universe_count;
+        responseData.meta.scanned_count = hz.evaluated_count != null ? hz.evaluated_count : hz.universe_count;
+        responseData.meta.published_count = cleanTop20.length;
+      }
     }
 
     if (res && typeof res.setHeader === 'function') {

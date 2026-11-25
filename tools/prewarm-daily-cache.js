@@ -318,6 +318,15 @@ async function main() {
 
   fs.mkdirSync(CACHE_DIR, { recursive: true });
 
+  const fsRes = (() => {
+    try {
+      const { syncQuotaState } = require('./sync-quota-state');
+      return syncQuotaState();
+    } catch (e) {
+      return { ok: false, error: e && e.message };
+    }
+  })();
+
   const namesRes = buildOwnershipNamesMap();
   const ffRes = buildForeignFlowMultiDayCache(dbPath);
   const patternRes = buildPatternRadarCache(dbSig);
@@ -333,6 +342,7 @@ async function main() {
     durationMs,
     dbPath,
     paid_arjum_requests: 0,
+    quota_sync: fsRes,
     names: namesRes.count,
     foreign_flow: ffRes,
     pattern_radar: patternRes,

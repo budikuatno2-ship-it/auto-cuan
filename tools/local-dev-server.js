@@ -15,19 +15,41 @@ const API_DIR = path.join(ROOT_DIR, 'api');
 const DATA_DIR = path.join(ROOT_DIR, 'data');
 
 const API_LATENCY_WINDOW = [];
+const API_LATENCY_WINDOW_MS = 5 * 60 * 1000;
 const API_LATENCY_MAX_SAMPLES = 200;
-function recordApiLatency(ms) {
-  if (!Number.isFinite(ms) || ms < 0) return;
-  API_LATENCY_WINDOW.push(ms);
-  if (API_LATENCY_WINDOW.length > API_LATENCY_MAX_SAMPLES) {
+function pruneLatencySamples(nowMs) {
+  const cutoff = nowMs - API_LATENCY_WINDOW_MS;
+  while (API_LATENCY_WINDOW.length > 0 && API_LATENCY_WINDOW[0].ts < cutoff) {
     API_LATENCY_WINDOW.shift();
   }
-  const sorted = API_LATENCY_WINDOW.slice().sort((a, b) => a - b);
+  while (API_LATENCY_WINDOW.length > API_LATENCY_MAX_SAMPLES) {
+    API_LATENCY_WINDOW.shift();
+  }
+}
+function recordApiLatency(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return;
+  const nowMs = Date.now();
+  API_LATENCY_WINDOW.push({ ts: nowMs, ms });
+  pruneLatencySamples(nowMs);
+  const sorted = API_LATENCY_WINDOW.map((s) => s.ms).sort((a, b) => a - b);
+  if (!sorted.length) {
+    global.__AUTOCUAN_API_LATENCY_P95__ = null;
+    return;
+  }
   const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * 0.95) - 1));
   global.__AUTOCUAN_API_LATENCY_P95__ = Math.round(sorted[idx] * 10) / 10;
 }
 function getApiP95Ms() {
-  return Number.isFinite(global.__AUTOCUAN_API_LATENCY_P95__) ? global.__AUTOCUAN_API_LATENCY_P95__ : null;
+  pruneLatencySamples(Date.now());
+  if (!API_LATENCY_WINDOW.length) {
+    global.__AUTOCUAN_API_LATENCY_P95__ = null;
+    return null;
+  }
+  const sorted = API_LATENCY_WINDOW.map((s) => s.ms).sort((a, b) => a - b);
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * 0.95) - 1));
+  const p95 = Math.round(sorted[idx] * 10) / 10;
+  global.__AUTOCUAN_API_LATENCY_P95__ = p95;
+  return p95;
 }
 
 function loadEnvFile(filePath) {
@@ -833,7 +855,16 @@ const server = http.createServer(async (req, res) => {
     return res.end(html);
   }
 
+    let _canonicalDbStatusCache = null;
+    let _canonicalDbStatusCacheAt = 0;
+    let _canonicalDbQuickCheckOk = null;
+    let _canonicalDbQuickCheckAt = 0;
+
     function readCanonicalDbStatus() {
+      const nowMs = Date.now();
+      if (_canonicalDbStatusCache && (nowMs - _canonicalDbStatusCacheAt < 60000)) {
+        return _canonicalDbStatusCache;
+      }
       const { DatabaseSync } = require('node:sqlite');
       const fsMod = require('node:fs');
       const candidates = [process.env.AUTO_CUAN_MARKET_DB,
@@ -847,11 +878,19 @@ const server = http.createServer(async (req, res) => {
           try { db.exec('PRAGMA busy_timeout=15000;'); } catch (_) {}
           const row = db.prepare("SELECT max(json_extract(row_json, '$.trade_date')) AS max_date FROM market_rows WHERE table_name = 'stock_daily_history'").get();
           const u = db.prepare("SELECT max(json_extract(row_json, '$.updated_at')) AS updated_at FROM market_rows WHERE table_name = 'stock_daily_history'").get();
-          const qc = db.prepare('PRAGMA quick_check').get();
+          let quickOk = _canonicalDbQuickCheckOk;
+          if (quickOk === null || (nowMs - _canonicalDbQuickCheckAt >= 300000)) {
+            const qc = db.prepare('PRAGMA quick_check').get();
+            quickOk = Boolean(qc && (qc.quick_check === 'ok' || Object.values(qc)[0] === 'ok'));
+            _canonicalDbQuickCheckOk = quickOk;
+            _canonicalDbQuickCheckAt = nowMs;
+          }
           const maxDate = row && row.max_date ? String(row.max_date).slice(0, 10) : null;
           const updatedAt = u && u.updated_at ? String(u.updated_at) : null;
-          const quickOk = qc && (qc.quick_check === 'ok' || Object.values(qc)[0] === 'ok');
-          return { ok: Boolean(maxDate && quickOk), db_ok: Boolean(quickOk), maxDate, updatedAt };
+          const resObj = { ok: Boolean(maxDate && quickOk), db_ok: Boolean(quickOk), maxDate, updatedAt };
+          _canonicalDbStatusCache = resObj;
+          _canonicalDbStatusCacheAt = nowMs;
+          return resObj;
         } catch (err) {
           if (attempt === 1) return { ok: false, error: String((err && err.message) || err), db_ok: false, maxDate: null, updatedAt: null };
         } finally {

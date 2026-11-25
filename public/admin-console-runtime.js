@@ -43,10 +43,9 @@
       if (mainContent) mainContent.style.display = 'block';
       var badge = document.getElementById('adminUserBadge');
       if (badge) badge.textContent = 'Admin: ' + (data.admin || 'budi');
+      root.__adminAuthed = true;
 
       applyStats(data);
-      loadOnlineList();
-      if (typeof root.loadThreeHorizonSettings === 'function') root.loadThreeHorizonSettings();
       startAutoRefresh();
     } catch (_) {
       showUnauthorized();
@@ -207,8 +206,6 @@
         setT('qf-pause-financial', ps.financial === true || ps.all === true);
 
         renderQfStatus(q);
-        if (data.auditHistory) renderQuotaAuditHistory(data.auditHistory);
-        else loadQuotaAuditHistory();
       } catch (_) {}
     }
     if (data.datasets) renderFinancialCensus(data.datasets);
@@ -255,6 +252,19 @@
     if (data.data_health) {
       renderDataHealth(data.data_health);
     }
+    if (data.security && typeof renderSecurityPanel === 'function') {
+      renderSecurityPanel(data.security);
+    }
+  }
+
+  var _tabLoadedAt = {};
+  var _tabInFlight = {};
+  function shouldLoadTab(tabKey, force, ttlMs) {
+    if (_tabInFlight[tabKey]) return false;
+    var now = Date.now();
+    if (!force && _tabLoadedAt[tabKey] && (now - _tabLoadedAt[tabKey] < (ttlMs || 30000))) return false;
+    _tabLoadedAt[tabKey] = now;
+    return true;
   }
 
   // Tab Switching
@@ -272,9 +282,10 @@
         else panel.style.display = 'none';
       }
     }
-    if (idx === 1) loadOnlineList();
-    if (idx === 3) loadUsersList();
-    if (idx === 6) {
+    if (idx === 0 && shouldLoadTab('tab0_audit', false, 60000)) loadQuotaAuditHistory();
+    if (idx === 1 && shouldLoadTab('tab1', false, 20000)) loadOnlineList();
+    if (idx === 3 && shouldLoadTab('tab3', false, 30000)) loadUsersList();
+    if (idx === 6 && shouldLoadTab('tab6', false, 30000)) {
       root.refreshDataHealth();
       loadJobsPipeline();
       loadSchedulerBackfill();
@@ -282,11 +293,11 @@
       root.refreshBackfillForecast();
       if (typeof root.loadKseiMeta === 'function') root.loadKseiMeta();
       if (typeof root.loadThreeHorizonSettings === 'function') root.loadThreeHorizonSettings();
+      if (typeof root.loadTelegramControlStatus === 'function') root.loadTelegramControlStatus();
     }
-    if (idx === 7) loadAuditLogs();
-    if (idx === 8) {
+    if (idx === 7 && shouldLoadTab('tab7', false, 20000)) loadAuditLogs();
+    if (idx === 8 && shouldLoadTab('tab8', false, 20000)) {
       root.refreshSecurityPanel();
-      if (typeof root.loadForensicAttackTable === 'function') root.loadForensicAttackTable();
     }
   };
 
@@ -435,10 +446,10 @@
   function startAutoRefresh() {
     if (onlineRefreshTimer) clearInterval(onlineRefreshTimer);
     onlineRefreshTimer = setInterval(function() {
-      if (document.visibilityState === 'visible' && activeAdminTab === 1) {
+      if (root.__adminAuthed && document.visibilityState === 'visible' && activeAdminTab === 1) {
         loadOnlineList();
       }
-    }, 30000);
+    }, 60000);
   }
 
   // Maintenance Toggle
@@ -734,13 +745,13 @@
     });
   }
 
-  // Client Heartbeat (60 seconds, only when tab is visible)
+  // Client Heartbeat (60 seconds, only when tab is visible and admin session is active)
   setInterval(function() {
-    if (document.visibilityState === 'visible') {
+    if (root.__adminAuthed && document.visibilityState === 'visible') {
       fetch('/api/admin-users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'heartbeat', page: location.pathname, device: 'Browser · Web' })
+        body: JSON.stringify({ action: 'heartbeat', page: location.pathname, device: 'Admin · Browser' })
       }).catch(function() {});
     }
   }, 60000);
@@ -1856,12 +1867,136 @@
     }
   };
 
+  // ── V6.5.3 Telegram Broadcast Guard & Admin-Only Test ─────────────────────
+  var tgControlState = { scheduleVersion: null, enabled: false };
+
+  function renderTgControl(data) {
+    if (!data) return;
+    tgControlState.enabled = data.broadcast_enabled === true;
+    if (data.schedule_version != null) tgControlState.scheduleVersion = data.schedule_version;
+    var badge = document.getElementById('tgBroadcastStateBadge');
+    if (badge) {
+      badge.textContent = tgControlState.enabled ? 'AKTIF (21:20 WIB)' : 'NONAKTIF (0 Broadcast User)';
+      badge.className = 'st ' + (tgControlState.enabled ? 'g' : 'a');
+    }
+    var togBtn = document.getElementById('tgBroadcastToggleBtn');
+    if (togBtn) {
+      togBtn.textContent = tgControlState.enabled ? 'Matikan Broadcast User' : 'Aktifkan Broadcast User';
+    }
+    var metaEl = document.getElementById('tgBotHealthSummary');
+    if (metaEl) {
+      metaEl.textContent = 'Bot utama: ' + (data.bot_configured ? 'terkonfigurasi' : 'belum di .env') +
+        ' · Verify bot: ' + (data.verify_bot_configured ? 'terkonfigurasi' : 'belum di .env') +
+        ' · Data EOD: ' + (data.trade_date || '—') +
+        (data.admin_chat_masked ? (' · Target uji admin: ' + data.admin_chat_masked) : '');
+    }
+    var box = document.getElementById('tgPreviewBox');
+    if (box && data.preview_text) box.textContent = data.preview_text;
+  }
+
+  root.loadTelegramControlStatus = async function() {
+    try {
+      var res = await fetch('/api/admin-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'telegram_preview' })
+      });
+      if (!res.ok) return;
+      var data = await res.json().catch(function() { return {}; });
+      if (data && data.success) renderTgControl(data);
+    } catch (_) {}
+  };
+
+  root.previewTelegramPayload = async function() {
+    var st = document.getElementById('tgActionStatus');
+    if (st) st.textContent = 'Memuat preview Three-Horizon (0 kirim)…';
+    try {
+      var res = await fetch('/api/admin-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'telegram_preview' })
+      });
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && data.success) {
+        renderTgControl(data);
+        if (st) { st.style.color = 'var(--ac-brand,#10B981)'; st.textContent = 'Preview dry-run siap (0 broadcast).'; }
+      } else if (st) {
+        st.style.color = 'var(--ac-warn,#F59E0B)';
+        st.textContent = (data && data.error) || 'Gagal memuat preview.';
+      }
+    } catch (_) {
+      if (st) st.textContent = 'Gagal terhubung ke server.';
+    }
+  };
+
+  root.testSendTelegramAdmin = async function() {
+    var st = document.getElementById('tgActionStatus');
+    if (st) st.textContent = 'Mengirim uji pesan HANYA ke chat Admin…';
+    try {
+      var res = await fetch('/api/admin-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'telegram_test_admin' })
+      });
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && data.success) {
+        renderTgControl(data);
+        var del = data.delivery || {};
+        var msg = del.sent ? 'Terkirim HANYA ke chat Admin.' : ('Dry-run tercatat (0 live send · ' + (del.reason || 'gate') + ').');
+        if (st) { st.style.color = 'var(--ac-brand,#10B981)'; st.textContent = msg; }
+        recordAuditLog('budi', 'Uji Telegram Admin-Only', msg);
+      } else if (st) {
+        st.style.color = 'var(--ac-warn,#F59E0B)';
+        st.textContent = (data && data.error) || 'Gagal uji Telegram.';
+      }
+    } catch (_) {
+      if (st) st.textContent = 'Gagal terhubung ke server.';
+    }
+  };
+
+  root.toggleTelegramBroadcastSwitch = function() {
+    var nextEnabled = !tgControlState.enabled;
+    promptAction({
+      title: nextEnabled ? 'Aktifkan Broadcast Telegram 21:20 WIB?' : 'Matikan Broadcast Telegram User?',
+      body: nextEnabled
+        ? 'Broadcast massal Three-Horizon pada jadwal 21:20 WIB akan diaktifkan. Lanjutkan?'
+        : 'Broadcast massal ke user akan dinonaktifkan (0 pengiriman massal).',
+      word: 'TELEGRAM',
+      action: async function(reason) {
+        var st = document.getElementById('tgActionStatus');
+        try {
+          var getRes = await fetch('/api/admin/schedule-settings', { method: 'GET' });
+          var cur = await getRes.json().catch(function() { return {}; });
+          var ver = (cur && cur.config && cur.config.version) || tgControlState.scheduleVersion || 1;
+          var putRes = await fetch('/api/admin/schedule-settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              version: ver,
+              reason: reason || ('Admin toggle Telegram broadcast -> ' + nextEnabled),
+              jobs: { telegram: { enabled: nextEnabled } }
+            })
+          });
+          var saved = await putRes.json().catch(function() { return {}; });
+          if (putRes.ok && saved && saved.success) {
+            tgControlState.enabled = nextEnabled;
+            tgControlState.scheduleVersion = saved.config && saved.config.version;
+            if (st) { st.style.color = 'var(--ac-brand,#10B981)'; st.textContent = 'Saklar Telegram diperbarui (' + (nextEnabled ? 'AKTIF' : 'NONAKTIF') + ').'; }
+            root.loadTelegramControlStatus();
+            if (typeof loadJobsPipeline === 'function') loadJobsPipeline();
+          } else if (st) {
+            st.style.color = 'var(--ac-warn,#F59E0B)';
+            st.textContent = (saved && saved.error) || 'Gagal mengubah saklar Telegram.';
+          }
+        } catch (_) {
+          if (st) st.textContent = 'Gagal memperbarui saklar Telegram.';
+        }
+      }
+    });
+  };
+
   root.initAdminConsole = function() {
     verifyAdminAuth();
-    root.loadFinancialPublicationPanel();
-    root.refreshBackfillForecast();
-    root.loadKseiMeta();
-    root.loadThreeHorizonSettings();
   };
 
   // Auto-init on standalone admin page

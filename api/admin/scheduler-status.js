@@ -59,13 +59,25 @@ function readJsonSafe(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) { return null; }
 }
 
+let _csvQueueCache = null;
+let _csvQueueCacheAt = 0;
+
 /** Per-month pending counts from the verified requestable queue CSV. */
 function perMonthPending(csvPath) {
   const p = csvPath || backfillDecision.REQUESTABLE_QUEUE_PATH;
+  const isDefault = !csvPath || csvPath === backfillDecision.REQUESTABLE_QUEUE_PATH;
+  const nowMs = Date.now();
+  if (isDefault && _csvQueueCache && (nowMs - _csvQueueCacheAt < 15000)) {
+    return _csvQueueCache;
+  }
   let raw;
   try { raw = fs.readFileSync(p, 'utf8'); } catch (_) { return { known: false, byMonth: {}, total: null }; }
   const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length <= 1) return { known: true, byMonth: {}, total: 0 };
+  if (lines.length <= 1) {
+    const emptyRes = { known: true, byMonth: {}, total: 0 };
+    if (isDefault) { _csvQueueCache = emptyRes; _csvQueueCacheAt = nowMs; }
+    return emptyRes;
+  }
   const header = lines[0].split(',').map((h) => h.trim().toLowerCase());
   const dateIdx = header.indexOf('trade_date');
   const byMonth = {};
@@ -79,7 +91,9 @@ function perMonthPending(csvPath) {
     const key = m ? (m[1] + '-' + m[2]) : 'UNKNOWN';
     byMonth[key] = (byMonth[key] || 0) + 1;
   }
-  return { known: true, byMonth, total };
+  const resObj = { known: true, byMonth, total };
+  if (isDefault) { _csvQueueCache = resObj; _csvQueueCacheAt = nowMs; }
+  return resObj;
 }
 
 /** Derive last_attempt / last_success / last_error from the worker ledger. */

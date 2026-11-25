@@ -178,7 +178,7 @@ function buildHorizonCandidate(ticker, candles, allBrokerSeries, foreignSeries, 
   const prev = candles[candles.length - 2];
   if (!latest || latest.time < maxTradeDate) return null; // skip suspended / stale tickers
   const close = Number(latest.close);
-  if (!Number.isFinite(close) || close <= 0) return null;
+  if (!Number.isFinite(close) || close < 50) return null; // V6.5.3: block gocap / FCA (< Rp 50) from default screener
   const prevClose = Number(prev && prev.close) > 0 ? Number(prev.close) : close;
   const changePct = Number((((close - prevClose) / prevClose) * 100).toFixed(2));
   const valueTraded = close * Number(latest.volume || 0);
@@ -470,11 +470,16 @@ function run(options = {}) {
         confidence_label: conf === 'A+' ? 'Sangat Tinggi' : (conf === 'A' ? 'Tinggi' : 'Cukup'),
         rsi14: rsiV,
         ma20: c.ma20 != null ? c.ma20 : null,
+        volume: c.volume != null ? c.volume : row.volume,
         value_today: c.value_today != null ? c.value_today : null,
         avg_value_20d: c.avg_value_20d != null ? c.avg_value_20d : null,
         volume_ratio: volR,
         volume_ratio_avg20: volR,
         volume_ratio_20d: volR,
+        risk_label: c.risk_label || null,
+        risk_label_v2: c.risk_label || null,
+        action_label: c.action_label || null,
+        data_status: 'AVAILABLE',
         readiness_status: 'READY',
         verdict_reasons: ['ALL_GATES_PASSED'],
         win_rate_pct: null,
@@ -499,6 +504,9 @@ function run(options = {}) {
       holding_label: hCfg.holdingLabel,
       lookback_days: hCfg.lookbackDays,
       weights: hCfg.weights,
+      universe_count: candlesByTicker.size,
+      liquid_candidates_count: snap.universe_count || candidates.length,
+      evaluated_count: candlesByTicker.size,
       top20: enrichedTop20,
       picks: enrichedTop20,
       top5: enrichedTop20.slice(0, Math.min(5, enrichedTop20.length))

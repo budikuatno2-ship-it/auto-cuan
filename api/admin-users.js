@@ -586,6 +586,7 @@ async function handler(req, res) {
   if (action === 'admin_console_stats') {
     const auth = requireAdminSession(req);
     if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    recordHeartbeat(auth.session.un || 'budi', '/admin-console', 'Admin · Browser');
     const freshness = getDatasetFreshness();
     const jobs = getJobPipeline();
     const onlineSummary = getOnlineList().summary;
@@ -946,6 +947,66 @@ async function handler(req, res) {
 
   if (action === 'ai_eval_control') {
     return aiEvalControl(req, res, false);
+  }
+
+  if (action === 'telegram_preview' || action === 'telegram_test_admin') {
+    if (action === 'telegram_test_admin' && !isSameOrigin(req)) {
+      return res.status(403).json({ success: false, error: 'Permintaan lintas origin ditolak.' });
+    }
+    const auth = requireAdminSession(req);
+    if (!auth.ok) return res.status(auth.status || 403).json({ success: false, error: auth.error || 'Akses admin ditolak.' });
+    try {
+      const recapService = require('../lib/telegram-daily-recap');
+      const scheduleStore = require('../lib/admin-schedule-store');
+      const notifier = require('../lib/telegram-notifier');
+      const sched = scheduleStore.get();
+      const schedDoc = sched && sched.ok ? sched.doc : null;
+      const tgJob = schedDoc && schedDoc.jobs && schedDoc.jobs.telegram;
+      const threeDoc = recapService.loadThreeHorizonSnapshot();
+      const previewText = recapService.formatThreeHorizonRecapMessage(threeDoc, {
+        timeStr: (tgJob && tgJob.timeWIB ? tgJob.timeWIB + ' WIB' : '21:20 WIB')
+      });
+      const adminChatId = String(process.env.TELEGRAM_ADMIN_CHAT_ID || '6396446903').trim();
+      const statusMeta = {
+        broadcast_enabled: Boolean(tgJob && tgJob.enabled === true),
+        schedule_time_wib: (tgJob && tgJob.timeWIB) || '21:20',
+        schedule_version: schedDoc ? schedDoc.version : null,
+        trade_date: (threeDoc && threeDoc.trade_date) || null,
+        bot_configured: Boolean(process.env.TELEGRAM_BOT_TOKEN && String(process.env.TELEGRAM_BOT_TOKEN).trim()),
+        verify_bot_configured: Boolean(process.env.TELEGRAM_VERIFY_BOT_TOKEN && String(process.env.TELEGRAM_VERIFY_BOT_TOKEN).trim()),
+        admin_chat_configured: Boolean(adminChatId),
+        admin_chat_masked: adminChatId ? ('***' + adminChatId.slice(-4)) : null
+      };
+      if (action === 'telegram_preview') {
+        return res.status(200).json({
+          success: true,
+          mode: 'dry_run_preview',
+          ...statusMeta,
+          preview_text: previewText
+        });
+      }
+      // Admin-only test send: NEVER sends to public/subscriber broadcast chat ID
+      const testPayload = '[UJI ADMIN SAJA · TIDAK DIKIRIM KE USER]\n\n' + previewText;
+      const sendRes = await notifier.sendTelegramMessage(testPayload, {
+        chat_id: adminChatId,
+        skip_market_guard: true
+      });
+      return res.status(200).json({
+        success: true,
+        mode: 'admin_only_test',
+        ...statusMeta,
+        target: 'admin_chat_only',
+        delivery: {
+          sent: Boolean(sendRes && sendRes.sent),
+          skipped: Boolean(sendRes && sendRes.skipped),
+          dry_run: Boolean(sendRes && sendRes.dry_run),
+          reason: (sendRes && sendRes.reason) || null
+        },
+        preview_text: testPayload
+      });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Gagal memproses preview Telegram.' });
+    }
   }
 
   if (action === 'analytics') {

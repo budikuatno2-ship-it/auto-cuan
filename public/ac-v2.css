@@ -23,6 +23,9 @@ html body {
   height: 100dvh !important;
   max-height: 100dvh !important;
 }
+#appSidebar > .sidebar-nav {
+  padding-top: 12px !important;
+}
 
 /* Sembunyikan permanen bar sub-tab horizontal lama di Analisis karena navigasi sudah ada di sidebar kiri */
 #analisisLensesNav, .analisis-lens-bar.utabs {
@@ -411,7 +414,7 @@ html #appContent #page-screener .scr-modes .ind.k2 { transform: translateX(200%)
 html #appContent #page-screener #screenerContent { display: flex; flex-direction: column; gap: 20px !important; }
 html #appContent #page-screener #screenerContent > * { margin: 0 !important; }
 html #appContent #page-screener #screenerContent.hidden { display: none !important; }
-html #appContent #page-screener .scr-rr-slot { display: inline-flex; align-items: center; }
+html #appContent #page-screener .scr-rr-slot { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
 html #appContent #page-screener #screenerContent .scr-filter-grid label.scr-rr-min, html #appContent #page-screener .scr-rr-min { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ac-2) !important; cursor: pointer; align-self: center; margin: 0 !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
 html #appContent #page-screener .scr-rr-min input { width: 16px; height: 16px; accent-color: var(--ac-brand); margin: 0; }
 html #appContent #page-screener .scr-rr-dt-note { display: none; }
