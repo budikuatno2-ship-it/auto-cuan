@@ -136,6 +136,7 @@ test('FIX 5-10: Cron catchup-0015 removed, JOB_USES_QUOTA=0 fail-closed, Watchli
 
   const anaRt = read('public/analisis-saham-runtime.js');
   assert.match(anaRt, /hasServerFinancialData/, 'Financial UI uses live server snapshot even when static FINANCIAL_META is null');
+  assert.match(anaRt, /root\.selectFinancialTicker[\s\S]{0,400}loadFinancialStructureTab\('financial',\s*t\)/, 'selectFinancialTicker triggers live server snapshot fetch');
 
   const admRt = read('public/admin-console-runtime.js');
   assert.match(admRt, /liveProviderCap/, 'Admin quota panel caps inputs to live provider telemetry');

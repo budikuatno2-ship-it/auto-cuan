@@ -2944,18 +2944,30 @@
 
   root.selectFinancialTicker = function(ticker) {
     if (!ticker) return;
-    var t = String(ticker).trim().toUpperCase();
+    var t = String(ticker).trim().toUpperCase().replace(/\.JK$/i, '');
+    if (!t) return;
     financialState.t = t;
-    renderFinancialFundamental();
+    var inp = byId('financialTickerInput');
+    if (inp) inp.value = t;
+    if (typeof loadFinancialStructureTab === 'function') {
+      loadFinancialStructureTab('financial', t);
+    } else {
+      renderFinancialFundamental(t);
+    }
   };
 
   root.refreshFinancialData = function() {
     var spinner = byId('financialUpdatingSpinner');
     if (spinner) spinner.style.display = 'inline-flex';
-    setTimeout(function() {
+    var t = (financialState.t || 'BBCA').toUpperCase();
+    if (typeof loadFinancialStructureTab === 'function') {
+      Promise.resolve(loadFinancialStructureTab('financial', t)).finally(function() {
+        if (spinner) spinner.style.display = 'none';
+      });
+    } else {
       if (spinner) spinner.style.display = 'none';
-      renderFinancialFundamental();
-    }, 1000);
+      renderFinancialFundamental(t);
+    }
   };
 
   root.setFinStatementCat = function(idx) {
