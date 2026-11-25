@@ -138,7 +138,7 @@
     var l = levels(r);
     var last = n(r.last_price != null ? r.last_price : (r.current_price != null ? r.current_price : r.close));
     var isDt = type === 'daytrade';
-    var tier = isDt ? (typeof root.formatDtStatus === 'function' ? root.formatDtStatus(r.status) : r.status) : (typeof root.swingTierShort === 'function' ? root.swingTierShort(r.swing_tier) : r.swing_tier);
+    var tier = isDt ? (typeof root.formatDtStatus === 'function' ? root.formatDtStatus(r.status) : r.status) : (typeof root.swingTierShort === 'function' ? root.swingTierShort(r.swing_tier, r) : r.swing_tier);
     var exec = r.confidence || (typeof root.getSignalQualityGrade === 'function' ? root.getSignalQualityGrade(r) : '');
     var score = isDt ? (r.daytrade_score != null ? r.daytrade_score : r.score) : r.score;
     var name = r.company_name || r.stock_name || (r.group_code ? 'Grup ' + r.group_code : '');

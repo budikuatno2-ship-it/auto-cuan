@@ -120,7 +120,7 @@
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
     <link rel="stylesheet" href="/ui-theme.css?v=20261023-v3">
-    <link rel="stylesheet" href="/ac-v2.css?v=v6.5.2">
+    <link rel="stylesheet" href="/ac-v2.css?v=v6.5.3">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
@@ -3650,6 +3650,28 @@ html.light #googleCompleteProfileModal input {
         </div>
       </section>
 
+      <section class="sheet" id="telegramControlPanel" style="margin-top:20px">
+        <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2>Kontrol &amp; Uji Broadcast Telegram (Three-Horizon · 21:20 WIB)</h2>
+            <span id="tgBotHealthSummary" style="font-size:12px">Memuat status bot Telegram &amp; saklar broadcast…</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span id="tgBroadcastStateBadge" class="st a">NONAKTIF (0 Broadcast User)</span>
+            <button type="button" class="btn sm" id="tgBroadcastToggleBtn" onclick="toggleTelegramBroadcastSwitch()">Aktifkan Broadcast User</button>
+            <button type="button" class="btn sm" onclick="previewTelegramPayload()">Preview Payload (Dry Run)</button>
+            <button type="button" class="btn sm p" onclick="testSendTelegramAdmin()">Kirim Uji ke Admin Saja</button>
+          </div>
+        </div>
+        <div style="padding:12px 20px 18px">
+          <pre id="tgPreviewBox" class="mono" style="margin:0;padding:12px;border-radius:8px;border:1px solid var(--ac-hair);background:var(--ac-raised);font-size:11.5px;line-height:1.5;white-space:pre-wrap;max-height:260px;overflow:auto">Klik "Preview Payload (Dry Run)" untuk memeriksa format pesan Three-Horizon 21:20 WIB tanpa mengirim ke user.</pre>
+          <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <span class="mut" style="font-size:11.5px">Keamanan: Uji kirim hanya diarahkan ke chat pribadi Admin; broadcast massal ke user tetap mati selama saklar NONAKTIF.</span>
+            <span id="tgActionStatus" style="font-size:12px;font-weight:600"></span>
+          </div>
+        </div>
+      </section>
+
       <section class="sheet" id="threeHorizonAdminPanel" style="margin-top:20px">
         <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div>
@@ -5578,8 +5600,13 @@ function getWIBDateString() {
             }
         } catch (_) {}
     }
-    pollQuotaHud();
-    setInterval(pollQuotaHud, 30000);
+    function pollQuotaHudIfVisible() {
+        if (document.hidden) return;
+        if (localStorage.getItem('autocuan_logged_in') !== 'true') return;
+        return pollQuotaHud();
+    }
+    pollQuotaHudIfVisible();
+    setInterval(pollQuotaHudIfVisible, 60000);
 })();
 
 function getRelativeDate(isoString) {
@@ -8628,6 +8655,7 @@ async function refreshCanonicalEodHeader() {
         var d = r && r.ok ? await r.json() : null;
         if (d && d.success && d.canonical_eod_at && typeof updateGlobalLiveRadarStatus === 'function') {
             window.__AC_CANONICAL_EOD_LOCKED__ = true;
+            window.__AC_CANONICAL_EOD_DATE__ = String(d.canonical_eod_at).slice(0, 10);
             // BUG 6: single source. The trade date is a calendar label; only a
             // real updated_at from the endpoint may contribute a WIB clock.
             var realUpdatedAt = d.updated_at || d.last_updated_at || null;
@@ -8682,6 +8710,13 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
     if (!stale && !unavailable && !usableTime && window.__AC_CANONICAL_EOD_LOCKED__) {
         return;
     }
+    var canonicalLocked = Boolean(!stale && !unavailable && window.__AC_CANONICAL_EOD_LOCKED__ && window.__AC_CANONICAL_EOD_DATE__);
+    var lockedIsoDay = canonicalLocked ? String(window.__AC_CANONICAL_EOD_DATE__).slice(0, 10) : null;
+    var incomingCalDay = (meta.canonical_eod_at || meta.latest_eod_at || meta.data_as_of || meta.trade_date || meta.market_date || '');
+    incomingCalDay = incomingCalDay ? String(incomingCalDay).slice(0, 10) : '';
+    var effectiveEodDate = (canonicalLocked && (!incomingCalDay || incomingCalDay <= lockedIsoDay))
+        ? lockedIsoDay
+        : (incomingCalDay || lockedIsoDay);
 
     // A request/update time alone does not prove live market data. The backend
     // Fresh label already includes the dataset's age and market-session rules.
@@ -8701,14 +8736,15 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
         var yesterday = new Date(now + 7 * 3600000 - 86400000).toISOString().slice(0, 10);
         var dataDay = new Date(calcMs + 7 * 3600000).toISOString().slice(0, 10);
         var ageHours = Math.max(0, Math.round((now - calcMs) / 3600000));
-                if (metaOrFreshness.is_eod_final === true || metaOrFreshness.session_status === 'FINAL_EOD' || metaOrFreshness.top5_locked === true) {
+                if (canonicalLocked || metaOrFreshness.is_eod_final === true || metaOrFreshness.session_status === 'FINAL_EOD' || metaOrFreshness.top5_locked === true) {
             status = 'eod';
-            if (dataDay === today) {
+            var eodDay = effectiveEodDate || dataDay;
+            if (eodDay === today) {
                 label = 'EOD (Selesai)';
-                tooltip = 'Snapshot penutupan pasar sesi hari ini (' + dataDay + ').';
+                tooltip = 'Snapshot penutupan pasar sesi hari ini (' + eodDay + ').';
             } else {
                 label = 'EOD / T-1';
-                tooltip = 'Snapshot penutupan pasar sesi sebelumnya (' + dataDay + ').';
+                tooltip = 'Snapshot penutupan pasar sesi sebelumnya (' + eodDay + ').';
             }
         } else if (ageHours >= 24 || (dataDay !== today && dataDay !== yesterday)) {
             status = 'stale';
@@ -8761,7 +8797,7 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
                 var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
                 return Number(m[3]) + ' ' + (months[Number(m[2]) - 1] || m[2]) + ' ' + m[1];
             };
-            var rawCal = meta.canonical_eod_at || meta.latest_eod_at || meta.data_as_of || null;
+            var rawCal = effectiveEodDate || meta.canonical_eod_at || meta.latest_eod_at || meta.data_as_of || meta.trade_date || null;
             var rawTime = meta.updated_at || meta.last_updated_at || null;
             var isDateOnly = !rawTime || /^\d{4}-\d{2}-\d{2}$/.test(String(rawTime)) || /T00:00:00(?:\.000)?Z$/.test(String(rawTime));
             var when = '';
@@ -13104,7 +13140,18 @@ function getRiskLabel(r) {
     if (!r) return '';
     var camelRisk = r.riskLabel;
     if (camelRisk && typeof camelRisk === 'object') camelRisk = camelRisk.risk_label_v2 || camelRisk.risk_label || camelRisk.label || camelRisk.risk || '';
-    return formatRiskLabelId(normalizeRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label || camelRisk || r.risk || r.risk_level || ''));
+    var direct = formatRiskLabelId(normalizeRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label || camelRisk || r.risk || r.risk_level || ''));
+    if (direct && direct !== '—' && direct !== '-') return direct;
+    var flags = Array.isArray(r.risk_flags) ? r.risk_flags : [];
+    var sc = Number(r.score || r.combined_score || 0);
+    var rr = Number(r.risk_reward || r.rr || 0);
+    if (flags.some(function(fl) { return /HIGH|EXTREME|ILLIQUID|GAP/i.test(String(fl)); })) return 'Risiko Tinggi';
+    if (isFinite(sc) && sc > 0) {
+        if (sc >= 80 && (!isFinite(rr) || rr >= 1.5)) return 'Risiko Rendah';
+        if (sc >= 65) return 'Risiko Sedang';
+        return 'Risiko Tinggi';
+    }
+    return '';
 }
 function getRiskColor(label) {
     var risk = normalizeRiskLabel(label);
@@ -13526,8 +13573,12 @@ function applyScreenerUiFilters(type, results) {
         return;
     }
     var f = getScreenerUiFilterValues(type);
+    var showRawEl = typeof document !== 'undefined' ? document.getElementById(type === 'daytrade' ? 'v3f04ShowRawDaytrade' : (type === 'nonkonglo' ? 'v3f04ShowRawNonkonglo' : 'v3f04ShowRawKonglo')) : null;
+    var showRaw = !!(showRawEl && showRawEl.checked);
     var rows = (source || []).filter(function(r) {
         if (!r || !r.ticker) return false;
+        var pxVal = Number(r.last_price != null ? r.last_price : r.close);
+        if (!showRaw && isFinite(pxVal) && pxVal > 0 && pxVal < 50) return false;
         var ticker = normalizeFilterToken(r.ticker);
         if (f.ticker && ticker.indexOf(f.ticker) === -1) return false;
         var risk = getRiskLabel(r);
@@ -14920,14 +14971,15 @@ function startScreenerPolling() {
     // clears the interval instead of letting it wake up and no-op every 15s.
     var _screenerPollFn = function() {
         if (document.hidden) return;
+        if (typeof currentPage !== 'undefined' && currentPage !== 'screener') return;
         if (_currentScreenerType !== 'konglo') { stopScreenerPolling(); return; }
         // Lightweight check: re-fetch data and compare calculated_at
         loadSwingScreener(true); // silent mode
     };
     if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.wrapInterval === 'function') {
-        _screenerPollInterval = window.AutoCuanKeepAlive.wrapInterval('screener-poll', _screenerPollFn, 15000, { page: 'screener' });
+        _screenerPollInterval = window.AutoCuanKeepAlive.wrapInterval('screener-poll', _screenerPollFn, 60000, { page: 'screener' });
     } else {
-        _screenerPollInterval = setInterval(_screenerPollFn, 15000);
+        _screenerPollInterval = setInterval(_screenerPollFn, 60000);
     }
     // Visibility detection: refresh when page becomes visible and Konglo tab is active
     document.addEventListener('visibilitychange', _onScreenerVisibilityChange);
@@ -15207,8 +15259,9 @@ async function loadSwingScreener(silent) {
         if (data.meta || (data.results && data.results.length > 0)) {
             if (typeof refreshCanonicalEodHeader === 'function') refreshCanonicalEodHeader();
             var m = data.meta || {};
-            var realUniverse = m.universe_count || 52;
-            var realScanned = m.scanned_count || (data.results ? data.results.length : 52);
+            var hzInit = data.three_horizon && data.three_horizon[_activeThreeHorizon];
+            var realUniverse = (hzInit && hzInit.universe_count) || m.universe_count || 52;
+            var realScanned = (hzInit && hzInit.evaluated_count) || m.scanned_count || (data.results ? data.results.length : 52);
             var statU = document.getElementById('screenerStatUniverse');
             var statS = document.getElementById('screenerStatScanned');
             var statP = document.getElementById('screenerStatPublished');
@@ -15352,8 +15405,16 @@ async function switchThreeHorizon(horizonKey) {
             if (sEl && hzObj && hzObj.evaluated_count != null) sEl.textContent = hzObj.evaluated_count;
             if (pEl) pEl.textContent = data.results.length;
             if (fEl) fEl.textContent = '0';
+            var uCountEl = document.getElementById('universeCount');
+            var sCountEl = document.getElementById('scannedCount');
+            if (uCountEl && hzObj && hzObj.universe_count != null) uCountEl.textContent = hzObj.universe_count;
+            if (sCountEl && hzObj.evaluated_count != null) sCountEl.textContent = hzObj.evaluated_count;
             renderScreenerTable(data.results);
             renderKgCardGrid(data.results);
+            if (window.AutoCuanScreener && typeof window.AutoCuanScreener.renderDesktopPane === 'function') {
+                var shown = applyScreenerUiFilters('konglo', data.results) || data.results;
+                if (shown.length > 0) window.AutoCuanScreener.selectRow('konglo', shown[0].ticker, null);
+            }
         }
     } catch (_) {}
 }
@@ -15405,7 +15466,7 @@ function renderScreenerTable(results) {
         var chgView = changeDisplay(r.change_pct);
 
         // Tier badge color
-        var tierLabel = swingTierShort(r.swing_tier);
+        var tierLabel = swingTierShort(r.swing_tier, r);
         var tierClass = swingTierColor(r.swing_tier);
 
         // Confidence color
@@ -15433,7 +15494,8 @@ function renderScreenerTable(results) {
         var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
         html += '<tr class="kg-table-row ac-wave5-row border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="selectScreenerRow(\'konglo\', \'' + escapeHtml(r.ticker) + '\', this)" ondblclick="screenerTickerClick(\'' + escapeHtml(r.ticker) + '\')">';
-        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + screenerResultActionHtml(r.ticker, 'konglo') + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
+        var _fChipKg = freshnessChipHtml(r);
+        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + screenerResultActionHtml(r.ticker, 'konglo') + (_fChipKg ? '<div class="mt-0.5">' + _fChipKg + '</div>' : '') + '</td>';
         html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
@@ -15486,7 +15548,13 @@ var SWING_TIER_COLORS = {
 var SWING_TIER_UNKNOWN_LABEL = 'TIER —';
 var SWING_TIER_UNKNOWN_COLOR = 'bg-gray-500/10 text-gray-400';
 
-function swingTierShort(tier) {
+function swingTierShort(tier, rowOrHorizon) {
+    if (tier === 'A_PLUS_SWING') {
+        var hz = (rowOrHorizon && typeof rowOrHorizon === 'object' ? (rowOrHorizon.horizon || rowOrHorizon.screener_type) : rowOrHorizon) || _activeThreeHorizon || 'short_swing';
+        if (hz === 'potensi_besok') return 'A+ BESOK';
+        if (hz === 'short_swing') return 'A+ SHORT';
+        return 'A+ SWING';
+    }
     return SWING_TIER_LABELS[tier] || SWING_TIER_UNKNOWN_LABEL;
 }
 
@@ -15587,7 +15655,7 @@ var AutoCuanScreener = {
         var bodyEl = document.getElementById(prefix + 'DetailBody');
 
         var isDt = mode === 'daytrade';
-        var tierLabel = isDt ? (typeof formatDtStatus === 'function' ? formatDtStatus(r.status) : (r.status || 'READY')) : swingTierShort(r.swing_tier);
+        var tierLabel = isDt ? (typeof formatDtStatus === 'function' ? formatDtStatus(r.status) : (r.status || 'READY')) : swingTierShort(r.swing_tier, r);
         var tierClass = isDt ? (typeof getDtStatusClass === 'function' ? getDtStatusClass(r.status) : 'bg-emerald-500/20 text-emerald-400') : swingTierColor(r.swing_tier);
 
         if (tickerEl) tickerEl.textContent = r.ticker;
@@ -15675,7 +15743,7 @@ var AutoCuanScreener = {
         if (!sheet || !bodyEl) return;
 
         var isDt = mode === 'daytrade';
-        var tierLabel = isDt ? (typeof formatDtStatus === 'function' ? formatDtStatus(r.status) : (r.status || 'READY')) : swingTierShort(r.swing_tier);
+        var tierLabel = isDt ? (typeof formatDtStatus === 'function' ? formatDtStatus(r.status) : (r.status || 'READY')) : swingTierShort(r.swing_tier, r);
         var tierClass = isDt ? (typeof getDtStatusClass === 'function' ? getDtStatusClass(r.status) : 'bg-emerald-500/20 text-emerald-400') : swingTierColor(r.swing_tier);
 
         if (tickerEl) tickerEl.textContent = r.ticker;
@@ -15894,13 +15962,14 @@ function startNkPolling() {
     // FIX-25: same registry contract as the Konglo poller.
     var _nkPollFn = function() {
         if (document.hidden) return;
+        if (typeof currentPage !== 'undefined' && currentPage !== 'screener') return;
         if (_currentScreenerType !== 'nonkonglo') { stopNkPolling(); return; }
         loadNkScreenerResults(true); // silent mode — avoid skeleton/spinner flicker on each poll
     };
     if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.wrapInterval === 'function') {
-        _nkPollInterval = window.AutoCuanKeepAlive.wrapInterval('nk-poll', _nkPollFn, 15000, { page: 'screener' });
+        _nkPollInterval = window.AutoCuanKeepAlive.wrapInterval('nk-poll', _nkPollFn, 60000, { page: 'screener' });
     } else {
-        _nkPollInterval = setInterval(_nkPollFn, 15000);
+        _nkPollInterval = setInterval(_nkPollFn, 60000);
     }
 }
 
@@ -16214,7 +16283,8 @@ function renderNkScreenerTable(results) {
 
         html += '<tr class="nk-table-row ac-wave5-row border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="selectScreenerRow(\'nonkonglo\', \'' + escapeHtml(r.ticker) + '\', this)" ondblclick="screenerTickerClick(\'' + escapeHtml(r.ticker) + '\')">';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px] sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (r.rank || '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + screenerResultActionHtml(r.ticker, 'nonkonglo') + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
+        var _fChipNk = freshnessChipHtml(r);
+        html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + screenerResultActionHtml(r.ticker, 'nonkonglo') + (_fChipNk ? '<div class="mt-0.5">' + _fChipNk + '</div>' : '') + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
@@ -18671,7 +18741,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/market-intelligence.js?v=v6.5.2-final"></script>
 <script src="/dashboard-v2.js?v=v6.5.2"></script>
 <script src="/ac-tape.js?v=v6.5.2"></script>
-<script src="/screener-v2.js?v=v6.5.2"></script>
+<script src="/screener-v2.js?v=v6.5.3"></script>
 <script>
 // Auto-initialize Market Breadth if on dashboard
 document.addEventListener('DOMContentLoaded', function() {
@@ -18702,7 +18772,7 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
-<script src="/admin-console-runtime.js"></script>
+<script src="/admin-console-runtime.js?v=v6.5.3"></script>
 <script src="/v4-f08-runtime.js?v=v6.5.2"></script>
 <script src="/whats-new-runtime.js?v=20261114-w2a"></script>
 <script src="/institutional-ui-ux-engine.js?v=20261116-v1"></script>

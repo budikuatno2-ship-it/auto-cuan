@@ -90,6 +90,10 @@ function mapSecurityEventsToAttacks(secStatus, shieldEvents) {
   return attacks;
 }
 
+let _secAuditCached = null;
+let _secAuditCachedAt = 0;
+const SEC_AUDIT_TTL_MS = 15000;
+
 module.exports = async function handler(req, res) {
   try { res.setHeader('Cache-Control', 'private, no-store'); } catch (_) {}
 
@@ -99,6 +103,8 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
+    _secAuditCached = null;
+    _secAuditCachedAt = 0;
     if (!adminSession.isSameOrigin(req)) {
       return json(res, 403, { success: false, error: 'Permintaan lintas origin ditolak.' });
     }
@@ -145,6 +151,11 @@ module.exports = async function handler(req, res) {
     return json(res, 405, { success: false, error: 'Method not allowed' });
   }
 
+  const nowMs = Date.now();
+  if (_secAuditCached && (nowMs - _secAuditCachedAt < SEC_AUDIT_TTL_MS)) {
+    return json(res, 200, _secAuditCached);
+  }
+
   const security = adminService.getSecurityStatus(ROOT);
   let shieldEvents = [];
   try {
@@ -163,7 +174,7 @@ module.exports = async function handler(req, res) {
 
   const attacks = mapSecurityEventsToAttacks(security, shieldEvents);
 
-  return json(res, 200, {
+  const payload = {
     success: true,
     status: security.status || 'AMAN',
     statusLabel: security.statusLabel || 'Telemetri keamanan aktif',
@@ -174,5 +185,8 @@ module.exports = async function handler(req, res) {
     incidents: security.incidents || [],
     attacks,
     vps
-  });
+  };
+  _secAuditCached = payload;
+  _secAuditCachedAt = nowMs;
+  return json(res, 200, payload);
 };

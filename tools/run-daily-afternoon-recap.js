@@ -123,7 +123,7 @@ async function main(argv = process.argv.slice(2)) {
   } catch (_) {}
   options.preflight = preflight;
 
-  console.log('=== AUTO-CUAN DAILY AFTERNOON RECAP (V3-F06 21:45 WIB) ===');
+  console.log('=== AUTO-CUAN THREE-HORIZON TELEGRAM RECAP (21:20 WIB) ===');
   console.log(`Target Date: ${options.date || recapService.getTodayWibDateStr()} (WIB)`);
   console.log(`Mode: ${options.send ? 'SEND TO TELEGRAM' : 'DRY RUN (PREVIEW ONLY)'}`);
   console.log(`Preflight: ${preflight.note} (foreign-incomplete => graceful, tetap kirim)`);
@@ -132,14 +132,21 @@ async function main(argv = process.argv.slice(2)) {
   }
   console.log('----------------------------------------\n');
 
+  const localThreeHorizon = recapService.loadThreeHorizonSnapshot();
   if (!supabaseUrl || !supabaseKey) {
     console.log('Notice: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set in local environment.');
     if (options.send) {
       console.error('Cannot send to Telegram without database credentials.');
       process.exit(1);
     }
+    if (localThreeHorizon) {
+      console.log('Generating Three-Horizon preview from data/three-horizon-latest.json:\n');
+      const msg = recapService.formatThreeHorizonRecapMessage(localThreeHorizon, { timeStr: '21:20 WIB', date: options.date || localThreeHorizon.trade_date });
+      console.log(msg);
+      return { dry_run: true, fallback: false, mode: 'three_horizon', trade_date: localThreeHorizon.trade_date, message: msg, preflight };
+    }
     console.log('Generating fallback preview for date without DB connection:\n');
-    const msg = recapService.formatDailyAfternoonRecapMessage([], options.date, { timeStr: '21:45 WIB' });
+    const msg = recapService.formatDailyAfternoonRecapMessage([], options.date, { timeStr: '21:20 WIB' });
     console.log(msg);
     return { dry_run: true, fallback: true, message: msg, preflight };
   }

@@ -1091,6 +1091,28 @@ body {
         </div>
       </section>
 
+      <section class="sheet" id="telegramControlPanel" style="margin-top:20px">
+        <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2>Kontrol &amp; Uji Broadcast Telegram (Three-Horizon · 21:20 WIB)</h2>
+            <span id="tgBotHealthSummary" style="font-size:12px">Memuat status bot Telegram &amp; saklar broadcast…</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span id="tgBroadcastStateBadge" class="st a">NONAKTIF (0 Broadcast User)</span>
+            <button type="button" class="btn sm" id="tgBroadcastToggleBtn" onclick="toggleTelegramBroadcastSwitch()">Aktifkan Broadcast User</button>
+            <button type="button" class="btn sm" onclick="previewTelegramPayload()">Preview Payload (Dry Run)</button>
+            <button type="button" class="btn sm p" onclick="testSendTelegramAdmin()">Kirim Uji ke Admin Saja</button>
+          </div>
+        </div>
+        <div style="padding:12px 20px 18px">
+          <pre id="tgPreviewBox" class="mono" style="margin:0;padding:12px;border-radius:8px;border:1px solid var(--ac-hair);background:var(--ac-raised);font-size:11.5px;line-height:1.5;white-space:pre-wrap;max-height:260px;overflow:auto">Klik "Preview Payload (Dry Run)" untuk memeriksa format pesan Three-Horizon 21:20 WIB tanpa mengirim ke user.</pre>
+          <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <span class="mut" style="font-size:11.5px">Keamanan: Uji kirim hanya diarahkan ke chat pribadi Admin; broadcast massal ke user tetap mati selama saklar NONAKTIF.</span>
+            <span id="tgActionStatus" style="font-size:12px;font-weight:600"></span>
+          </div>
+        </div>
+      </section>
+
       <section class="sheet" id="threeHorizonAdminPanel" style="margin-top:20px">
         <div class="sec-h" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div>
@@ -1304,7 +1326,7 @@ body {
   </div>
 </div>
 
-<script src="/admin-console-runtime.js"></script>
+<script src="/admin-console-runtime.js?v=v6.5.3"></script>
 <script>
 // Standalone page bindings for Data Health Inspector
 if (typeof refreshDataHealth !== 'function') {
