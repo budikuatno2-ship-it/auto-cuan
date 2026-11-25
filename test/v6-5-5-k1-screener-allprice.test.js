@@ -244,3 +244,49 @@ test('K1-5: Dashboard quarantine ignores Insider SELL_30D and Track Record prese
   const regenSrc = fs.readFileSync(path.join(ROOT, 'tools', 'regenerate-local-snapshots.js'), 'utf8');
   assert.match(regenSrc, /Insider Jual 30H/);
 });
+
+test('K1-6: syncLiveSignalLedger & syncTelegramDailyPicksDb do not re-insert duplicate same-day terminal rows', async () => {
+  const os = require('os');
+  const ledgerSync = require('../lib/three-horizon-ledger-sync');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'k1-ledger-idem-'));
+  const lp = path.join(tmpDir, 'live-signal-ledger.json');
+  fs.writeFileSync(lp, JSON.stringify([
+    {
+      id: 1,
+      date: '2026-11-24',
+      ticker: 'RELF',
+      category: 'Potensi Besok (1–5H)',
+      monitor_source: 'three_horizon_top5',
+      status: 'AMBIGUOUS_SAME_BAR',
+      is_final: true,
+      raw_payload: { horizon_key: 'potensi_besok', max_holding_days: 5 }
+    }
+  ]), 'utf8');
+  const snaps = {
+    potensi_besok: {
+      holding_label: 'Potensi Besok (1–5H)',
+      holding_days_min: 1,
+      holding_days_max: 5,
+      snapshot_id: 'SP-TEST',
+      top5: [{ ticker: 'RELF', last_price: 36, entry_low: 36, entry_high: 36, sl: 35, tp1: 41, tp2: 46, score: 91.4 }]
+    },
+    short_swing: { top5: [] },
+    swing: { top5: [] }
+  };
+  const r = ledgerSync.syncLiveSignalLedger(snaps, '2026-11-24', '2026-11-25T11:20:00.000Z', { ledgerPath: lp });
+  assert.equal(r.inserted, 0, 'Must not re-insert same-date AMBIGUOUS_SAME_BAR signal into live-signal-ledger.json');
+  assert.equal(r.total, 1);
+
+  let dbInserts = 0;
+  const mockSupabase = {
+    from: () => ({
+      select: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: JSON.parse(fs.readFileSync(lp, 'utf8')), error: null }) }) }) }),
+      insert: async (rows) => { dbInserts += rows.length; return { error: null }; },
+      update: () => ({ eq: async () => ({ error: null }) })
+    })
+  };
+  const dbRes = await ledgerSync.syncTelegramDailyPicksDb(snaps, '2026-11-24', '2026-11-25T11:20:00.000Z', { supabase: mockSupabase });
+  assert.equal(dbRes.inserted, 0, 'Must not re-insert same-date AMBIGUOUS_SAME_BAR signal into telegram_daily_picks');
+  assert.equal(dbInserts, 0);
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
