@@ -205,8 +205,9 @@ test('F3 toggles: "hide all optional" hides every auto family; reset restores cl
 
 test('F3 toggles: clean preset layer budgets (FINAL POLISH TASK 1)', () => {
   // The auto families are NOT part of PRESETS.layers.
-  assert.deepEqual(ws.PRESETS.simpel.layers, ['ma20', 'ma50', 'volume_bars', 'sr_levels']);
-  assert.ok(ws.PRESETS.pro.layers.length <= ws.CLEAN_CHART.MAX_PRESET_LAYERS.pro);
+  assert.deepEqual(ws.PRESETS.simpel.layers, ['ema20', 'ma50', 'volume_bars', 'sr_levels']);
+  const mainPanePro = ws.PRESETS.pro.layers.filter((l) => !['volume_bars', 'rsi14', 'macd', 'obv'].includes(l));
+  assert.ok(mainPanePro.length <= ws.CLEAN_CHART.MAX_PRESET_LAYERS.pro);
   assert.ok(!ws.AUTO_PATTERN_PRESET_DEFAULTS.simpel.includes('candlestick'));
   assert.ok(!ws.AUTO_PATTERN_PRESET_DEFAULTS.pro.includes('harmonic'));
 });

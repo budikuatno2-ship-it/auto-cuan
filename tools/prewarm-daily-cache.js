@@ -199,6 +199,77 @@ function buildCtrlKIndex(namesMap) {
   return { count: items.length };
 }
 
+function buildForeignFlowMultiDayCache(dbPath) {
+  if (!dbPath || !fs.existsSync(dbPath)) return { tickers: 0, as_of: null };
+  const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync(dbPath, { readOnly: true, fileMustExist: true });
+  try {
+    try { db.exec('PRAGMA busy_timeout=10000;'); } catch (_) {}
+    const byTicker = new Map();
+    let maxDate = '';
+    const histStmt = db.prepare("SELECT row_key, row_json FROM market_rows WHERE table_name = 'stock_daily_history'");
+    const latestPrice = new Map();
+    for (const r of histStmt.iterate()) {
+      try {
+        const j = JSON.parse(r.row_json);
+        const tk = String(j.ticker || String(r.row_key || '').split('\x1f')[0] || '').trim().toUpperCase();
+        const dt = String(j.trade_date || j.date || '').slice(0, 10);
+        if (!/^[A-Z]{4}$/.test(tk) || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) continue;
+        if (dt > maxDate) maxDate = dt;
+        const prev = latestPrice.get(tk);
+        if (!prev || dt > prev.dt) {
+          latestPrice.set(tk, { dt, close: Number(j.close) || null, volume: Number(j.volume) || null });
+        }
+      } catch (_) {}
+    }
+
+    const fStmt = db.prepare("SELECT row_key, row_json FROM market_rows WHERE table_name = 'arjum_broker_summary_foreign'");
+    let maxForeignDate = '';
+    for (const r of fStmt.iterate()) {
+      try {
+        const j = JSON.parse(r.row_json);
+        const parts = String(r.row_key || '').split('\x1f');
+        const tk = String(j.ticker || j.stock_code || parts[0] || '').trim().toUpperCase();
+        const dt = String(j.trade_date || j.date || parts[1] || '').slice(0, 10);
+        if (!/^[A-Z]{4}$/.test(tk) || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) continue;
+        if (dt > maxForeignDate) maxForeignDate = dt;
+        const net = Number(j.net_val ?? j.net_value ?? j.foreign_net ?? j.net_buy ?? 0);
+        if (!Number.isFinite(net)) continue;
+        if (!byTicker.has(tk)) byTicker.set(tk, []);
+        byTicker.get(tk).push({ dt, net });
+      } catch (_) {}
+    }
+
+    const data = {};
+    for (const [tk, list] of byTicker.entries()) {
+      list.sort((a, b) => b.dt.localeCompare(a.dt));
+      const fToday = list.length ? Math.round(list[0].net) : null;
+      const f3d = list.slice(0, 3).reduce((s, x) => s + x.net, 0);
+      const f7d = list.slice(0, 7).reduce((s, x) => s + x.net, 0);
+      const lp = latestPrice.get(tk);
+      data[tk] = {
+        last_price: lp ? lp.close : null,
+        volume_today: lp ? lp.volume : null,
+        foreign_net_today: fToday,
+        foreign_net_3d: Math.round(f3d),
+        foreign_net_7d: Math.round(f7d),
+        as_of: (list[0] && list[0].dt) || maxForeignDate || maxDate
+      };
+    }
+    const asOf = maxForeignDate || maxDate || null;
+    atomicWriteJson(path.join(ROOT, 'data', 'foreign-flow-multi-day.json'), {
+      as_of: asOf,
+      generated_at: new Date().toISOString(),
+      source: 'sqlite_arjum_broker_summary_foreign',
+      count: Object.keys(data).length,
+      data
+    });
+    return { tickers: Object.keys(data).length, as_of: asOf };
+  } finally {
+    try { db.close(); } catch (_) {}
+  }
+}
+
 async function prewarmFinancialSnapshots(dbPath) {
   if (!dbPath) return { warmed: 0 };
   const { getVpsMarketStore } = require('../lib/vps-market-store');
@@ -243,6 +314,7 @@ async function main() {
   fs.mkdirSync(CACHE_DIR, { recursive: true });
 
   const namesRes = buildOwnershipNamesMap();
+  const ffRes = buildForeignFlowMultiDayCache(dbPath);
   const patternRes = buildPatternRadarCache(dbSig);
   const strukturRes = buildStrukturPasarCache();
   const screenerRes = buildScreenerAndTop5Cache();
@@ -257,6 +329,7 @@ async function main() {
     dbPath,
     paid_arjum_requests: 0,
     names: namesRes.count,
+    foreign_flow: ffRes,
     pattern_radar: patternRes,
     struktur_pasar: strukturRes,
     screener_top5: screenerRes,

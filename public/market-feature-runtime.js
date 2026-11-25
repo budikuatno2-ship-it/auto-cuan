@@ -537,7 +537,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     }
     try {
     var variant = (options && options.variant) || 'inline';
+    var ws = (typeof window !== 'undefined' && window.AutoCuanChartWorkstation) ? window.AutoCuanChartWorkstation : null;
+    var wsState = (options && options.workstationState) || (ws && ws.getOrCreateInstance ? ws.getOrCreateInstance(chartId, candles, metrics, ticker, options).state : null);
     var _activeMode = (wsState && wsState.activePreset) ? wsState.activePreset : 'simpel';
+    var _modeDef = (ws && ws.CHART_MODES && ws.CHART_MODES[_activeMode]) ? ws.CHART_MODES[_activeMode] : null;
     var dims = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0), (typeof window !== 'undefined' ? window.innerHeight : 0), _activeMode);
     var _observers = [];
     // Clean up any prior chart bound to this id + orphaned charts (prevents duplicate
@@ -545,13 +548,27 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     disposeChart(chartId);
     disposeStaleCharts();
     container.innerHTML = '';
-    container.style.height = dims.main + 'px';
+    container.style.height = 'auto';
+    container.style.position = 'relative';
     var _th = acChartTheme(container);
+
+    // Flow legend header above the canvas host so desktop and mobile legends never
+    // collide with green candles or the ▲ max-price label.
+    var headerEl = document.createElement('div');
+    headerEl.id = chartId + '_canvas_header';
+    headerEl.className = 'chart-canvas-floating-header';
+    headerEl.style.cssText = 'position:relative; width:100%; z-index:12; pointer-events:none; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; line-height:1.45; text-shadow:0 1px 2px rgba(0,0,0,0.65); padding:6px 10px; background:rgba(13,17,23,0.92); border-bottom:1px solid rgba(55,65,81,0.35); border-top-left-radius:8px; border-top-right-radius:8px;';
+    container.appendChild(headerEl);
+
+    var canvasHost = document.createElement('div');
+    canvasHost.id = chartId + '_canvas_host';
+    canvasHost.style.cssText = 'position:relative; width:100%; height:' + dims.main + 'px;';
+    container.appendChild(canvasHost);
 
     // Main chart: candlestick + MA
     var _chartWidth = Math.max(container.clientWidth || (container.parentElement && container.parentElement.clientWidth) || 0, 320);
     var _axisFmt = /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30)$/i.test(String(ticker || '')) ? acNumFmt(2, 2) : acNumFmt(0, 0);
-    var chart = LightweightCharts.createChart(container, {
+    var chart = LightweightCharts.createChart(canvasHost, {
         width: _chartWidth, height: dims.main,
         layout: acChartLayout(_th),
         grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
@@ -632,9 +649,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         return s;
     }
 
-    var ws = (typeof window !== 'undefined' && window.AutoCuanChartWorkstation) ? window.AutoCuanChartWorkstation : null;
-    var wsState = (options && options.workstationState) || (ws && ws.getOrCreateInstance ? ws.getOrCreateInstance(chartId, candles, metrics, ticker, options).state : null);
-
+    var showEMA9 = wsState ? wsState.isLayerActive('ema9') : (_activeMode === 'scalping');
+    var showEMA21 = wsState ? wsState.isLayerActive('ema21') : (_activeMode === 'scalping');
     var showMA20 = wsState ? wsState.isLayerActive('ma20') : true;
     var showMA50 = wsState ? wsState.isLayerActive('ma50') : true;
     var showMA100 = wsState ? wsState.isLayerActive('ma100') : true;
@@ -646,6 +662,16 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var showFib = wsState ? wsState.isLayerActive('fibonacci') : true;
     var showSR = wsState ? wsState.isLayerActive('sr_levels') : true;
 
+    if (showEMA9 && ws && candles.length >= 9) {
+        var ema9Data = ws.calculateEMA(candles, 9);
+        var sEma9 = chart.addLineSeries({ color: '#38bdf8', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+        sEma9.setData(ema9Data);
+    }
+    if (showEMA21 && ws && candles.length >= 21) {
+        var ema21Data = ws.calculateEMA(candles, 21);
+        var sEma21 = chart.addLineSeries({ color: '#f472b6', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+        sEma21.setData(ema21Data);
+    }
     if (showMA20 && candles.length >= 20) buildMALine(closes, 20, '#10b981');
     if (showMA50 && candles.length >= 50) buildMALine(closes, 50, '#eab308');
     if (showMA100 && candles.length >= 100) buildMALine(closes, 100, '#3b82f6');
@@ -820,14 +846,14 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
     }
 
-    // Floating Canvas Header Overlay (on mobile <= 640px, docks cleanly above canvas so it never overlaps ▲ high/candles)
-    container.style.position = 'relative';
+    // Header legend bar flows cleanly above canvasHost on both desktop and mobile
+    // (never overlaps candles or ▲ max-price label).
     var headerEl = document.getElementById(chartId + '_canvas_header');
     if (!headerEl) {
         headerEl = document.createElement('div');
         headerEl.id = chartId + '_canvas_header';
         headerEl.className = 'chart-canvas-floating-header';
-        headerEl.style.cssText = 'position:absolute; top:8px; left:10px; z-index:12; pointer-events:none; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; line-height:1.45; text-shadow:0 1px 3px rgba(0,0,0,0.9);';
+        headerEl.style.cssText = 'position:relative; width:100%; z-index:12; pointer-events:none; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; line-height:1.45; text-shadow:0 1px 2px rgba(0,0,0,0.65); padding:6px 10px; background:rgba(13,17,23,0.92); border-bottom:1px solid rgba(55,65,81,0.35);';
         container.insertBefore(headerEl, container.firstChild);
     }
 
@@ -845,38 +871,32 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         };
         return _hdrMemo;
     }
-    // The legend's rows are built once (and again only when the phone layout
-    // switches); hovering only changes text and colours. Rewriting innerHTML on
-    // every bar re-parsed the markup and woke every DOM observer in the page.
     var _hdrShown = null, _hdrMobile = null, _hdrEls = null;
     function buildCanvasHeader(isMobile) {
         var _m = headerMemo();
         var tf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
         var corrVal = _m.corr, parVal = _m.par, lpmVal = _m.lpm;
-        // No workstation module, no Corr F / Par F (the old fallback printed 0.72 and 34.2).
         var corrTxt = (corrVal == null || !isFinite(corrVal)) ? '—' : ((corrVal >= 0 ? '+' : '') + corrVal.toFixed(2));
         var parTxt = (parVal == null || !isFinite(parVal)) ? '—' : (parVal.toFixed(1) + '%');
         var lpmTxt = lpmVal ? acNum(lpmVal) : '—';
         var moneyFlowStr = _m.moneyFlow;
         var prov = '<span class="ac-prov" data-k="prov" style="font-weight:600;color:var(--ac-warn-t, #fbbf24)"></span>';
-        // FIX 1: honest EOD header from max(trade_date). A date-only value is a
-        // calendar label, never an instant: no fake UTC-to-WIB clock conversion.
         var eodLabel = (ws && typeof ws.formatEodHeader === 'function')
             ? ws.formatEodHeader(candles && candles.length ? candles[candles.length - 1].time : null,
                 candles && candles.length ? (candles[candles.length - 1].updated_at || candles[candles.length - 1].updatedAt) : null)
             : 'EOD';
         var eodHtml = '<span class="ac-eod" style="font-weight:600;color:var(--ac-2, #9ca3af)">' + eodLabel + '</span>';
+        headerEl.style.position = 'relative';
+        headerEl.style.top = 'auto';
+        headerEl.style.left = 'auto';
+        headerEl.style.width = '100%';
+        headerEl.style.maxWidth = '100%';
+        headerEl.style.padding = isMobile ? '6px 8px' : '6px 10px';
+        headerEl.style.background = 'rgba(13,17,23,0.92)';
+        headerEl.style.borderBottom = '1px solid rgba(55,65,81,0.35)';
+        headerEl.style.overflow = 'visible';
         if (isMobile) {
-            // Flow cleanly above canvas on narrow phones so Foreign/CMF never collide with ▲ max-price or candles.
-            headerEl.style.position = 'relative';
-            headerEl.style.top = 'auto';
-            headerEl.style.left = 'auto';
-            headerEl.style.padding = '6px 8px';
-            headerEl.style.background = 'rgba(13,17,23,0.92)';
-            headerEl.style.borderBottom = '1px solid rgba(55,65,81,0.35)';
             headerEl.style.fontSize = '10px';
-            headerEl.style.maxWidth = '100%';
-            headerEl.style.overflow = 'visible';
             headerEl.innerHTML =
                 '<div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
                     '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' + eodHtml + prov +
@@ -892,15 +912,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                     '<span class="inline-flex items-center gap-1" style="color:#f97316;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></span>' +
                 '</div>';
         } else {
-            headerEl.style.position = 'absolute';
-            headerEl.style.top = '8px';
-            headerEl.style.left = '10px';
-            headerEl.style.padding = '0';
-            headerEl.style.background = 'transparent';
-            headerEl.style.borderBottom = 'none';
-            headerEl.style.overflow = 'visible';
-            headerEl.style.fontSize = '12px';
-            headerEl.style.maxWidth = 'calc(100% - 92px)';
+            headerEl.style.fontSize = '11.5px';
             headerEl.innerHTML =
                 '<div class="flex items-center gap-1.5 text-xs font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
                     '<span>' + (ticker || 'SAHAM') + ' · ' + tf + ' · IDX</span>' + eodHtml + prov +
@@ -909,12 +921,14 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                     '<span class="text-gray-300">L<span style="color:#f87171" data-k="l"></span></span>' +
                     '<span class="text-gray-300">C<span data-k="c"></span></span>' +
                     '<span data-k="chg"></span>' +
+                    '<span class="text-gray-400 font-normal">• Vol <b style="color:#f1f5f9;" data-k="vol"></b></span>' +
                     '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
                     '<span class="text-gray-400 font-normal">• Par F <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
                 '</div>' +
-                '<div class="text-[11px] text-gray-300 font-medium">Volume <b style="color:#f1f5f9;" data-k="vol"></b></div>' +
-                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#10b981;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM · kurva tekanan candle · Money Flow <b style="color:#34d399;">' + lpmTxt + '</b><b style="color:#fb923c;">' + moneyFlowStr + '</b></div>' +
-                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#3b82f6;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign Flow <b style="color:#60a5fa;" data-k="foreign"></b></div>';
+                '<div class="text-[11px] font-medium flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5" data-row="bandar">' +
+                    '<span class="inline-flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM · Money Flow <b style="color:#34d399;">' + lpmTxt + '</b> <b style="color:#fb923c;">' + moneyFlowStr + '</b></span>' +
+                    '<span class="inline-flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign Flow <b style="color:#60a5fa;" data-k="foreign"></b></span>' +
+                '</div>';
         }
         // Indices carry no broker summary: drop the LPM / foreign / money-flow rows.
         if (_isIndexChart) Array.prototype.forEach.call(headerEl.querySelectorAll('[data-row="bandar"]'), function(row) { row.remove(); });
@@ -1200,10 +1214,13 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var intensityChart = null;
     var rotationChart = null;
     var rsiChart = null;
+    var macdChart = null;
     var bandarChart = null;
 
     var _cwWidth = Math.max(container.clientWidth || (container.parentElement && container.parentElement.clientWidth) || 0, 320);
-    var _modeShowForeign = (_activeMode === 'investor' || _activeMode === 'pro') && !_isIndexChart && Array.isArray(options && options.foreignFlow) && options.foreignFlow.length > 0;
+    var _hasCandleForeign = candles.some(function(c) { return c && c.foreign_net_value != null && Number.isFinite(Number(c.foreign_net_value)); });
+    var _hasForeignSeries = (Array.isArray(options && options.foreignFlow) && options.foreignFlow.length > 0) || _hasCandleForeign;
+    var _modeShowForeign = (_activeMode === 'investor' || _activeMode === 'pro') && !_isIndexChart && _hasForeignSeries;
     var _effectiveShowForeign = showForeign || _modeShowForeign;
 
     // FINAL POLISH TASK 1: non-price curves live in their own subpane.
@@ -1218,10 +1235,9 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
         bandarContainer.style.height = _bandarH + 'px';
         bandarContainer.style.display = 'block';
-        // FIX 1: real numeric legend from the canonical foreign-flow series.
         var _ffSeries = _effectiveShowForeign ? ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow) : [];
         var _ffLast = _ffSeries.length ? Number(_ffSeries[_ffSeries.length - 1].value) : null;
-        var _bandarLegend = 'BANDAR METRICS (sub-pane, bukan harga)';
+        var _bandarLegend = _effectiveShowForeign ? 'FOREIGN FLOW (sub-pane kumulatif)' : 'BANDAR METRICS (sub-pane, bukan harga)';
         if (_ffLast != null && isFinite(_ffLast)) {
             _bandarLegend += ' · Foreign kumulatif ' + (ws.formatIndonesianRupiahCompact ? ws.formatIndonesianRupiahCompact(_ffLast) : _ffLast.toFixed(0));
         }
@@ -1256,13 +1272,12 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         if (existingBandar) existingBandar.style.display = 'none';
     }
 
-    // FINAL POLISH TASK 1/2: RSI and MACD always render in a separate subpane
-    // (never in the candle pane). IHSG gets RSI + MACD here as well.
-    var showRSI = wsState ? wsState.isLayerActive('rsi14') : false;
-    var showMACD = wsState ? wsState.isLayerActive('macd') : false;
+    // Separate RSI 14 sub-pane (scalping, swing, pro)
+    var showRSI = (wsState ? wsState.isLayerActive('rsi14') : false) || (_activeMode === 'scalping' || _activeMode === 'swing' || _activeMode === 'pro');
+    var showMACD = (wsState ? wsState.isLayerActive('macd') : false) || (_activeMode === 'swing' || _activeMode === 'pro');
     var oscChart = null;
-    var _oscH = Math.max((dims.subpanes && (dims.subpanes.rsi14 || dims.subpanes.macd)) || 110, 105);
-    if ((showRSI || showMACD) && ws && candles.length >= 26) {
+    var _rsiH = Math.max((dims.subpanes && dims.subpanes.rsi14) || 105, 95);
+    if (showRSI && ws && candles.length >= 16) {
         var oscContainer = document.getElementById(chartId + '_osc_container');
         if (!oscContainer) {
             oscContainer = document.createElement('div');
@@ -1270,23 +1285,16 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             oscContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
             subpanelsWrapper.appendChild(oscContainer);
         }
-        oscContainer.style.height = _oscH + 'px';
+        oscContainer.style.height = _rsiH + 'px';
         oscContainer.style.display = 'block';
-        // FIX 1: real numeric legend in the pane corner (computed from the
-        // canonical series, never a placeholder). RSI active value + 30/70
-        // guides; MACD line/signal/histogram from the real 12/26/9 calculation.
-        var _rsiData = showRSI ? ws.calculateRSI(candles, 14) : [];
-        var _macdData = showMACD ? ws.calculateMACD(candles, 12, 26, 9) : null;
+        var _rsiData = ws.calculateRSI(candles, 14);
         var _rsiLast = _rsiData.length ? Number(_rsiData[_rsiData.length - 1].value) : null;
-        var _macdLast = _macdData && _macdData.macd.length ? Number(_macdData.macd[_macdData.macd.length - 1].value) : null;
-        var _sigLast = _macdData && _macdData.signal.length ? Number(_macdData.signal[_macdData.signal.length - 1].value) : null;
-        var _oscLegend = 'OSILATOR (sub-pane)';
-        if (_rsiLast != null && isFinite(_rsiLast)) _oscLegend += ' · RSI14 ' + _rsiLast.toFixed(2) + ' (30/70)';
-        if (_macdLast != null && isFinite(_macdLast)) _oscLegend += ' · MACD ' + _macdLast.toFixed(2) + ' / Signal ' + (_sigLast != null && isFinite(_sigLast) ? _sigLast.toFixed(2) : '—');
-        oscContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#94a3b8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _oscLegend + '</div>';
+        var _rsiLegend = 'OSILATOR RSI 14 (sub-pane)';
+        if (_rsiLast != null && isFinite(_rsiLast)) _rsiLegend += ' · RSI14 ' + _rsiLast.toFixed(2) + ' (30/70)';
+        oscContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#fb923c; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _rsiLegend + '</div>';
         oscChart = LightweightCharts.createChart(oscContainer, {
             width: _cwWidth,
-            height: _oscH - 2,
+            height: _rsiH - 2,
             layout: acChartLayout(_th),
             grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
             rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
@@ -1295,27 +1303,62 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
             handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
         });
-        if (showRSI) {
-            var rsiSeries = oscChart.addLineSeries({ color: '#f97316', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'RSI 14' });
-            rsiSeries.setData(_rsiData);
-            // FIX 1: 30/70 overbought/oversold guides in the RSI subpane.
-            var guide70 = oscChart.addLineSeries({ color: 'rgba(239,68,68,0.35)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: '70' });
-            var guide30 = oscChart.addLineSeries({ color: 'rgba(16,185,129,0.35)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: '30' });
-            var guideTimes = _rsiData.map(function(p) { return p.time; });
-            guide70.setData(guideTimes.map(function(t) { return { time: t, value: 70 }; }));
-            guide30.setData(guideTimes.map(function(t) { return { time: t, value: 30 }; }));
-        }
-        if (showMACD) {
-            var macdCalc = ws.calculateMACD(candles, 12, 26, 9);
-            var macdLine = oscChart.addLineSeries({ color: '#38bdf8', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'MACD' });
-            var signalLine = oscChart.addLineSeries({ color: '#f59e0b', lineWidth: 1, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: 'Signal' });
-            macdLine.setData(macdCalc.macd);
-            signalLine.setData(macdCalc.signal);
-        }
+        var rsiSeries = oscChart.addLineSeries({ color: '#f97316', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'RSI 14' });
+        rsiSeries.setData(_rsiData);
+        var guide70 = oscChart.addLineSeries({ color: 'rgba(239,68,68,0.4)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: '70' });
+        var guide30 = oscChart.addLineSeries({ color: 'rgba(16,185,129,0.4)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: '30' });
+        var guideTimes = _rsiData.map(function(p) { return p.time; });
+        guide70.setData(guideTimes.map(function(t) { return { time: t, value: 70 }; }));
+        guide30.setData(guideTimes.map(function(t) { return { time: t, value: 30 }; }));
         oscChart.timeScale().fitContent();
     } else {
         var existingOsc = document.getElementById(chartId + '_osc_container');
         if (existingOsc) existingOsc.style.display = 'none';
+    }
+
+    // Separate MACD (12, 26, 9) sub-pane (swing, pro)
+    var _macdH = Math.max((dims.subpanes && dims.subpanes.macd) || 110, 95);
+    if (showMACD && ws && candles.length >= 26) {
+        var macdContainer = document.getElementById(chartId + '_macd_container');
+        if (!macdContainer) {
+            macdContainer = document.createElement('div');
+            macdContainer.id = chartId + '_macd_container';
+            macdContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
+            subpanelsWrapper.appendChild(macdContainer);
+        }
+        macdContainer.style.height = _macdH + 'px';
+        macdContainer.style.display = 'block';
+        var macdCalc = ws.calculateMACD(candles, 12, 26, 9);
+        var _macdLast = macdCalc && macdCalc.macd && macdCalc.macd.length ? Number(macdCalc.macd[macdCalc.macd.length - 1].value) : null;
+        var _sigLast = macdCalc && macdCalc.signal && macdCalc.signal.length ? Number(macdCalc.signal[macdCalc.signal.length - 1].value) : null;
+        var _macdLegend = 'MACD (12, 26, 9)';
+        if (_macdLast != null && isFinite(_macdLast)) _macdLegend += ' · MACD ' + _macdLast.toFixed(2) + ' / Signal ' + (_sigLast != null && isFinite(_sigLast) ? _sigLast.toFixed(2) : '—');
+        macdContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#38bdf8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _macdLegend + '</div>';
+        macdChart = LightweightCharts.createChart(macdContainer, {
+            width: _cwWidth,
+            height: _macdH - 2,
+            layout: acChartLayout(_th),
+            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
+            timeScale: { visible: false },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+        });
+        if (Array.isArray(macdCalc && macdCalc.histogram) && macdCalc.histogram.length) {
+            var macdHist = macdChart.addHistogramSeries({ crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+            macdHist.setData(macdCalc.histogram.map(function(h) {
+                return { time: h.time, value: h.value, color: h.value >= 0 ? 'rgba(16,185,129,0.5)' : 'rgba(239,68,68,0.5)' };
+            }));
+        }
+        var macdLine = macdChart.addLineSeries({ color: '#38bdf8', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'MACD' });
+        var signalLine = macdChart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: 'Signal' });
+        macdLine.setData(macdCalc.macd);
+        signalLine.setData(macdCalc.signal);
+        macdChart.timeScale().fitContent();
+    } else {
+        var existingMacd = document.getElementById(chartId + '_macd_container');
+        if (existingMacd) existingMacd.style.display = 'none';
     }
 
     var showOBV = ((_activeMode === 'investor' || _activeMode === 'pro') || (wsState && wsState.isLayerActive('obv'))) && !_isIndexChart;
@@ -1413,6 +1456,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             if (rsiChart) rsiChart.timeScale().setVisibleLogicalRange(range);
             if (bandarChart) bandarChart.timeScale().setVisibleLogicalRange(range);
             if (oscChart) oscChart.timeScale().setVisibleLogicalRange(range);
+            if (macdChart) macdChart.timeScale().setVisibleLogicalRange(range);
         } catch (_) { /* subpanel disposed mid-event: nothing to sync */ }
     });
 
@@ -1590,7 +1634,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     }
     var _hiLo = null;
     if (candles && candles.length >= 10) {
-        try { var _hlFmt = _isIdxTicker ? acNumFmt(2, 2) : acNumFmt(0, 0); _hiLo = acAttachHiLo(chart, candleSeries, candles, container, function(v) { return _hlFmt.format(Number(v)); }); } catch (_) {}
+        try { var _hlFmt = _isIdxTicker ? acNumFmt(2, 2) : acNumFmt(0, 0); _hiLo = acAttachHiLo(chart, candleSeries, candles, canvasHost, function(v) { return _hlFmt.format(Number(v)); }); } catch (_) {}
     }
 
     // Register instances + metadata for the exporter (scoped, no global loose vars).
@@ -1606,6 +1650,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         rotationChart: (typeof rotationChart !== 'undefined' ? rotationChart : null) || null,
         bandarChart: (typeof bandarChart !== 'undefined' ? bandarChart : null) || null,
         oscChart: (typeof oscChart !== 'undefined' ? oscChart : null) || null,
+        macdChart: (typeof macdChart !== 'undefined' ? macdChart : null) || null,
+        obvChart: (typeof obvChart !== 'undefined' ? obvChart : null) || null,
         ticker: ticker || '',
         metrics: metrics || null,
         lastClose: _latest ? _latest.close : null,

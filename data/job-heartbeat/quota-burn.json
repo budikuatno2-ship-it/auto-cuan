@@ -1,10 +1,10 @@
 {
   "jobName": "quota-burn",
-  "lastStartWIB": "2026-10-30T23:41:09+07:00",
-  "lastEndWIB": "2026-10-30T23:41:09+07:00",
+  "lastStartWIB": "2026-11-25T12:59:54+07:00",
+  "lastEndWIB": "2026-11-25T12:59:54+07:00",
   "durationMs": 0,
   "exitCode": 0,
-  "requestsUsed": 10,
-  "status": "OK",
-  "lastErrorSnippet": "stopped=BUDGET_REACHED"
+  "requestsUsed": 0,
+  "status": "SCHEDULED_SKIP",
+  "lastErrorSnippet": "gate: LIMIT_UNKNOWN"
 }

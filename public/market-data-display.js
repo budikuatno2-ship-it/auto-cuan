@@ -99,7 +99,7 @@
     var abs = Math.abs(n);
     var sign = n < 0 ? '\u2212' : '';
     if (abs >= 1e12) return sign + (abs / 1e12).toFixed(2).replace('.', ',') + ' T';
-    if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2).replace('.', ',') + ' Mrd';
+    if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2).replace('.', ',') + ' M';
     if (abs >= 1e6) return sign + (abs / 1e6).toFixed(2).replace('.', ',') + ' Jt';
     if (abs >= 1e3) return sign + (abs / 1e3).toFixed(1).replace('.', ',') + ' Rb';
     return sign + String(Math.round(abs));

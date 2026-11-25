@@ -951,7 +951,7 @@
       return (n / 1e12).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' T lembar';
     }
     if (n >= 1e9) {
-      return (n / 1e9).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Mrd lembar';
+      return (n / 1e9).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' M lembar';
     }
     if (n >= 1e6) {
       return (n / 1e6).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Jt lembar';
@@ -966,7 +966,7 @@
       return 'Rp ' + (n / 1e12).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' T';
     }
     if (n >= 1e9) {
-      return 'Rp ' + (n / 1e9).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Mrd';
+      return 'Rp ' + (n / 1e9).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' M';
     }
     if (n >= 1e6) {
       return 'Rp ' + (n / 1e6).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Jt';
@@ -2368,6 +2368,11 @@
     }
 
     var meta = FINANCIAL_META[ticker];
+    var resolvedCompanyName = (cached && (cached.company_name || cached.name)) ||
+      (f && (f.company_name || f.name)) ||
+      (typeof window !== 'undefined' && window.IDX_TICKERS && window.IDX_TICKERS[ticker]) ||
+      (meta && meta.name) ||
+      ('PT ' + ticker + ' Tbk');
     var hasServerFinancialData = Boolean(
       (cached && (cached.financial_statements || cached.statements)) ||
       (f && f.data_available) ||
@@ -2375,10 +2380,12 @@
     );
     if (!meta && hasServerFinancialData) {
       meta = {
-        name: (cached && (cached.company_name || cached.name)) || ('PT ' + ticker + ' Tbk'),
+        name: resolvedCompanyName,
         sector: (f && f.sector) || (cached && cached.sector) || 'Emiten BEI',
         warn: ''
       };
+    } else if (meta && resolvedCompanyName && resolvedCompanyName !== ('PT ' + ticker + ' Tbk')) {
+      meta = Object.assign({}, meta, { name: resolvedCompanyName });
     }
 
     // Update Ticker chips
@@ -2414,18 +2421,11 @@
       var tBadge = byId('financialTickerBadge');
       if (tBadge) tBadge.textContent = ticker;
       var cName = byId('financialCompanyName');
-      if (cName) cName.textContent = 'PT ' + ticker + ' Tbk';
-      // Subtask J: the sector used to be hardcoded to '· Teknologi' for EVERY
-      // ticker without a FINANCIAL_META entry, so an unknown issuer was
-      // silently labelled a technology company. Show the real sector when the
-      // snapshot has one, otherwise show nothing rather than invent one.
+      if (cName) cName.textContent = resolvedCompanyName;
       var cSec = byId('financialSectorName');
       if (cSec) cSec.textContent = (f && f.sector) ? '· ' + f.sector : '';
       var cCov = byId('financialCoverageBadge');
       if (cCov) { cCov.textContent = 'Tidak tersedia · 0/4'; cCov.className = 'chip'; }
-      // Subtask J: this early return used to leave #finSrcChip at its static
-      // HTML default ("Data server"), which told the user a server-backed
-      // dataset was behind an empty panel. State the absence explicitly.
       var emptyChip = byId('finSrcChip');
       if (emptyChip) {
         emptyChip.textContent = 'Data tidak tersedia';
@@ -2443,17 +2443,10 @@
     var tBadge = byId('financialTickerBadge');
     if (tBadge) tBadge.textContent = ticker;
     var cName = byId('financialCompanyName');
-    if (cName) cName.textContent = meta.name;
+    if (cName) cName.textContent = resolvedCompanyName;
     var cSec = byId('financialSectorName');
-    if (cSec) cSec.textContent = '· ' + meta.sector;
+    if (cSec) cSec.textContent = '· ' + (meta.sector || (f && f.sector) || 'Emiten BEI');
 
-    // Subtask J: the snapshot sheet used to print FINANCIAL_META's hardcoded
-    // bvps/cap/shares/px strings unconditionally. Those literals contradict the
-    // live snapshot for the very same ticker — e.g. BBCA showed "Rp 2.372" BVPS
-    // and "Rp 1.263,5 T" market cap while /api/quote?action=financial-snapshot
-    // returned book_value_per_share=null, market_cap=null, data_available=false.
-    // A number the server says is unknown must render "—", never a stale
-    // bundle literal that looks authoritative. Real values always win.
     var pbvVal = byId('financialPbvVal');
     var pbvNote = byId('financialPbvNote');
     if (pbvVal) {
@@ -2473,7 +2466,7 @@
     }
     var capVal = byId('financialCapVal');
     if (capVal) {
-      capVal.textContent = researchHasNumber(f.market_cap) ? researchIdr(f.market_cap) : '—';
+      capVal.textContent = researchHasNumber(f.market_cap) ? formatIndonesianMarketCap(f.market_cap) : '—';
     }
     var capNote = byId('financialCapNote');
     if (capNote) {
@@ -3395,6 +3388,19 @@
         if (state) state.hidden = true;
         if (refreshBanner) refreshBanner.hidden = true;
 
+        var asOfRaw = (payload && payload.as_of) || (list[0] && list[0].free_float_as_of) || '';
+        var asOfBadge = byId('marketStructureAsOfBadge');
+        if (asOfBadge && asOfRaw) {
+          var asOfFmt = (typeof formatIndonesianDateWithWib === 'function') ? formatIndonesianDateWithWib(asOfRaw) : asOfRaw;
+          asOfBadge.textContent = 'Per ' + asOfFmt;
+        }
+        var capEl = byId('marketStructureSummaryCaption');
+        if (capEl) {
+          var withHolders = list.filter(function (x) { return Array.isArray(x.investors) && x.investors.length > 0; }).length;
+          var totalHolders = list.reduce(function (s, x) { return s + (Array.isArray(x.investors) ? x.investors.length : 0); }, 0);
+          capEl.textContent = list.length + ' emiten terdaftar · ' + withHolders + ' memiliki data pemegang saham >5% (' + totalHolders.toLocaleString('id-ID') + ' baris pemegang saham) · Data resmi KSEI & BEI';
+        }
+
         this.updateFilterCounts();
         this.applyFilters();
 
@@ -3974,13 +3980,8 @@
 
       var summaryNoteEl = byId('marketStructureOwnershipSummaryNote');
       if (summaryNoteEl) {
-        if (hasFf && majorSum > 0) {
-          summaryNoteEl.textContent = 'Teridentifikasi ' + majorSum.toFixed(2).replace('.', ',') + '% dari saham beredar; sisanya ' + Number(row.free_float_pct).toFixed(2).replace('.', ',') + '% masyarakat/publik.';
-        } else if (hasFf) {
-          summaryNoteEl.textContent = 'Free float publik ' + Number(row.free_float_pct).toFixed(2).replace('.', ',') + '% dari saham beredar.';
-        } else {
-          summaryNoteEl.textContent = 'Data kepemilikan saham >5% belum dilaporkan ke KSEI / belum terverifikasi.';
-        }
+        summaryNoteEl.textContent = '';
+        summaryNoteEl.style.display = 'none';
       }
 
       // Canvas Aside Pane Update

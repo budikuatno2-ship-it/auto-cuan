@@ -7,7 +7,7 @@
  *
  * AntiSlop compliance:
  * - Zero em-dashes
- * - Pure Indonesian financial formats (Jt, Mrd, T, koma desimal)
+ * - Pure Indonesian financial formats (Jt, M, T, koma desimal)
  * - High contrast accessible markup
  */
 (function (root) {
@@ -26,7 +26,7 @@
     var abs = Math.abs(n);
     var sign = n < 0 ? '-' : '';
     if (abs >= 1e12) return sign + 'Rp ' + (abs / 1e12).toFixed(2).replace('.', ',') + ' T';
-    if (abs >= 1e9) return sign + 'Rp ' + (abs / 1e9).toFixed(1).replace('.', ',') + ' Mrd';
+    if (abs >= 1e9) return sign + 'Rp ' + (abs / 1e9).toFixed(1).replace('.', ',') + ' M';
     if (abs >= 1e6) return sign + 'Rp ' + (abs / 1e6).toFixed(1).replace('.', ',') + ' Jt';
     return sign + 'Rp ' + Math.round(abs).toLocaleString('id-ID');
   }

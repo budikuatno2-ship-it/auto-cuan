@@ -1670,7 +1670,7 @@
       var wT = Number((document.getElementById('thW_technical_' + k) || {}).value || 0);
       var wV = Number((document.getElementById('thW_volume_' + k) || {}).value || 0);
       patchHorizons[k] = {
-        lookbackDays: Number(lbEl ? lbEl.value : 30),
+        lookbackDays: Number(lbEl ? lbEl.value : 10),
         weights: { bandar: wB, foreign: wF, technical: wT, volume: wV }
       };
     });

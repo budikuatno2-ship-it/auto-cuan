@@ -322,9 +322,9 @@ test('Top5 reads same canonical Top20 snapshot, exact subset, and tamper rejecte
   fs.appendFileSync(parent.path, ' '); assert.equal((await c.real.run('top5', ctx)).status, 'BLOCKED_SOURCE_INVALID');
 });
 
-test('legacy jobs, quota burner and Telegram remain disabled even when desired enabled; PRODUCTION rejects OFFLINE receipts', async (t) => {
+test('legacy jobs and Telegram remain disabled even when desired enabled; PRODUCTION rejects OFFLINE receipts', async (t) => {
   const c = setup(t); const doc = store.get().doc;
-  for (const key of ['telegram', 'quota-backfill', 'coordinated-pipeline', 'daytrade-producer', 'fastwatcher']) doc.jobs[key].enabled = true;
+  for (const key of ['telegram', 'coordinated-pipeline', 'daytrade-producer', 'fastwatcher']) doc.jobs[key].enabled = true;
   write(store.STORE_PATH, doc); assert.equal((await c.d().cycle()).ran.length, 0);
   brokerSources(c); const production = createAdapters({ ...c.options.adapterOptions, realm: 'PRODUCTION' });
   assert.equal((await production.run('broksum-all', { date: '2026-11-17', snapshot: 'test', now: new Date('2026-11-17T14:05:00Z') })).status, 'BLOCKED_SOURCE_INVALID');

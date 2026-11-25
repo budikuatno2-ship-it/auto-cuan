@@ -699,7 +699,7 @@
                 <div class="prov">
                     <span><b>Sumber</b> KSEI &amp; keterbukaan IDX</span>
                     <span>Free Float kosong diurutkan paling akhir</span>
-                    <span class="chip i" id="marketStructureAsOfBadge">Per 30 Sep 2026</span>
+                    <span class="chip i" id="marketStructureAsOfBadge">Memuat tanggal KSEI…</span>
                 </div>
             </section>
 
@@ -711,10 +711,10 @@
             <details class="adv-tools" style="margin-top:16px">
                 <summary>Alat lanjutan</summary>
                 <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
-                    <p class="text-[11px] text-slate-400 mt-0.5">962 emiten terdaftar · 961 memiliki data pemegang saham &gt;5% (7.154 entitas teridentifikasi) · Data resmi KSEI &amp; BEI</p>
+                    <p id="marketStructureSummaryCaption" class="text-[11px] text-slate-400 mt-0.5">Memuat cakupan emiten resmi KSEI &amp; BEI…</p>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
                         <select id="marketStructureSectorSelect" class="ac-filter-select text-xs rounded px-2.5 py-1.5" aria-label="Filter sektor struktur pasar" onchange="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.setSector(this.value)">
-                            <option value="all">Semua Sektor (962 Emiten)</option>
+                            <option value="all">Semua Sektor</option>
                             <option value="Barang Baku">Barang Baku</option>
                             <option value="Energi">Energi</option>
                             <option value="Infrastruktur">Infrastruktur</option>
@@ -936,14 +936,14 @@
          display helper, loaded before every chart/plan module. -->
     <script src="/chart-state-guard.js?v=20261105-v5p0"></script>
     <script src="/market-data-display.js?v=20261105-v5p0"></script>
-    <script src="/market-feature-runtime.js?v=v6.5.2a"></script>
-    <script src="/chart-drawing-tools.js?v=v6.5.2"></script>
+    <script src="/market-feature-runtime.js?v=v6.5.2-final"></script>
+    <script src="/chart-drawing-tools.js?v=v6.5.2-final"></script>
     <script src="/chart-viewer.js?v=20260905-v1"></script>
     <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
-    <script src="/unified-cockpit-runtime.js?v=20261023-v2"></script>
+    <script src="/unified-cockpit-runtime.js?v=v6.5.2-final"></script>
     <script src="/ai-chat-renderer.js?v=20260905-v2"></script>
     <script src="/account-center-lazy-loader-v1.js?v=20260817-v1"></script>
-    <script src="/analisis-saham-runtime.js?v=20261023-v2"></script>
+    <script src="/analisis-saham-runtime.js?v=v6.5.2-final"></script>
     <!-- M-P1a Defect D: Manual Screener runtime wired into the real page. -->
     <script src="/manual-screener-runtime.js?v=20261115-mp1a"></script>
     <script>
@@ -985,10 +985,10 @@
     <script src="/ui-stability-fix.js?v=20260802-ui-stability-v2"></script>
     <script src="/pattern-map.js?v=20260802-pattern-map-v3"></script>
     <script src="/pattern-visual.js?v=20260813-pattern-visual-v1"></script>
-    <script src="/pattern-safety-hardening-v1.js?v=20260813-v1"></script>
-    <script src="/pattern-direction-safety.js?v=20260813-pattern-direction-safety-v2"></script>
-    <script src="/pattern-stable-runtime.js?v=20260813-pattern-stable-v6"></script>
-    <script src="/command-palette.js?v=20261016-fase8-v1"></script>
-    <script src="/market-intelligence.js?v=20261015-v1"></script>
+    <script src="/pattern-safety-hardening-v1.js?v=v6.5.2-final"></script>
+    <script src="/pattern-direction-safety.js?v=v6.5.2-final"></script>
+    <script src="/pattern-stable-runtime.js?v=v6.5.2-final"></script>
+    <script src="/command-palette.js?v=v6.5.2-final"></script>
+    <script src="/market-intelligence.js?v=v6.5.2-final"></script>
 </body>
 </html>

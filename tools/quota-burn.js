@@ -291,12 +291,27 @@ async function main() {
     writeProgress({ startedAt: startIso, finishedAt: wibIsoNow(), spent: 0, stopped: gate0.reason, floor, limit: snap0.limit, usedBefore: snap0.used });
     return { spent: 0, stopped: gate0.reason };
   }
-  if (budget <= 0) {
-    console.log('[quota-burn] SKIP: tidak ada budget tersisa di atas floor.');
-    writeHeartbeat('SCHEDULED_SKIP', 0, 0, startIso, 'no budget above floor');
-    writeProgress({ startedAt: startIso, finishedAt: wibIsoNow(), spent: 0, stopped: 'NO_BUDGET', floor, limit: snap0.limit, usedBefore: snap0.used });
-    return { spent: 0, stopped: 'NO_BUDGET' };
+  if (budget <= 0 || snap0.remaining <= 50) {
+    const stopReason = snap0.remaining <= 50 ? 'SAFE_BUFFER_50' : 'NO_BUDGET';
+    console.log('[quota-burn] SKIP: remaining=' + snap0.remaining + ' safetyStop=' + stopReason);
+    writeHeartbeat('SCHEDULED_SKIP', 0, 0, startIso, stopReason);
+    writeProgress({ startedAt: startIso, finishedAt: wibIsoNow(), spent: 0, stopped: stopReason, floor, limit: snap0.limit, usedBefore: snap0.used });
+    return { spent: 0, stopped: stopReason };
   }
+
+  // Kloter 2 guard: 0 paid requests when Jan-Nov 2026 Foreign backfill already complete.
+  try {
+    const adminSvc = require('../lib/admin-console-service');
+    if (adminSvc && typeof adminSvc.getBackfillForecast === 'function') {
+      const fc = adminSvc.getBackfillForecast(ROOT);
+      if (fc && fc.remainingRequests === 0) {
+        console.log('[quota-burn] SKIP: Foreign 2026 backfill gap already 0 (0 requests).');
+        writeHeartbeat('FOREIGN_GAP_COMPLETE', 0, 0, startIso, 'remainingRequests=0');
+        writeProgress({ startedAt: startIso, finishedAt: wibIsoNow(), spent: 0, stopped: 'FOREIGN_GAP_COMPLETE', floor, limit: snap0.limit, usedBefore: snap0.used });
+        return { spent: 0, stopped: 'FOREIGN_GAP_COMPLETE' };
+      }
+    }
+  } catch (_) {}
 
   let queue = null;
   try { queue = JSON.parse(fs.readFileSync(opts.queue, 'utf8')); } catch (e) {

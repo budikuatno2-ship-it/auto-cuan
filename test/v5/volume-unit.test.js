@@ -31,7 +31,7 @@ test('volume matrix: shares -> lembar label, never lot', () => {
   assert.equal(C.formatVolume(0), '0 lembar', 'a measured zero is a real zero');
   assert.equal(C.formatVolume(500), '500 lembar');
   assert.equal(C.formatVolume(17608500), '17,61 Jt lembar');
-  assert.equal(C.formatVolume(1760850000), '1,76 Mrd lembar');
+  assert.equal(C.formatVolume(1760850000), '1,76 M lembar');
   assert.equal(C.formatVolume(null), '\u2014', 'absence is the em dash');
   assert.equal(C.formatVolume(''), '\u2014');
   assert.equal(C.formatVolume(NaN), '\u2014');

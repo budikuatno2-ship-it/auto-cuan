@@ -71,7 +71,7 @@
     function cacheKey() {
       var uid = '';
       try { uid = root.localStorage.getItem('autocuan_user_id') || 'session'; } catch (_) { uid = 'session'; }
-      return 'autocuan_pattern_scan_cache_v3_' + uid;
+      return 'autocuan_pattern_scan_cache_v4_' + uid;
     }
     function clearCache() {
       try { root.sessionStorage.removeItem(cacheKey()); } catch (_) {}
@@ -644,13 +644,13 @@
     }
     function openChart(ticker) {
       if (typeof root.switchAnalisisTab === 'function') {
-        root.switchAnalisisTab('chart');
+        root.switchAnalisisTab('analisis-chart');
         if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
-          root.UnifiedCockpit.syncActiveTicker(ticker);
+          root.UnifiedCockpit.syncActiveTicker(ticker, { source: 'pattern-radar' });
         }
         return;
       }
-      if (typeof root.navigateTo === 'function') root.navigateTo('chart');
+      if (typeof root.navigateTo === 'function') root.navigateTo('analisis', 'analisis-chart');
       var input = doc.getElementById('chartTickerInput');
       if (input) input.value = ticker;
       if (typeof root.loadChartPage === 'function') root.loadChartPage();
