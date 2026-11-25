@@ -15234,7 +15234,7 @@ body #appShell > #appSidebar .sidebar-collapse-toggle {
 body #appShell > #appSidebar .sidebar-collapse-toggle:hover { background: var(--ac-surface-hover); color: var(--ac-ink); }
 body #appShell > #appSidebar .sidebar-collapse-toggle svg { transition: transform 320ms var(--ease-spring); }
 body #appShell > #appSidebar .sidebar-menu-label { display: none; }
-body #appShell > #appSidebar > .sidebar-nav { padding: 0 0 8px; }
+body #appShell > #appSidebar > .sidebar-nav { padding: 8px 0 12px; }
 body #appShell > #appSidebar .sidebar-nav-group { display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 0; border: 0; }
 body #appShell > #appSidebar .sidebar-group-label {
   margin: 0;

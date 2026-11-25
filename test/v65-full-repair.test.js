@@ -19,7 +19,7 @@ test('V6.5-1: Three-Horizon SSOT config store versioning & 409 conflict guard', 
   const init = thStore.get({ filePath });
   assert.equal(init.ok, true);
   assert.equal(init.doc.version, 1);
-  assert.equal(init.doc.horizons.potensi_besok.lookbackDays, 20);
+  assert.equal(init.doc.horizons.potensi_besok.lookbackDays, 5);
 
   const saved = thStore.put(
     { horizons: { swing: { lookbackDays: 55, weights: { bandar: 25, foreign: 25, technical: 35, volume: 15 } } } },

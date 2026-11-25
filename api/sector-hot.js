@@ -9615,16 +9615,40 @@ async function handleInsiderNetwork(req, res) {
 }
 
 let marketStructure30SepCache = null;
+let marketStructureMetaCache = null;
+function getActiveKseiOwnershipMeta() {
+  try {
+    const kseiStore = require('../lib/ksei-ownership-store');
+    if (kseiStore && typeof kseiStore.getActiveOwnershipMeta === 'function') {
+      return kseiStore.getActiveOwnershipMeta();
+    }
+  } catch (_) {}
+  return { as_of: '2026-09-30', source: 'KSEI 30 Sep 2026' };
+}
 function getMarketStructure30SepList() {
-  if (marketStructure30SepCache) return marketStructure30SepCache;
-  const p = path.join(__dirname, '..', 'data', 'insider-network', 'ownership_30sep2026.json');
+  const activeMeta = getActiveKseiOwnershipMeta();
+  const activeTag = (activeMeta && activeMeta.as_of) || '2026-09-30';
+  if (marketStructure30SepCache && marketStructureMetaCache === activeTag) return marketStructure30SepCache;
   let list = [];
-  if (fs.existsSync(p)) {
-    try {
-      if (c10FileCache) { list = c10FileCache.getJsonFile(p, 15000).data || []; }
-      else { const raw = fs.readFileSync(p, 'utf8'); list = JSON.parse(raw) || []; }
-    } catch (_) { list = []; }
+  try {
+    const kseiStore = require('../lib/ksei-ownership-store');
+    if (kseiStore && typeof kseiStore.loadActiveOwnership === 'function') {
+      const loaded = kseiStore.loadActiveOwnership();
+      if (loaded && Array.isArray(loaded.items) && loaded.items.length > 0) {
+        list = loaded.items.slice();
+      }
+    }
+  } catch (_) {}
+  if (!list.length) {
+    const p = path.join(__dirname, '..', 'data', 'insider-network', 'ownership_30sep2026.json');
+    if (fs.existsSync(p)) {
+      try {
+        if (c10FileCache) { list = (c10FileCache.getJsonFile(p, 15000).data || []).slice(); }
+        else { const raw = fs.readFileSync(p, 'utf8'); list = (JSON.parse(raw) || []).slice(); }
+      } catch (_) { list = []; }
+    }
   }
+  marketStructureMetaCache = activeTag;
   // F2 — fallback resmi: data/market-structure-manual-overrides.json (MSKY 40.5% per 2026-03-31,
   // sumber IDX Peng-S-00011/BEI.PLP/04-2026). Tidak menimpa snapshot KSEI yang sudah ada.
   try {
@@ -9766,11 +9790,14 @@ function buildMarketStructureListPayload() {
       const hasOwnership = investors.length > 0;
       const ov = item._override || null;
 
+      const kseiMeta = getActiveKseiOwnershipMeta();
+      const kseiAsOf = (kseiMeta && kseiMeta.as_of) || '2026-09-30';
+      const kseiSrc = (kseiMeta && kseiMeta.source) || ('KSEI ' + kseiAsOf);
       let ffVal = item.freeFloat != null && Number.isFinite(Number(item.freeFloat))
         ? Number(item.freeFloat)
         : null;
-      let ffAsOf = ffVal != null ? '2026-09-30' : null;
-      let ffSrc = ffVal != null ? 'KSEI 30 Sep 2026' : null;
+      let ffAsOf = ffVal != null ? kseiAsOf : null;
+      let ffSrc = ffVal != null ? kseiSrc : null;
       if (ov && ov.free_float_pct != null && Number.isFinite(Number(ov.free_float_pct))) {
         ffVal = Number(ov.free_float_pct);
         ffAsOf = ov.free_float_as_of || null;
@@ -9780,7 +9807,7 @@ function buildMarketStructureListPayload() {
       // than inventing 35%.
       if (ffVal != null && ffVal <= 0) { ffVal = null; ffAsOf = null; ffSrc = null; }
 
-      const asOfTrade = (ov && ov.free_float_as_of) ? ov.free_float_as_of : (ffVal != null ? '2026-09-30' : null);
+      const asOfTrade = (ov && ov.free_float_as_of) ? ov.free_float_as_of : (ffVal != null ? kseiAsOf : null);
       const topInv = hasOwnership ? investors[0] : null;
       const pengendali = topInv ? (topInv.investorName + ' (' + Number(topInv.percentage || 0).toFixed(2) + '%)') : 'Publik';
 
@@ -9834,10 +9861,12 @@ function buildMarketStructureListPayload() {
         investors: investors
       };
     });
+    const activeMetaEnd = getActiveKseiOwnershipMeta();
+    const activeAsOfEnd = (activeMetaEnd && activeMetaEnd.as_of) || '2026-09-30';
     return {
       success: true,
       count: formatted.length,
-      as_of: '2026-09-30',
+      as_of: activeAsOfEnd,
       data: formatted,
       rows: formatted
     };
@@ -9845,18 +9874,16 @@ function buildMarketStructureListPayload() {
 
 async function handleMarketStructureList(req, res) {
   try {
-    const cacheKey = 'market-structure-list:30sep';
+    const activeMetaReq = getActiveKseiOwnershipMeta();
+    const activeTagReq = (activeMetaReq && activeMetaReq.as_of) || '2026-09-30';
+    const wantsCompact = String((req.query && (req.query.compact || req.query.slim)) || '') === '1';
+    const cacheKey = 'market-structure-list:' + activeTagReq + (wantsCompact ? ':compact' : '');
     const cached = hotMarketStructureCache.get(cacheKey);
     if (cached) {
       setHeaderSafe(res, 'X-Cache', 'HIT');
       setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
       return res.status(200).json(cached);
     }
-    // FIX-24: `data` and `rows` point at the same array, and every row carries
-    // the full `investors` list. ?compact=1 removes the duplicate array and
-    // trims the nested evidence to a disclosed head. The diet is applied here,
-    // at the top of the response path, so it is visibly wired into the handler.
-    var wantsCompact = String((req.query && (req.query.compact || req.query.slim)) || '') === '1';
     var payload = applyCompactPayloadDiet(buildMarketStructureListPayload(), wantsCompact);
     hotMarketStructureCache.set(cacheKey, payload, 30 * 1000);
     setHeaderSafe(res, 'X-Cache', 'MISS');

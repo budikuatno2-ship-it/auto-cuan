@@ -18,6 +18,7 @@
   var _searchDebounceTimer = null;
 
   var POPULAR_DEFAULTS = [
+    { ticker: 'IHSG', name: 'Indeks Harga Saham Gabungan (IDX Composite)', sector: 'Indeks Utama', board: 'IDX', lastPrice: null },
     { ticker: 'BBCA', name: 'Bank Central Asia Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: null },
     { ticker: 'BBRI', name: 'Bank Rakyat Indonesia (Persero) Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: null },
     { ticker: 'BMRI', name: 'Bank Mandiri (Persero) Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: null },
@@ -31,6 +32,20 @@
     { ticker: 'ICBP', name: 'Indofood CBP Sukses Makmur Tbk.', sector: 'Konsumen Primer', board: 'UTAMA', lastPrice: null },
     { ticker: 'GOTO', name: 'GoTo Gojek Tokopedia Tbk.', sector: 'Teknologi', board: 'PENGEMBANGAN', lastPrice: null }
   ];
+  var _localCtrlKIndex = null;
+  var _localCtrlKFetching = null;
+  function loadLocalCtrlKIndex() {
+    if (_localCtrlKIndex) return Promise.resolve(_localCtrlKIndex);
+    if (_localCtrlKFetching) return _localCtrlKFetching;
+    _localCtrlKFetching = fetch('/cache/ctrlk-search-index.json', { cache: 'default' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .catch(function () { return null; })
+      .then(function (j) {
+        if (j && Array.isArray(j.items)) _localCtrlKIndex = j.items;
+        return _localCtrlKIndex;
+      });
+    return _localCtrlKFetching;
+  }
 
   var WORKSPACE_PAGES = [
     { page: 'dashboard', label: 'Dashboard', keywords: 'dashboard ringkasan ihsg utama' },
@@ -151,23 +166,40 @@
 
   function handleKeyNavigation(e) {
     if (!_isOpen) return;
+    var container = byId('commandPaletteResults');
+    var allItems = container ? container.querySelectorAll('.ac-palette-item') : [];
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      if (_currentResults.length > 0) {
-        _selectedIndex = (_selectedIndex + 1) % _currentResults.length;
+      if (allItems.length > 0) {
+        _selectedIndex = (_selectedIndex + 1) % allItems.length;
         updateSelectedHighlight();
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      if (_currentResults.length > 0) {
-        _selectedIndex = (_selectedIndex - 1 + _currentResults.length) % _currentResults.length;
+      if (allItems.length > 0) {
+        _selectedIndex = (_selectedIndex - 1 + allItems.length) % allItems.length;
         updateSelectedHighlight();
       }
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (_currentResults.length > 0 && _currentResults[_selectedIndex]) {
-        selectTicker(_currentResults[_selectedIndex].ticker);
+      var chosen = allItems[_selectedIndex];
+      if (chosen) {
+        var pgName = chosen.getAttribute('data-page');
+        var tkName = chosen.getAttribute('data-ticker');
+        if (pgName) {
+          var subTab = chosen.getAttribute('data-subtab');
+          close();
+          if (typeof root.navigateTo === 'function') root.navigateTo(pgName, subTab || undefined);
+          return;
+        }
+        if (tkName) {
+          selectTicker(tkName);
+          return;
+        }
+      }
+      if (_currentResults.length > 0 && _currentResults[0]) {
+        selectTicker(_currentResults[0].ticker);
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -194,11 +226,34 @@
 
   async function performSearch(query) {
     var q = String(query || '').trim();
+    var localIdx = await loadLocalCtrlKIndex();
+    if (q && Array.isArray(localIdx) && localIdx.length > 0) {
+      var qUp = q.toUpperCase();
+      var qLo = q.toLowerCase();
+      var exact = localIdx.filter(function (it) { return it.ticker === qUp; });
+      var prefix = localIdx.filter(function (it) { return it.ticker !== qUp && it.ticker.indexOf(qUp) === 0; });
+      var fuzzy = localIdx.filter(function (it) {
+        return it.ticker !== qUp && it.ticker.indexOf(qUp) !== 0 && it.q && it.q.indexOf(qLo) >= 0;
+      });
+      var localHits = exact.concat(prefix, fuzzy).slice(0, 15).map(function (it) {
+        return { ticker: it.ticker, name: it.name, sector: it.ticker === 'IHSG' ? 'Indeks Utama' : 'Emiten BEI', board: it.ticker === 'IHSG' ? 'IDX' : 'BEI', lastPrice: null };
+      });
+      if (localHits.length > 0 && qUp === 'IHSG') {
+        _currentResults = localHits;
+        _selectedIndex = 0;
+        renderResults(_currentResults, 'Hasil Pencarian Indeks & Saham IDX');
+        return;
+      }
+    }
     try {
       var resp = await fetch('/api/sector-hot?action=stocks-search&q=' + encodeURIComponent(q) + '&limit=15');
       var data = await resp.json();
       if (data && data.success && Array.isArray(data.results)) {
-        _currentResults = data.results;
+        var apiList = data.results.slice();
+        if (q && /^ih/i.test(q) && !apiList.some(function (x) { return x.ticker === 'IHSG'; })) {
+          apiList.unshift(POPULAR_DEFAULTS[0]);
+        }
+        _currentResults = apiList;
         _selectedIndex = 0;
         renderResults(_currentResults, q ? 'Hasil Pencarian Saham IDX' : 'Saham Pilihan Teraktif (SQLite IDX)');
         return;
@@ -212,11 +267,14 @@
       return;
     }
 
-    var filtered = POPULAR_DEFAULTS.filter(function (item) {
-      return item.ticker.includes(q.toUpperCase()) ||
-        item.name.toUpperCase().includes(q.toUpperCase()) ||
-        item.sector.toUpperCase().includes(q.toUpperCase());
-    });
+    var pool = (Array.isArray(localIdx) && localIdx.length > 0)
+      ? localIdx.map(function (it) { return { ticker: it.ticker, name: it.name, sector: it.ticker === 'IHSG' ? 'Indeks Utama' : 'Emiten BEI', board: 'BEI', lastPrice: null }; })
+      : POPULAR_DEFAULTS;
+    var filtered = pool.filter(function (item) {
+      return String(item.ticker || '').toUpperCase().includes(q.toUpperCase()) ||
+        String(item.name || '').toUpperCase().includes(q.toUpperCase()) ||
+        String(item.sector || '').toUpperCase().includes(q.toUpperCase());
+    }).slice(0, 15);
     _currentResults = filtered;
     _selectedIndex = 0;
     renderResults(_currentResults, 'Hasil Pencarian');
@@ -235,20 +293,24 @@
     }
 
     var html = '';
+    var flatIdx = 0;
     if (matchedPages.length > 0) {
       html += '<div class="ac-palette-section-title">Navigasi Halaman (19 Menu)</div>';
       matchedPages.forEach(function (pg) {
+        var isSelPage = flatIdx === _selectedIndex;
         var subArg = pg.subTab ? (", '" + pg.subTab + "'") : '';
-        html += '<div class="ac-palette-item" role="option" onclick="AutoCuanCommandPalette.close(); if(typeof navigateTo===\'function\') navigateTo(\'' + pg.page + '\'' + subArg + ');">' +
+        html += '<div class="ac-palette-item' + (isSelPage ? ' is-selected' : '') + '" data-page="' + escapeHtml(pg.page) + '" data-subtab="' + escapeHtml(pg.subTab || '') + '" role="option" aria-selected="' + (isSelPage ? 'true' : 'false') + '" onclick="AutoCuanCommandPalette.close(); if(typeof navigateTo===\'function\') navigateTo(\'' + pg.page + '\'' + subArg + ');">' +
           '<div class="ac-palette-item-left"><div class="ac-palette-ticker-badge">HAL</div><div class="ac-palette-item-info"><div class="ac-palette-company-name">' + escapeHtml(pg.label) + '</div></div></div>' +
           '<div class="ac-palette-item-right"><span class="ac-palette-action-hint">Buka &rarr;</span></div></div>';
+        flatIdx++;
       });
     }
     if (list && list.length > 0) {
       html += '<div class="ac-palette-section-title">' + escapeHtml(sectionTitle) + '</div>';
     }
-    (list || []).forEach(function (item, idx) {
-      var isSelected = idx === _selectedIndex;
+    (list || []).forEach(function (item) {
+      var isSelected = flatIdx === _selectedIndex;
+      flatIdx++;
       var boardBadge = item.board ? '<span class="ac-palette-board-badge">' + escapeHtml(item.board) + '</span>' : '';
       var priceDisplay = (item.lastPrice != null && Number.isFinite(Number(item.lastPrice)) && Number(item.lastPrice) > 0)
         ? '<span class="ac-palette-price font-mono font-bold" style="color: #f8fafc !important;">Rp ' + Number(item.lastPrice).toLocaleString('id-ID') + '</span>'

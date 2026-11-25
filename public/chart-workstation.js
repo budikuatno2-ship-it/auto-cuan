@@ -40,12 +40,14 @@
       title: 'Tren & EMA',
       description: 'Garis Moving Average dan Pita Tren',
       layers: [
+        { id: 'ema9', name: 'EMA 9 (Biru Muda)', desc: 'Exponential Moving Average 9 hari untuk scalping', color: '#38bdf8', default: false },
+        { id: 'ema21', name: 'EMA 21 (Merah Muda)', desc: 'Exponential Moving Average 21 hari untuk scalping', color: '#f472b6', default: false },
         { id: 'ma20', name: 'MA 20 (Hijau)', desc: 'Moving Average 20 hari', color: '#10b981', default: true },
         { id: 'ma50', name: 'MA 50 (Kuning)', desc: 'Moving Average 50 hari', color: '#eab308', default: true },
         { id: 'ma100', name: 'MA 100 (Biru)', desc: 'Moving Average 100 hari', color: '#3b82f6', default: false },
         { id: 'ma200', name: 'MA 200 (Ungu)', desc: 'Moving Average 200 hari tren jangka panjang', color: '#a855f7', default: false },
         { id: 'ema20', name: 'EMA 20 (Sian)', desc: 'Exponential Moving Average 20 hari', color: '#06b6d4', default: false },
-        { id: 'ema50', name: 'EMA 50 (Merah Muda)', desc: 'Exponential Moving Average 50 hari', color: '#ec4899', default: false },
+        { id: 'ema50', name: 'EMA 50 (Oranye)', desc: 'Exponential Moving Average 50 hari', color: '#ec4899', default: false },
         { id: 'bollinger', name: 'Bollinger Bands (20, 2)', desc: 'Pita volatilitas harga', color: '#6366f1', default: false }
       ]
     },
@@ -166,8 +168,8 @@
     MAX_PRICE_TAGS: 5,
     MAX_CANDLE_LABELS: 3,
     RIGHT_OFFSET_BARS: 8,
-    MAX_MAIN_PANE_LAYERS: 4,
-    MAX_PRESET_LAYERS: { simpel: 4, scalping: 4, swing: 4, investor: 4, pro: 6 },
+    MAX_MAIN_PANE_LAYERS: 6,
+    MAX_PRESET_LAYERS: { simpel: 4, scalping: 4, swing: 5, investor: 4, pro: 6 },
     MAX_RIGHT_AXIS_BADGES: 4,
     MODE_LAYOUT: MODE_LAYOUT
   });
@@ -176,32 +178,32 @@
     simpel: {
       id: 'simpel',
       name: 'Simpel',
-      description: 'Bersih: candle + volume + MA20/MA50 + maksimal 2 garis S/R. Tanpa label pola.',
-      layers: ['ma20', 'ma50', 'volume_bars', 'sr_levels']
+      description: 'Bersih: candle + EMA20/MA50 + S/R + sub-pane Volume.',
+      layers: ['ema20', 'ma50', 'volume_bars', 'sr_levels']
     },
     scalping: {
       id: 'scalping',
       name: 'Scalping',
-      description: 'Fokus momentum: EMA20, volume, S/R, dan RSI di sub-pane terpisah.',
-      layers: ['ema20', 'volume_bars', 'sr_levels', 'rsi14']
+      description: 'Momentum intraday: EMA9, EMA21, Bollinger (20,2), S/R, Volume & RSI 14 (30/70).',
+      layers: ['ema9', 'ema21', 'bollinger', 'volume_bars', 'sr_levels', 'rsi14']
     },
     swing: {
       id: 'swing',
       name: 'Swing',
-      description: 'Swing: MA20/MA50, volume, S/R, dan MACD di sub-pane terpisah.',
-      layers: ['ma20', 'ma50', 'volume_bars', 'sr_levels', 'macd']
+      description: 'Swing: EMA20, MA50, MA200, Fibonacci/Zona, S/R, Volume, MACD (12,26,9) & RSI 14.',
+      layers: ['ema20', 'ma50', 'ma200', 'fibonacci', 'volume_bars', 'sr_levels', 'macd', 'rsi14']
     },
     investor: {
       id: 'investor',
       name: 'Investor',
-      description: 'Tren jangka panjang: MA50/MA200, volume, S/R, tanpa kurva non-harga.',
-      layers: ['ma50', 'ma200', 'volume_bars', 'sr_levels']
+      description: 'Tren jangka panjang: MA50/MA100/MA200, S/R, sub-pane Volume, Foreign Flow & OBV.',
+      layers: ['ma50', 'ma100', 'ma200', 'volume_bars', 'sr_levels']
     },
     pro: {
       id: 'pro',
       name: 'Pro',
-      description: 'Ringkas dan terbaca: candle + MA/BB + S/R + maksimal 3 pola prioritas. 14 keluarga detektor tersedia di drawer.',
-      layers: ['ma20', 'ma50', 'volume_bars', 'sr_levels', 'rsi14', 'macd']
+      description: 'Lengkap 5 sub-pane: EMA20, MA50, MA200, BB, Fib + Volume, RSI 14, MACD, Bandar/Foreign & OBV.',
+      layers: ['ema20', 'ma50', 'ma200', 'bollinger', 'fibonacci', 'volume_bars', 'sr_levels', 'rsi14', 'macd']
     }
   };
 
@@ -1427,7 +1429,7 @@
   function compactMagnitude(v) {
     var abs = Math.abs(v);
     var sign = v < 0 ? '\u2212' : '';
-    if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2).replace('.', ',') + ' Mrd';
+    if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2).replace('.', ',') + ' M';
     if (abs >= 1e6) return sign + (abs / 1e6).toFixed(2).replace('.', ',') + ' Jt';
     if (abs >= 1e3) return sign + (abs / 1e3).toFixed(1).replace('.', ',') + ' Rb';
     return sign + String(Math.round(abs));
@@ -1499,7 +1501,7 @@
     var abs = Math.abs(raw);
     var sign = raw > 0 ? '+' : '-';
     if (abs >= 1e12) return sign + 'Rp ' + (abs / 1e12).toFixed(2).replace('.', ',') + ' T';
-    if (abs >= 1e9) return sign + 'Rp ' + (abs / 1e9).toFixed(2).replace('.', ',') + ' Mrd';
+    if (abs >= 1e9) return sign + 'Rp ' + (abs / 1e9).toFixed(2).replace('.', ',') + ' M';
     if (abs >= 1e6) return sign + 'Rp ' + (abs / 1e6).toFixed(2).replace('.', ',') + ' Jt';
     return sign + 'Rp ' + Math.round(abs).toLocaleString('id-ID');
   }

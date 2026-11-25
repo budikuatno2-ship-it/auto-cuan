@@ -557,14 +557,17 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
     try {
       var mdfPath = path.join(__dirname, '..', 'data', 'foreign-flow-multi-day.json');
       if (fs.existsSync(mdfPath)) {
-        var mdf = JSON.parse(fs.readFileSync(mdfPath, 'utf8')).data || {};
+        var mdfJson = JSON.parse(fs.readFileSync(mdfPath, 'utf8'));
+        var mdf = (mdfJson && mdfJson.data) || {};
+        var mdfAsOf = (mdfJson && mdfJson.as_of) || null;
         rows.forEach(function(r) {
           var t = r.ticker;
           var src = t && mdf[t];
           if (!src) return;
-          if (r.foreign_net_today == null && src.foreign_net_today != null) r.foreign_net_today = src.foreign_net_today;
-          if (r.foreign_net_3d == null && src.foreign_net_3d != null) r.foreign_net_3d = src.foreign_net_3d;
-          if (r.foreign_net_7d == null && src.foreign_net_7d != null) r.foreign_net_7d = src.foreign_net_7d;
+          if ((r.foreign_net_today == null || (Number(r.foreign_net_today) === 0 && Number(src.foreign_net_today) !== 0)) && src.foreign_net_today != null) r.foreign_net_today = src.foreign_net_today;
+          if ((r.foreign_net_3d == null || (Number(r.foreign_net_3d) === 0 && Number(src.foreign_net_3d) !== 0)) && src.foreign_net_3d != null) r.foreign_net_3d = src.foreign_net_3d;
+          if ((r.foreign_net_7d == null || (Number(r.foreign_net_7d) === 0 && Number(src.foreign_net_7d) !== 0)) && src.foreign_net_7d != null) r.foreign_net_7d = src.foreign_net_7d;
+          if (src.as_of || mdfAsOf) r.foreign_as_of = src.as_of || mdfAsOf;
         });
       }
     } catch (_) {}

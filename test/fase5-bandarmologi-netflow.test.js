@@ -32,9 +32,9 @@ test('normalizeBrokerSummary reconciles net flow with real BBCA broker data (for
   assert.equal(normalized.net_flow, expectedForeignNet);
   assert.equal(normalized.total_net_flow, expectedForeignNet);
 
-  // Unit must be explicit "Mrd", never ambiguous "M"
-  assert.equal(normalized.net_flow_formatted, '-75.80 Mrd');
-  assert.doesNotMatch(normalized.net_flow_formatted, /\sM$/);
+  // Unit must be compact Indonesian "M" (Miliar)
+  assert.equal(normalized.net_flow_formatted, '-75.80 M');
+  assert.match(normalized.net_flow_formatted, /\sM$/);
 
   // Classification threshold check (|net| >= 5e9 => BIG_DISTRIBUTION)
   assert.equal(normalized.net_status, 'BIG_DISTRIBUTION');
@@ -59,7 +59,7 @@ test('normalizeBrokerSummary reconciles net flow via top buyers and sellers when
   assert.ok(normalized);
   // Net = (40 Mrd + 25 Mrd) - 15 Mrd = +50 Mrd (50,000,000,000 IDR)
   assert.equal(normalized.net_flow, 50000000000);
-  assert.equal(normalized.net_flow_formatted, '+50.00 Mrd');
+  assert.equal(normalized.net_flow_formatted, '+50.00 M');
   assert.equal(normalized.net_status, 'BIG_ACCUMULATION');
   assert.equal(normalized.net_label, 'Big Accumulation');
 });
@@ -75,5 +75,5 @@ test('normalizeBrokerSummary preserves precomputed net_flow when explicit', () =
 
   const normalized = bandarmologiService.normalizeBrokerSummary(explicitSample, '2026-10-12', 'BBCA');
   assert.equal(normalized.net_flow, 12500000000);
-  assert.equal(normalized.net_flow_formatted, '+12.50 Mrd');
+  assert.equal(normalized.net_flow_formatted, '+12.50 M');
 });

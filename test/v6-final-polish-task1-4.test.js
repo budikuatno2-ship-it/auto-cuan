@@ -59,8 +59,8 @@ test('TASK1: preset layer budgets and no non-price curves in candle pane', () =>
       assert.ok(!layers.includes(banned), name + ' must not default ' + banned + ' in candle pane');
     }
   }
-  // Simpel is exactly candles + volume + MA20/MA50 + S/R.
-  assert.deepEqual(W.PRESETS.simpel.layers, ['ma20', 'ma50', 'volume_bars', 'sr_levels']);
+  // Simpel is candle + EMA20/MA50 + S/R + Volume subpane.
+  assert.deepEqual(W.PRESETS.simpel.layers, ['ema20', 'ma50', 'volume_bars', 'sr_levels']);
   // All 14 detector families remain available in the drawer.
   assert.equal(W.AUTO_PATTERN_FAMILIES.length, 14);
   // Candlestick labels and XABCD are OFF by default everywhere.

@@ -1540,7 +1540,7 @@ html.light #googleCompleteProfileModal input {
                 <div class="lbl">IDX Composite · IHSG</div>
                 <div class="big num pop" id="ihsgLast"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></div>
                 <div class="sub num"><span id="ihsgChange"></span><span id="dashIhsgTrend"></span></div>
-                <svg id="dashIhsgSpark" class="dash-spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true" hidden><path class="draw" pathLength="1" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>
+                <svg id="dashIhsgSpark" class="dash-spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true" hidden><path fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>
                 <button type="button" class="dash-cell-link lnk sr-only" onclick="event.stopPropagation();window.location.assign('/analisis-saham?ticker=IHSG')">Buka analisis IHSG</button>
             </div>
             <div>
@@ -3667,7 +3667,7 @@ html.light #googleCompleteProfileModal input {
             <tbody>
               <tr>
                 <td><b>Potensi Besok</b> <span class="mut">(1–5H)</span></td>
-                <td class="r"><input id="thLookback_potensi_besok" type="number" min="5" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thLookback_potensi_besok" type="number" min="1" max="250" class="inp mono" style="width:76px;text-align:right"></td>
                 <td class="r"><input id="thW_bandar_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
                 <td class="r"><input id="thW_foreign_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
                 <td class="r"><input id="thW_technical_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
@@ -3675,7 +3675,7 @@ html.light #googleCompleteProfileModal input {
               </tr>
               <tr>
                 <td><b>Short Swing</b> <span class="mut">(3–10H)</span></td>
-                <td class="r"><input id="thLookback_short_swing" type="number" min="5" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thLookback_short_swing" type="number" min="1" max="250" class="inp mono" style="width:76px;text-align:right"></td>
                 <td class="r"><input id="thW_bandar_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
                 <td class="r"><input id="thW_foreign_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
                 <td class="r"><input id="thW_technical_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
@@ -3683,7 +3683,7 @@ html.light #googleCompleteProfileModal input {
               </tr>
               <tr>
                 <td><b>Swing</b> <span class="mut">(7–30H)</span></td>
-                <td class="r"><input id="thLookback_swing" type="number" min="5" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thLookback_swing" type="number" min="1" max="250" class="inp mono" style="width:76px;text-align:right"></td>
                 <td class="r"><input id="thW_bandar_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
                 <td class="r"><input id="thW_foreign_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
                 <td class="r"><input id="thW_technical_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
@@ -4532,7 +4532,7 @@ html.light #googleCompleteProfileModal input {
                 <div class="prov">
                     <span><b>Sumber</b> KSEI &amp; keterbukaan IDX</span>
                     <span>Free Float kosong diurutkan paling akhir</span>
-                    <span class="chip i" id="marketStructureAsOfBadge">Per 30 Sep 2026</span>
+                    <span class="chip i" id="marketStructureAsOfBadge">Memuat tanggal KSEI…</span>
                 </div>
             </section>
 
@@ -4544,10 +4544,10 @@ html.light #googleCompleteProfileModal input {
             <details class="adv-tools" style="margin-top:16px">
                 <summary>Alat lanjutan</summary>
                 <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
-                    <p class="text-[11px] text-slate-400 mt-0.5">962 emiten terdaftar · 961 memiliki data pemegang saham &gt;5% (7.154 entitas teridentifikasi) · Data resmi KSEI &amp; BEI</p>
+                    <p id="marketStructureSummaryCaption" class="text-[11px] text-slate-400 mt-0.5">Memuat cakupan emiten resmi KSEI &amp; BEI…</p>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
                         <select id="marketStructureSectorSelect" class="ac-filter-select text-xs rounded px-2.5 py-1.5" aria-label="Filter sektor struktur pasar" onchange="if(window.AutoCuanMarketStructure)AutoCuanMarketStructure.setSector(this.value)">
-                            <option value="all">Semua Sektor (962 Emiten)</option>
+                            <option value="all">Semua Sektor</option>
                             <option value="Barang Baku">Barang Baku</option>
                             <option value="Energi">Energi</option>
                             <option value="Infrastruktur">Infrastruktur</option>
@@ -8767,10 +8767,6 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
             var when = '';
             if (status === 'eod' && rawCal) {
                 when = formatCalendarDate(rawCal) || '';
-                if (!isDateOnly && statesApi && typeof statesApi.formatWib === 'function') {
-                    var parsedU = new Date(rawTime);
-                    if (Number.isFinite(parsedU.getTime())) when = statesApi.formatWib(parsedU.getTime());
-                }
             } else if (usableTime) {
                 if (isDateOnly && rawCal) when = formatCalendarDate(rawCal);
                 else if (statesApi && typeof statesApi.formatWib === 'function') when = statesApi.formatWib(calcMs);
@@ -16872,12 +16868,17 @@ function normalizeDashboardPick(p) {
     r.change_pct = p.change_pct != null ? p.change_pct : (raw.change_pct != null ? raw.change_pct : null);
     r.volume_ratio_avg20 = p.volume_ratio_avg20 != null ? p.volume_ratio_avg20 : (p.volume_ratio != null ? p.volume_ratio : (raw.volume_ratio_avg20 != null ? raw.volume_ratio_avg20 : raw.volume_ratio));
     r.last_price = p.last_price || p.current_price || raw.lastn || raw.last_price || raw.close;
-    r.entry1 = p.entry1 || raw.entry1;
-    r.entry2 = p.entry2 || raw.entry2;
-    r.stop_loss = p.sl || raw.stop_loss || raw.sl;
+    r.entry1 = p.entry1 != null ? p.entry1 : (p.entry_high != null ? p.entry_high : (raw.entry1 != null ? raw.entry1 : raw.entry_high));
+    r.entry2 = p.entry2 != null ? p.entry2 : (p.entry_low != null ? p.entry_low : (raw.entry2 != null ? raw.entry2 : raw.entry_low));
+    r.stop_loss = p.sl || p.stop_loss || raw.stop_loss || raw.sl;
     r.tp1 = p.tp1 || raw.tp1n || raw.tp1;
     r.tp2 = p.tp2 || raw.tp2n || raw.tp2;
-    r.risk_reward = raw.risk_reward || raw.rr;
+    r.risk_reward = p.risk_reward || p.rr || raw.risk_reward || raw.rr;
+    r.risk_label = p.risk_label || p.risk_label_v2 || p.risk_level || raw.risk_label || raw.risk_label_v2 || raw.risk_level || null;
+    r.status = p.status || p.readiness_status || p.final_status || raw.status || raw.readiness_status || raw.final_status || null;
+    r.readiness_status = p.readiness_status || raw.readiness_status || r.status;
+    r.action_label = p.action_label || raw.action_label || (r.status === 'READY' ? 'Siap Pantau' : null);
+    r.setup_label = p.setup_label || p.setup || p.holding_label || raw.setup_label || raw.setup || p.horizon_label || null;
     r.plan_quality_status = raw.plan_quality_status;
     r.plan_quality_label = raw.plan_quality_label;
     r.plan_quality_note = raw.plan_quality_note;
@@ -18387,16 +18388,16 @@ function forceNormalizeTechnicalDOM(root) {
      helper. Both must load BEFORE any chart/plan module so every renderer uses
      the same unit labels and the same ticker-verified snapshot. -->
 <script src="/chart-state-guard.js?v=20261105-v5p0"></script>
-<script src="/market-data-display.js?v=20261105-v5p0"></script>
+<script src="/market-data-display.js?v=v6.5.2-final"></script>
 <!-- F3: pure F1/F2 detectors bundled for the browser (in-house UMD build of
      lib/chart-core). Must load before the auto-patterns runtime. -->
 <script src="/chart-core-browser.js?v=20261115-f3"></script>
-<script src="/chart-workstation.js?v=v6.5.2"></script>
-<script src="/chart-drawing-tools.js?v=v6.5.2"></script>
+<script src="/chart-workstation.js?v=v6.5.2-final"></script>
+<script src="/chart-drawing-tools.js?v=v6.5.2-final"></script>
 <script src="/b3-liquidity-badge.js?v=20261031-b3"></script>
 <script src="/candle-request-dedupe.js?v=20261120-task-e"></script>
 <script src="/b3-liquidity-inject.js?v=20261031-b3"></script>
-<script src="/market-feature-runtime.js?v=v6.5.2a"></script>
+<script src="/market-feature-runtime.js?v=v6.5.2-final"></script>
 <!-- F3: wires the F1/F2 detectors into the live chart overlay pipeline. -->
 <script src="/chart-auto-patterns-runtime.js?v=20261115-f3"></script>
 <script src="/analisis-v2.js?v=v6.5.2"></script>
@@ -18641,8 +18642,8 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/signal-gate-transparency.js?v=20261022-v1"></script>
 <script src="/number-flow-runtime.js?v=20260929-keyboard-v1"></script>
 <script src="/data-primitives-runtime.js?v=20261007-w3"></script>
-<script src="/analisis-saham-runtime.js?v=v65-20261124"></script>
-<script src="/bandarmologi-runtime.js?v=20260928-spa1"></script>
+<script src="/analisis-saham-runtime.js?v=v6.5.2-final"></script>
+<script src="/bandarmologi-runtime.js?v=v6.5.2-final"></script>
 <script src="/portfolio-planner-v1.js?v=20260928-spa1"></script>
 <script src="/portfolio-command-center-model.js?v=20260928-spa1"></script>
 <script src="/portfolio-command-center.js?v=20260929-detail-v2"></script>
@@ -18666,8 +18667,8 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/canonical-motion.js?v=20261006-v1"></script>
 <script src="/ac-motion.js?v=20261022-v1"></script>
 <script src="/landing-experience.js?v=20261001-v4"></script>
-<script src="/command-palette.js?v=20261016-fase8-v1"></script>
-<script src="/market-intelligence.js?v=20261022-v2"></script>
+<script src="/command-palette.js?v=v6.5.2-final"></script>
+<script src="/market-intelligence.js?v=v6.5.2-final"></script>
 <script src="/dashboard-v2.js?v=v6.5.2"></script>
 <script src="/ac-tape.js?v=v6.5.2"></script>
 <script src="/screener-v2.js?v=v6.5.2"></script>

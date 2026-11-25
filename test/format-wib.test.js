@@ -26,13 +26,13 @@ test('AC-2.2: formatWib handles TZ=UTC, TZ=America/New_York, and TZ=Asia/Jakarta
   assert.strictEqual(formatWib(midnightIso, { includeTime: true }), '13 Okt 2026, 00.00 WIB');
 });
 
-test('AC-2.2: formatCompactUnit produces official Indonesian financial units (Jt, Mrd, T)', () => {
+test('AC-2.2: formatCompactUnit produces official Indonesian financial units (Jt, M, T)', () => {
   // Market cap in Triliun (T)
   assert.strictEqual(formatCompactUnit(726151682025000), '726,15 T');
-  // Shares outstanding in Miliar (Mrd lembar)
-  assert.strictEqual(formatCompactUnit(122042299500, 'lembar'), '122,04 Mrd lembar');
-  // Revenue in Miliar (Mrd)
-  assert.strictEqual(formatCompactUnit(24592250000), '24,59 Mrd');
+  // Shares outstanding in Miliar (M lembar)
+  assert.strictEqual(formatCompactUnit(122042299500, 'lembar'), '122,04 M lembar');
+  // Revenue in Miliar (M)
+  assert.strictEqual(formatCompactUnit(24592250000), '24,59 M');
   // Millions in Juta (Jt)
   assert.strictEqual(formatCompactUnit(50000000), '50,00 Jt');
 });

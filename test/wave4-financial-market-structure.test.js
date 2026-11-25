@@ -47,9 +47,9 @@ test('Wave 4: Financial runtime strictly enforces data truth, formatting, and sn
   assert.match(runtime, /function formatIndonesianDateWithWib/);
   assert.match(runtime, /WIB/);
 
-  // Explicit share unit wording and compact market cap (Wave 4B §3 & AC-2.2 standard Mrd lembar)
+  // Explicit share unit wording and compact market cap (Wave 4B §3 & Kloter 2 M lembar)
   assert.match(runtime, /function formatIndonesianSharesCount/);
-  assert.match(runtime, /Mrd lembar|miliar lembar/);
+  assert.match(runtime, /M lembar|Mrd lembar|miliar lembar/);
   assert.match(runtime, /formatIndonesianSharesCount\(f\.shares_outstanding\)/);
   assert.match(runtime, /function formatIndonesianMarketCap/);
   assert.match(runtime, /formatIndonesianMarketCap\(f\.market_cap\)/);

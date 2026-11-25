@@ -125,7 +125,9 @@
     var status;
 
     if (evaluated.actionable) {
-      status = candidate.status === 'confirmed' ? api.STATUS.ACTIONABLE : api.STATUS.AWAITING;
+      var stNorm = String(candidate.status || '').trim().toUpperCase();
+      var isConfirmed = stNorm === 'CONFIRMED' || stNorm === 'ACTIVE' || stNorm === 'READY' || stNorm === 'DEMAND OB VALID' || stNorm === 'SUPPLY OB VALID' || stNorm.indexOf('BREAKOUT') >= 0 || stNorm.indexOf('REVERSAL') >= 0 || stNorm.indexOf('CONFIRMED') >= 0 || Boolean(candidate.actionable);
+      status = isConfirmed ? api.STATUS.ACTIONABLE : api.STATUS.AWAITING;
     } else if (evaluated.reasons && evaluated.reasons.indexOf('invalidation_reached') >= 0) {
       status = api.STATUS.INVALIDATED;
     } else if (evaluated.reasons && evaluated.reasons.indexOf('inconsistent_level_order') >= 0) {
