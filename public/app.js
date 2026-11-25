@@ -207,23 +207,28 @@
       }
     }catch(_){}
 
-    // V4-F09: Rangkuman Kuantitatif & Anti-Slop Text
+    // V4-F09: Rangkuman Kuantitatif & Anti-Slop Text (tanpa angka MA perkiraan palsu)
     try {
+      var mx = d.metrics || {};
+      var ma20Real = (mx.ma20 != null && Number.isFinite(Number(mx.ma20))) ? fmtRp(mx.ma20) : 'butuh 20 sesi';
+      var ma50Real = (mx.ma50 != null && Number.isFinite(Number(mx.ma50))) ? fmtRp(mx.ma50) : 'butuh 50 sesi';
+      var ma200Real = (mx.ma200 != null && Number.isFinite(Number(mx.ma200))) ? fmtRp(mx.ma200) : ('butuh 200 sesi (tersedia ' + (mx.candle_count || 0) + ' sesi)');
+      var rsiReal = (mx.rsi14 != null && Number.isFinite(Number(mx.rsi14))) ? Number(mx.rsi14).toFixed(1).replace('.', ',') : (d.rsi != null ? Number(d.rsi).toFixed(1).replace('.', ',') : '—');
       if (isIndex) {
-        setText('anaAiSummary', 'Indeks Harga Saham Gabungan (IHSG) berada di level ' + fmtRp(d.last) + ' vs MA20 ' + fmtRp(d.last * 0.98) + ', MA50 ' + fmtRp(d.last * 0.95) + ', MA200 ' + fmtRp(d.last * 0.92) + '. Struktur SMC BOS/CHoCH valid, Pola Harmonik XABCD & Skenario Zig-Zag terkonfirmasi dengan RSI Wilder RMA 54,2 dan LPM ' + fmtRp(d.lpm ? d.lpm.value : d.last) + '.');
+        setText('anaAiSummary', 'Indeks Harga Saham Gabungan (IHSG) berada di level ' + fmtRp(d.last) + ' vs MA20 ' + ma20Real + ', MA50 ' + ma50Real + ', MA200 ' + ma200Real + '. RSI14 ' + rsiReal + ' dan LPM ' + fmtRp(d.lpm ? d.lpm.value : d.last) + '.');
         var evEl = $('anaAiEvidence');
         if (evEl) {
-          evEl.innerHTML = '<li>Struktur Harga: SMC BOS/CHoCH valid & Skenario Zig-Zag mengonfirmasi struktur swing indeks.</li>' +
+          evEl.innerHTML = '<li>Struktur Harga: Level support 20-bar di ' + fmtRp(p.support) + ' dan resistance di ' + fmtRp(p.resistance) + '.</li>' +
             '<li>Level Fibonacci Indeks: Swing High ' + fmtRp(d.swing.high) + ', Swing Low ' + fmtRp(d.swing.low) + ', Golden Pocket 61,8% di ' + fmtRp(d.fibo[4] ? d.fibo[4].price : d.last) + '.</li>' +
-            '<li>Pola Harmonik XABCD & Indikator: RSI Wilder RMA ' + (d.rsi != null ? Number(d.rsi).toFixed(1).replace('.', ',') : '54,2') + ', Momentum LPM ' + (d.lpm && d.lpm.is_rising ? 'menanjak di atas rerata' : 'stabil') + '.</li>' +
-            '<li>Moving Averages: Posisi indeks bertahan di atas MA20, MA50, dan MA200 secara konsisten.</li>';
+            '<li>Indikator Riil: RSI14 ' + rsiReal + ', Momentum LPM ' + (d.lpm && d.lpm.is_rising ? 'menanjak di atas rerata' : 'stabil') + '.</li>' +
+            '<li>Moving Averages: MA20 ' + ma20Real + ', MA50 ' + ma50Real + ', MA200 ' + ma200Real + '.</li>';
         }
-        setText('anaAiRisk', 'Invalidasi struktur jika IHSG menembus penutupan harian di bawah support kunci MA50 / Golden Pocket ' + fmtRp(d.fibo[4] ? d.fibo[4].price : d.last) + '.');
+        setText('anaAiRisk', 'Invalidasi struktur jika IHSG menembus penutupan harian di bawah support kunci ' + fmtRp(p.support) + ' / Golden Pocket ' + fmtRp(d.fibo[4] ? d.fibo[4].price : d.last) + '.');
       } else {
-        setText('anaAiSummary', 'Struktur teknikal ' + d.ticker + ' Last ' + fmtRp(d.last) + ' vs MA20 ' + fmtRp(d.last * 0.98) + '. Momentum LPM ' + fmtRp(d.lpm ? d.lpm.value : d.last) + ' (tren ' + (d.lpm && d.lpm.is_rising ? 'menanjak' : 'konsolidasi') + '). Rentang swing 60-bar: ' + fmtRp(d.swing.low) + ' – ' + fmtRp(d.swing.high) + '. R/R terukur ' + fmtX1(p.rr) + '.');
+        setText('anaAiSummary', 'Struktur teknikal ' + d.ticker + ' Last ' + fmtRp(d.last) + ' vs MA20 ' + ma20Real + '. Momentum LPM ' + fmtRp(d.lpm ? d.lpm.value : d.last) + ' (tren ' + (d.lpm && d.lpm.is_rising ? 'menanjak' : 'konsolidasi') + '). Rentang swing 60-bar: ' + fmtRp(d.swing.low) + ' – ' + fmtRp(d.swing.high) + '. R/R terukur ' + fmtX1(p.rr) + '.');
         var evEl2 = $('anaAiEvidence');
         if (evEl2) {
-          evEl2.innerHTML = '<li>Level support kunci ' + fmtRp(p.support) + ', resistensi ' + fmtRp(p.resistance) + ' dari rentang 20 bar terakhir.</li>' +
+          evEl2.innerHTML = '<li>Level support kunci ' + fmtRp(p.support) + ', resistensi ' + fmtRp(p.resistance) + ' dari rentang 20 bar terakhir (MA20: ' + ma20Real + ').</li>' +
             '<li>Retracement Golden Pocket (61,8%) di ' + fmtRp(d.fibo[4] ? d.fibo[4].price : d.last) + ' dengan swing low ' + fmtRp(d.swing.low) + ' dan high ' + fmtRp(d.swing.high) + '.</li>' +
             '<li>Rasio Risk/Reward ' + fmtX1(p.rr) + ' dengan risiko ' + fmtPct1(p.risk_pct) + ' menuju TP1 ' + fmtRp(p.tp1) + ' dan TP2 ' + fmtRp(p.tp2) + '.</li>';
         }
@@ -265,13 +270,24 @@
           if (bFlow.parentElement && bFlow.parentElement.querySelector('span')) {
             bFlow.parentElement.querySelector('span').textContent = 'Status Indeks';
           }
-          if (!bFlow.textContent || bFlow.textContent === '4.940' || bFlow.textContent === '+18,4 M' || bFlow.textContent === '—') {
-            bFlow.textContent = 'Data indeks BEI';
+          if (!bFlow.textContent || bFlow.textContent === '4.940' || bFlow.textContent === '+18,4 M' || bFlow.textContent === '—' || bFlow.textContent === 'Data belum tersedia') {
+            bFlow.textContent = 'Indeks pasar BEI';
             bFlow.className = 'num font-mono font-bold text-gray-300';
           }
         } else {
           if (bFlow.parentElement && bFlow.parentElement.querySelector('span')) {
             bFlow.parentElement.querySelector('span').textContent = 'Flow Bandar';
+          }
+          var fnVal = d.metrics && d.metrics.foreign_net != null ? Number(d.metrics.foreign_net) : null;
+          if (fnVal != null && Number.isFinite(fnVal) && (!bFlow.textContent || bFlow.textContent === '—' || bFlow.textContent === 'Data belum tersedia')) {
+            var fnSign = fnVal > 0 ? '+' : (fnVal < 0 ? '\u2212' : '');
+            var fnAbs = Math.abs(fnVal);
+            var fnDisp = fnAbs >= 1e12 ? (fnAbs / 1e12).toFixed(2).replace('.', ',') + ' T'
+              : fnAbs >= 1e9 ? (fnAbs / 1e9).toFixed(2).replace('.', ',') + ' M'
+              : fnAbs >= 1e6 ? (fnAbs / 1e6).toFixed(1).replace('.', ',') + ' Jt'
+              : Math.round(fnAbs).toLocaleString('id-ID');
+            bFlow.textContent = fnSign + 'Rp ' + fnDisp;
+            bFlow.className = 'num font-mono font-bold ' + (fnVal > 0 ? 'text-emerald-400' : (fnVal < 0 ? 'text-rose-400' : 'text-gray-400'));
           }
         }
       }

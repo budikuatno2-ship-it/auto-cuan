@@ -21,7 +21,8 @@
             </div>
             <div class="ana-ctx-row ana-ctx-row2">
                 <div id="analisisChartSubtabWrap" class="segx ana-sub" role="group" aria-label="Tampilan analisis">
-                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('ai');">Analisis AI</button>
+                    <button id="tabAnalisisCombined" type="button" class="analisis-subtab active" data-subtab="combined" data-tab="analisis-chart" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('combined');">Chart &amp; AI</button>
+                    <button id="tabAnalisisText" type="button" class="analisis-subtab" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('ai');">Analisis AI</button>
                     <!-- FIX-22: Chart Workstation is a first-class lens, directly
                          reachable as /analisis?tab=chart and from the sidebar. -->
                     <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisTab('analisis-chart'); switchAnalisisSubTab('chart');" title="Chart Workstation">Chart Workstation</button>
@@ -55,6 +56,63 @@
         </div>
 
 <!-- ===== TAB 1: INDUK ANALISIS & CHART (SUBPANEL AI) ===== -->
+        <!-- SUB-TAB 2: CHART (Di atas Analisis AI agar Chart langsung tampil saat klik Analisis & Chart) -->
+        <section id="panel-tab-chart" class="analisis-tab-panel active" style="display:block">
+            <div class="space-y-4">
+                <!-- Redesign v2: plan per horizon (stocks) or "Potensi arah" (indices), filled by analisis-v2.js. -->
+                <section id="anaPlanSheet" class="sheet ana-plan" data-ac-ui="v2" aria-label="Rencana per horizon"></section>
+                <!-- Catatan Admin Banner (HANDOFF §5d) -->
+                <div id="catatanAdminChartBanner" class="catatan-chart-banner" style="display:none">
+                    <div class="info flex-wrap">
+                        <span class="chip b" id="caBannerStyle">Catatan Admin</span>
+                        <span class="oc hit" id="caBannerStatus">Di area pantau</span>
+                        <span id="caBannerLevels" class="font-mono text-xs font-semibold">Area: — · TP: — · SL: —</span>
+                        <span id="caBannerReason" class="mut text-xs truncate max-w-[280px]"></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="btn sm" id="caBannerToggleLinesBtn" onclick="toggleCatatanAdminPriceLines()">Sembunyikan dari chart</button>
+                        <button type="button" class="btn sm q" onclick="navigateTo('catatan-admin')">Baca catatan</button>
+                    </div>
+                </div>
+                <!-- Interactive Candlestick Chart Card -->
+                <div class="unified-card" id="chart-workstation" data-chart-anchor-for="unifiedChartContainer">
+                    <div id="unifiedChartContainer" class="unified-chart-box" data-chart-anchor="chart-workstation">
+                        <div class="p-8 text-center text-gray-500 text-xs">
+                            <span class="spinner-sm"></span> Menyiapkan chart interaktif...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Vision 5-Section Results Card -->
+                <div id="panelAnalisisVision" class="unified-card">
+                    <div class="unified-card-header">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                            <h2 class="text-sm font-bold text-gray-200">Hasil Analisis Chart (AI Vision)</h2>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25">Gemini 3.8 Flash</span>
+                        </div>
+                        <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+                            <span>Analisis Ulang</span>
+                        </button>
+                    </div>
+                    <div class="p-3 sm:p-4">
+                        <div id="unifiedAiChartResultWrap" class="overflow-y-auto max-h-[560px] scrollbar-thin">
+                            <div class="text-center py-10 text-gray-500">
+                                <div class="w-10 h-10 mx-auto mb-2 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+                                </div>
+                                <p class="text-sm font-semibold text-gray-300">Belum ada analisis chart visual AI</p>
+                                <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Gunakan tab ini untuk menganalisis tren, level kunci, candlestick, volume, dan risiko secara visual.</p>
+                                <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="mt-3 px-4 py-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition">Mulai Analisis Visual Chart</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SUBPANEL 1: ANALISIS AI -->
         <section id="panel-tab-analisis" class="analisis-tab-panel active">
             <!-- SUB-PANEL 1: ANALISIS AI (Canvas Analisis.dc.html v2 layout) -->
             <div id="subPanelAnalisisAI" class="unified-cockpit-grid" data-ac-ui="v2">
@@ -203,62 +261,6 @@
                             <div class="fact flex justify-between py-1.5"><span>Status Tren</span><b id="factTrend" class="num font-semibold text-[var(--ac-ink)]">&mdash;</b></div>
                         </div>
                     </aside>
-                </div>
-            </div>
-        </section>
-
-        <!-- SUB-TAB 2: CHART (Candlestick Interaktif + Tombol Analisis AI + Hasil Vision, NO Text Analysis) -->
-        <section id="panel-tab-chart" class="analisis-tab-panel" style="display:none">
-            <div class="space-y-4">
-                <!-- Redesign v2: plan per horizon (stocks) or "Potensi arah" (indices), filled by analisis-v2.js. -->
-                <section id="anaPlanSheet" class="sheet ana-plan" data-ac-ui="v2" aria-label="Rencana per horizon"></section>
-                <!-- Catatan Admin Banner (HANDOFF §5d) -->
-                <div id="catatanAdminChartBanner" class="catatan-chart-banner" style="display:none">
-                    <div class="info flex-wrap">
-                        <span class="chip b" id="caBannerStyle">Catatan Admin</span>
-                        <span class="oc hit" id="caBannerStatus">Di area pantau</span>
-                        <span id="caBannerLevels" class="font-mono text-xs font-semibold">Area: — · TP: — · SL: —</span>
-                        <span id="caBannerReason" class="mut text-xs truncate max-w-[280px]"></span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" class="btn sm" id="caBannerToggleLinesBtn" onclick="toggleCatatanAdminPriceLines()">Sembunyikan dari chart</button>
-                        <button type="button" class="btn sm q" onclick="navigateTo('catatan-admin')">Baca catatan</button>
-                    </div>
-                </div>
-                <!-- Interactive Candlestick Chart Card -->
-                <div class="unified-card">
-                    <div id="unifiedChartContainer" class="unified-chart-box">
-                        <div class="p-8 text-center text-gray-500 text-xs">
-                            <span class="spinner-sm"></span> Menyiapkan chart interaktif...
-                        </div>
-                    </div>
-                </div>
-
-                <!-- AI Vision 5-Section Results Card -->
-                <div id="panelAnalisisVision" class="unified-card">
-                    <div class="unified-card-header">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
-                            <h2 class="text-sm font-bold text-gray-200">Hasil Analisis Chart (AI Vision)</h2>
-                            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25">Gemini 3.8 Flash</span>
-                        </div>
-                        <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition flex items-center gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
-                            <span>Analisis Ulang</span>
-                        </button>
-                    </div>
-                    <div class="p-3 sm:p-4">
-                        <div id="unifiedAiChartResultWrap" class="overflow-y-auto max-h-[560px] scrollbar-thin">
-                            <div class="text-center py-10 text-gray-500">
-                                <div class="w-10 h-10 mx-auto mb-2 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
-                                </div>
-                                <p class="text-sm font-semibold text-gray-300">Belum ada analisis chart visual AI</p>
-                                <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Gunakan tab ini untuk menganalisis tren, level kunci, candlestick, volume, dan risiko secara visual.</p>
-                                <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="mt-3 px-4 py-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition">Mulai Analisis Visual Chart</button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </section>

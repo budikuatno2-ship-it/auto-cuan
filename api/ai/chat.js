@@ -158,19 +158,22 @@ function computeMatrix(rawTicker) {
   let entryHigh = roundTick(last);
   let entryLow = roundTick(last - 0.3 * atr);
   if (entryLow == null || entryLow >= entryHigh) entryLow = roundTick(entryHigh - tickSize(entryHigh));
-  let sl = roundTick(Math.min(swingLow5, support));
+  const boundedFloor = roundTick(entryLow - 1.6 * atr);
+  let sl = roundTick(Math.max(Math.min(swingLow5, support), boundedFloor || 0));
   if (sl == null || sl >= entryLow) sl = roundTick(entryLow - Math.max(atr, tickSize(entryLow)));
-  const tp1 = roundTick(entryHigh + atr);
-  const tp2 = roundTick(entryHigh + 2 * atr);
+  const riskDistance = Math.max(tickSize(entryHigh), entryHigh - sl);
+  const tp1 = roundTick(Math.max(entryHigh + 1.6 * riskDistance, entryHigh + 1.5 * atr));
+  const tp2 = roundTick(Math.max(tp1 + 1.1 * riskDistance, entryHigh + 2.8 * atr));
   const riskPct = ((entryLow - sl) / entryLow) * 100;
   const rr = (tp1 - entryHigh) / Math.max(1, entryHigh - sl);
 
   const lpm = profiler.calculateLPMData(candles, 20);
   const m = pack.metrics || {};
-  const ma20 = Number(m.ma20);
-  const ma50 = Number(m.ma50);
-  const rsi = Number(m.rsi14);
-  const rvol = Number(m.volumeVsAvg20);
+  const ma20 = m.ma20 != null && Number.isFinite(Number(m.ma20)) ? Number(m.ma20) : null;
+  const ma50 = m.ma50 != null && Number.isFinite(Number(m.ma50)) ? Number(m.ma50) : null;
+  const ma200 = m.ma200 != null && Number.isFinite(Number(m.ma200)) ? Number(m.ma200) : null;
+  const rsi = m.rsi14 != null && Number.isFinite(Number(m.rsi14)) ? Number(m.rsi14) : NaN;
+  const rvol = m.volumeVsAvg20 != null && Number.isFinite(Number(m.volumeVsAvg20)) ? Number(m.volumeVsAvg20) : NaN;
 
   let foreignNet = null;
   try {
@@ -180,6 +183,17 @@ function computeMatrix(rawTicker) {
       : (feat.foreign_net_val != null ? feat.foreign_net_val : null)) : null;
     if (raw != null && Number.isFinite(Number(raw))) foreignNet = Number(raw);
   } catch (_) { foreignNet = null; }
+  if (foreignNet == null && ticker !== 'IHSG' && typeof store.readForeignFlowSeries === 'function') {
+    try {
+      const ff = store.readForeignFlowSeries(ticker, { asOf });
+      if (Array.isArray(ff) && ff.length) {
+        const latestFf = ff[ff.length - 1];
+        if (latestFf && latestFf.foreign_net != null && Number.isFinite(Number(latestFf.foreign_net))) {
+          foreignNet = Number(latestFf.foreign_net);
+        }
+      }
+    } catch (_) {}
+  }
 
   const isIndex = (ticker === 'IHSG');
   let backtest = null;
@@ -289,6 +303,17 @@ function computeMatrix(rawTicker) {
     },
     pillars,
     sizing,
+    metrics: {
+      ma20,
+      ma50,
+      ma200,
+      rsi14: Number.isFinite(rsi) ? rsi : null,
+      volume_vs_avg20: Number.isFinite(rvol) ? rvol : null,
+      atr14: Math.round(atr * 100) / 100,
+      foreign_net: foreignNet,
+      candle_count: candles.length
+    },
+    rsi: Number.isFinite(rsi) ? rsi : null,
     is_index: isIndex,
     backtest
   };

@@ -192,6 +192,11 @@ async function run(argv, deps) {
   const client = d.client || arjumClient;
   const tracker = d.tracker || quotaTracker;
 
+  if (String((env && env.JOB_USES_QUOTA) || '') === '0' && !opts.dryRun) {
+    console.log('[catchup] BERHENTI: JOB_USES_QUOTA=0 melarang pemanggilan kuota Stock Arjum berbayar.');
+    return { stopped: 'QUOTA_DISABLED_ENV', spent: 0 };
+  }
+
   // P2 — hard stop WIB lapis kedua: jangan mulai bila sudah di jendela terlarang.
   try {
     const wib = require(path.join(ROOT_DIR, 'lib', 'wib-hard-stop'));

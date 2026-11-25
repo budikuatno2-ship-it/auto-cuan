@@ -274,10 +274,14 @@
       loadSchedulerBackfill();
       loadCompletenessMeta();
       root.refreshBackfillForecast();
+      if (typeof root.loadKseiMeta === 'function') root.loadKseiMeta();
       if (typeof root.loadThreeHorizonSettings === 'function') root.loadThreeHorizonSettings();
     }
     if (idx === 7) loadAuditLogs();
-    if (idx === 8) root.refreshSecurityPanel();
+    if (idx === 8) {
+      root.refreshSecurityPanel();
+      if (typeof root.loadForensicAttackTable === 'function') root.loadForensicAttackTable();
+    }
   };
 
   // Data Health Inspector
@@ -322,6 +326,11 @@
 
     var timeEl = document.getElementById('healthLastChecked');
     if (timeEl) timeEl.textContent = health.inspected_at_formatted || '—';
+
+    var univEl = document.getElementById('healthUniverseCount');
+    if (univEl && health.categories && health.categories[0] && health.categories[0].metrics && health.categories[0].metrics.total_universe) {
+      univEl.textContent = health.categories[0].metrics.total_universe + ' emiten';
+    }
 
     var tbody = document.getElementById('dataHealthTbody');
     if (!tbody || !health.categories) return;
@@ -1778,10 +1787,73 @@
     }
   };
 
+  // ── V6.5.1: Upload & metadata Struktur Pasar KSEI JSON ───────────────────
+  root.loadKseiMeta = async function() {
+    var badge = document.getElementById('kseiActiveAsOfBadge');
+    var sum = document.getElementById('kseiMetaSummary');
+    try {
+      var res = await fetch('/api/admin/struktur-pasar/meta', { method: 'GET', headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return;
+      var data = await res.json().catch(function() { return {}; });
+      var m = data && data.meta;
+      if (m) {
+        if (badge) badge.textContent = 'As-of: ' + (m.as_of || '—');
+        if (sum) {
+          sum.textContent = 'Aktif: ' + (m.active_file || 'ownership_30sep2026.json') +
+            ' · ' + fmtNum(m.ticker_count || 0) + ' emiten · ' +
+            fmtNum(m.shareholder_rows || 0) + ' pemegang saham · sumber: ' + (m.source || 'KSEI');
+        }
+      }
+    } catch (_) {}
+  };
+
+  root.uploadKseiJsonFile = async function() {
+    var fileInp = document.getElementById('kseiJsonFileInput');
+    var asOfInp = document.getElementById('kseiAsOfInput');
+    var srcInp = document.getElementById('kseiSourceInput');
+    var st = document.getElementById('kseiUploadStatus');
+    var btn = document.getElementById('btnUploadKseiJson');
+    var file = fileInp && fileInp.files && fileInp.files[0];
+    if (!file) {
+      if (st) { st.style.color = 'var(--ac-warn,#F59E0B)'; st.textContent = 'Pilih file .json KSEI terlebih dahulu.'; }
+      return;
+    }
+    if (btn) btn.disabled = true;
+    if (st) { st.style.color = 'var(--ac-2)'; st.textContent = 'Membaca & memvalidasi JSON KSEI…'; }
+    try {
+      var text = await file.text();
+      var parsed = JSON.parse(text);
+      var res = await fetch('/api/admin/struktur-pasar/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          as_of: (asOfInp && asOfInp.value) ? asOfInp.value.trim() : null,
+          source: (srcInp && srcInp.value) ? srcInp.value.trim() : null,
+          payload: parsed
+        })
+      });
+      var data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && data.success) {
+        if (st) { st.style.color = 'var(--ac-brand,#10B981)'; st.textContent = data.message || 'Upload KSEI berhasil.'; }
+        recordAuditLog('budi', 'Upload JSON Struktur Pasar KSEI', file.name + ' (' + ((data.meta && data.meta.as_of) || '—') + ')');
+        await root.loadKseiMeta();
+        if (typeof root.refreshDataHealth === 'function') root.refreshDataHealth();
+      } else {
+        if (st) { st.style.color = 'var(--ac-neg,#EF4444)'; st.textContent = (data && data.error) || ('Gagal upload (HTTP ' + res.status + ')'); }
+      }
+    } catch (err) {
+      if (st) { st.style.color = 'var(--ac-neg,#EF4444)'; st.textContent = 'File bukan JSON KSEI yang valid: ' + (err && err.message ? err.message : 'parse error'); }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
   root.initAdminConsole = function() {
     verifyAdminAuth();
     root.loadFinancialPublicationPanel();
     root.refreshBackfillForecast();
+    root.loadKseiMeta();
     root.loadThreeHorizonSettings();
   };
 

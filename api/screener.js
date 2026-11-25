@@ -306,8 +306,18 @@ function buildScreenerRow(raw, spec, backtestMap, origin) {
     rr,
 
     volume_ratio_20d: volumeRatio,
+    volume_ratio_avg20: volumeRatio,
     volume_ratio: volumeRatio,
     rsi14,
+
+    group_code: pickText(raw.group_code, raw.group) || null,
+    swing_tier: pickText(raw.swing_tier) || null,
+    confidence: pickText(raw.confidence) || null,
+    confidence_label: pickText(raw.confidence_label) || null,
+    entry_timing: pickText(raw.entry_timing) || null,
+    entry_window_label: pickText(raw.entry_window_label) || null,
+    direction: pickText(raw.direction) || null,
+    status_reason: pickText(raw.status_reason) || null,
 
     source_status: sourceStatus,
     source_file: origin.file

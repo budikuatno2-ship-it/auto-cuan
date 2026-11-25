@@ -469,17 +469,24 @@
   };
 
   // ===== SUB-TAB SWITCHER (POLA CONSOLIDATED TAB) =====
-  var currentAnalisisSubTab = 'ai'; // 'ai' or 'chart'
+  var currentAnalisisSubTab = 'combined'; // 'combined' (default), 'chart', or 'ai'
 
   function switchAnalisisSubTab(subTab) {
-    currentAnalisisSubTab = (subTab === 'chart') ? 'chart' : 'ai';
+    currentAnalisisSubTab = (subTab === 'chart' || subTab === 'ai') ? subTab : 'combined';
+    var isCombined = currentAnalisisSubTab === 'combined';
     var isChart = currentAnalisisSubTab === 'chart';
+    var isAi = currentAnalisisSubTab === 'ai';
 
+    var btnCombined = byId('tabAnalisisCombined');
     var btnAI = byId('tabAnalisisText');
     var btnChart = byId('tabAnalisisVision');
+    if (btnCombined) {
+      if (btnCombined.classList && btnCombined.classList.toggle) btnCombined.classList.toggle('active', isCombined);
+      if (typeof btnCombined.setAttribute === 'function') btnCombined.setAttribute('aria-selected', isCombined ? 'true' : 'false');
+    }
     if (btnAI) {
-      if (btnAI.classList && btnAI.classList.toggle) btnAI.classList.toggle('active', !isChart);
-      if (typeof btnAI.setAttribute === 'function') btnAI.setAttribute('aria-selected', !isChart ? 'true' : 'false');
+      if (btnAI.classList && btnAI.classList.toggle) btnAI.classList.toggle('active', isAi);
+      if (typeof btnAI.setAttribute === 'function') btnAI.setAttribute('aria-selected', isAi ? 'true' : 'false');
     }
     if (btnChart) {
       if (btnChart.classList && btnChart.classList.toggle) btnChart.classList.toggle('active', isChart);
@@ -502,23 +509,23 @@
     var pAnalisis = byId('panel-tab-analisis');
     var pChart = byId('panel-tab-chart');
 
-    if (pAnalisis) pAnalisis.style.display = isChart ? 'none' : 'block';
-    if (pChart) pChart.style.display = isChart ? 'block' : 'none';
+    if (pAnalisis) pAnalisis.style.display = (isCombined || isAi) ? 'block' : 'none';
+    if (pChart) pChart.style.display = (isCombined || isChart) ? 'block' : 'none';
 
-    if (isChart) {
-      var ticker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-        ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+    var activeT = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+      ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+
+    if (isCombined || isChart) {
       if (root.UnifiedCockpit && typeof root.UnifiedCockpit.loadUnifiedChart === 'function') {
-        root.UnifiedCockpit.loadUnifiedChart(ticker);
+        root.UnifiedCockpit.loadUnifiedChart(activeT);
       }
       if (typeof setTimeout === 'function') {
         setTimeout(function () {
           try { window.dispatchEvent(new Event('resize')); } catch (_) {}
         }, 50);
       }
-    } else {
-      var activeT = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-        ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+    }
+    if (isCombined || isAi) {
       if (typeof window.acV3F08LoadMatrix === 'function') {
         window.acV3F08LoadMatrix(activeT);
       }
@@ -687,15 +694,9 @@
         if (pChart) pChart.style.display = 'none';
         switchAnalisisSubTab('ai');
       } else {
-        if (currentAnalisisSubTab === 'chart') {
-          if (pAnalisis) pAnalisis.style.display = 'none';
-          if (pChart) pChart.style.display = 'block';
-          switchAnalisisSubTab('chart');
-        } else {
-          if (pAnalisis) pAnalisis.style.display = 'block';
-          if (pChart) pChart.style.display = 'none';
-          switchAnalisisSubTab('ai');
-        }
+        if (pChart) pChart.style.display = 'block';
+        if (pAnalisis) pAnalisis.style.display = 'block';
+        switchAnalisisSubTab('combined');
       }
     } else {
       if (pAnalisis) pAnalisis.style.display = 'none';
@@ -726,7 +727,7 @@
       } else if (tabName === 'analisis') {
         switchAnalisisSubTab('ai');
       } else {
-        switchAnalisisSubTab(currentAnalisisSubTab);
+        switchAnalisisSubTab('combined');
       }
     } else if (parentTab === 'ranking') {
       if (!isSubscribedUser()) {
