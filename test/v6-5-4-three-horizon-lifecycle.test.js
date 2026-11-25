@@ -193,3 +193,27 @@ test('V6.5.4-6: Pill tab UI & Landing Page Three-Horizon HTML/CSS wiring clean',
   assert.match(html, /data-c3sub="potensi_besok"[\s\S]*?data-c3sub="short_swing"[\s\S]*?data-c3sub="swing"/);
   assert.ok(!html.includes('data-c3sub="konglo"'), 'Landing preview no longer exposes Konglo/Non-Konglo subtabs');
 });
+
+test('V6.5.4-7: VpsMarketStore .or() supports .in.(...) for web-top5-history three_horizon_top5 rows', async () => {
+  const os = require('os');
+  const { VpsMarketStore } = require('../lib/vps-market-store');
+  const tmpDb = path.join(os.tmpdir(), `ac_vps_or_${Date.now()}_${Math.random().toString(16).slice(2)}.sqlite`);
+  const store = new VpsMarketStore(tmpDb);
+  try {
+    await store.from('telegram_daily_picks').upsert([
+      { id: 101, date: '2026-08-04', ticker: 'BUMI', monitor_source: null, status: 'EXPIRED' },
+      { id: 102, date: '2026-11-24', ticker: 'MYOR', monitor_source: 'three_horizon_top5', status: 'WAITING_ENTRY' },
+      { id: 103, date: '2026-11-24', ticker: 'NOPE', monitor_source: 'daytrade', status: 'WAITING_ENTRY' }
+    ]);
+    const res = await store
+      .from('telegram_daily_picks')
+      .select('id,date,ticker,monitor_source')
+      .or('monitor_source.in.(daily_top5,top5,three_horizon_top5),monitor_source.is.null')
+      .order('date', { ascending: false });
+    assert.equal(res.error, null);
+    assert.deepEqual(res.data.map((r) => r.ticker), ['MYOR', 'BUMI']);
+  } finally {
+    store.close();
+    try { fs.unlinkSync(tmpDb); } catch (_) {}
+  }
+});
