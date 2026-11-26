@@ -347,3 +347,62 @@ test('K3-LOCAL-PROD-SERVER: production local-dev-server routes /api/money-manage
   const prodIdx = src.indexOf("if (endpointName === 'money-management')");
   assert.ok(previewIdx > 0 && prodIdx > previewIdx);
 });
+
+test('K3-MARKET-CONTEXT-PERF: VpsMarketStore indexes, fast-path retention/history without row.id, and exact count options', async () => {
+  const { VpsMarketStore, closeVpsMarketStore } = require('../lib/vps-market-store');
+  const { hybridizeClient } = require('../lib/hybrid-supabase-client');
+  const historyStore = require('../lib/stock-daily-history-store');
+  const { makeFakeSupabase } = require('./helpers/fake-supabase');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'k3-mkt-perf-'));
+  const dbPath = path.join(tmpDir, 'market.sqlite');
+  let store = null;
+  try {
+    store = new VpsMarketStore(dbPath);
+    const indexes = store.db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all().map((r) => r.name);
+    assert.ok(indexes.includes('idx_market_rows_table_ticker_date'));
+    assert.ok(indexes.includes('idx_market_rows_table_date'));
+
+    const rows = [];
+    for (let i = 1; i <= 12; i++) {
+      rows.push({
+        ticker: 'BBCA',
+        trade_date: '2026-11-' + String(i).padStart(2, '0'),
+        open: 9000, high: 9100, low: 8900, close: 9050, volume: 100000
+      });
+    }
+    await historyStore.upsertDailyHistory(store, rows);
+
+    // 1. Generic Supabase/VpsMarketStore fallback path (no fast method exposed, rows lack `.id`)
+    const storeFallbackOnly = { from: (table) => store.from(table) };
+    const deletedFallback = await historyStore.enforceRetention(storeFallbackOnly, ['bbca'], 8);
+    assert.equal(deletedFallback, 4);
+
+    // 2. Hybrid VpsMarketStore fast path
+    const hybrid = hybridizeClient({}, { AUTO_CUAN_MARKET_DATA_VPS: '1', AUTO_CUAN_MARKET_DB: dbPath });
+    const deletedFast = await historyStore.enforceRetention(hybrid, ['bbca'], 5);
+    assert.equal(deletedFast, 3);
+
+    const latestMap = await historyStore.getLatestSessionsForTickers(hybrid, ['BBCA'], 10);
+    const remaining = latestMap.get('BBCA') || [];
+    assert.equal(remaining.length, 5);
+    assert.deepEqual(
+      remaining.map((r) => r.trade_date),
+      ['2026-11-12', '2026-11-11', '2026-11-10', '2026-11-09', '2026-11-08']
+    );
+
+    const exactCount = await store.from('stock_daily_history').select('ticker', { count: 'exact', head: true }).eq('ticker', 'BBCA');
+    assert.equal(exactCount.count, 5);
+    const plainSelect = await store.from('stock_daily_history').select('ticker,trade_date').eq('ticker', 'BBCA');
+    assert.equal(plainSelect.count, null);
+    assert.equal(plainSelect.data.length, 5);
+
+    // Keep makeFakeSupabase baseline sanity intact
+    const fakeWithId = makeFakeSupabase({ stock_daily_history: rows });
+    assert.equal(await historyStore.enforceRetention(fakeWithId, ['BBCA'], 6), 6);
+  } finally {
+    if (store) store.close();
+    closeVpsMarketStore();
+    try { fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 40 }); } catch (_) {}
+  }
+});
