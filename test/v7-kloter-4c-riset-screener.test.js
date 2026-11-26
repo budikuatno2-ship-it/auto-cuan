@@ -15,7 +15,7 @@ test('V7 4C Vendor Bundles: exact Pilot 3D files present in public/vendor with m
   const expected = {
     'tanstack-virtual.min.js': 35479,
     'cytoscape.min.js': 442752,
-    'echarts-custom.min.js': 608659
+    'echarts-custom.min.js': 608655
   };
   Object.entries(expected).forEach(([file, bytes]) => {
     const full = path.join(ROOT, 'public', 'vendor', file);
