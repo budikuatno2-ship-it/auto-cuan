@@ -100,7 +100,9 @@ function buildRow(ticker, src, sourceStatus, asOf) {
 
 function buildRankingData() {
   const now = Date.now();
-  if (_cachedRanking && _cachedBuffer && (now - _cachedAt < CACHE_TTL_MS)) {
+  const { getSnapshotVersionSig } = require('../lib/snapshot-mtime-guard');
+  const snapSig = getSnapshotVersionSig();
+  if (_cachedRanking && _cachedBuffer && _cachedRanking._snapSig === snapSig && (now - _cachedAt < CACHE_TTL_MS)) {
     return { data: _cachedRanking, buffer: _cachedBuffer };
   }
 
@@ -122,7 +124,8 @@ function buildRankingData() {
     as_of: ff.asOf,
     updated_at: ff.asOf ? new Date(now).toISOString() : null,
     source: 'data/foreign-flow-multi-day.json',
-    data_status: overallStatus
+    data_status: overallStatus,
+    _snapSig: snapSig
   };
   _cachedBuffer = Buffer.from(JSON.stringify(_cachedRanking));
   _cachedAt = now;

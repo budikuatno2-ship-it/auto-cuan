@@ -78,11 +78,25 @@
         var skippedCount = 0;
 
         list.forEach(function (s) {
-            // Category filter
+            // Category filter (supports Three-Horizon + legacy aliases)
             if (category !== 'all') {
                 var sSource = String(s.source || '').toLowerCase();
                 var sCat = String(s.category || '').toLowerCase();
-                if (sSource !== category && sCat.indexOf(category) === -1) return;
+                var catLower = String(category).toLowerCase();
+                var aliasMap = {
+                    potensi_besok: ['potensi_besok', 'potensi besok', 'daytrade', 'day trade'],
+                    daytrade: ['potensi_besok', 'potensi besok', 'daytrade', 'day trade'],
+                    short_swing: ['short_swing', 'short swing', 'swing_konglo', 'swing konglo'],
+                    swing_konglo: ['short_swing', 'short swing', 'swing_konglo', 'swing konglo'],
+                    swing: ['swing', 'swing_nk', 'swing_non_konglo', 'swing non-konglo'],
+                    swing_nk: ['swing', 'swing_nk', 'swing_non_konglo', 'swing non-konglo'],
+                    top5: ['top5', 'top 5']
+                };
+                var needles = aliasMap[catLower] || [catLower];
+                var matched = needles.some(function (n) {
+                    return sSource === n || sCat.indexOf(n) !== -1;
+                });
+                if (!matched) return;
             }
 
             // Period filter

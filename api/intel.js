@@ -423,7 +423,9 @@ function buildStrategicSignals(rows, foreignFlow, intelAuthorityIndex) {
 
 function buildIntelPayload() {
   const now = Date.now();
-  if (_cachedIntelData && now - _cachedAt < CACHE_TTL_MS) {
+  const { getSnapshotVersionSig } = require('../lib/snapshot-mtime-guard');
+  const snapSig = getSnapshotVersionSig();
+  if (_cachedIntelData && _cachedIntelData._snapSig === snapSig && now - _cachedAt < CACHE_TTL_MS) {
     return _cachedIntelData;
   }
 
@@ -507,6 +509,7 @@ function buildIntelPayload() {
       }
     }
   };
+  payload._snapSig = snapSig;
 
   _cachedIntelData = payload;
   _cachedAt = now;

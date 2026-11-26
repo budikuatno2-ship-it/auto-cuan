@@ -268,7 +268,9 @@ function buildSignalRow(row, index) {
 
 function buildTrackRecordPayload(options = {}) {
   const now = Date.now();
-  if (!options.force && _cachedTrackRecord && (now - _cachedTrackRecordAt < TRACK_RECORD_CACHE_TTL_MS)) {
+  const { getSnapshotVersionSig } = require('../lib/snapshot-mtime-guard');
+  const snapSig = getSnapshotVersionSig();
+  if (!options.force && _cachedTrackRecord && _cachedTrackRecord._snapSig === snapSig && (now - _cachedTrackRecordAt < TRACK_RECORD_CACHE_TTL_MS)) {
     return _cachedTrackRecord;
   }
 
@@ -277,7 +279,9 @@ function buildTrackRecordPayload(options = {}) {
   // outcome and therefore cannot express WAITING/ENTERED/TP/SL/EXPIRED).
   const liveRes = readLiveLedger();
   if (liveRes && liveRes.success && Array.isArray(liveRes.data) && liveRes.data.length > 0) {
-    _cachedTrackRecord = liveLedger.buildLiveTrackRecord(liveRes.data);
+    const trRes = liveLedger.buildLiveTrackRecord(liveRes.data);
+    trRes._snapSig = snapSig;
+    _cachedTrackRecord = trRes;
     _cachedTrackRecordAt = now;
     return _cachedTrackRecord;
   }
@@ -403,6 +407,7 @@ function buildTrackRecordPayload(options = {}) {
     signals
   };
 
+  payload._snapSig = snapSig;
   _cachedTrackRecord = payload;
   _cachedTrackRecordAt = now;
   return payload;

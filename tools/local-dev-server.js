@@ -1033,11 +1033,11 @@ const server = http.createServer(async (req, res) => {
     // V3-F13: get-sheet/save-sheet/portfolio-summary wajib mock agar uji browser
     // nyata 19 menu x 4 viewport 0 request gagal (>=400). Data riil bentuk
     // kontrak money-sheet-model (version+rows), bulan dinamis dari query.
-    if (PREVIEW_MOCKS_ENABLED && endpointName === 'money-management') {
+    if (PREVIEW_MOCKS_ENABLED && endpointName === 'money-management' && isPreview) {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
       const action = req.query.action || (req.body && req.body.action) || 'summary';
-      if (PREVIEW_MOCKS_ENABLED) {
+      if (PREVIEW_MOCKS_ENABLED && isPreview) {
         if (action === 'get-cashflow') {
           return res.status(200).json({ success: true, data: MOCK_MONEY_MANAGEMENT.cashflow });
         }
@@ -1070,6 +1070,10 @@ const server = http.createServer(async (req, res) => {
           });
         }
       }
+    }
+    if (endpointName === 'money-management') {
+      req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+      req.body = await parseBody(req);
       const mmHandler = require('../lib/money-management-handler');
       return await mmHandler(req, res);
     }

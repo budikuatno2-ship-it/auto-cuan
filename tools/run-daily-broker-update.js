@@ -48,6 +48,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const arjumClient = require('../lib/arjum-client');
+const arjumSqliteHydrate = require('../lib/arjum-sqlite-hydrate');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
 const eodSessionState = require('../lib/eod-session-state');
@@ -535,14 +536,33 @@ async function run(argv) {
     // 1. Broker Summary for TODAY — the critical, evening-gated data.
     // Retry firings must be quota-safe: if the dated summary is already valid,
     // reuse it and retry only missing dated accumulation/insider caches.
+    // Hydrate from canonical market.sqlite if flat-file cache on disk was cleaned (0 API calls)
+    const arjumDataDir = process.env.ARJUM_DATA_DIR || path.join(__dirname, '..', 'data', 'arjum-data');
+    if (!isFresh && !bandarmologiService.readDiskCache('broker-summary', ticker, dateArg)) {
+      arjumSqliteHydrate.hydrateFromSqliteIfPresent({
+        ticker,
+        date: dateArg,
+        flow: 'all',
+        baseDir: arjumDataDir,
+        hydrateToDisk: !dryRun
+      });
+    }
     const cached = !isFresh && bandarmologiService.readDiskCache('broker-summary', ticker, dateArg);
     const normalized = cached && bandarmologiService.normalizeBrokerSummary(cached, dateArg);
     const cachedDate = cached && brokerSummaryPayloadDate(cached);
     const alreadyCached = normalized && (!cachedDate || cachedDate === dateArg) && ((normalized.top_buyers || []).length || (normalized.top_sellers || []).length);
 
     // V6 AUDIT FIX: Independent Foreign Check!
-    // Check if Foreign (flow=F) is also cached. If ALL is cached but F is missing,
-    // do NOT mark ticker as fully terminal so Foreign can be retried without losing ALL cache.
+    // Check if Foreign (flow=F) is also cached on disk or SQLite (0 API calls).
+    if (!isFresh && !bandarmologiService.readDiskCache('broker-summary-F', ticker, dateArg)) {
+      arjumSqliteHydrate.hydrateFromSqliteIfPresent({
+        ticker,
+        date: dateArg,
+        flow: 'F',
+        baseDir: arjumDataDir,
+        hydrateToDisk: !dryRun
+      });
+    }
     const cachedF = !isFresh && bandarmologiService.readDiskCache('broker-summary-F', ticker, dateArg);
     const foreignMissing = alreadyCached && !cachedF && !dryRun && !isFresh;
 
@@ -767,6 +787,16 @@ async function run(argv) {
       // `insiderMode === 'all' || priority` form silently degraded the
       // default 'daily' mode to the priority subset only.
       const shouldFetchInsider = insiderMode === 'weekly' ? priorityTickers.has(ticker) : true;
+      const insDataDir = process.env.ARJUM_DATA_DIR || path.join(__dirname, '..', 'data', 'arjum-data');
+      if (!dryRun && shouldFetchInsider && !isFresh && !bandarmologiService.readDiskCache('insiders', ticker, dateArg)) {
+        arjumSqliteHydrate.hydrateFromSqliteIfPresent({
+          ticker,
+          date: dateArg,
+          flow: 'INSIDER',
+          baseDir: insDataDir,
+          hydrateToDisk: true
+        });
+      }
       if (!dryRun && shouldFetchInsider && (isFresh || !bandarmologiService.readDiskCache('insiders', ticker, dateArg))) {
         if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
         totalRequested++;

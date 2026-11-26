@@ -155,7 +155,9 @@ function revalidatePick(pick, now, context) {
  */
 function loadTop5Data() {
   const now = Date.now();
-  if (_cachedData && (now - _cachedAt < CACHE_TTL_MS)) {
+  const { getSnapshotVersionSig } = require('../lib/snapshot-mtime-guard');
+  const snapSig = getSnapshotVersionSig();
+  if (_cachedData && _cachedData._snapSig === snapSig && (now - _cachedAt < CACHE_TTL_MS)) {
     return _cachedData;
   }
 
@@ -230,6 +232,7 @@ function loadTop5Data() {
       served.readiness_engine = '../lib/readiness-engine.js';
       served.canonical_engine = '../lib/saham-potensial-engine.js';
 
+      served._snapSig = snapSig;
       _cachedData = served;
       _cachedAt = now;
       return served;

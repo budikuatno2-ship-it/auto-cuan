@@ -26,7 +26,9 @@ function buildSektorData(query) {
   }
 
   const now = Date.now();
-  if (_cachedSektor && (now - _cachedAt < CACHE_TTL_MS)) {
+  const { getSnapshotVersionSig } = require('../lib/snapshot-mtime-guard');
+  const snapSig = getSnapshotVersionSig();
+  if (_cachedSektor && _cachedSektor._snapSig === snapSig && (now - _cachedAt < CACHE_TTL_MS)) {
     return _cachedSektor;
   }
 
@@ -40,7 +42,8 @@ function buildSektorData(query) {
       scanned_count: 964,
       failed_count: 0
     },
-    groups: sectorVolumeRatio.enrichGroupsWithVolumeRatios(radarGroups)
+    groups: sectorVolumeRatio.enrichGroupsWithVolumeRatios(radarGroups),
+    _snapSig: snapSig
   };
   _cachedAt = now;
 

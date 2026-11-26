@@ -18,6 +18,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const accumLocal = require('../lib/broker-accumulation-local');
+const arjumSqliteHydrate = require('../lib/arjum-sqlite-hydrate');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASE_DATA = path.join(ROOT, 'data');
@@ -160,21 +161,48 @@ async function processTickerBatch(tickers) {
       let rawAllDays = [];
       let rawFDays = [];
 
-      // Check if ALL folder exists on disk
+      // Collect per-date ALL payloads from disk AND SQLite (0 API calls)
+      const allByDate = new Map();
       if (fs.existsSync(tickerAllDir)) {
         const dateFiles = (await fs.promises.readdir(tickerAllDir))
           .filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f))
           .sort();
-
         for (const file of dateFiles) {
-          const date = file.slice(0, 10);
+          const d = file.slice(0, 10);
           const allJson = safeReadJson(path.join(tickerAllDir, file));
+          if (allJson) allByDate.set(d, allJson);
+        }
+      }
+      const sqlAllRows = arjumSqliteHydrate.readAllDateRowsForTickerFromSqlite(
+        arjumSqliteHydrate.FLOW_TO_TABLE.ALL,
+        ticker
+      );
+      for (const item of sqlAllRows) {
+        if (!allByDate.has(item.date)) {
+          allByDate.set(item.date, item.payload);
+        }
+      }
+      const sortedDates = Array.from(allByDate.keys()).sort();
+
+      if (sortedDates.length > 0) {
+        for (const date of sortedDates) {
+          const file = `${date}.json`;
+          const allJson = allByDate.get(date);
           if (!allJson) continue;
 
           rawAllDays.push({ date, broksum: allJson });
 
-          // Check if F exists
+          // Check if F exists on disk first, then SQLite, BEFORE heuristic fallback
           let fJson = safeReadJson(path.join(tickerFDir, file));
+          if (!fJson) {
+            fJson = arjumSqliteHydrate.hydrateFromSqliteIfPresent({
+              ticker,
+              date,
+              flow: 'F',
+              baseDir: ARJUM_DATA_DIR,
+              hydrateToDisk: false
+            });
+          }
           if (!fJson && Array.isArray(allJson.brokers) && allJson.brokers.length > 0) {
             // Extract F from allJson
             const fBrokers = allJson.brokers.filter(b => FOREIGN_SET.has(b.broker_code));
@@ -362,6 +390,9 @@ async function runDomesticCompile() {
     fs.readdirSync(ALL_DIR).forEach(d => {
       if (/^[A-Z0-9.-]{2,10}$/.test(d)) tickerSet.add(d);
     });
+  }
+  for (const tk of arjumSqliteHydrate.listTickersInSqliteTable(arjumSqliteHydrate.FLOW_TO_TABLE.ALL)) {
+    tickerSet.add(tk);
   }
   if (fs.existsSync(ACCUM_DIR)) {
     fs.readdirSync(ACCUM_DIR).forEach(f => {

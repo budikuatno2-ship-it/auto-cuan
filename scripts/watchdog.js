@@ -202,7 +202,8 @@ function classifyPm2Proc(proc) {
   if (status === 'online') {
     const pmUptime = env.pm_uptime != null ? Number(env.pm_uptime) : (proc.pm_uptime != null ? Number(proc.pm_uptime) : NaN);
     const hasStableUptime = Number.isFinite(pmUptime) && (Date.now() - pmUptime) >= 30 * 60 * 1000;
-    const loop = (Number.isFinite(restarts) && restarts > 3) || (!hasStableUptime && Number.isFinite(restartTime) && restartTime > 10);
+    const loop = (Number(env.unstable_restarts || 0) > 2) ||
+    (!hasStableUptime && Number(env.unstable_restarts || 0) > 0 && Number.isFinite(restartTime) && restartTime > 10);
     if (loop) {
       return {
         key: 'pm2:' + name + ':restart-loop',
@@ -247,6 +248,9 @@ function classifyQuota(snap) {
         detail: QUOTA_LABEL + ' drift ' + pct.toFixed(1) + '% melebihi ambang (selisih ' + drift + ')'
       };
     }
+  }
+  if (snap.usageKnown === false || snap.remaining == null) {
+    return null;
   }
   if (Number.isFinite(limit) && limit > 0 && Number.isFinite(remaining)) {
     if (remaining <= 0) {

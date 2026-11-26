@@ -807,16 +807,45 @@ async function handler(req, res) {
     }
 
     // A manual Portfolio refresh must not reuse the Yahoo in-memory quote cache.
-    // Prefer the same fresh screener latest rows used by Day Trade/Swing displays.
+    // Prefer canonical SQLite stock_daily_history EOD close when equal or newer
+    // than Screener latest (e.g. 2026-11-25 GPRA), never regressed to older dates.
     if (portfolioPriceOnly && !isIndex) {
+      var sqliteLatest = null;
+      try {
+        var fsQ = require('node:fs');
+        var vpsDbPathQ = process.env.AUTO_CUAN_MARKET_DB || '/home/ubuntu/auto-cuan-data/market.sqlite';
+        if (fsQ.existsSync(vpsDbPathQ)) {
+          var marketStoreQ = require('../lib/vps-market-store');
+          var rowsQ = marketStoreQ.getVpsMarketStore(vpsDbPathQ)
+            .from('stock_daily_history')
+            .select('trade_date,close')
+            .eq('ticker', ticker)
+            .order('trade_date', { ascending: false })
+            .limit(1);
+          if (rowsQ && rowsQ.data && rowsQ.data[0] && Number(rowsQ.data[0].close) > 0) {
+            sqliteLatest = {
+              price: Number(rowsQ.data[0].close),
+              price_date: String(rowsQ.data[0].trade_date || '').slice(0, 10),
+              price_source: 'vps_sqlite_eod'
+            };
+          }
+        }
+      } catch (_) {}
+
       var latest = await fetchFreshScreenerLatestPrice(ticker);
-      if (latest && latest.price) {
+      if (sqliteLatest && (!latest || !latest.price || !latest.price_date || sqliteLatest.price_date >= String(latest.price_date).slice(0, 10))) {
+        quoteResult.last = sqliteLatest.price;
+        quoteResult.latestBarDate = sqliteLatest.price_date || quoteResult.latestBarDate || null;
+        quoteResult.price_source = sqliteLatest.price_source;
+        quoteResult.price_date = sqliteLatest.price_date;
+        quoteResult.price_stale = false;
+      } else if (latest && latest.price) {
         quoteResult.last = latest.price;
         quoteResult.price_source = latest.price_source;
         quoteResult.price_date = latest.price_date;
         quoteResult.price_age_hours = latest.price_age_hours;
         quoteResult.price_stale = false;
-      } else {
+      } else if (!quoteResult.last) {
         quoteResult.price_stale = true;
         quoteResult.price_diagnostic = latest ? latest.diagnostic : 'No latest price';
       }

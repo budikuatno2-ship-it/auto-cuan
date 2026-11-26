@@ -8,10 +8,37 @@
  */
 
 const path = require('node:path');
+const { spawn } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
 const adminSession = require('../../../lib/admin-session');
 const kseiStore = require('../../../lib/ksei-ownership-store');
+
+function triggerPostUploadRefresh() {
+  try {
+    const strukturPasar = require('../../struktur-pasar');
+    if (typeof strukturPasar.invalidateCache === 'function') strukturPasar.invalidateCache();
+  } catch (_) {}
+  try {
+    const caches = require('../../../lib/in-memory-ttl-cache');
+    if (caches.hotMarketStructureCache) caches.hotMarketStructureCache.clear();
+    if (caches.hotSectorCache) caches.hotSectorCache.clear();
+  } catch (_) {}
+  if (process.env.NODE_ENV === 'test' || process.env.AUTO_CUAN_SKIP_BG_REFRESH === '1') return false;
+  try {
+    const cmd = 'node tools/regenerate-local-snapshots.js && node tools/prewarm-daily-cache.js';
+    const child = spawn('sh', ['-c', cmd], {
+      cwd: ROOT,
+      detached: true,
+      stdio: 'ignore',
+      env: process.env
+    });
+    if (child && typeof child.unref === 'function') child.unref();
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
 
 function json(res, code, body) {
   if (typeof res.status === 'function' && typeof res.json === 'function') {
@@ -56,10 +83,12 @@ module.exports = async function handler(req, res) {
       source,
       uploadedBy: (auth.session && auth.session.un) || 'admin'
     }, ROOT);
+    const snapshotRefreshTriggered = triggerPostUploadRefresh();
 
     return json(res, 200, {
       success: true,
       message: 'Data Struktur Pasar KSEI berhasil diperbarui (' + meta.ticker_count + ' emiten).',
+      snapshot_refresh_triggered: snapshotRefreshTriggered,
       meta
     });
   } catch (err) {

@@ -522,7 +522,9 @@ function buildCategory(spec, backtestMap, today, now) {
 
 function buildScreenerPayload() {
   const now = Date.now();
-  if (_cachedScreenerData && (now - _cachedAt < CACHE_TTL_MS)) {
+  const { getSnapshotVersionSig } = require('../lib/snapshot-mtime-guard');
+  const snapSig = getSnapshotVersionSig();
+  if (_cachedScreenerData && _cachedScreenerData._snapSig === snapSig && (now - _cachedAt < CACHE_TTL_MS)) {
     return _cachedScreenerData;
   }
 
@@ -632,6 +634,7 @@ function buildScreenerPayload() {
     results: allRows
   };
 
+  payload._snapSig = snapSig;
   _cachedScreenerData = payload;
   _cachedAt = now;
   return payload;

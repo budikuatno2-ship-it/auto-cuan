@@ -1143,6 +1143,23 @@ html #appContent #page-screener .scr-head-act > * { flex: none; white-space: now
 .oc.exp { background: var(--ac-hover); color: var(--ac-2); }
 .oc.act { background: var(--ac-info-soft); color: var(--ac-info); }
 
+/* Kloter 3: ensure Portfolio & Kelola Keuangan headers never clip below sticky topbar */
+#appContent > #page-portofolio.page-content.ac-page[data-ac-ui="v2"],
+#appContent > #page-money-management.page-content.ac-page[data-ac-ui="v2"] {
+  padding: 28px 32px 48px !important;
+  scroll-margin-top: 76px;
+}
+#appContent > #page-portofolio.page-content.ac-page[data-ac-ui="v2"] .ph,
+#appContent > #page-money-management.page-content.ac-page[data-ac-ui="v2"] .ms-page-heading {
+  padding-top: 4px;
+}
+@media (max-width: 1023px) {
+  #appContent > #page-portofolio.page-content.ac-page[data-ac-ui="v2"],
+  #appContent > #page-money-management.page-content.ac-page[data-ac-ui="v2"] {
+    padding: 20px 16px 96px !important;
+  }
+}
+
 /* ==================== 15. SCREENER PRINT STYLESHEET ==================== */
 @media print {
   /* Hide navigation, sidebar, topbar, interactive controls, and mascot */
