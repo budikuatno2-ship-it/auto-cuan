@@ -121,11 +121,11 @@
          win over the inline rules above without needing !important. -->
     <link rel="stylesheet" href="/ui-theme.css?v=v6.5.5-k2">
     <link rel="stylesheet" href="/ac-v2.css?v=v6.5.5-k3">
-    <link rel="stylesheet" href="/premium-workstation.css?v=v6.5.5-k2">
-    <link rel="stylesheet" href="/unified-cockpit.css?v=v6.5.5-k2">
-    <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=v6.5.5-k3">
-    <link rel="stylesheet" href="/spreadsheet-grade.css?v=v6.5.5-k2">
-    <link rel="stylesheet" href="/money-sheet.css?v=v6.5.5-k3">
+    <link rel="stylesheet" href="/premium-workstation.css?v=v6.5.5-k2" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="/unified-cockpit.css?v=v6.5.5-k2" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=v6.5.5-k3" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="/spreadsheet-grade.css?v=v6.5.5-k2" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="/money-sheet.css?v=v6.5.5-k3" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="/landing-experience.css?v=20261003-v4">
 <link rel="stylesheet" href="/number-flow.css?v=20260929-v1">
 <link rel="stylesheet" href="/viewport.css?v=20260929-v1">
@@ -135,7 +135,7 @@
 <script src="/c10-fetch-guard.js?v=20261101-v1" defer></script>
 <script src="/lifecycle-polling-guard.js?v=20261014-v1"></script>
 <link rel="stylesheet" href="/c10-hardening.css?v=20261101-v1">
-<link rel="stylesheet" href="/account-hardening.css?v=20261001-v1">
+<link rel="stylesheet" href="/account-hardening.css?v=20261001-v1" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="/ac.css?v=20261104-v3f10">
 <link rel="stylesheet" href="/tokens-v7.css?v=v7-4a">
 <link rel="stylesheet" href="/v7-shell.css?v=v7-4a">
@@ -263,22 +263,19 @@
     </div>
 </div>
 
-<!-- ===== PUBLIC LANDING PAGE ===== -->
-<section id="landingPage" class="landing-shell hidden">
-  <nav class="landing-nav" aria-label="Navigasi utama">
+<!-- ===== PUBLIC LANDING PAGE (V7 Editorial Split + Bento + Live Three-Horizon Proof Ledger) ===== -->
+<section id="landingPage" class="landing-shell hidden v7-landing-shell">
+  <nav class="landing-nav v7-landing-nav" aria-label="Navigasi utama">
     <div class="landing-container">
       <button type="button" onclick="showLandingPage()" class="landing-brand text-left" aria-label="Auto-Cuan, halaman utama">
-        <span class="landing-logo" aria-hidden="true"><svg width="20" height="20" fill="none" stroke="#34D399" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M4 17l6-6 4 4 6-9M14 6h6v6"/></svg></span>
-        <span class="font-bold text-base tracking-tight text-white">Auto-Cuan</span>
+        <span class="landing-logo" aria-hidden="true"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M4 17l6-6 4 4 6-9M14 6h6v6"/></svg></span>
+        <span class="v7-brand-name">Auto-Cuan <small class="v7-brand-ver">V7</small></span>
       </button>
       <div id="landingMenu" class="landing-menu items-center" aria-label="Jelajahi Auto-Cuan">
-        <a href="#landingMarket">Pasar</a>
-        <a href="#landingScan">Screener 3 Mode</a>
-        <a href="#landingInvestigate">Bandarmologi</a>
-        <a href="#landingValidate">Fundamental</a>
-        <a href="#landingAi">Asisten AI</a>
-        <a href="#landingMonitor">Portfolio & Track Record</a>
-        <a href="#landingTrust">Integritas Data</a>
+        <a href="#landingBento">Fitur V7</a>
+        <a href="#landingPreview">Snapshot Bursa</a>
+        <a href="#landingCalculatorWrap">Kalkulator Risiko</a>
+        <a href="#landingWorkflow">Cara Kerja</a>
         <button type="button" onclick="openLoginModal()" class="landing-link">Masuk</button>
         <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary landing-menu-cta"><span class="landing-cta-label">Daftar dengan Gmail</span><span aria-hidden="true">&#8599;</span></button>
       </div>
@@ -291,167 +288,129 @@
   </nav>
 
   <main id="landingMain">
-    <!-- HERO SECTION -->
-    <section class="landing-hero landing-hero-editorial" aria-labelledby="landingTitle">
+    <!-- ASYMMETRIC SPLIT EDITORIAL HERO -->
+    <section class="landing-hero v7-hero-section" aria-labelledby="landingTitle">
       <div class="spot" id="lp-spot" aria-hidden="true"></div>
-      <div class="landing-container" style="position:relative">
-        <!-- Si Mata Mascot in Hero -->
-        <div class="mata-wrap" id="lpMataWrap">
-          <button type="button" class="mata" id="lpMataBtn" onclick="window.acPokeHeroMata()" aria-label="Si Mata, klik untuk pesan">
-            <svg viewBox="0 0 120 120" aria-hidden="true">
-              <g class="body">
-                <path d="M60 12c29 0 50 21 50 50 0 27-21 46-50 46S10 89 10 62 31 12 60 12z" fill="#0E1714"/>
-                <path d="M44 16l8-9 7 6 9-10" fill="none" stroke="#34D399" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-                <ellipse cx="41" cy="56" rx="15" ry="17" fill="#F6F7F5"/>
-                <ellipse cx="79" cy="56" rx="15" ry="17" fill="#F6F7F5"/>
-                <g class="pupil"><circle cx="41" cy="57" r="8" fill="#13785D"/><circle cx="41" cy="57" r="4" fill="#0E1714"/><circle cx="44" cy="53.5" r="2.2" fill="#fff"/></g>
-                <g class="pupil"><circle cx="79" cy="57" r="8" fill="#13785D"/><circle cx="79" cy="57" r="4" fill="#0E1714"/><circle cx="82" cy="53.5" r="2.2" fill="#fff"/></g>
-                <ellipse cx="27" cy="80" rx="7" ry="4" fill="#34D399" opacity=".28"/>
-                <ellipse cx="93" cy="80" rx="7" ry="4" fill="#34D399" opacity=".28"/>
-                <path class="smile" d="M51 84q9 8 18 0" fill="none" stroke="#34D399" stroke-width="3.5" stroke-linecap="round"/>
-                <ellipse class="mouth" cx="60" cy="86" rx="6" ry="4.5" fill="#34D399"/>
-              </g>
-            </svg>
-          </button>
-          <div class="bub" id="lpMataBub">Riset tenang, jangan kejar harga yang sudah lari.<small>Si Mata &middot; klik aku lagi</small></div>
-          <button type="button" class="mata-x" onclick="window.acHideHeroMata()" aria-label="Sembunyikan Si Mata">&times;</button>
-        </div>
-        <button type="button" class="mata-mini" id="lpMataMini" style="display:none" onclick="window.acShowHeroMata()">Panggil Si Mata</button>
+      <div class="landing-container v7-hero-container">
+        <div class="v7-hero-split">
+          <!-- Left (~48%): Editorial Proposition & Primary CTAs -->
+          <div class="v7-hero-copy">
+            <div class="v7-hero-pulse-row">
+              <span class="v7-pulse-pill"><span class="v7-pulse-dot" aria-hidden="true"></span> DATA IDX TERKUNCI &middot; EOD 17:00 WIB</span>
+              <span class="v7-pulse-meta">Tanpa angka sintetis</span>
+            </div>
 
-        <div class="landing-hero-content">
-          <div class="landing-signal-line-wrap" aria-hidden="true">
-            <svg class="landing-signal-line" viewBox="0 0 1000 32" fill="none" preserveAspectRatio="none">
-              <path d="M0,16 L320,16 L380,6 L430,26 L490,10 L540,16 L1000,16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <p class="landing-eyebrow"><span class="landing-signal-dot" aria-hidden="true"></span> MEJA KERJA RISET PASAR MODAL IDX</p>
-          <h1 id="landingTitle">Baca pasar.<br>Susun rencana.<br><span>Jaga konteks.</span></h1>
-          <p class="landing-hero-lead">Auto-Cuan menyatukan riset saham, struktur kepemilikan pasar, portofolio mandiri, dan konfluensi bukti dalam satu meja kerja yang tenang. Tidak ada angka sintetis saat data bursa belum tersedia.</p>
-          <div class="landing-mobile-wrap landing-hero-actions">
-            <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Daftar dengan Gmail</span><span aria-hidden="true">&#8599;</span></button>
-            <a href="#landingCalculatorWrap" class="landing-btn">Coba kalkulator <span aria-hidden="true">&#8595;</span></a>
-          </div>
-          <div class="landing-proof-row" aria-label="Prinsip produk">
-            <span><b>01</b> Sumber data transparan</span>
-            <span><b>02</b> Eksekusi mandiri di sekuritas</span>
-            <span><b>03</b> Nilai kosong bukan nol</span>
-          </div>
-          <p class="landing-hero-note">Alat bantu analisis, bukan rekomendasi beli/jual. Keputusan tetap milik Anda.</p>
-        </div>
+            <h1 id="landingTitle" class="v7-hero-title">Meja kerja riset saham IDX berbasis data terverifikasi.</h1>
+            <p class="landing-hero-lead v7-hero-lead">Gabungkan Screener Three-Horizon, Chart Workstation multi-pane, aliran dana broker, dan kalkulator risiko dalam satu ruang kerja yang jujur menampilkan fakta bursa.</p>
 
-        <!-- REAL WORKSTATION PREVIEW -->
-        <div class="landing-workstation-preview" aria-label="Pratinjau Meja Kerja Auto-Cuan">
-          <div class="landing-preview-header">
-            <div class="landing-preview-controls" aria-hidden="true">
-              <span class="preview-dot"></span>
-              <span class="preview-dot"></span>
-              <span class="preview-dot"></span>
+            <div class="landing-mobile-wrap landing-hero-actions v7-hero-ctas">
+              <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Daftar dengan Gmail</span><span aria-hidden="true">&#8599;</span></button>
+              <button type="button" onclick="openLoginModal()" class="landing-btn v7-hero-secondary-btn">Masuk Akun <span aria-hidden="true">&rarr;</span></button>
             </div>
-            <span class="preview-sample-pill" aria-label="Status snapshot"><span class="preview-sample-dot" aria-hidden="true"></span> MEMUAT SNAPSHOT EOD&hellip;</span>
-            <div class="landing-preview-tabs" role="tablist" aria-label="Pratinjau produk: Dashboard, Screener, Bandarmologi">
-              <button type="button" class="preview-tab active" role="tab" aria-selected="true" data-c3prev="dashboard" onclick="acSwitchPreview('dashboard')">Dashboard</button>
-              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3prev="screener" onclick="acSwitchPreview('screener')">Screener</button>
-              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3prev="bandarmologi" onclick="acSwitchPreview('bandarmologi')">Bandarmologi</button>
-            </div>
-            <div class="landing-preview-subtabs" role="tablist" aria-label="Sub-tab Three-Horizon: Potensi Besok, Short Swing, Swing" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="potensi_besok" onclick="acSwitchPreviewSub('potensi_besok')">Potensi Besok (1–5H)</button>
-              <button type="button" class="preview-tab active" role="tab" aria-selected="true" data-c3sub="short_swing" onclick="acSwitchPreviewSub('short_swing')">Short Swing (3–10H)</button>
-              <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="swing" onclick="acSwitchPreviewSub('swing')">Swing (7–30H)</button>
-            </div>
-            <div class="landing-preview-meta">
-              <span class="preview-status-badge">Snapshot EOD Meja Kerja</span>
-            </div>
-          </div>
 
-          <div class="landing-preview-body">
-            <div class="landing-preview-grid">
-              <!-- Panel 1: Sinyal & Konteks -->
-              <div class="preview-pane">
-                <div class="preview-pane-head">
-                  <span class="preview-pane-label">01 SKOR &amp; RADAR EOD</span>
-                  <span class="preview-pane-tag">Kandidat Swing EOD</span>
-                </div>
-                <div class="preview-score-card">
-                  <div class="score-display">
-                    <span class="score-number">&mdash;</span>
-                    <span class="score-scale">/100</span>
-                  </div>
-                  <div class="score-details">
-                    <strong>Snapshot EOD belum tersedia</strong>
-                    <p>Data bursa belum termuat. Angka tidak ditampilkan agar tidak menyesatkan.</p>
-                  </div>
-                </div>
-                <div class="preview-plan-row">
-                  <div><span>Entry Area</span><strong>&mdash;</strong></div>
-                  <div><span>Target Profit</span><strong class="text-positive">&mdash;</strong></div>
-                  <div><span>Stop Loss</span><strong class="text-negative">&mdash;</strong></div>
-                  <div><span>Risk:Reward</span><strong>&mdash;</strong></div>
-                </div>
+            <!-- 3 NumberFlow Micro-Metrics -->
+            <div class="v7-hero-metrics" aria-label="Ringkasan cakupan platform">
+              <div class="v7-hero-metric-item">
+                <strong class="num" data-ac-nf="963">963</strong>
+                <span>Emiten IDX</span>
               </div>
-
-              <!-- Panel 2: Investigasi Aliran Dana -->
-              <div class="preview-pane">
-                <div class="preview-pane-head">
-                  <span class="preview-pane-label">02 ALIRAN DANA &amp; BROKER EOD</span>
-                  <span class="preview-pane-tag">Akumulasi EOD</span>
-                </div>
-                <div class="preview-flow-stats">
-                  <div class="flow-stat">
-                    <span>Radar Day-Trade</span>
-                    <strong class="text-positive">&mdash;</strong>
-                    <small>Belum tersedia</small>
-                  </div>
-                  <div class="flow-stat">
-                    <span>Rencana</span>
-                    <strong class="text-negative">&mdash;</strong>
-                    <small>Belum tersedia</small>
-                  </div>
-                </div>
-                <div class="preview-flow-bar" role="progressbar" aria-label="Perbandingan akumulasi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                  <div class="flow-bar-fill" style="width: 0%;"></div>
-                </div>
-                <div class="preview-flow-caption">
-                  <span>Konsentrasi Top 1: &mdash;</span>
-                  <span>Top 3: &mdash;</span>
-                  <span>Top 5: &mdash;</span>
-                </div>
+              <div class="v7-hero-metric-item">
+                <strong class="num" data-ac-nf="8">8</strong>
+                <span>Pilar Data Riil</span>
               </div>
-
-              <!-- Panel 3: Validasi Struktur & Fundamental -->
-              <div class="preview-pane">
-                <div class="preview-pane-head">
-                  <span class="preview-pane-label">03 VALIDASI DATA EOD</span>
-                  <span class="preview-pane-tag">Data Lapkeu EOD</span>
-                </div>
-                <div class="preview-metrics-list">
-                  <div class="metric-row">
-                    <span>Price to Book (PBV)</span>
-                    <strong>&mdash;</strong>
-                  </div>
-                  <div class="metric-row">
-                    <span>Price to Earnings (PER)</span>
-                    <strong>&mdash;</strong>
-                  </div>
-                  <div class="metric-row">
-                    <span>Return on Equity (ROE)</span>
-                    <strong>&mdash;</strong>
-                  </div>
-                  <div class="metric-row">
-                    <span>Porsi Free Float Publik</span>
-                    <strong>&mdash;</strong>
-                  </div>
-                  <div class="metric-row">
-                    <span>Konsentrasi Pengendali (HSC)</span>
-                    <strong>&mdash;</strong>
-                  </div>
-                </div>
+              <div class="v7-hero-metric-item">
+                <strong class="num">&ge; Rp 1</strong>
+                <span>All-Price Screener</span>
               </div>
             </div>
+
+            <!-- Compact Mascot Companion Badge (Preserves Si Mata contract cleanly) -->
+            <div class="v7-mata-dock">
+              <div class="mata-wrap v7-mata-inline" id="lpMataWrap">
+                <button type="button" class="mata" id="lpMataBtn" onclick="window.acPokeHeroMata()" aria-label="Si Mata, klik untuk pesan">
+                  <svg viewBox="0 0 120 120" aria-hidden="true">
+                    <g class="body">
+                      <path d="M60 12c29 0 50 21 50 50 0 27-21 46-50 46S10 89 10 62 31 12 60 12z" fill="#0E1714"/>
+                      <path d="M44 16l8-9 7 6 9-10" fill="none" stroke="#34D399" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                      <ellipse cx="41" cy="56" rx="15" ry="17" fill="#F6F7F5"/>
+                      <ellipse cx="79" cy="56" rx="15" ry="17" fill="#F6F7F5"/>
+                      <g class="pupil"><circle cx="41" cy="57" r="8" fill="#13785D"/><circle cx="41" cy="57" r="4" fill="#0E1714"/><circle cx="44" cy="53.5" r="2.2" fill="#fff"/></g>
+                      <g class="pupil"><circle cx="79" cy="57" r="8" fill="#13785D"/><circle cx="79" cy="57" r="4" fill="#0E1714"/><circle cx="82" cy="53.5" r="2.2" fill="#fff"/></g>
+                      <ellipse cx="27" cy="80" rx="7" ry="4" fill="#34D399" opacity=".28"/>
+                      <ellipse cx="93" cy="80" rx="7" ry="4" fill="#34D399" opacity=".28"/>
+                      <path class="smile" d="M51 84q9 8 18 0" fill="none" stroke="#34D399" stroke-width="3.5" stroke-linecap="round"/>
+                      <ellipse class="mouth" cx="60" cy="86" rx="6" ry="4.5" fill="#34D399"/>
+                    </g>
+                  </svg>
+                </button>
+                <div class="bub" id="lpMataBub">Riset tenang, jangan kejar harga yang sudah lari.<small>Si Mata &middot; klik aku lagi</small></div>
+                <button type="button" class="mata-x" onclick="window.acHideHeroMata()" aria-label="Sembunyikan Si Mata">&times;</button>
+              </div>
+              <button type="button" class="mata-mini" id="lpMataMini" style="display:none" onclick="window.acShowHeroMata()">Panggil Si Mata</button>
+              <p class="landing-hero-note">Alat bantu riset mandiri, bukan rekomendasi beli/jual efek.</p>
+            </div>
           </div>
 
-          <div class="landing-preview-footer">
-            <span class="preview-provenance-tag">SNAPSHOT EOD MEJA KERJA</span>
-            <span class="preview-provenance-desc">Memuat snapshot EOD dari 3 mesin screener. Bukan rekomendasi transaksi.</span>
+          <!-- Right (~52%): Interactive Live Workstation Preview Card & Three-Horizon Proof Ledger -->
+          <div class="v7-hero-workstation" aria-label="Pratinjau Workstation dan Three-Horizon Proof Ledger">
+            <div class="v7-ws-chrome">
+              <div class="v7-ws-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+              <div class="v7-ws-title">WORKSTATION PREVIEW &middot; <span id="v7HeroTradeDate">EOD SNAPSHOT</span></div>
+              <span class="preview-sample-pill" id="v7HeroStatusPill"><span class="preview-sample-dot" aria-hidden="true"></span> <span id="v7HeroLedgerStatus">SINKRON DATA EOD&hellip;</span></span>
+            </div>
+
+            <div class="v7-ws-controls">
+              <div class="v7-landing-horizon-tabs segx" role="tablist" aria-label="Pilih Horizon Proof Ledger">
+                <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="potensi_besok" onclick="acSwitchPreviewSub('potensi_besok')">Potensi Besok <small>1-5H</small></button>
+                <button type="button" class="preview-tab active" role="tab" aria-selected="true" data-c3sub="short_swing" onclick="acSwitchPreviewSub('short_swing')">Short Swing <small>3-10H</small></button>
+                <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3sub="swing" onclick="acSwitchPreviewSub('swing')">Swing <small>7-30H</small></button>
+              </div>
+              <button type="button" class="v7-ws-calc-jump" onclick="document.getElementById('landingCalculatorWrap').scrollIntoView({behavior:'smooth'})">Uji Sizing &rarr;</button>
+            </div>
+
+            <div class="v7-ws-signal-strip" aria-hidden="true">
+              <div class="landing-signal-line-wrap">
+                <svg class="landing-signal-line" viewBox="0 0 1000 32" fill="none" preserveAspectRatio="none">
+                  <path d="M0,18 L240,18 L310,7 L370,25 L440,11 L520,18 L760,18 L830,8 L900,22 L1000,14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Live Three-Horizon Proof Ledger Table -->
+            <div class="v7-hero-ledger-wrap" id="v7HeroHorizonTable">
+              <div class="v7-ledger-head">
+                <span class="v7-ledger-title" id="v7HeroLedgerHorizonTitle">Short Swing (3-10 Hari Bursa)</span>
+                <span class="v7-ledger-count mono" id="v7HeroLedgerCount">&mdash; kandidat</span>
+              </div>
+              <div class="v7-ledger-table-scroll">
+                <table class="v7-ledger-table" aria-label="Three-Horizon Proof Ledger">
+                  <thead>
+                    <tr>
+                      <th>Ticker</th>
+                      <th class="r">Harga</th>
+                      <th class="r">Entry</th>
+                      <th class="r">TP1 / SL</th>
+                      <th class="r">R/R</th>
+                    </tr>
+                  </thead>
+                  <tbody id="v7HeroLedgerBody">
+                    <tr>
+                      <td colspan="5" class="v7-ledger-empty">Memuat snapshot Three-Horizon riil dari server EOD&hellip;</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Quick Preview Tabs & Summary Bar -->
+            <div class="v7-ws-footer">
+              <div class="landing-preview-tabs" role="tablist" aria-label="Tampilan pratinjau modul">
+                <button type="button" class="preview-tab active" role="tab" aria-selected="true" data-c3prev="dashboard" onclick="acSwitchPreview('dashboard')">Dashboard</button>
+                <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3prev="screener" onclick="acSwitchPreview('screener')">Screener</button>
+                <button type="button" class="preview-tab" role="tab" aria-selected="false" data-c3prev="bandarmologi" onclick="acSwitchPreview('bandarmologi')">Bandarmologi</button>
+              </div>
+              <span class="v7-ws-note">Data nyata bursa IDX. Bukan ajakan beli/jual.</span>
+            </div>
           </div>
         </div>
       </div>
@@ -465,61 +424,104 @@
       </div>
     </div>
 
-    <!-- STATISTICS BAR (TRUTHFUL DATA) -->
+    <!-- STATISTICS BAR (TRUTHFUL VERIFIABLE DATA) -->
     <div class="stats-wrap" aria-label="Angka di balik layar">
       <div class="landing-eyebrow">ANGKA DI BALIK LAYAR &middot; BUKAN JANJI HASIL</div>
       <div class="stats">
         <div><b>963</b><span>emiten dengan candle harian dari sumber data bursa</span></div>
         <div><b>500</b><span>sesi riwayat per emiten untuk chart dan indikator</span></div>
-        <div><b>2.907</b><span>data uji walk-forward lintas bursa untuk rentang harga</span></div>
+        <div><b>2.907</b><span>sampel uji walk-forward lintas bursa untuk rentang harga</span></div>
         <div><b>77%</b><span>harga 10 hari kemudian jatuh di rentang p10-p90 (target 80%)</span></div>
       </div>
       <p class="landing-hero-note" style="margin-top:14px">Sumber: cakupan candle harian bursa per data bursa terkini; uji walk-forward Dua Skenario v2 (seed 42, out-of-sample). Uji arah tidak lolos, karena itu yang ditampilkan hanya rentang.</p>
     </div>
 
-    <!-- SECTION 1: MARKET CONTEXT -->
+    <!-- ASYMMETRIC BENTO FEATURE SHOWCASE (4 PILLAR UTAMA V7) -->
+    <section id="landingBento" class="landing-section v7-bento-section" aria-labelledby="landingBentoTitle">
+      <div class="landing-container">
+        <div class="landing-section-heading">
+          <div>
+            <p class="landing-eyebrow">ARSITEKTUR MEJA KERJA V7</p>
+            <h2 id="landingBentoTitle">Empat mesin riset yang saling terhubung.</h2>
+          </div>
+          <p>Dirancang agar alur baca konteks pasar, penyaringan kandidat, verifikasi bandar, dan pencatatan risiko berjalan tanpa angka palsu.</p>
+        </div>
+
+        <div class="v7-bento-grid">
+          <article id="landingScan" class="v7-bento-card v7-bento-wide">
+            <div class="v7-bento-head">
+              <span class="v7-bento-idx">01 / SCREENER</span>
+              <span class="v7-bento-chip">All-Price &ge; Rp 1</span>
+            </div>
+            <h3>Three-Horizon Screener (Potensi Besok, Short Swing, Swing)</h3>
+            <p>Menyaring 963 emiten IDX lintas 8 pilar data riil: likuiditas, momentum, konfluensi akumulasi broker asing &amp; domestik, aktivitas insider 30 hari, serta struktur kepemilikan KSEI.</p>
+            <div class="v7-bento-pills">
+              <span>Potensi Besok 1-5H</span>
+              <span>Short Swing 3-10H</span>
+              <span>Swing 7-30H</span>
+              <span>Virtual Grid Cepat</span>
+            </div>
+          </article>
+
+          <article id="landingChartBento" class="v7-bento-card v7-bento-narrow">
+            <div class="v7-bento-head">
+              <span class="v7-bento-idx">02 / CHARTING</span>
+              <span class="v7-bento-chip">Lightweight Charts v5.3</span>
+            </div>
+            <h3>Chart Workstation Multi-Pane</h3>
+            <p>Candlestick + Volume, RSI, MACD, Bandarmologi, serta IHSG + MA200 dalam satu kanvas responsif dengan 8 alat gambar terpadu dan Magnet fraksi BEI.</p>
+            <div class="v7-bento-pills">
+              <span>5 Mode Tampilan</span>
+              <span>BYOK Gemini 4</span>
+            </div>
+          </article>
+
+          <article id="landingInvestigate" class="v7-bento-card v7-bento-narrow">
+            <div class="v7-bento-head">
+              <span class="v7-bento-idx">03 / KEPEMILIKAN</span>
+              <span class="v7-bento-chip">Data KSEI &amp; IDX</span>
+            </div>
+            <h3>Bandarmologi, Broker Hunter &amp; Struktur Pasar</h3>
+            <p>Membedakan akumulasi institusi sejati dari noise harian, melacak transaksi insider di atas 5%, dan menandai konsentrasi pemilik atau free float ketat.</p>
+            <div class="v7-bento-pills">
+              <span>Free Float &lt;15%</span>
+              <span>Jejaring Insider</span>
+            </div>
+          </article>
+
+          <article id="landingMonitor" class="v7-bento-card v7-bento-wide">
+            <div class="v7-bento-head">
+              <span class="v7-bento-idx">04 / EKSEKUSI MANDIRI</span>
+              <span class="v7-bento-chip">Audit Terbuka</span>
+            </div>
+            <h3>Portfolio, Risk Lab, Kelola Keuangan &amp; Track Record</h3>
+            <p>Hitung ukuran posisi sebelum masuk pasar, catat portofolio serta arus kas bulanan dalam lembar kerja pribadi, dan tinjau hasil sinyal historis apa adanya.</p>
+            <div class="v7-bento-pills">
+              <span>Position Sizing Disiplin</span>
+              <span>Alert Watchlist Telegram</span>
+              <span>Track Record Jujur</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- SNAPSHOT PASAR LANGSUNG + KALKULATOR RISIKO -->
     <section id="landingMarket" class="landing-section" aria-labelledby="landingMarketTitle">
       <div class="landing-container">
         <div class="landing-section-heading">
           <div>
-            <p class="landing-eyebrow">01 / KONTEKS PASAR</p>
-            <h2 id="landingMarketTitle">Tetapkan kondisi pasar<br>sebelum memilih saham.</h2>
+            <p class="landing-eyebrow">SNAPSHOT PASAR &amp; PENGUKURAN RISIKO</p>
+            <h2 id="landingMarketTitle">Cek ringkasan bursa dan hitung ukuran lot.</h2>
           </div>
-          <p>Kandidat terbaik di sektor yang melemah cenderung sulit berkembang. Baca kondisi indeks, rotasi modal, dan kesegaran data terlebih dahulu.</p>
-        </div>
-
-        <div class="landing-market-workflow-stream" aria-label="Alur analisis pasar">
-          <div class="workflow-step">
-            <span class="workflow-step-num">01</span>
-            <div class="workflow-step-body">
-              <h3>Arah IHSG &amp; Sentimen Makro</h3>
-              <p>Identifikasi apakah pasar berada dalam fase akumulasi, konsolidasi, atau tekanan jual sebelum menentukan porsi alokasi modal dan toleransi risiko transaksi.</p>
-            </div>
-          </div>
-          <div class="workflow-step-divider" aria-hidden="true"></div>
-          <div class="workflow-step">
-            <span class="workflow-step-num">02</span>
-            <div class="workflow-step-body">
-              <h3>Rotasi Aliran Sektoral</h3>
-              <p>Pantau perpindahan modal antar 11 sektor IDX untuk menemukan sektor yang memimpin reli sebelum likuiditas merata ke saham lapis berikutnya.</p>
-            </div>
-          </div>
-          <div class="workflow-step-divider" aria-hidden="true"></div>
-          <div class="workflow-step">
-            <span class="workflow-step-num">03</span>
-            <div class="workflow-step-body">
-              <h3>Kesegaran Snapshot Bursa</h3>
-              <p>Setiap pembacaan disertai stempel waktu jelas. Data yang terlambat atau belum diperbarui diberi penanda agar tidak terjadi salah penafsiran.</p>
-            </div>
-          </div>
+          <p>Nilai dari server ditampilkan langsung tanpa rekayasa. Jika sumber sedang tidak tersedia, status tampil jujur.</p>
         </div>
 
         <!-- LIVE SNAPSHOT SHOWCASE -->
-        <div id="landingPreview" class="landing-card landing-radar-window" aria-label="Ringkasan snapshot pasar terverifikasi (Mode Riset Gelap)">
+        <div id="landingPreview" class="landing-card landing-radar-window" aria-label="Ringkasan snapshot pasar terverifikasi">
           <div class="landing-window-bar">
             <span class="landing-window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
             <span>Snapshot Pasar &middot; Data Tersedia Bursa</span>
-            <span class="landing-night-mode-pill" aria-hidden="true"><span class="night-mode-dot"></span> Mode Riset Gelap</span>
             <span id="landingShowcaseChip" class="landing-chip" aria-live="polite">Memuat...</span>
             <button type="button" class="landing-refresh" onclick="_landingShowcaseLoaded=false;loadLandingShowcase()" aria-label="Perbarui ringkasan pasar">Perbarui &#8635;</button>
           </div>
@@ -531,89 +533,39 @@
             </div>
           </div>
           <div id="landingShowcaseSectors" class="landing-sector-strip"></div>
-          <p class="landing-window-note">Pratinjau antarmuka Mode Riset Gelap (Night Research). Snapshot mengikuti ketersediaan data bursa. Nilai yang belum tersedia ditampilkan apa adanya dan tidak diisi angka nol.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 2: SCAN -->
-    <section id="landingScan" class="landing-section" aria-labelledby="landingScanTitle">
-      <div class="landing-container">
-        <div class="landing-section-heading">
-          <div>
-            <p class="landing-eyebrow">02 / SCANNER PELUANG</p>
-            <h2 id="landingScanTitle">Pilah ratusan emiten<br>ke tiga kategori terukur.</h2>
-          </div>
-          <p>Screener menyaring saham berdasarkan kriteria objektif. Membedakan daftar pantauan dari kondisi entry yang sudah memenuhi toleransi risiko.</p>
-        </div>
-
-        <div class="landing-trio-grid">
-          <article class="feature-card">
-            <div class="landing-feature-top">
-              <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 10-12h-6z"/></svg></span>
-              <span class="landing-card-index">01</span>
-            </div>
-            <h3>Potensi Besok (1–5H)</h3>
-            <p>Menyaring saham BEI di semua rentang harga (&ge; Rp 1) yang memiliki dorongan volume anomali, aliran dana asing/domestik aktif, serta setup breakout jangka pendek.</p>
-            <div class="card-focus-tag">Fokus: Momentum 1–5 hari bursa &amp; batas SL ketat</div>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-card-badge">Akumulasi Terkonfirmasi</div>
-            <div class="landing-feature-top">
-              <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 5-5 4 4 5-7"/></svg></span>
-              <span class="landing-card-index">02</span>
-            </div>
-            <h3>Short Swing (3–10H)</h3>
-            <p>Memvalidasi struktur harga di atas dukungan MA kunci yang searah dengan akumulasi broker institusi (Broksum ALL/Asing/Domestik), rasio R/R &ge; 1,5, dan struktur KSEI sehat.</p>
-            <div class="card-focus-tag">Fokus: Konfluensi aliran dana &amp; struktur harga</div>
-          </article>
-
-          <article class="feature-card">
-            <div class="landing-feature-top">
-              <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></span>
-              <span class="landing-card-index">03</span>
-            </div>
-            <h3>Swing (7–30H)</h3>
-            <p>Mendeteksi akumulasi tersembunyi di area basis maupun tren menengah yang ditopang konsistensi arus modal, aktivitas insider 30 hari, serta konteks fundamental.</p>
-            <div class="card-focus-tag">Fokus: Akumulasi menengah &amp; rentang risiko terukur</div>
-          </article>
-        </div>
-
-        <div class="landing-section-callout">
-          <strong>Perhatian Metodologi:</strong> Hasil scan adalah titik awal penyaringan, bukan sinyal otomatis beli. Setiap saham wajib diuji batas risiko, target keuntungan, dan kesesuaian profil modal pribadi.
+          <p class="landing-window-note">Snapshot mengikuti ketersediaan data bursa. Nilai yang belum tersedia ditampilkan apa adanya dan tidak diisi angka nol.</p>
         </div>
 
         <!-- INTERACTIVE CALCULATOR (SECTION 02B) -->
-        <div style="margin-top: 36px;" id="landingCalculatorWrap">
+        <div style="margin-top: 28px;" id="landingCalculatorWrap">
           <div class="landing-section-heading" style="margin-bottom: 16px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;width:100%">
               <div>
-                <p class="landing-eyebrow">02B / HITUNG SENDIRI</p>
-                <h3 style="font-size:20px;font-weight:700;color:var(--lp-text);margin:0">Ukur posisi sebelum menekan tombol beli.</h3>
+                <p class="landing-eyebrow">HITUNG UKURAN POSISI</p>
+                <h3 style="font-size:20px;font-weight:700;color:var(--lp-text);margin:0">Ukur risiko sebelum menekan tombol beli.</h3>
               </div>
               <div style="display:flex;align-items:center;gap:6px">
-                <span id="lpCalcBadge" style="background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:0.5px">SIMULASI INTERAKTIF (data belum tersedia)</span>
+                <span id="lpCalcBadge" style="background:rgba(16,185,129,0.12);color:var(--ac-brand,#13785D);border:1px solid rgba(16,185,129,0.3);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:0.5px">SIMULASI INTERAKTIF</span>
                 <span id="lpCalcTickerBadge" style="background:var(--ac-surface-sunken, var(--lp-raised));color:var(--ac-ink, var(--lp-text));border:1px solid var(--ac-line-soft, var(--lp-line));font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;font-family:monospace">&mdash;</span>
               </div>
             </div>
-            <p style="font-size:13px;color:var(--lp-muted);margin:4px 0 0">Geser modal dan risiko. Jumlah lot dihitung secara dinamis dari trading plan aktual ticker terpilih, lalu dicek terhadap rentang wajar 10 hari.</p>
+            <p style="font-size:13px;color:var(--lp-muted);margin:4px 0 0">Geser modal dan batas risiko per transaksi. Jumlah lot dihitung otomatis terhadap entry, stop loss, dan pita wajar 10 hari.</p>
           </div>
           <div class="demo">
             <div>
               <div class="sl">
-                <label>Modal <b id="lpCalcModalVal">Rp 100 Jt</b></label>
+                <label for="lpCalcModal">Modal <b id="lpCalcModalVal">Rp 100 Jt</b></label>
                 <input type="range" id="lpCalcModal" min="10" max="1000" step="10" value="100" oninput="window.acUpdateLandingCalc()" aria-label="Modal dalam juta rupiah">
               </div>
               <div class="sl">
-                <label>Risiko per trade <b id="lpCalcRiskVal">1,0%</b></label>
+                <label for="lpCalcRisk">Risiko per trade <b id="lpCalcRiskVal">1,0%</b></label>
                 <input type="range" id="lpCalcRisk" min="0.25" max="3" step="0.25" value="1.0" oninput="window.acUpdateLandingCalc()" aria-label="Risiko per trade dalam persen">
               </div>
               <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;font-size:12px;margin-top:16px;border-top:1px solid var(--lp-line);padding-top:12px">
                 <div><div style="font-size:11px;color:var(--lp-muted)">Entry</div><b id="lpCalcEntryVal" style="font-family:monospace">&mdash;</b></div>
-                <div><div style="font-size:11px;color:var(--lp-muted)">SL</div><b id="lpCalcSlVal" style="font-family:monospace;color:#dc2626">&mdash;</b></div>
-                <div><div style="font-size:11px;color:var(--lp-muted)">TP1</div><b id="lpCalcTp1Val" style="font-family:monospace;color:#16a34a">&mdash;</b></div>
-                <div><div style="font-size:11px;color:var(--lp-muted)">TP2</div><b id="lpCalcTp2Val" style="font-family:monospace;color:#16a34a">&mdash;</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">SL</div><b id="lpCalcSlVal" style="font-family:monospace;color:var(--ac-negative,#dc2626)">&mdash;</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">TP1</div><b id="lpCalcTp1Val" style="font-family:monospace;color:var(--ac-brand,#16a34a)">&mdash;</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">TP2</div><b id="lpCalcTp2Val" style="font-family:monospace;color:var(--ac-brand,#16a34a)">&mdash;</b></div>
               </div>
             </div>
             <div>
@@ -622,8 +574,8 @@
               <div style="font-size:12px;color:var(--lp-muted)" id="lpCalcPosMeta">Data bursa belum termuat.</div>
               <div class="fillbar"><i id="lpCalcFill" style="width:0%"></i></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;font-size:13px">
-                <div><div style="font-size:11px;color:var(--lp-muted)">Rugi maks bila SL kena</div><b id="lpCalcLoss" style="color:#dc2626">&mdash;</b></div>
-                <div><div style="font-size:11px;color:var(--lp-muted)">Bila TP1 kena</div><b id="lpCalcGain" style="color:#16a34a">&mdash;</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">Rugi maks bila SL kena</div><b id="lpCalcLoss" style="color:var(--ac-negative,#dc2626)">&mdash;</b></div>
+                <div><div style="font-size:11px;color:var(--lp-muted)">Bila TP1 kena</div><b id="lpCalcGain" style="color:var(--ac-brand,#16a34a)">&mdash;</b></div>
               </div>
               <div class="rng-bar" id="lpCalcRngBar" aria-label="Rentang wajar 10 hari dengan posisi entry, SL, dan target">
                 <div class="band"></div>
@@ -641,222 +593,43 @@
       </div>
     </section>
 
-    <!-- SECTION 3: INVESTIGATE -->
-    <section id="landingInvestigate" class="landing-section" aria-labelledby="landingInvestigateTitle">
+    <!-- 3-STEP WORKFLOW -->
+    <section id="landingWorkflow" class="landing-section v7-workflow-section" aria-labelledby="landingWorkflowTitle">
       <div class="landing-container">
         <div class="landing-section-heading">
           <div>
-            <p class="landing-eyebrow">03 / INVESTIGASI PERGERAKAN</p>
-            <h2 id="landingInvestigateTitle">Periksa bukti transaksi<br>di balik pergerakan harga.</h2>
+            <p class="landing-eyebrow">CARA MULAI DALAM 3 LANGKAH</p>
+            <h2 id="landingWorkflowTitle">Alur verifikasi akun yang aman dan tertib.</h2>
           </div>
-          <p>Grafik harga mencatat masa lalu, sedangkan data transaksi memperlihatkan pelaku di baliknya. Empat alat investigasi bekerja secara terintegrasi.</p>
+          <p>Setiap akun diverifikasi lewat Gmail aktif, bot Telegram resmi, dan persetujuan administrator untuk menjaga keamanan workspace.</p>
         </div>
 
-        <div class="landing-quad-grid">
-          <article class="lens-card">
-            <div class="lens-header">
-              <span class="lens-number">A</span>
-              <h3>Bandarmologi &amp; Broker Summary</h3>
-            </div>
-            <p>Membaca konsentrasi beli dan jual dari broker institusi, asing, dan ritel. Membedakan akumulasi sungguhan dari jebakan distribusi yang disamarkan.</p>
+        <div class="v7-workflow-steps">
+          <article class="v7-step-card">
+            <span class="v7-step-num">01</span>
+            <h3>Daftar Akun dengan Gmail</h3>
+            <p>Isi Gmail aktif, username unik, dan password kuat pada layar pendaftaran split-screen yang bersih.</p>
           </article>
-
-          <article class="lens-card">
-            <div class="lens-header">
-              <span class="lens-number">B</span>
-              <h3>Broker Hunter</h3>
-            </div>
-            <p>Melacak pergerakan broker tertentu yang mengakumulasi saham secara bertahap pada rentang harga rendah tanpa menciptakan lonjakan harga prematur.</p>
+          <article class="v7-step-card">
+            <span class="v7-step-num">02</span>
+            <h3>Verifikasi @AutoCuanVerificationBot</h3>
+            <p>Salin kode sekali pakai 8 karakter dan kirim ke bot Telegram resmi dalam jendela 15 menit.</p>
           </article>
-
-          <article class="lens-card">
-            <div class="lens-header">
-              <span class="lens-number">C</span>
-              <h3>Aktivitas Kepemilikan Insider</h3>
-            </div>
-            <p>Memantau transaksi direksi, komisaris, dan pemegang saham di atas 5% berdasarkan keterbukaan informasi resmi Bursa Efek Indonesia.</p>
-          </article>
-
-          <article class="lens-card">
-            <div class="lens-header">
-              <span class="lens-number">D</span>
-              <h3>Struktur Pasar &amp; Konfluensi</h3>
-            </div>
-            <p>Menilai posisi harga terhadap batas support struktural, volume penembusan, dan pola historis untuk memastikan konfluensi sebelum rencana disusun.</p>
+          <article class="v7-step-card">
+            <span class="v7-step-num">03</span>
+            <h3>Mulai Riset IDX Lengkap</h3>
+            <p>Setelah admin menyetujui akun Anda, akses seluruh 19 modul riset, chart, screener, dan portofolio.</p>
           </article>
         </div>
-      </div>
-    </section>
 
-    <!-- SECTION 4: VALIDATE -->
-    <section id="landingValidate" class="landing-section" aria-labelledby="landingValidateTitle">
-      <div class="landing-container">
-        <div class="landing-section-heading">
+        <div id="landingTrust" class="v7-trust-banner">
           <div>
-            <p class="landing-eyebrow">04 / VALIDASI FUNDAMENTAL</p>
-            <h2 id="landingValidateTitle">Uji fundamental dan<br>ketersediaan saham di pasar.</h2>
+            <strong>Transparansi Risiko &amp; Independensi Platform</strong>
+            <p>Auto-Cuan bukan penasihat investasi berizin OJK, tidak menghimpun dana, dan tidak mengeksekusi transaksi otomatis. Seluruh keputusan jual/beli berada di akun sekuritas Anda sendiri.</p>
           </div>
-          <p>Jangan mempertaruhkan modal hanya pada momentum jangka pendek. Sandingkan analisis teknikal dengan laporan keuangan resmi dan struktur kepemilikan.</p>
-        </div>
-
-        <div class="landing-validate-grid">
-          <article class="validate-card">
-            <div class="validate-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
-            <h3>Laporan Keuangan &amp; Rasio</h3>
-            <p>Mengevaluasi valuasi Price to Earnings (PER), Price to Book (PBV), margin laba bersih, dan rasio utang langsung dari laporan keuangan berkala emiten.</p>
-          </article>
-
-          <article class="validate-card">
-            <div class="validate-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"/></svg></div>
-            <h3>Porsi Free Float Publik</h3>
-            <p>Memeriksa persentase saham yang beredar di masyarakat. Porsi free float yang sehat menjaga likuiditas pasar dan mempermudah keluar-masuk posisi.</p>
-          </article>
-
-          <article class="validate-card">
-            <div class="validate-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-            <h3>High Shareholder Concentration</h3>
-            <p>Mendeteksi konsentrasi kepemilikan oleh kelompok pengendali. Konsentrasi tinggi atau float rendah tidak menjamin harga naik, melainkan penanda volatilitas tinggi.</p>
-          </article>
-
-          <article class="validate-card">
-            <div class="validate-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-            <h3>Transparansi Periode Data</h3>
-            <p>Setiap metrik mencantumkan kuartal pelaporan emiten secara eksplisit. Data yang belum dirilis tidak ditebak dengan angka rekaan, melainkan ditandai jujur.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 5: ASK AI -->
-    <section id="landingAi" class="landing-section" aria-labelledby="landingAiTitle">
-      <div class="landing-container">
-        <div class="landing-section-heading">
-          <div>
-            <p class="landing-eyebrow">05 / ASISTEN RISET AI</p>
-            <h2 id="landingAiTitle">Interpretasi AI setelah<br>semua bukti terkumpul.</h2>
+          <div class="v7-trust-cta">
+            <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Daftar dengan Gmail</span><span aria-hidden="true">&#8599;</span></button>
           </div>
-          <p>Kecerdasan buatan hadir sebagai mitra telaah setelah Anda mengumpulkan data pasar, teknikal, dan fundamental. Bukan peramal dan bukan eksekutor otomatis.</p>
-        </div>
-
-        <div class="landing-ai-grid">
-          <article class="ai-role-card">
-            <span class="role-badge">Peran Asisten</span>
-            <h3>Sintesis Konfluensi Data</h3>
-            <p>AI merangkum pertemuan antara struktur teknikal, akumulasi broker, dan catatan fundamental menjadi ringkasan yang cepat dipahami untuk mendukung keputusan Anda.</p>
-          </article>
-
-          <article class="ai-role-card">
-            <span class="role-badge">Keamanan &amp; Privasi</span>
-            <h3>Bring Your Own Key (BYOK)</h3>
-            <p>Pengguna dapat menghubungkan kunci API Gemini pribadi. Kunci disimpan secara lokal di peramban Anda dengan enkripsi AES-256-GCM tanpa dikirim ke pihak ketiga.</p>
-          </article>
-
-          <article class="ai-role-card">
-            <span class="role-badge">Batasan Objektif</span>
-            <h3>Tanpa Kepastian Buatan</h3>
-            <p>AI tidak memprediksi kepastian masa depan dan tidak menjamin keuntungan. Hasil analisis merupakan bahan pertimbangan kedua bagi riset independen Anda.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 6: MONITOR -->
-    <section id="landingMonitor" class="landing-section" aria-labelledby="landingMonitorTitle">
-      <div class="landing-container">
-        <div class="landing-section-heading">
-          <div>
-            <p class="landing-eyebrow">06 / SIKLUS MONITORING</p>
-            <h2 id="landingMonitorTitle">Kelola pantauan, portofolio,<br>dan evaluasi sinyal sistem.</h2>
-          </div>
-          <p>Riset yang baik berlanjut ke pemantauan posisi dan audit disiplin secara berkala. Seluruh pencatatan dilakukan secara mandiri dan transparan.</p>
-        </div>
-
-        <div class="landing-trio-grid">
-          <article class="feature-card">
-            <div class="landing-feature-top">
-              <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
-              <span class="landing-card-index">01</span>
-            </div>
-            <h3>Watchlist Terorganisir</h3>
-            <p>Kelompokkan saham pantauan berdasarkan prioritas riset. Catat tesis analisa, area batas risiko, dan target harga sebelum harga menyentuh area beli.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="landing-feature-top">
-              <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
-              <span class="landing-card-index">02</span>
-            </div>
-            <h3>Portofolio &amp; Kalkulator Risiko</h3>
-            <p>Rencanakan alokasi modal dan ukuran posisi (position sizing) secara proporsional. Catat transaksi secara manual tanpa menghubungkan rekening efek Anda.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="landing-feature-top">
-              <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg></span>
-              <span class="landing-card-index">03</span>
-            </div>
-            <h3>Track Record Sinyal Sistem</h3>
-            <p>Audit terbuka hasil sinyal algoritma sistem Auto-Cuan. Track record mendokumentasikan kinerja historis sistem untuk evaluasi, bukan jaminan keuntungan personal.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 7: DATA TRUST & RISK -->
-    <section id="landingTrust" class="landing-section landing-trust-section" aria-labelledby="landingTrustTitle">
-      <div id="landingSafety" class="landing-container">
-        <div class="landing-section-heading">
-          <div>
-            <p class="landing-eyebrow">INTEGRITAS DATA &amp; BATASAN RISIKO</p>
-            <h2 id="landingTrustTitle">Kejelasan informasi lebih utama<br>daripada janji hasil.</h2>
-          </div>
-          <p>Auto-Cuan tidak menjamin keuntungan, tidak mengelola dana pemodal, dan tidak mengeksekusi order transaksi.</p>
-        </div>
-
-        <div class="landing-principles-grid">
-          <article id="landingSchedule" class="principle-item">
-            <span class="principle-num">01</span>
-            <div>
-              <h3>Ketersediaan &amp; Kesegaran Data</h3>
-              <p>Data bersumber dari bursa dan penyedia data pasar resmi. Keterlambatan pembaruan disampaikan secara terbuka dan nilai yang belum tersedia tidak diisi angka nol.</p>
-            </div>
-          </article>
-
-          <article id="landingRules" class="principle-item">
-            <span class="principle-num">02</span>
-            <div>
-              <h3>Risiko Pasar Modal Tetap Nyata</h3>
-              <p>Screener dan skor radar bukan rekomendasi mutlak. Setiap instrumen saham mengandung risiko fluktuasi harga yang wajib dikonfirmasi mandiri oleh pemodal.</p>
-            </div>
-          </article>
-
-          <article class="principle-item">
-            <span class="principle-num">03</span>
-            <div>
-              <h3>Bukan Penasihat Investasi atau Manajer Investasi</h3>
-              <p>Auto-Cuan merupakan perangkat lunak riset independen. Platform ini tidak terafiliasi dengan OJK sebagai manajer investasi dan tidak menghimpun dana masyarakat.</p>
-            </div>
-          </article>
-
-          <article class="principle-item">
-            <span class="principle-num">04</span>
-            <div>
-              <h3>Keputusan dan Eksekusi Tetap Mandiri</h3>
-              <p>Seluruh eksekusi jual-beli dilakukan mandiri oleh pengguna pada akun sekuritas berizin resmi pilihan masing-masing. Keputusan akhir sepenuhnya di tangan Anda.</p>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 8: CLOSING CTA -->
-    <section class="landing-section landing-closing" aria-labelledby="landingClosingTitle">
-      <div class="landing-container">
-        <p class="landing-eyebrow">MULAI DARI RENCANA YANG JELAS</p>
-        <h2 id="landingClosingTitle">Meja kerja tenang untuk<br>keputusan investasi yang sadar.</h2>
-        <p class="landing-closing-lead">Masuk ke workstation Auto-Cuan untuk meneliti saham Bursa Efek Indonesia secara terstruktur dan terukur.</p>
-        <div class="landing-closing-actions">
-          <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Daftar dengan Gmail</span><span aria-hidden="true">&#8599;</span></button>
         </div>
       </div>
     </section>
@@ -869,42 +642,40 @@
         <div class="footer-brand-col">
           <div class="landing-brand">
             <span class="landing-logo" aria-hidden="true"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 17l6-6 4 4 6-9M14 6h6v6"/></svg></span>
-            <span><span class="block font-semibold">Auto-Cuan</span><span class="block text-xs">IDX Workspace</span></span>
+            <span><span class="block font-semibold">Auto-Cuan V7</span><span class="block text-xs">IDX Research Workspace</span></span>
           </div>
-          <p class="footer-tagline">Perangkat lunak riset intelijen pasar modal, struktur kepemilikan emiten, dan perencanaan transaksi saham IDX.</p>
+          <p class="footer-tagline">Perangkat lunak riset pasar modal IDX, struktur kepemilikan KSEI, dan manajemen risiko portofolio mandiri.</p>
         </div>
 
         <div class="footer-links-col">
-          <span class="footer-col-title">Alur Riset</span>
-          <a href="#landingMarket">Konteks Pasar</a>
-          <a href="#landingScan">Screener Peluang</a>
-          <a href="#landingInvestigate">Investigasi Aliran Dana</a>
-          <a href="#landingValidate">Validasi Fundamental</a>
+          <span class="footer-col-title">Modul Utama</span>
+          <a href="#landingBento">Three-Horizon Screener</a>
+          <a href="#landingChartBento">Chart Workstation</a>
+          <a href="#landingInvestigate">Bandarmologi &amp; KSEI</a>
+          <a href="#landingMonitor">Portfolio &amp; Risk Lab</a>
         </div>
 
         <div class="footer-links-col">
-          <span class="footer-col-title">Fitur &amp; Analisis</span>
-          <a href="#landingAi">Asisten AI</a>
-          <a href="#landingMonitor">Siklus Monitoring</a>
-          <a href="#landingTrust">Integritas Data</a>
-          <button type="button" onclick="openLoginModal()" class="landing-footer-btn">Akses Akun</button>
+          <span class="footer-col-title">Akses &amp; Verifikasi</span>
+          <button type="button" onclick="openLoginModal()" class="landing-footer-btn">Masuk Akun</button>
+          <button type="button" onclick="openRegisterModal()" class="landing-footer-btn">Daftar Baru</button>
+          <a href="https://t.me/AutoCuanVerificationBot" target="_blank" rel="noopener noreferrer">@AutoCuanVerificationBot</a>
         </div>
 
         <div class="footer-links-col">
-          <span class="footer-col-title">Pernyataan Hukum</span>
+          <span class="footer-col-title">Kepatuhan &amp; Risiko</span>
           <a href="/ketentuan#risiko">Batasan Risiko</a>
           <a href="/ketentuan#ketentuan">Ketentuan Layanan</a>
-          <span class="footer-note-text">Tidak terafiliasi OJK sebagai penasihat investasi</span>
-          <span class="footer-note-text">Eksekusi order mandiri di sekuritas berizin</span>
+          <button type="button" class="v7-notice-btn" data-v7-open-notice="1">Lisensi &amp; Atribusi (NOTICE)</button>
         </div>
       </div>
 
       <div class="landing-footer-bottom">
-        <p>Auto-Cuan adalah platform analisis pasar modal independen. Seluruh konten, data, dan indikator disajikan semata-mata untuk tujuan riset dan edukasi mandiri, bukan merupakan rekomendasi investasi atau ajakan transaksi efek. Data bursa dapat mengalami keterlambatan.</p>
+        <p>Auto-Cuan menyajikan data riset untuk tujuan analisis dan edukasi mandiri, bukan rekomendasi investasi. Data bursa dapat mengalami keterlambatan.</p>
         <div class="footer-bottom-meta">
-          <span>&copy; 2026 Auto-Cuan. Seluruh hak cipta dilindungi.</span>
+          <span>&copy; 2026 Auto-Cuan.</span>
           <button type="button" class="v7-notice-btn" data-v7-open-notice="1">Lisensi &amp; Atribusi</button>
-          <a href="#landingTrust" class="landing-link">Tentang data &amp; risiko &rarr;</a>
+          <a href="#landingTrust" class="landing-link">Batasan risiko &rarr;</a>
         </div>
       </div>
     </div>
@@ -912,28 +683,52 @@
 </section>
 
 <!-- AUTH CHOICE MODAL -->
-<div id="authChoiceModal" class="hidden fixed inset-0 z-[9998] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="authChoiceTitle">
-    <div class="w-full max-w-md rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-5">
-        <div class="flex items-start justify-between gap-4">
-            <div>
-                <p class="text-xs font-black uppercase tracking-wide text-emerald-300">Masuk ke Auto-Cuan</p>
-                <h3 id="authChoiceTitle" class="mt-1 text-xl font-black text-white">Login atau daftar dulu</h3>
-                <p id="authChoiceMessage" class="mt-2 text-sm text-gray-400">Dashboard berisi watchlist, chart, screener, dan portofolio manual. Silakan masuk atau buat akun untuk melanjutkan.</p>
-            </div>
-            <button onclick="closeAuthChoiceModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup pilihan login atau daftar">&times;</button>
-        </div>
-        <div class="grid sm:grid-cols-2 gap-3">
-            <button type="button" onclick="closeAuthChoiceModal();openLoginModal()" class="landing-auth-card text-left hover:border-emerald-500/35 transition">
-                <span class="block text-white font-black">Login</span>
-                <span class="mt-1 block text-xs text-gray-400">Masuk dengan akun yang sudah disetujui.</span>
-            </button>
-            <button type="button" onclick="closeAuthChoiceModal();openRegisterModal()" class="landing-auth-card text-left hover:border-blue-500/35 transition">
-                <span class="block text-white font-black">Daftar</span>
-                <span class="mt-1 block text-xs text-gray-400">Buat akun baru untuk diajukan ke admin.</span>
-            </button>
-        </div>
-        <p class="text-xs text-amber-200/90 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3">Bukan rekomendasi beli/jual. Data bisa terlambat. Konfirmasi manual wajib.</p>
+<div id="authChoiceModal" class="hidden fixed inset-0 z-[9998] v7-auth-screen" role="dialog" aria-modal="true" aria-labelledby="authChoiceTitle">
+  <div class="v7-auth-shell">
+    <div class="v7-auth-topbar">
+      <button type="button" class="v7-auth-back" onclick="closeAuthChoiceModal()" aria-label="Kembali ke Halaman Utama">&larr; Kembali ke Halaman Utama</button>
+      <span class="v7-auth-badge mono">AUTO-CUAN V7 &middot; SECURE WORKSPACE</span>
+      <button type="button" class="v7-auth-theme-btn" onclick="if(typeof toggleAppTheme==='function')toggleAppTheme();" aria-label="Ganti tema Light atau Night Dark">&#9680; Tema</button>
     </div>
+    <div class="v7-auth-split">
+      <aside class="v7-auth-aside">
+        <div class="v7-auth-brand">
+          <span class="v7-auth-brand-icon" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M4 17l6-6 4 4 6-9M14 6h6v6"/></svg></span>
+          <strong>Auto-Cuan V7</strong>
+        </div>
+        <h2>Akses Riset Saham IDX Terverifikasi.</h2>
+        <p class="v7-auth-aside-sub">Workspace riset kuantitatif, screener All-Price &ge; Rp 1, dan manajemen risiko portofolio mandiri.</p>
+        <div class="v7-auth-verify-card">
+          <span class="v7-verify-kicker">VERIFIKASI AKUN TELEGRAM RESMI</span>
+          <strong>@AutoCuanVerificationBot</strong>
+          <p>Pendaftaran baru dan pemulihan sandi diverifikasi lewat kode sekali pakai 8 karakter berbatas waktu 15 menit melalui bot resmi.</p>
+          <a href="https://t.me/AutoCuanVerificationBot" target="_blank" rel="noopener noreferrer" class="v7-auth-bot-btn">Buka @AutoCuanVerificationBot &#8599;</a>
+        </div>
+        <div class="v7-auth-aside-links">
+          <button type="button" onclick="closeAuthChoiceModal();openSelfResetModal()">Lupa Password?</button>
+          <button type="button" onclick="if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();">Syarat &amp; Ketentuan</button>
+        </div>
+      </aside>
+      <div class="v7-auth-main">
+        <div class="v7-auth-card">
+          <p class="v7-auth-eyebrow">Masuk ke Auto-Cuan</p>
+          <h3 id="authChoiceTitle" class="v7-auth-title">Login atau daftar dulu</h3>
+          <p id="authChoiceMessage" class="v7-auth-desc">Dashboard berisi watchlist, chart, screener, dan portofolio manual. Silakan masuk atau buat akun untuk melanjutkan.</p>
+          <div class="grid sm:grid-cols-2 gap-3" style="margin-top:18px">
+            <button type="button" onclick="closeAuthChoiceModal();openLoginModal()" class="landing-auth-card v7-choice-btn text-left">
+              <span class="block font-black">Login</span>
+              <span class="mt-1 block text-xs">Masuk dengan akun yang sudah disetujui.</span>
+            </button>
+            <button type="button" onclick="closeAuthChoiceModal();openRegisterModal()" class="landing-auth-card v7-choice-btn text-left">
+              <span class="block font-black">Daftar</span>
+              <span class="mt-1 block text-xs">Buat akun baru untuk diajukan ke admin.</span>
+            </button>
+          </div>
+          <p class="v7-auth-warning">Bukan rekomendasi beli/jual. Data bisa terlambat. Konfirmasi manual wajib.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ===== AUTHENTICATION MODALS (top-level, OUTSIDE #dashboardScreen) =====
@@ -947,194 +742,278 @@
      #dashboardScreen — see test/auth-modals-outside-dashboard-screen.test.js. -->
 
 <!-- LOGIN MODAL -->
-<div id="loginModal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md" style="background-color:rgba(6,10,18,0.88)!important;backdrop-filter:blur(18px) saturate(140%)!important;-webkit-backdrop-filter:blur(18px) saturate(140%)!important;z-index:9999!important" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
-    <div class="w-full max-w-[420px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
-        <div class="flex items-start justify-between gap-3">
-            <div>
-                <span class="w-[30px] h-[30px] rounded-lg bg-[#1D2724] border border-emerald-500/30 flex items-center justify-center mb-3 text-emerald-400">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg>
-                </span>
-                <h3 id="loginModalTitle" class="text-xl font-bold tracking-tight text-white m-0">Masuk ke Auto-Cuan</h3>
-                <p class="mt-1 text-xs text-gray-400">Akses meja kerja riset saham IDX.</p>
-            </div>
-            <button onclick="closeLoginModal()" class="text-gray-400 hover:text-white text-2xl leading-none bg-transparent border-0 cursor-pointer p-1" aria-label="Tutup modal masuk">&times;</button>
-        </div>
-        <div class="v7-auth-switcher" role="tablist" aria-label="Pilih mode akses">
-            <button type="button" class="v7-auth-sw-btn is-active" role="tab" aria-selected="true">Masuk</button>
-            <button type="button" class="v7-auth-sw-btn" role="tab" aria-selected="false" onclick="closeLoginModal();openRegisterModal()">Daftar</button>
-        </div>
-        <form id="loginForm" class="space-y-3" onsubmit="event.preventDefault();doLogin();return false;">
-            <div>
-                <label for="loginUsername" class="block text-xs font-semibold text-gray-300 mb-1">Email atau username</label>
-                <input type="text" id="loginUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="email" placeholder="email atau username" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm">
-                <p class="mt-1.5 text-[11px] text-gray-500">Gunakan Gmail terdaftar. Username lama masih didukung. Masukkan Gmail atau username. Keduanya dapat digunakan untuk login.</p>
-            </div>
-            <div>
-                <div class="flex items-baseline justify-between mb-1">
-                    <label for="loginPassword" class="text-xs font-semibold text-gray-300">Password</label>
-                    <button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-emerald-400 hover:text-emerald-300 bg-transparent border-0 cursor-pointer p-0">Lupa Password?</button>
-                </div>
-                <div class="relative">
-                    <input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="Password Anda" class="w-full px-3.5 py-2.5 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doLogin()">
-                    <button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-200 focus:outline-none bg-transparent border-0 cursor-pointer">&#128065;</button>
-                </div>
-            </div>
-            <div id="loginError" class="hidden text-xs rounded-lg px-3 py-2.5 bg-red-500/10 border border-red-500/25 text-red-300" role="alert" aria-live="assertive"></div>
-            <button type="submit" id="loginBtn" onclick="doLogin()" class="w-full py-2.5 mt-2 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.01] transition-all text-sm">Masuk</button>
-            <p class="text-center text-xs text-gray-400 mt-4 mb-0">Belum punya akun? <button type="button" onclick="closeLoginModal();openRegisterModal()" class="text-emerald-400 hover:underline bg-transparent border-0 cursor-pointer p-0 font-medium">Daftar</button></p>
-        </form>
+<div id="loginModal" class="hidden fixed inset-0 z-[9999] v7-auth-screen" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+  <div class="v7-auth-shell">
+    <div class="v7-auth-topbar">
+      <button type="button" class="v7-auth-back" onclick="closeLoginModal()" aria-label="Kembali ke Halaman Utama">&larr; Kembali ke Halaman Utama</button>
+      <span class="v7-auth-badge mono">AUTO-CUAN V7 &middot; SECURE WORKSPACE</span>
+      <button type="button" class="v7-auth-theme-btn" onclick="if(typeof toggleAppTheme==='function')toggleAppTheme();" aria-label="Ganti tema Light atau Night Dark">&#9680; Tema</button>
     </div>
+    <div class="v7-auth-split">
+      <aside class="v7-auth-aside">
+        <div class="v7-auth-brand">
+          <span class="v7-auth-brand-icon" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M3 17l5-6 4 4 8-9"/></svg></span>
+          <strong>Auto-Cuan V7</strong>
+        </div>
+        <h2>Sesi riset aman dan terenkripsi.</h2>
+        <p class="v7-auth-aside-sub">Masuk memakai Gmail terdaftar atau username akun Anda yang telah disetujui administrator.</p>
+        <div class="v7-auth-verify-card">
+          <span class="v7-verify-kicker">VERIFIKASI TELEGRAM &amp; KEAMANAN</span>
+          <strong>@AutoCuanVerificationBot</strong>
+          <p>Perlu aktivasi akun baru atau reset sandi? Bot resmi memvalidasi identitas Telegram tanpa menaruh kredensial Anda di email.</p>
+          <a href="https://t.me/AutoCuanVerificationBot" target="_blank" rel="noopener noreferrer" class="v7-auth-bot-btn">Buka @AutoCuanVerificationBot &#8599;</a>
+        </div>
+        <div class="v7-auth-aside-links">
+          <button type="button" onclick="closeLoginModal();openSelfResetModal()">Lupa Password?</button>
+          <button type="button" onclick="if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();">Syarat &amp; Ketentuan</button>
+        </div>
+      </aside>
+      <div class="v7-auth-main">
+        <div class="v7-auth-card">
+          <div class="v7-auth-card-head">
+            <div>
+              <h3 id="loginModalTitle" class="v7-auth-title m-0">Masuk ke Auto-Cuan</h3>
+              <p class="v7-auth-desc">Akses meja kerja riset saham IDX.</p>
+            </div>
+            <button type="button" onclick="closeLoginModal()" class="v7-auth-close" aria-label="Tutup modal masuk">&times;</button>
+          </div>
+          <div class="v7-auth-switcher" role="tablist" aria-label="Pilih mode akses">
+            <button type="button" class="v7-auth-sw-btn is-active" role="tab" aria-selected="true">Masuk Akun</button>
+            <button type="button" class="v7-auth-sw-btn" role="tab" aria-selected="false" onclick="closeLoginModal();openRegisterModal()">Daftar Akun Baru</button>
+          </div>
+          <form id="loginForm" class="space-y-3" onsubmit="event.preventDefault();doLogin();return false;">
+            <div>
+              <label for="loginUsername" class="v7-field-label">Email atau username</label>
+              <input type="text" id="loginUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="email" placeholder="email atau username" class="v7-auth-input">
+              <p class="v7-field-help">Gunakan Gmail terdaftar. Username lama masih didukung. Masukkan Gmail atau username. Keduanya dapat digunakan untuk login.</p>
+            </div>
+            <div>
+              <div class="flex items-baseline justify-between mb-1">
+                <label for="loginPassword" class="v7-field-label">Password</label>
+                <button type="button" onclick="closeLoginModal();openSelfResetModal()" class="v7-auth-link-inline">Lupa Password?</button>
+              </div>
+              <div class="relative">
+                <input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="Password Anda" class="v7-auth-input pr-11" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doLogin()">
+                <button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="v7-pw-toggle">&#128065;</button>
+              </div>
+            </div>
+            <div id="loginError" class="hidden text-xs rounded-lg px-3 py-2.5 bg-red-500/10 border border-red-500/25 text-red-500" role="alert" aria-live="assertive"></div>
+            <button type="submit" id="loginBtn" onclick="doLogin()" class="v7-auth-submit">Masuk ke Workspace</button>
+            <p class="v7-auth-switch-copy">Belum punya akun? <button type="button" onclick="closeLoginModal();openRegisterModal()" class="v7-auth-link-inline">Daftar Akun Baru</button></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- REGISTER MODAL -->
-<div id="registerModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle">
-    <div class="w-full max-w-[420px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
-        <div class="flex items-start justify-between gap-3">
+<div id="registerModal" class="hidden fixed inset-0 z-[9999] v7-auth-screen" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle">
+  <div class="v7-auth-shell">
+    <div class="v7-auth-topbar">
+      <button type="button" class="v7-auth-back" onclick="closeRegisterModal()" aria-label="Kembali ke Halaman Utama">&larr; Kembali ke Halaman Utama</button>
+      <span class="v7-auth-badge mono">AUTO-CUAN V7 &middot; SECURE WORKSPACE</span>
+      <button type="button" class="v7-auth-theme-btn" onclick="if(typeof toggleAppTheme==='function')toggleAppTheme();" aria-label="Ganti tema Light atau Night Dark">&#9680; Tema</button>
+    </div>
+    <div class="v7-auth-split">
+      <aside class="v7-auth-aside">
+        <div class="v7-auth-brand">
+          <span class="v7-auth-brand-icon" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M3 17l5-6 4 4 8-9"/></svg></span>
+          <strong>Auto-Cuan V7</strong>
+        </div>
+        <h2>Pendaftaran akun aman 3 tahap.</h2>
+        <p class="v7-auth-aside-sub">Setiap pendaftar wajib memakai Gmail aktif dan menyelesaikannya lewat bot Telegram terverifikasi sebelum admin menyetujui akses.</p>
+        <div class="v7-auth-verify-card">
+          <span class="v7-verify-kicker">ALUR AKTIVASI @AutoCuanVerificationBot</span>
+          <strong>Kode 8 Karakter &middot; Masa Berlaku 15 Menit</strong>
+          <p>Setelah daftar, salin kode sekali pakai Anda dan kirim langsung ke bot resmi kami di Telegram untuk mengonfirmasi identitas.</p>
+          <a href="https://t.me/AutoCuanVerificationBot" target="_blank" rel="noopener noreferrer" class="v7-auth-bot-btn">Buka @AutoCuanVerificationBot &#8599;</a>
+        </div>
+        <div class="v7-auth-aside-links">
+          <button type="button" onclick="closeRegisterModal();openLoginModal()">Sudah punya akun? Masuk</button>
+          <button type="button" onclick="if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();">Syarat &amp; Ketentuan</button>
+        </div>
+      </aside>
+      <div class="v7-auth-main">
+        <div class="v7-auth-card">
+          <div class="v7-auth-card-head">
             <div>
-                <h3 id="registerModalTitle" class="text-xl font-bold tracking-tight text-white m-0">Daftar akun baru</h3>
-                <p class="mt-1 text-xs text-gray-400">Wajib menyertakan Gmail aktif sebagai identitas akun.</p>
+              <h3 id="registerModalTitle" class="v7-auth-title m-0">Daftar akun baru</h3>
+              <p class="v7-auth-desc">Wajib menyertakan Gmail aktif sebagai identitas akun.</p>
             </div>
-            <button onclick="closeRegisterModal()" class="text-gray-400 hover:text-white text-2xl leading-none bg-transparent border-0 cursor-pointer p-1" aria-label="Tutup modal daftar">&times;</button>
-        </div>
-        <div class="v7-auth-switcher" role="tablist" aria-label="Pilih mode akses">
-            <button type="button" class="v7-auth-sw-btn" role="tab" aria-selected="false" onclick="closeRegisterModal();openLoginModal()">Masuk</button>
-            <button type="button" class="v7-auth-sw-btn is-active" role="tab" aria-selected="true">Daftar</button>
-        </div>
-        <div class="steps grid grid-cols-3 gap-1.5 my-3" aria-label="Tahapan">
-            <div class="on text-[11px] font-semibold text-emerald-400"><i class="block h-[3px] rounded bg-emerald-500 mb-1"></i>1 · Buat akun</div>
-            <div class="text-[11px] font-semibold text-gray-500"><i class="block h-[3px] rounded bg-gray-700 mb-1"></i>2 · Verifikasi Telegram</div>
-            <div class="text-[11px] font-semibold text-gray-500"><i class="block h-[3px] rounded bg-gray-700 mb-1"></i>3 · Persetujuan admin</div>
-        </div>
-        <form id="registerFormFields" class="space-y-3" oninput="syncRegistrationConsent()" onchange="syncRegistrationConsent()" onsubmit="event.preventDefault();doRegister();return false;">
+            <button type="button" onclick="closeRegisterModal()" class="v7-auth-close" aria-label="Tutup modal daftar">&times;</button>
+          </div>
+          <div class="v7-auth-switcher" role="tablist" aria-label="Pilih mode akses">
+            <button type="button" class="v7-auth-sw-btn" role="tab" aria-selected="false" onclick="closeRegisterModal();openLoginModal()">Masuk Akun</button>
+            <button type="button" class="v7-auth-sw-btn is-active" role="tab" aria-selected="true">Daftar Akun Baru</button>
+          </div>
+          <div class="steps grid grid-cols-3 gap-1.5 my-3" aria-label="Tahapan">
+            <div class="on text-[11px] font-semibold"><i class="block h-[3px] rounded bg-emerald-500 mb-1"></i>1 · Buat akun</div>
+            <div class="text-[11px] font-semibold v7-step-muted"><i class="block h-[3px] rounded v7-step-bar mb-1"></i>2 · Verifikasi Telegram</div>
+            <div class="text-[11px] font-semibold v7-step-muted"><i class="block h-[3px] rounded v7-step-bar mb-1"></i>3 · Persetujuan admin</div>
+          </div>
+          <form id="registerFormFields" class="space-y-3" oninput="syncRegistrationConsent()" onchange="syncRegistrationConsent()" onsubmit="event.preventDefault();doRegister();return false;">
             <div>
-                <label for="regEmail" class="block text-xs font-semibold text-gray-300 mb-1">Gmail</label>
-                <input type="email" id="regEmail" name="email" autocomplete="email" autocapitalize="none" spellcheck="false" inputmode="email" required placeholder="nama@gmail.com" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm">
-                <p class="mt-1 text-[11px] text-gray-500">Wajib untuk akun baru. Gmail dipakai sebagai identitas login; verifikasi Telegram tetap melalui bot resmi.</p>
+              <label for="regEmail" class="v7-field-label">Gmail</label>
+              <input type="email" id="regEmail" name="email" autocomplete="email" autocapitalize="none" spellcheck="false" inputmode="email" required placeholder="nama@gmail.com" class="v7-auth-input">
+              <p class="v7-field-help">Wajib untuk akun baru. Gmail dipakai sebagai identitas login; verifikasi Telegram tetap melalui bot resmi.</p>
             </div>
             <div>
-                <label for="regUsername" class="block text-xs font-semibold text-gray-300 mb-1">Username</label>
-                <input type="text" id="regUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="huruf kecil, angka, garis bawah" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm">
+              <label for="regUsername" class="v7-field-label">Username</label>
+              <input type="text" id="regUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="huruf kecil, angka, garis bawah" class="v7-auth-input">
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                    <label for="regPassword" class="block text-xs font-semibold text-gray-300 mb-1">Password</label>
-                    <div class="relative">
-                        <input type="password" id="regPassword" name="password" autocomplete="new-password" placeholder="Min. 8 karakter" oninput="if(window.updateRegPwStrength)window.updateRegPwStrength(this.value)" class="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm">
-                        <button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-200 bg-transparent border-0 cursor-pointer">&#128065;</button>
-                    </div>
-                    <div class="strength grid grid-cols-4 gap-1 mt-1.5" id="regPwStrength" aria-hidden="true"><i class="h-[3px] rounded bg-gray-700 transition-colors"></i><i class="h-[3px] rounded bg-gray-700 transition-colors"></i><i class="h-[3px] rounded bg-gray-700 transition-colors"></i><i class="h-[3px] rounded bg-gray-700 transition-colors"></i></div>
-                    <div class="text-[11px] text-gray-400 mt-1" id="regPwHint">Minimal 8 karakter, gabungkan huruf dan angka.</div>
+              <div>
+                <label for="regPassword" class="v7-field-label">PASSWORD</label>
+                <div class="relative">
+                  <input type="password" id="regPassword" name="password" autocomplete="new-password" placeholder="Min. 8 karakter" oninput="if(window.updateRegPwStrength)window.updateRegPwStrength(this.value)" class="v7-auth-input pr-10">
+                  <button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="v7-pw-toggle">&#128065;</button>
                 </div>
-                <div>
-                    <label for="regPasswordConfirm" class="block text-xs font-semibold text-gray-300 mb-1">Konfirmasi password</label>
-                    <div class="relative">
-                        <input type="password" id="regPasswordConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password" class="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doRegister()">
-                        <button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-200 bg-transparent border-0 cursor-pointer">&#128065;</button>
-                    </div>
+                <div class="strength grid grid-cols-4 gap-1 mt-1.5" id="regPwStrength" aria-hidden="true"><i class="h-[3px] rounded v7-step-bar transition-colors"></i><i class="h-[3px] rounded v7-step-bar transition-colors"></i><i class="h-[3px] rounded v7-step-bar transition-colors"></i><i class="h-[3px] rounded v7-step-bar transition-colors"></i></div>
+                <div class="text-[11px] v7-field-help mt-1" id="regPwHint">Minimal 8 karakter, gabungkan huruf dan angka.</div>
+              </div>
+              <div>
+                <label for="regPasswordConfirm" class="v7-field-label">KONFIRMASI PASSWORD</label>
+                <div class="relative">
+                  <input type="password" id="regPasswordConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password" class="v7-auth-input pr-10" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doRegister()">
+                  <button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="v7-pw-toggle">&#128065;</button>
                 </div>
+              </div>
             </div>
-            <label class="flex items-start gap-2 text-xs text-gray-300 cursor-pointer min-h-[44px] pt-1">
-                <input type="checkbox" id="regTermsAccepted" name="termsAccepted" class="mt-1 h-4 w-4 rounded shrink-0 accent-emerald-500">
-                <span>Saya menyetujui <button type="button" id="regOpenTerms" onclick="event.preventDefault();if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();" class="text-emerald-400 hover:underline bg-transparent border-0 p-0 font-medium">Syarat &amp; Ketentuan Layanan Auto-Cuan</button>.</span>
+            <label class="flex items-start gap-2 text-xs cursor-pointer min-h-[44px] pt-1 v7-auth-consent">
+              <input type="checkbox" id="regTermsAccepted" name="termsAccepted" class="mt-1 h-4 w-4 rounded shrink-0 accent-emerald-600">
+              <span>Saya menyetujui <button type="button" id="regOpenTerms" onclick="event.preventDefault();if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();" class="v7-auth-link-inline">Syarat &amp; Ketentuan Layanan Auto-Cuan</button>.</span>
             </label>
-            <div id="registerError" class="hidden text-xs rounded-lg px-3 py-2 bg-red-500/10 border border-red-500/25 text-red-300 my-1" role="alert" aria-live="assertive"></div>
-            <div id="registerSuccess" class="hidden text-xs rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 my-1" role="status" aria-live="polite"></div>
-            <button type="submit" id="registerBtn" disabled class="w-full py-2.5 mt-2 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.01] transition-all text-sm">Daftar sekarang</button>
-            <p class="text-center text-xs text-gray-400 mt-3 mb-0">Sudah punya akun? <button type="button" onclick="closeRegisterModal();openLoginModal()" class="text-emerald-400 hover:underline bg-transparent border-0 cursor-pointer p-0 font-medium">Masuk</button></p>
-        </form>
-        <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 text-center">
-            <span class="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-400 inline-grid place-items-center mb-1">
-                <svg class="ck" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#247A43" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+            <div id="registerError" class="hidden text-xs rounded-lg px-3 py-2 bg-red-500/10 border border-red-500/25 text-red-500 my-1" role="alert" aria-live="assertive"></div>
+            <div id="registerSuccess" class="hidden text-xs rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-500 my-1" role="status" aria-live="polite"></div>
+            <button type="submit" id="registerBtn" disabled class="v7-auth-submit">Daftar sekarang</button>
+            <p class="v7-auth-switch-copy">Sudah punya akun? <button type="button" onclick="closeRegisterModal();openLoginModal()" class="v7-auth-link-inline">Masuk</button></p>
+          </form>
+          <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 text-center">
+            <span class="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-500 inline-grid place-items-center mb-1">
+              <svg class="ck" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
             </span>
-            <h4 class="text-lg font-bold text-white m-0">Akun dibuat</h4>
-            <p class="text-xs text-gray-300 m-0">Dua langkah lagi sebelum workspace bisa dibuka.</p>
+            <h4 class="text-lg font-bold m-0">Akun dibuat</h4>
+            <p class="text-xs v7-auth-desc m-0">Dua langkah lagi sebelum workspace bisa dibuka.</p>
             <div class="steps grid grid-cols-3 gap-1.5 my-2" aria-label="Tahapan pendaftaran">
-                <div class="on text-[11px] font-semibold text-emerald-400"><i class="block h-[3px] rounded bg-emerald-500 mb-1"></i>1 · Buat akun</div>
-                <div class="on text-[11px] font-semibold text-amber-400"><i class="block h-[3px] rounded bg-amber-500 mb-1"></i>2 · Verifikasi Telegram</div>
-                <div class="text-[11px] font-semibold text-gray-500"><i class="block h-[3px] rounded bg-gray-700 mb-1"></i>3 · Persetujuan admin</div>
+              <div class="on text-[11px] font-semibold"><i class="block h-[3px] rounded bg-emerald-500 mb-1"></i>1 · Buat akun</div>
+              <div class="on text-[11px] font-semibold text-amber-500"><i class="block h-[3px] rounded bg-amber-500 mb-1"></i>2 · Verifikasi Telegram</div>
+              <div class="text-[11px] font-semibold v7-step-muted"><i class="block h-[3px] rounded v7-step-bar mb-1"></i>3 · Persetujuan admin</div>
             </div>
             <div class="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3.5 space-y-1.5 text-center">
-                <p class="text-xs font-semibold text-sky-300 m-0">Kode verifikasi Telegram · sekali pakai</p>
-                <p class="m-0"><strong id="registerVerificationCode" class="font-mono text-xl tracking-widest text-white"></strong></p>
-                <p id="registerVerificationExpiry" class="text-[11px] text-gray-400 m-0"></p>
-                <p class="text-[11px] leading-relaxed text-gray-400 m-0">Salin kode ini, lalu buka bot verifikasi dan kirim kodenya ke chat bot. Jangan bagikan kode ini ke siapa pun.</p>
-                <p class="text-[11px] text-gray-400 mt-1 m-0">Kode pengguna: <strong id="registerApprovalCode" class="font-mono text-white"></strong></p>
+              <p class="text-xs font-semibold text-sky-600 m-0">Kode verifikasi Telegram · sekali pakai</p>
+              <p class="m-0"><strong id="registerVerificationCode" class="font-mono text-xl tracking-widest"></strong></p>
+              <p id="registerVerificationExpiry" class="text-[11px] v7-field-help m-0"></p>
+              <p class="text-[11px] leading-relaxed v7-field-help m-0">Salin kode ini, lalu buka @AutoCuanVerificationBot dan kirim kodenya ke chat bot. Jangan bagikan kode ini ke siapa pun.</p>
+              <p class="text-[11px] v7-field-help mt-1 m-0">Kode pengguna: <strong id="registerApprovalCode" class="font-mono"></strong></p>
             </div>
             <!-- Prominent single active status card -->
             <div class="approval-active-status" role="status" aria-label="Status pendaftaran akun">
-                <div class="approval-state-card approval-state-pending" aria-current="true">
-                    <span class="approval-state-icon" aria-hidden="true">&#9676;</span>
-                    <div class="approval-state-content">
-                        <span class="approval-state-label">Menunggu Persetujuan Admin</span>
-                        <span class="approval-state-note">Pendaftaran berhasil diterima. Akun Anda sedang menunggu persetujuan admin. Akses akun Anda akan diaktifkan setelah diverifikasi administrator.</span>
-                    </div>
+              <div class="approval-state-card approval-state-pending" aria-current="true">
+                <span class="approval-state-icon" aria-hidden="true">&#9676;</span>
+                <div class="approval-state-content">
+                  <span class="approval-state-label">Menunggu Persetujuan Admin</span>
+                  <span class="approval-state-note">Pendaftaran berhasil diterima. Akun Anda sedang menunggu persetujuan admin. Akses akun Anda akan diaktifkan setelah diverifikasi administrator.</span>
                 </div>
+              </div>
             </div>
-            <div class="border-t border-gray-800 pt-2 text-xs divide-y divide-gray-800 text-left">
-                <div class="flex items-center justify-between py-1.5"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-gray-200">Akun dibuat</span></span><span class="text-gray-400">Selesai</span></div>
-                <div class="flex items-center justify-between py-1.5"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><span class="text-gray-200">Verifikasi Telegram</span></span><span class="text-amber-400 font-semibold">Menunggu kode</span></div>
-                <div class="flex items-center justify-between py-1.5"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-gray-600"></span><span class="text-gray-200">Persetujuan admin</span></span><span class="text-gray-500">Belum dimulai</span></div>
+            <div class="border-t pt-2 text-xs text-left v7-approval-checklist">
+              <div class="flex items-center justify-between py-1.5"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Akun dibuat</span></span><span>Selesai</span></div>
+              <div class="flex items-center justify-between py-1.5"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><span>Verifikasi Telegram</span></span><span class="text-amber-500 font-semibold">Menunggu kode</span></div>
+              <div class="flex items-center justify-between py-1.5"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-slate-400"></span><span>Persetujuan admin</span></span><span>Belum dimulai</span></div>
             </div>
-            <p class="text-[11px] text-gray-400 mt-2">Menunggu persetujuan bukan berarti pendaftaran gagal. Anda akan menerima notifikasi setelah admin menyetujui.</p>
+            <p class="text-[11px] v7-field-help mt-2">Menunggu persetujuan bukan berarti pendaftaran gagal. Anda akan menerima notifikasi setelah admin menyetujui.</p>
             <div class="space-y-2 pt-1">
-                <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode Verifikasi</button>
-                <a id="openVerificationBot" class="hidden w-full rounded-xl bg-sky-500 px-4 py-2.5 text-xs font-semibold text-white hover:bg-sky-400 transition" target="_blank" rel="noopener noreferrer">Buka Bot Verifikasi Telegram</a>
+              <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-600/40 px-4 py-2.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-500/10 transition">Salin Kode Verifikasi</button>
+              <a id="openVerificationBot" class="hidden w-full rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-sky-500 transition" target="_blank" rel="noopener noreferrer">Buka @AutoCuanVerificationBot</a>
             </div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
-<!-- SELF-SERVICE RESET PASSWORD MODAL -->
-<div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="selfResetModalTitle">
-    <div class="w-full max-w-[420px] rounded-2xl border border-gray-800 bg-[#111827] p-7 shadow-2xl space-y-4">
-        <div class="flex items-start justify-between gap-3">
+<!-- SELF-SERVICE RESET PASSWORD MODAL (Full-Viewport Split-Screen Secure Workspace) -->
+<div id="selfResetModal" class="hidden fixed inset-0 z-[9999] v7-auth-screen" role="dialog" aria-modal="true" aria-labelledby="selfResetModalTitle">
+  <div class="v7-auth-shell">
+    <div class="v7-auth-topbar">
+      <button type="button" class="v7-auth-back" onclick="closeSelfResetModal()" aria-label="Kembali ke Halaman Utama">&larr; Kembali ke Halaman Utama</button>
+      <span class="v7-auth-badge mono">AUTO-CUAN V7 &middot; SECURE WORKSPACE</span>
+      <button type="button" class="v7-auth-theme-btn" onclick="if(typeof toggleAppTheme==='function')toggleAppTheme();" aria-label="Ganti tema Light atau Night Dark">&#9680; Tema</button>
+    </div>
+    <div class="v7-auth-split">
+      <aside class="v7-auth-aside">
+        <div class="v7-auth-brand">
+          <span class="v7-auth-brand-icon" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M3 17l5-6 4 4 8-9"/></svg></span>
+          <strong>Auto-Cuan V7</strong>
+        </div>
+        <h2>Pemulihan kata sandi terproteksi.</h2>
+        <p class="v7-auth-aside-sub">Kode 6 digit hanya dikirim ke akun Telegram resmi yang tertaut dengan profil Anda.</p>
+        <div class="v7-auth-verify-card">
+          <span class="v7-verify-kicker">VERIFIKASI TELEGRAM RESMI</span>
+          <strong>@AutoCuanVerificationBot</strong>
+          <p>Pastikan Telegram Anda tetap tertaut untuk menerima kode pemulihan 6 digit secara aman.</p>
+          <a href="https://t.me/AutoCuanVerificationBot" target="_blank" rel="noopener noreferrer" class="v7-auth-bot-btn">Buka @AutoCuanVerificationBot &#8599;</a>
+        </div>
+        <div class="v7-auth-aside-links">
+          <button type="button" onclick="closeSelfResetModal();openLoginModal()">Kembali ke Masuk Akun</button>
+          <button type="button" onclick="closeSelfResetModal();openRegisterModal()">Daftar Akun Baru</button>
+        </div>
+      </aside>
+      <div class="v7-auth-main">
+        <div class="v7-auth-card">
+          <div class="v7-auth-card-head">
             <div>
-                <h3 id="selfResetModalTitle" class="text-xl font-bold tracking-tight text-white m-0">Pulihkan password</h3>
-                <p class="mt-1 text-xs text-gray-400">Verifikasi melalui bot Telegram yang terhubung ke akun Anda.</p>
+              <h3 id="selfResetModalTitle" class="v7-auth-title m-0">Pulihkan password</h3>
+              <p class="v7-auth-desc">Verifikasi melalui bot Telegram yang terhubung ke akun Anda.</p>
             </div>
-            <button onclick="closeSelfResetModal()" class="text-gray-400 hover:text-white text-2xl leading-none bg-transparent border-0 cursor-pointer p-1" aria-label="Tutup modal">&times;</button>
-        </div>
-        <div class="wz flex items-center justify-between my-3 text-xs" aria-label="Langkah 1 dari 3">
-            <span class="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center">1</span>
-            <span class="flex-1 h-[2px] bg-gray-700 mx-2"></span>
-            <span class="w-6 h-6 rounded-full bg-gray-800 text-gray-400 font-bold flex items-center justify-center">2</span>
-            <span class="flex-1 h-[2px] bg-gray-700 mx-2"></span>
-            <span class="w-6 h-6 rounded-full bg-gray-800 text-gray-400 font-bold flex items-center justify-center">3</span>
-        </div>
-        <form id="selfResetForm" class="space-y-4" onsubmit="event.preventDefault();doSelfResetPassword();return false;">
+            <button type="button" onclick="closeSelfResetModal()" class="v7-auth-close" aria-label="Tutup modal">&times;</button>
+          </div>
+          <div class="wz flex items-center justify-between my-3 text-xs" aria-label="Langkah 1 dari 3">
+            <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center">1</span>
+            <span class="flex-1 h-[2px] v7-step-bar mx-2"></span>
+            <span class="w-6 h-6 rounded-full v7-step-circle font-bold flex items-center justify-center">2</span>
+            <span class="flex-1 h-[2px] v7-step-bar mx-2"></span>
+            <span class="w-6 h-6 rounded-full v7-step-circle font-bold flex items-center justify-center">3</span>
+          </div>
+          <form id="selfResetForm" class="space-y-4" onsubmit="event.preventDefault();doSelfResetPassword();return false;">
             <div>
-                <label for="selfResetUsername" class="block text-xs font-semibold text-gray-300 mb-1">Gmail atau username</label>
-                <input type="text" id="selfResetUsername" name="username" autocomplete="username" placeholder="nama@gmail.com atau username" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
-                <p class="text-[11px] text-gray-500 mt-1">Kode verifikasi dikirim ke Telegram yang sudah tertaut, bukan ke email.</p>
+              <label for="selfResetUsername" class="v7-field-label">GMAIL ATAU USERNAME</label>
+              <input type="text" id="selfResetUsername" name="username" autocomplete="username" placeholder="nama@gmail.com atau username" class="v7-auth-input">
+              <p class="v7-field-help">Kode verifikasi dikirim ke Telegram yang sudah tertaut, bukan ke email.</p>
             </div>
             <div id="selfResetOtpFields" class="space-y-2">
-                <label class="block text-xs font-semibold text-gray-300">Masukkan 6 digit kode</label>
-                <div class="grid grid-cols-6 gap-2" id="selfResetOtpGrid" role="group" aria-label="Kode OTP 6 digit">
-                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="0" aria-label="Digit 1" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
-                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="1" aria-label="Digit 2" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
-                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="2" aria-label="Digit 3" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
-                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="3" aria-label="Digit 4" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
-                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="4" aria-label="Digit 5" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
-                    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="5" aria-label="Digit 6" class="w-full px-2 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 text-center text-lg font-mono outline-none focus:border-emerald-500">
-                </div>
-                <p class="text-[11px] text-gray-500">Tempel 6 digit sekaligus atau ketik per digit — fokus pindah otomatis.</p>
+              <label class="v7-field-label">MASUKKAN 6 DIGIT KODE</label>
+              <div class="grid grid-cols-6 gap-2" id="selfResetOtpGrid" role="group" aria-label="Kode OTP 6 digit">
+                <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="0" aria-label="Digit 1" class="v7-auth-otp">
+                <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="1" aria-label="Digit 2" class="v7-auth-otp">
+                <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="2" aria-label="Digit 3" class="v7-auth-otp">
+                <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="3" aria-label="Digit 4" class="v7-auth-otp">
+                <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="4" aria-label="Digit 5" class="v7-auth-otp">
+                <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" data-otp="5" aria-label="Digit 6" class="v7-auth-otp">
+              </div>
+              <p class="v7-field-help">Tempel 6 digit sekaligus atau ketik per digit, fokus pindah otomatis.</p>
             </div>
             <div id="selfResetPwFields" class="space-y-3 hidden">
-                <div>
-                    <label for="selfResetPw" class="block text-xs font-semibold text-gray-300 mb-1">Password Baru</label>
-                    <input type="password" id="selfResetPw" name="password" autocomplete="new-password" placeholder="Minimal 8 karakter, huruf dan angka" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
-                </div>
-                <div>
-                    <label for="selfResetPwConfirm" class="block text-xs font-semibold text-gray-300 mb-1">Konfirmasi Password</label>
-                    <input type="password" id="selfResetPwConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password baru" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-700 bg-[#0b0e14] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doSelfResetPassword()">
-                </div>
+              <div>
+                <label for="selfResetPw" class="v7-field-label">PASSWORD BARU</label>
+                <input type="password" id="selfResetPw" name="password" autocomplete="new-password" placeholder="Minimal 8 karakter, huruf dan angka" class="v7-auth-input">
+              </div>
+              <div>
+                <label for="selfResetPwConfirm" class="v7-field-label">KONFIRMASI PASSWORD</label>
+                <input type="password" id="selfResetPwConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password baru" class="v7-auth-input" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doSelfResetPassword()">
+              </div>
             </div>
-            <div id="selfResetError" class="hidden text-xs rounded-lg px-3 py-2 bg-red-500/10 border border-red-500/25 text-red-300" role="alert" aria-live="assertive"></div>
-            <div id="selfResetSuccess" class="hidden text-xs rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-300" role="status" aria-live="polite"></div>
-            <button type="submit" id="selfResetSubmitBtn" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-sm font-bold text-white hover:scale-[1.01] transition-all">Kirim kode ke Telegram</button>
-            <button type="button" onclick="closeSelfResetModal()" class="w-full py-2 rounded-xl border border-gray-700 text-xs font-medium text-gray-400 hover:text-gray-200 transition bg-transparent cursor-pointer">Batal</button>
-        </form>
+            <div id="selfResetError" class="hidden text-xs rounded-lg px-3 py-2 bg-red-500/10 border border-red-500/25 text-red-500" role="alert" aria-live="assertive"></div>
+            <div id="selfResetSuccess" class="hidden text-xs rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-500" role="status" aria-live="polite"></div>
+            <button type="submit" id="selfResetSubmitBtn" class="v7-auth-submit">Kirim kode ke Telegram</button>
+            <button type="button" onclick="closeSelfResetModal()" class="v7-auth-btn-secondary">Batal</button>
+          </form>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- GOOGLE COMPLETE PROFILE MODAL -->
@@ -3605,27 +3484,27 @@ html.light #googleCompleteProfileModal input {
             <tbody>
               <tr>
                 <td><b>Potensi Besok</b> <span class="mut">(1–5H)</span></td>
-                <td class="r"><input id="thLookback_potensi_besok" type="number" min="1" max="250" class="inp mono" style="width:76px;text-align:right"></td>
-                <td class="r"><input id="thW_bandar_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
-                <td class="r"><input id="thW_foreign_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
-                <td class="r"><input id="thW_technical_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
-                <td class="r"><input id="thW_volume_potensi_besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thLookback_potensi_besok" aria-label="Lookback Potensi Besok" type="number" min="1" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thW_bandar_potensi_besok" aria-label="Bobot Bandar Potensi Besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_foreign_potensi_besok" aria-label="Bobot Foreign Potensi Besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_technical_potensi_besok" aria-label="Bobot Teknikal Potensi Besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_volume_potensi_besok" aria-label="Bobot Volume Potensi Besok" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
               </tr>
               <tr>
                 <td><b>Short Swing</b> <span class="mut">(3–10H)</span></td>
-                <td class="r"><input id="thLookback_short_swing" type="number" min="1" max="250" class="inp mono" style="width:76px;text-align:right"></td>
-                <td class="r"><input id="thW_bandar_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
-                <td class="r"><input id="thW_foreign_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
-                <td class="r"><input id="thW_technical_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
-                <td class="r"><input id="thW_volume_short_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thLookback_short_swing" aria-label="Lookback Short Swing" type="number" min="1" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thW_bandar_short_swing" aria-label="Bobot Bandar Short Swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_foreign_short_swing" aria-label="Bobot Foreign Short Swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_technical_short_swing" aria-label="Bobot Teknikal Short Swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_volume_short_swing" aria-label="Bobot Volume Short Swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
               </tr>
               <tr>
                 <td><b>Swing</b> <span class="mut">(7–30H)</span></td>
-                <td class="r"><input id="thLookback_swing" type="number" min="1" max="250" class="inp mono" style="width:76px;text-align:right"></td>
-                <td class="r"><input id="thW_bandar_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
-                <td class="r"><input id="thW_foreign_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
-                <td class="r"><input id="thW_technical_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
-                <td class="r"><input id="thW_volume_swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thLookback_swing" aria-label="Lookback Swing" type="number" min="1" max="250" class="inp mono" style="width:76px;text-align:right"></td>
+                <td class="r"><input id="thW_bandar_swing" aria-label="Bobot Bandar Swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_foreign_swing" aria-label="Bobot Foreign Swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_technical_swing" aria-label="Bobot Teknikal Swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
+                <td class="r"><input id="thW_volume_swing" aria-label="Bobot Volume Swing" type="number" min="0" max="100" class="inp mono" style="width:70px;text-align:right"></td>
               </tr>
             </tbody>
           </table>
@@ -5889,9 +5768,16 @@ function loadLandingShowcase() {
                 source: 'Top 1 Snapshot ' + (signal.signal_type || 'Day Trade')
             });
         }
+        window.__LANDING_SNAPSHOT_DATA__ = snap;
+        if (typeof window.acRenderLandingHorizon === 'function') {
+            window.acRenderLandingHorizon(window.__LANDING_ACTIVE_HORIZON__ || 'short_swing');
+        }
         _landingShowcaseLoaded = true;
     }).catch(function() {
         chip.textContent = 'Belum tersedia';
+        if (typeof window.acRenderLandingHorizon === 'function') {
+            window.acRenderLandingHorizon(window.__LANDING_ACTIVE_HORIZON__ || 'short_swing', true);
+        }
         var empty = document.createElement('div'); empty.className = 'landing-data-empty';
         var title = document.createElement('strong'); title.textContent = 'Ringkasan data belum tersedia';
         var message = document.createElement('p'); message.textContent = 'Koneksi atau sumber data sedang tidak tersedia. Fitur lain tetap dapat dibuka.';
@@ -6168,6 +6054,77 @@ window.acSwitchPreview = function (name) {
         if (body) body.setAttribute('data-preview', name);
     } catch (_) {}
 };
+window.__LANDING_ACTIVE_HORIZON__ = 'short_swing';
+window.acRenderV7HeroLedger = function (snapOrKey, maybeHorizon, isUnavailable) {
+    var snap = (snapOrKey && typeof snapOrKey === 'object') ? snapOrKey : (window.__LANDING_SNAPSHOT_DATA__ || window.__acLandingSnapshot);
+    if (snap && typeof snap === 'object') window.__LANDING_SNAPSHOT_DATA__ = snap;
+    var key = (snapOrKey && typeof snapOrKey === 'object')
+        ? (maybeHorizon || window.__LANDING_ACTIVE_HORIZON__ || 'short_swing')
+        : (snapOrKey || window.__LANDING_ACTIVE_HORIZON__ || 'short_swing');
+    window.__LANDING_ACTIVE_HORIZON__ = key;
+    var tbody = document.getElementById('v7HeroLedgerBody');
+    var titleEl = document.getElementById('v7HeroLedgerHorizonTitle');
+    var countEl = document.getElementById('v7HeroLedgerCount');
+    var statusEl = document.getElementById('v7HeroLedgerStatus');
+    var dateEl = document.getElementById('v7HeroTradeDate');
+    if (!tbody) return;
+
+    var LABELS = {
+        potensi_besok: 'Potensi Besok (1-5 Hari Bursa)',
+        short_swing: 'Short Swing (3-10 Hari Bursa)',
+        swing: 'Swing (7-30 Hari Bursa)'
+    };
+    if (titleEl) titleEl.textContent = LABELS[key] || 'Three-Horizon Proof Ledger';
+
+    if (!snap || isUnavailable) {
+        if (statusEl) statusEl.textContent = 'BELUM TERSEDIA';
+        if (countEl) countEl.textContent = '— kandidat';
+        tbody.innerHTML = '<tr><td colspan="5" class="v7-ledger-empty">Snapshot Three-Horizon belum tersedia saat ini. Tidak menampilkan data sintetis.</td></tr>';
+        return;
+    }
+
+    var hObj = snap.horizons && snap.horizons[key];
+    var list = (hObj && Array.isArray(hObj.top5) && hObj.top5.length)
+        ? hObj.top5
+        : (key === 'potensi_besok' && Array.isArray(snap.dt_signals) ? snap.dt_signals : (Array.isArray(snap.top_picks) ? snap.top_picks : []));
+    var totalCount = (hObj && hObj.published_count != null) ? hObj.published_count : list.length;
+
+    if (dateEl && snap.trade_date) dateEl.textContent = 'EOD ' + String(snap.trade_date).slice(0, 10);
+    if (statusEl) statusEl.textContent = list.length ? 'DATA RIIL EOD' : 'BELUM ADA KANDIDAT';
+    if (countEl) countEl.textContent = Number(totalCount || 0).toLocaleString('id-ID') + ' kandidat';
+
+    if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="v7-ledger-empty">Belum ada kandidat memenuhi gate pada horizon ini.</td></tr>';
+        return;
+    }
+
+    var esc = function (s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    var fmt = function (v) {
+        var n = Number(v);
+        return Number.isFinite(n) && n > 0 ? Math.round(n).toLocaleString('id-ID') : '—';
+    };
+
+    tbody.innerHTML = list.slice(0, 5).map(function (row) {
+        var chg = row.change_pct != null && Number.isFinite(Number(row.change_pct)) ? Number(row.change_pct) : null;
+        var chgHtml = chg != null
+            ? '<small class="' + (chg >= 0 ? 'pos' : 'neg') + '">' + (chg >= 0 ? '+' : '−') + Math.abs(chg).toFixed(2).replace('.', ',') + '%</small>'
+            : '<small class="mut">—</small>';
+        var rr = row.rr != null && Number.isFinite(Number(row.rr)) ? Number(row.rr).toFixed(2).replace('.', ',') + 'x' : '—';
+        return '<tr>' +
+            '<td><strong class="mono">' + esc(row.ticker) + '</strong><span>' + esc(row.status || row.signal_type || 'READY') + '</span></td>' +
+            '<td class="r num mono"><b>' + fmt(row.last_price != null ? row.last_price : row.entry) + '</b>' + chgHtml + '</td>' +
+            '<td class="r num mono">' + fmt(row.entry != null ? row.entry : row.entry_high) + '</td>' +
+            '<td class="r num mono"><span class="pos">' + fmt(row.tp != null ? row.tp : row.tp1) + '</span> / <span class="neg">' + fmt(row.sl) + '</span></td>' +
+            '<td class="r num mono">' + rr + '</td>' +
+        '</tr>';
+    }).join('');
+};
+window.acRenderLandingHorizon = function (horizonKey, isUnavailable) {
+    return window.acRenderV7HeroLedger(horizonKey, null, isUnavailable);
+};
+
 window.acSwitchPreviewSub = function (name) {
     try {
         var tabs = document.querySelectorAll('[data-c3sub]');
@@ -6178,9 +6135,7 @@ window.acSwitchPreviewSub = function (name) {
         });
         var body = document.getElementById('landingPreview');
         if (body) body.setAttribute('data-sub', name);
-        if (typeof window.acRenderLandingHorizon === 'function') {
-            window.acRenderLandingHorizon(name);
-        }
+        window.acRenderLandingHorizon(name);
     } catch (_) {}
 };
 var _mataTips = [

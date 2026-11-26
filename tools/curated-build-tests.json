@@ -800,6 +800,7 @@
   "test/v7-kloter-4a-shell-landing.test.js",
   "test/v7-kloter-4b-chart-workstation.test.js",
   "test/v7-kloter-4c-riset-screener.test.js",
+  "test/v7-kloter-4d-pantau-admin-mobile.test.js",
   "test/volume-breakout-revalidation.test.js",
   "test/vps-api-bridge-tunnel.test.js",
   "test/vps-data-fetcher-async.test.js",

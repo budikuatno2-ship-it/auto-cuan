@@ -904,7 +904,7 @@
         '<td style="max-width:260px;' + descStyle + '"><span class="mut" style="font-size:11px;' + descStyle + '">' + escapeHtml(j.description || '') + '</span>' +
           '<span style="display:block;font-size:11px;color:var(--ac-warn,#F59E0B);' + descStyle + '">' + scheduleConflictTip(cfg, j.key) + '</span></td>' +
         '<td>' +
-          '<select data-job="' + escapeHtml(j.key) + '" style="width:76px" onchange="onScheduleEnableChange(this)">' +
+          '<select data-job="' + escapeHtml(j.key) + '" aria-label="Status aktif job ' + escapeHtml(j.name || j.key) + '" style="width:76px" onchange="onScheduleEnableChange(this)">' +
             '<option value="1"' + (j.enabled ? ' selected' : '') + '>Aktif</option>' +
             '<option value="0"' + (!j.enabled ? ' selected' : '') + '>Nonaktif</option>' +
           '</select>' +
