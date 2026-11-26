@@ -111,6 +111,9 @@
         if (root.AutoCuanMarketIntelligence && typeof root.AutoCuanMarketIntelligence.renderMarketBreadth === 'function') {
           root.AutoCuanMarketIntelligence.renderMarketBreadth('dashboardMarketBreadthWrap', b);
         }
+        if (root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.renderDashboardBreadthEChart === 'function') {
+          root.AutoCuanV7Riset.renderDashboardBreadthEChart(b);
+        }
       })
       .catch(function () { renderBreadth(null); renderSession(null, null); })
       .then(function () { marketInFlight = null; });

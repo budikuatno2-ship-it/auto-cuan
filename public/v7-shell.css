@@ -752,3 +752,196 @@
       overflow-x: auto;
     }
   }
+
+  /* Sub-Kloter 4C: Virtual Grid, ECharts Lazy Containers, & Cytoscape Relationship Surfaces */
+  html[data-ac-v7="true"] .v7-echart-host {
+    width: 100%;
+    height: 220px;
+    padding: 8px 16px 10px;
+    border-top: 1px solid var(--ac-line-hairline);
+    background: var(--ac-surface-raised);
+  }
+
+  html[data-ac-v7="true"] .v7-echart-host--sektor {
+    height: 260px;
+    border-top: 0;
+    border-bottom: 1px solid var(--ac-line-hairline);
+  }
+
+  html[data-ac-v7="true"] .v7-echart-host--financial {
+    height: 228px;
+    padding: 4px 4px 0;
+    border: 0;
+    background: transparent;
+  }
+
+  html[data-ac-v7="true"] .v7-vgrid-scroll {
+    max-height: 540px;
+    overflow: auto;
+    border-radius: 10px;
+    background: var(--ac-surface-raised);
+  }
+
+  html[data-ac-v7="true"] .v7-vgrid-scroll table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--ac-surface-raised);
+    color: var(--ac-text-secondary);
+  }
+
+  html[data-ac-v7="true"] .v7-cy-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ac-line-hairline);
+    background: var(--ac-surface-raised);
+  }
+
+  html[data-ac-v7="true"] .v7-cy-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--ac-line-hairline);
+    background: var(--ac-surface);
+    color: var(--ac-ink);
+    font-family: var(--ac-font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background var(--v7-dur-micro) ease, border-color var(--v7-dur-micro) ease;
+  }
+
+  html[data-ac-v7="true"] .v7-cy-btn:hover {
+    border-color: var(--ac-brand);
+    color: var(--ac-brand);
+  }
+
+  html[data-ac-v7="true"] .v7-cy-canvas {
+    width: 100%;
+    height: 390px;
+    background: var(--ac-surface);
+  }
+
+  html[data-ac-v7="true"] .v7-cy-wrap-compact .v7-cy-canvas {
+    height: 290px;
+  }
+
+  /* Guarantee active pill contrast even before/during sliding indicator transitions */
+  html[data-ac-v7="true"] #threeHorizonTabs button.on,
+  html[data-ac-v7="true"] #rankingPresetSeg button.on,
+  html[data-ac-v7="true"] #page-sektor .segx button.on,
+  html[data-ac-v7="true"] #page-dashboard .segx button.on {
+    background: var(--ac-brand) !important;
+    color: var(--ac-on-brand) !important;
+    border-color: var(--ac-brand) !important;
+  }
+
+  /* Sidebar Night Dark contrast fixes (axe-core WCAG AA) */
+  html[data-ac-v7="true"] #appSidebar #sidebarUserName,
+  html[data-ac-v7="true"] #sidebarUserName {
+    color: var(--ac-ink) !important;
+  }
+
+  html[data-ac-v7="true"][data-theme="dark"] #appSidebar #sidebarUserName,
+  html[data-ac-v7="true"].is-dark #appSidebar #sidebarUserName,
+  html[data-ac-v7="true"][data-theme="dark"] #sidebarUserName {
+    color: #EDF2EE !important;
+  }
+
+  html[data-ac-v7="true"][data-theme="dark"] #nav-subscription > .cnt,
+  html[data-ac-v7="true"][data-theme="dark"] .sidebar-item .cnt {
+    background: #10B981 !important;
+    color: #052E1F !important;
+  }
+
+  /* Struktur Pasar Light/Dark parity */
+  html[data-ac-v7="true"] #panel-tab-market-structure #marketStructureTable,
+  html[data-ac-v7="true"] #panel-tab-market-structure #marketStructureTable tbody tr,
+  html[data-ac-v7="true"] #panel-tab-market-structure #marketStructureDetailPane {
+    background: var(--ac-surface-raised) !important;
+    color: var(--ac-ink) !important;
+  }
+
+  html[data-ac-v7="true"] #panel-tab-market-structure #marketStructureTable thead th {
+    background: var(--ac-surface) !important;
+    color: var(--ac-text-secondary) !important;
+    border-bottom: 1px solid var(--ac-line-hairline) !important;
+  }
+
+  html[data-ac-v7="true"] #panel-tab-market-structure #marketStructureTable tbody td {
+    color: var(--ac-ink) !important;
+    border-bottom-color: var(--ac-line-hairline) !important;
+  }
+
+  html[data-ac-v7="true"] #panel-tab-market-structure #marketStructureTable tbody td.warn {
+    color: var(--ac-warn) !important;
+  }
+
+  html[data-ac-v7="true"] #panel-tab-market-structure #marketStructureTable tbody tr.sel {
+    background: rgba(6, 95, 70, 0.12) !important;
+  }
+
+  html[data-ac-v7="true"] #panel-tab-market-structure #marketStructureDetailPane .kv,
+  html[data-ac-v7="true"] #panel-tab-market-structure #marketStructureDetailPane .mut {
+    color: var(--ac-text-secondary) !important;
+    border-color: var(--ac-line-hairline) !important;
+  }
+
+  /* High contrast callout banner in Struktur Pasar Detail Pane (#msDetailNote) */
+  html[data-ac-v7="true"] #msDetailNote {
+    background: rgba(180, 83, 9, 0.12) !important;
+    color: var(--ac-ink) !important;
+    border: 1px solid rgba(180, 83, 9, 0.42) !important;
+  }
+
+  html[data-ac-v7="true"][data-theme="dark"] #msDetailNote {
+    background: rgba(251, 191, 36, 0.14) !important;
+    color: var(--ac-ink) !important;
+    border-color: rgba(251, 191, 36, 0.42) !important;
+  }
+
+  /* Screener Night/Light table token parity */
+  html[data-ac-v7="true"] #page-screener table th {
+    background: var(--ac-surface-raised);
+    color: var(--ac-text-secondary);
+  }
+
+  html[data-ac-v7="true"] #page-screener table td {
+    color: var(--ac-ink);
+  }
+
+  @media (max-width: 640px) {
+    html[data-ac-v7="true"] #threeHorizonTabs {
+      gap: 4px;
+      padding: 3px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      max-width: 100%;
+    }
+    html[data-ac-v7="true"] #threeHorizonTabs button {
+      white-space: nowrap;
+      padding: 8px 11px !important;
+    }
+    html[data-ac-v7="true"] .v7-echart-host {
+      height: 205px;
+      padding: 6px 8px;
+    }
+    html[data-ac-v7="true"] .v7-echart-host--sektor {
+      height: 235px;
+    }
+    html[data-ac-v7="true"] .v7-cy-canvas {
+      height: 310px;
+    }
+    html[data-ac-v7="true"] #page-sektor .sheet,
+    html[data-ac-v7="true"] #page-screener .sheet,
+    html[data-ac-v7="true"] #panel-tab-market-structure .sheet,
+    html[data-ac-v7="true"] #panel-tab-financial .sheet,
+    html[data-ac-v7="true"] #panel-tab-ranking .sheet,
+    html[data-ac-v7="true"] #panel-tab-bandarmologi .sheet {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+  }

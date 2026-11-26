@@ -37,8 +37,11 @@ Auto-Cuan V7 ("Financial Intelligence Workstation") incorporates or bundles the 
 8. NumberFlow (self-hosted vendor runtime) — MIT License
    Upstream: https://github.com/barvian/number-flow
 
-9. @tanstack/virtual-core — MIT License (Sub-Kloter 4C target)
+9. @tanstack/virtual-core v3.19.13 — MIT License
    Upstream: https://github.com/TanStack/virtual
 
-10. Cytoscape.js — MIT License (Sub-Kloter 4C target)
+10. Cytoscape.js v3.35.0 — MIT License
     Upstream: https://github.com/cytoscape/cytoscape.js
+
+11. Apache ECharts v6.1.0 (custom tree-shaken bundle) — Apache License 2.0
+    Upstream: https://echarts.apache.org / https://github.com/apache/echarts

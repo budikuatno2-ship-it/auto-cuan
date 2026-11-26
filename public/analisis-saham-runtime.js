@@ -304,6 +304,50 @@
       return;
     }
 
+    function renderRankingPinnedRow() {
+      var pinEl = byId('rankingPinnedRow');
+      if (!pinEl) return;
+      var pinItem = rankingState.selectedTicker ? filtered.find(function(r) { return r.t === rankingState.selectedTicker; }) : null;
+      if (pinItem) {
+        var pinCColor = pinItem.c == null ? '' : (pinItem.c >= 0 ? 'pos' : 'neg');
+        var pinF3Color = pinItem.f3 == null ? '' : (pinItem.f3 >= 0 ? 'pos' : 'neg');
+        pinEl.style.display = 'block';
+        pinEl.innerHTML = [
+          '<div style="display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;padding:14px 20px">',
+          '  <span class="tk mono" style="font-size:18px">' + escapeHtml(pinItem.t) + '</span>',
+          '  <span><span class="lbl" style="display:block;margin:0">Harga</span><b class="num mono">Rp ' + idFmtInt(pinItem.p) + '</b> <span class="num ' + pinCColor + '">' + idSignPct(pinItem.c, 2) + '</span></span>',
+          '  <span><span class="lbl" style="display:block;margin:0">RSI 14</span><b class="num">' + (pinItem.rsi == null ? '—' : idDec(pinItem.rsi, 1)) + '</b></span>',
+          '  <span><span class="lbl" style="display:block;margin:0">Asing 3H</span><b class="num ' + pinF3Color + '">' + idMoneyBillion(pinItem.f3) + '</b></span>',
+          '  <span><span class="lbl" style="display:block;margin:0">Skor</span><b class="num">' + pinItem.s + '</b></span>',
+          '  <span style="margin-left:auto;display:flex;gap:8px">',
+          '    <button class="btn sm" type="button" onclick="unpinRankingRow()">Tutup</button>',
+          '    <a class="btn p sm" href="/analisis-saham?ticker=' + escapeHtml(pinItem.t) + '" onclick="if(typeof navigateTo===\'function\'){navigateTo(\'analisis\',\'chart\',{ticker:\'' + escapeHtml(pinItem.t) + '\'});return false;}">Buka Chart Workstation</a>',
+          '  </span>',
+          '</div>'
+        ].join('');
+      } else {
+        pinEl.style.display = 'none';
+        pinEl.innerHTML = '';
+      }
+    }
+
+    if (root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.renderVirtualRankingGrid === 'function' && filtered.length > 25) {
+      root.AutoCuanV7Riset.renderVirtualRankingGrid(wrap, filtered, {
+        columns: RANKING_COLUMNS_V2,
+        sortKey: sortKey,
+        dir: dir,
+        selectedTicker: rankingState.selectedTicker,
+        formatters: {
+          idFmtInt: idFmtInt,
+          idSignPct: idSignPct,
+          idDec: idDec,
+          idMoneyBillion: idMoneyBillion
+        }
+      });
+      renderRankingPinnedRow();
+      return;
+    }
+
     var html = '<table class="tbl rt tabular-nums lining-nums" style="min-width:1040px">';
     html += '<thead><tr>';
     html += '<th style="width:48px">#</th>';
@@ -2933,6 +2977,9 @@
 
     if (svgBarsGroup) svgBarsGroup.innerHTML = barsSvg;
     if (htmlLabelsGroup) htmlLabelsGroup.innerHTML = labelsHtml;
+    if (root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.renderFinancialEChart === 'function') {
+      root.AutoCuanV7Riset.renderFinancialEChart(row, per, fr, financialCache[financialState.t]);
+    }
   }
 
   root.selectFinancialTicker = function(ticker) {
@@ -3623,7 +3670,15 @@
         if (paginationControls) paginationControls.innerHTML = '';
         return;
       }
-      renderMarketStructureAccordion(this.filteredUniverse);
+      if (!(root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.renderVirtualMarketStructureGrid === 'function')) {
+        renderMarketStructureAccordion(this.filteredUniverse);
+      } else {
+        var accEl = byId('marketStructureAccordionContainer');
+        if (accEl) {
+          accEl.hidden = true;
+          accEl.innerHTML = '';
+        }
+      }
       if (tableWrap) {
         tableWrap.hidden = false;
         tableWrap.classList.remove('is-empty-hidden');
@@ -3650,6 +3705,26 @@
       if (this.currentPage > totalPages) this.currentPage = totalPages;
       if (this.currentPage < 1) this.currentPage = 1;
       var curPage = this.currentPage;
+
+      if (root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.renderVirtualMarketStructureGrid === 'function' && tbody) {
+        if (countText) {
+          countText.textContent = 'Menampilkan ' + total + ' Saham (Virtual Scroll)';
+        }
+        if (paginationBar) {
+          paginationBar.style.display = 'none';
+        }
+        root.AutoCuanV7Riset.renderVirtualMarketStructureGrid({
+          rows: this.filteredUniverse,
+          tbody: tbody,
+          controller: this,
+          selectedTicker: this.selectedTicker,
+          formatHscStatus: formatHscStatus,
+          formatDate: function (rawD) {
+            return (typeof formatIndonesianDateWithWib === 'function' && rawD) ? formatIndonesianDateWithWib(rawD) : (rawD || '-');
+          }
+        });
+        return;
+      }
 
       var startIdx = (curPage - 1) * pageSize;
       var endIdx = Math.min(startIdx + pageSize, total);
