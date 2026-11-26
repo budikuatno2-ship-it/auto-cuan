@@ -1,10 +1,10 @@
 /* Auto-Cuan Account Center — design token driven, full dark/light theme parity, canvas parity. */
 #acAccountCenter[hidden] { display: none !important; }
-#acAccountCenter { position: fixed; inset: 0; z-index: var(--ac-z-modal, 100050); display: flex; justify-content: center; align-items: flex-start; padding: 86px 18px 24px; background: var(--backdrop-surface, rgba(15, 23, 42, 0.75)); }
-.ac-center-shell { width: min(1040px, 100%); max-height: min(90dvh, 860px); overflow: hidden; display: grid; grid-template-rows: auto minmax(0,1fr); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl, 16px); background: var(--surface); box-shadow: var(--ac-shadow-2); color: var(--text-primary); }
-.ac-center-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px 14px; border-bottom: 1px solid var(--border-hairline); }
+#acAccountCenter { position: fixed; inset: 0; z-index: var(--ac-z-modal, 100050); display: flex; justify-content: center; align-items: flex-start; padding: 72px 18px 24px; background: var(--ac-backdrop, rgba(15, 23, 42, 0.75)); backdrop-filter: blur(12px) saturate(135%); -webkit-backdrop-filter: blur(12px) saturate(135%); }
+.ac-center-shell { width: min(1040px, 100%); max-height: min(90dvh, 860px); overflow: hidden; display: grid; grid-template-rows: auto minmax(0,1fr); border: 1px solid var(--ac-line-soft, var(--border-subtle)); border-radius: var(--radius-xl, 16px); background: var(--ac-surface, var(--surface)); box-shadow: var(--ac-shadow-modal, var(--ac-shadow-2)); color: var(--ac-ink, var(--text-primary)); }
+.ac-center-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px 14px; border-bottom: 1px solid var(--ac-line-hairline, var(--border-hairline)); background: var(--ac-surface, var(--surface)); }
 .ac-center-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.ac-center-avatar { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; border-radius: var(--radius-md, 10px); background: var(--accent-primary); color: var(--color-on-accent, #ffffff); font-weight: 900; font-size: 18px; }
+.ac-center-avatar { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; border-radius: var(--radius-md, 10px); background: var(--ac-brand, var(--accent-primary)); color: var(--ac-on-brand, var(--color-on-accent, #ffffff)); font-weight: 900; font-size: 18px; }
 .ac-center-eyebrow { margin: 0 0 2px; color: var(--accent-primary); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .ac-center-title { margin: 0; color: var(--text-primary); font-size: 20px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ac-center-subtitle { margin: 3px 0 0; color: var(--text-secondary); font-size: 12px; }
@@ -115,8 +115,9 @@
 .ac-admin-cmd-row span { color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
 .ac-hint { margin-top: 12px; padding: 10px 12px; border-radius: var(--radius-md, 8px); border: 1px solid var(--border-subtle); background: var(--surface-elevated); color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
 .ac-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
-.ac-plan { position: relative; overflow: hidden; padding: 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md, 10px); background: var(--surface); }
-.ac-plan-current { border-color: var(--accent-primary); }
+.ac-plan { position: relative; overflow: hidden; padding: 16px; border: 1px solid var(--ac-line-soft, var(--border-subtle)); border-radius: var(--radius-md, 12px); background: var(--ac-surface-raised, var(--surface)); transition: transform 150ms cubic-bezier(0.22,1,0.36,1), border-color 150ms ease, box-shadow 180ms ease; }
+.ac-plan:hover { transform: translateY(-2px); border-color: var(--ac-brand, var(--accent-primary)); box-shadow: var(--ac-shadow-card); }
+.ac-plan-current { border-color: var(--ac-brand, var(--accent-primary)); box-shadow: 0 0 0 1px var(--ac-brand, var(--accent-primary)); }
 .ac-plan-name { margin: 0; color: var(--text-primary); font-size: 13px; font-weight: 800; }
 .ac-plan-price { margin: 8px 0 0; color: var(--text-primary); font-size: 18px; font-weight: 800; }
 .ac-plan-normal { margin-left: 6px; color: var(--text-muted); font-size: 11px; text-decoration: line-through; }

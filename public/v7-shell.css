@@ -1,0 +1,593 @@
+/* Auto-Cuan V7 — Living Shell, Landing, Auth, Account Center, & Subscription Layer
+   Activated cleanly on html[data-ac-v7="true"]. Uses Style Dictionary V7 tokens. */
+
+  /* ---- Global Depth, Focus, & Overflow Safeguards ---- */
+  html[data-ac-v7="true"],
+  html[data-ac-v7="true"] body {
+    background-color: var(--ac-canvas);
+    color: var(--ac-ink);
+    font-family: var(--ac-font-ui);
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  html[data-ac-v7="true"] .app-shell,
+  html[data-ac-v7="true"] .app-main,
+  html[data-ac-v7="true"] .app-content,
+  html[data-ac-v7="true"] .page-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  html[data-ac-v7="true"] .page-content {
+    padding-top: 12px;
+    scroll-margin-top: 84px;
+  }
+
+  /* Ensure sticky topbar never clips page titles on jump/load */
+  html[data-ac-v7="true"] .app-content {
+    padding-top: 8px;
+  }
+
+  /* ---- Frosted Glass Topbar & Sticky Landing Navigation ---- */
+  html[data-ac-v7="true"] #landingPage .landing-nav,
+  html[data-ac-v7="true"] #dashboardScreen .app-header {
+    background: var(--ac-surface-glass);
+    backdrop-filter: blur(14px) saturate(145%);
+    -webkit-backdrop-filter: blur(14px) saturate(145%);
+    border-color: var(--ac-line-soft);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--ac-shadow-card);
+  }
+
+  html[data-ac-v7="true"].is-dark #dashboardScreen .app-header,
+  html[data-ac-v7="true"][data-theme="dark"] #dashboardScreen .app-header {
+    background: rgba(14, 20, 18, 0.84);
+    border-bottom: 1px solid rgba(228, 235, 231, 0.09);
+  }
+
+  /* ---- Living Signal Line & Ambient EOD Pulse ---- */
+  html[data-ac-v7="true"] .landing-signal-line-wrap {
+    height: 26px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    color: var(--ac-brand);
+  }
+
+  html[data-ac-v7="true"] .landing-signal-line {
+    width: 100%;
+    max-width: 520px;
+    height: 26px;
+    display: block;
+  }
+
+  html[data-ac-v7="true"] .landing-signal-line path {
+    stroke-dasharray: 1200;
+    stroke-dashoffset: 0;
+    animation: v7SignalDraw 1.4s var(--v7-spring) 1;
+  }
+
+  @keyframes v7SignalDraw {
+    from { stroke-dashoffset: 1200; opacity: 0.3; }
+    to { stroke-dashoffset: 0; opacity: 1; }
+  }
+
+  html[data-ac-v7="true"] .landing-signal-dot,
+  html[data-ac-v7="true"] #landingPage .preview-sample-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    display: inline-block;
+    background: var(--ac-brand);
+    box-shadow: 0 0 0 0 rgba(19, 120, 93, 0.45);
+    animation: v7LivePulse 2.4s ease-out infinite;
+  }
+
+  @keyframes v7LivePulse {
+    0% { box-shadow: 0 0 0 0 rgba(72, 199, 151, 0.45); }
+    70% { box-shadow: 0 0 0 7px rgba(72, 199, 151, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(72, 199, 151, 0); }
+  }
+
+  /* ---- Landing Page V7 (Hybrid Hallmark Proof Ledger + Neo-Quant Depth) ---- */
+  html[data-ac-v7="true"] #landingPage {
+    --lp-bg: var(--ac-canvas);
+    --lp-surface: var(--ac-surface);
+    --lp-raised: var(--ac-surface-raised);
+    --lp-card: var(--ac-surface);
+    --lp-text: var(--ac-ink);
+    --lp-muted: var(--ac-text-secondary);
+    --lp-line: var(--ac-line-hairline);
+    --lp-accent: var(--ac-brand);
+    --lp-accent-subtle: var(--ac-brand-soft);
+    --lp-on-accent: var(--ac-on-brand);
+    color: var(--ac-ink);
+    background: var(--ac-canvas);
+  }
+
+  html[data-ac-v7="true"] #landingPage .landing-hero-editorial {
+    position: relative;
+    background:
+      radial-gradient(960px 420px at 16% -6%, var(--ac-brand-soft), transparent 64%),
+      radial-gradient(760px 360px at 88% 8%, rgba(49, 95, 154, 0.08), transparent 62%);
+  }
+
+  html[data-ac-v7="true"] #landingPage .landing-workstation-preview,
+  html[data-ac-v7="true"] #landingPage .preview-pane,
+  html[data-ac-v7="true"] #landingPage .feature-card,
+  html[data-ac-v7="true"] #landingPage .workflow-card,
+  html[data-ac-v7="true"] #landingPage .lens-card,
+  html[data-ac-v7="true"] #landingPage .validate-card,
+  html[data-ac-v7="true"] #landingPage .ai-role-card,
+  html[data-ac-v7="true"] #landingPage .landing-card {
+    background: var(--ac-surface);
+    border: 1px solid var(--ac-line-soft);
+    box-shadow: var(--ac-shadow-card);
+    transition: transform var(--v7-dur-micro) var(--v7-spring), border-color var(--v7-dur-micro) ease, box-shadow var(--v7-dur-slide) var(--v7-spring);
+  }
+
+  html[data-ac-v7="true"] #landingPage .feature-card:hover,
+  html[data-ac-v7="true"] #landingPage .workflow-card:hover,
+  html[data-ac-v7="true"] #landingPage .lens-card:hover,
+  html[data-ac-v7="true"] #landingPage .validate-card:hover,
+  html[data-ac-v7="true"] #landingPage .ai-role-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--ac-brand);
+    box-shadow: var(--ac-shadow-elevated);
+  }
+
+  html[data-ac-v7="true"] #landingPage .landing-btn {
+    border-radius: 10px;
+    min-height: 44px;
+    transition: transform 120ms var(--v7-spring), background-color 150ms ease, border-color 150ms ease, box-shadow 180ms ease;
+  }
+
+  html[data-ac-v7="true"] #landingPage .landing-btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  html[data-ac-v7="true"] #landingPage .landing-btn-primary {
+    background: var(--ac-brand);
+    color: var(--ac-on-brand);
+    border-color: transparent;
+    box-shadow: 0 8px 20px -8px rgba(19, 120, 93, 0.55);
+  }
+
+  html[data-ac-v7="true"] #landingPage .landing-btn-primary:hover {
+    background: var(--ac-brand-hover);
+    transform: translateY(-1px);
+  }
+
+  /* Sliding Pill Track for Preview & Horizon Tabs */
+  html[data-ac-v7="true"] .v7-seg-track {
+    position: relative;
+    isolation: isolate;
+  }
+
+  html[data-ac-v7="true"] .v7-sliding-pill {
+    position: absolute;
+    z-index: 0;
+    border-radius: 8px;
+    background: var(--ac-brand);
+    box-shadow: 0 2px 8px -2px rgba(19, 120, 93, 0.35);
+    pointer-events: none;
+    transition: transform var(--v7-dur-slide) var(--v7-spring), width var(--v7-dur-slide) var(--v7-spring), height var(--v7-dur-slide) var(--v7-spring);
+  }
+
+  html[data-ac-v7="true"] .v7-seg-track > button {
+    position: relative;
+    z-index: 1;
+  }
+
+  html[data-ac-v7="true"] .v7-seg-track > .ind {
+    display: none;
+  }
+
+  html[data-ac-v7="true"] #dashboardScreen #page-dashboard .v7-seg-track > button.on,
+  html[data-ac-v7="true"] #dashboardScreen .v7-seg-track > button.on {
+    --ac-ink: var(--ac-on-brand);
+    background: transparent;
+    color: var(--ac-on-brand);
+  }
+
+  html[data-ac-v7="true"]:not(.is-dark):not([data-theme="dark"]) #landingPage .text-positive {
+    color: #146E42;
+  }
+
+  html[data-ac-v7="true"] #landingPage .landing-preview-tabs,
+  html[data-ac-v7="true"] #landingPage .landing-preview-subtabs {
+    position: relative;
+    background: var(--ac-surface-raised);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--ac-line-hairline);
+    gap: 4px;
+  }
+
+  html[data-ac-v7="true"] #landingPage .preview-tab {
+    border-radius: 7px;
+    color: var(--ac-text-secondary);
+    font-weight: 600;
+    transition: color 150ms ease, background-color 150ms ease;
+  }
+
+  html[data-ac-v7="true"] #landingPage .preview-tab.active,
+  html[data-ac-v7="true"] #landingPage .preview-tab[aria-selected="true"] {
+    background: var(--ac-brand);
+    color: var(--ac-on-brand);
+    border-color: transparent;
+  }
+
+  /* When the sliding pill track is active, let the single sliding pill render the active fill */
+  html[data-ac-v7="true"] .v7-seg-track > .preview-tab.active,
+  html[data-ac-v7="true"] .v7-seg-track > .preview-tab[aria-selected="true"],
+  html[data-ac-v7="true"] .v7-seg-track > button.on {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--ac-on-brand);
+  }
+
+  /* ---- Auth Modals (Masuk, Daftar, Lupa Password, Pilihan Auth) ---- */
+  html[data-ac-v7="true"] #authChoiceModal,
+  html[data-ac-v7="true"] #loginModal,
+  html[data-ac-v7="true"] #registerModal,
+  html[data-ac-v7="true"] #selfResetModal {
+    background: var(--ac-backdrop);
+    backdrop-filter: blur(12px) saturate(135%);
+    -webkit-backdrop-filter: blur(12px) saturate(135%);
+  }
+
+  html[data-ac-v7="true"] #authChoiceModal > div,
+  html[data-ac-v7="true"] #loginModal > div,
+  html[data-ac-v7="true"] #registerModal > div,
+  html[data-ac-v7="true"] #selfResetModal > div {
+    background: var(--ac-surface);
+    color: var(--ac-ink);
+    border: 1px solid var(--ac-line-soft);
+    border-radius: 18px;
+    box-shadow: var(--ac-shadow-modal);
+    max-height: min(92dvh, 840px);
+    overflow-y: auto;
+  }
+
+  html[data-ac-v7="true"] #loginModal h3,
+  html[data-ac-v7="true"] #registerModal h3,
+  html[data-ac-v7="true"] #authChoiceModal h3,
+  html[data-ac-v7="true"] #selfResetModal h3,
+  html[data-ac-v7="true"] #loginModal label,
+  html[data-ac-v7="true"] #registerModal label,
+  html[data-ac-v7="true"] #selfResetModal label {
+    color: var(--ac-ink);
+  }
+
+  html[data-ac-v7="true"] #loginModal p,
+  html[data-ac-v7="true"] #registerModal p,
+  html[data-ac-v7="true"] #authChoiceModal p,
+  html[data-ac-v7="true"] #selfResetModal p {
+    color: var(--ac-text-secondary);
+  }
+
+  html[data-ac-v7="true"] #loginModal input,
+  html[data-ac-v7="true"] #registerModal input,
+  html[data-ac-v7="true"] #selfResetModal input {
+    background: var(--ac-surface-raised);
+    color: var(--ac-ink);
+    border: 1px solid var(--ac-control-border);
+    min-height: 44px;
+    border-radius: 10px;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  }
+
+  html[data-ac-v7="true"] #loginModal input:focus,
+  html[data-ac-v7="true"] #registerModal input:focus,
+  html[data-ac-v7="true"] #selfResetModal input:focus {
+    background: var(--ac-surface);
+    border-color: var(--ac-brand);
+    box-shadow: 0 0 0 3px var(--ac-brand-soft);
+    outline: none;
+  }
+
+  html[data-ac-v7="true"] .v7-auth-switcher {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 10px;
+    background: var(--ac-surface-raised);
+    border: 1px solid var(--ac-line-hairline);
+    margin: 2px 0 6px;
+  }
+
+  html[data-ac-v7="true"] .v7-auth-sw-btn {
+    min-height: 36px;
+    border-radius: 7px;
+    border: 0;
+    background: transparent;
+    color: var(--ac-text-secondary);
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease, transform 100ms ease;
+  }
+
+  html[data-ac-v7="true"] .v7-auth-sw-btn.is-active {
+    background: var(--ac-brand);
+    color: var(--ac-on-brand);
+    box-shadow: 0 2px 8px -2px rgba(19, 120, 93, 0.35);
+  }
+
+  html[data-ac-v7="true"] #loginBtn,
+  html[data-ac-v7="true"] #registerBtn {
+    min-height: 44px;
+    background: var(--ac-brand);
+    color: var(--ac-on-brand);
+    border: 0;
+    border-radius: 10px;
+    font-weight: 700;
+    box-shadow: 0 8px 20px -8px rgba(19, 120, 93, 0.5);
+  }
+
+  html[data-ac-v7="true"] #loginBtn:hover,
+  html[data-ac-v7="true"] #registerBtn:hover:not(:disabled) {
+    background: var(--ac-brand-hover);
+  }
+
+  html[data-ac-v7="true"] .landing-auth-card {
+    background: var(--ac-surface-raised);
+    border: 1px solid var(--ac-line-soft);
+    border-radius: 12px;
+    padding: 14px;
+    transition: transform 150ms var(--v7-spring), border-color 150ms ease;
+  }
+
+  html[data-ac-v7="true"] .landing-auth-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--ac-brand);
+  }
+
+  /* ---- App Shell 19-Tab, Sidebar Sliding Indicator, & Dashboard ---- */
+  html[data-ac-v7="true"] #appSidebar {
+    background: var(--ac-surface);
+    border-right: 1px solid var(--ac-line-hairline);
+  }
+
+  html[data-ac-v7="true"] #appSidebar .sidebar-item {
+    position: relative;
+    border-radius: 8px;
+    transition: background-color 140ms ease, color 140ms ease, transform 120ms var(--v7-spring);
+  }
+
+  html[data-ac-v7="true"] #appSidebar .sidebar-item.active {
+    background: var(--ac-brand-soft);
+    color: var(--ac-brand);
+    font-weight: 700;
+  }
+
+  html[data-ac-v7="true"] #appSidebar .sidebar-item:active {
+    transform: scale(0.985);
+  }
+
+  html[data-ac-v7="true"] #page-dashboard .sheet,
+  html[data-ac-v7="true"] .dashboard-card,
+  html[data-ac-v7="true"] #page-subscription .subscription-hero,
+  html[data-ac-v7="true"] #page-subscription .subscription-card {
+    background: var(--ac-surface);
+    border: 1px solid var(--ac-line-soft);
+    border-radius: 14px;
+    box-shadow: var(--ac-shadow-card);
+  }
+
+  html[data-ac-v7="true"] #page-dashboard .strip > div {
+    transition: background-color 150ms ease, transform 150ms var(--v7-spring);
+  }
+
+  html[data-ac-v7="true"] #page-dashboard .strip > div:hover {
+    background: var(--ac-surface-raised);
+  }
+
+  html[data-ac-v7="true"] #page-dashboard .big {
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* ---- Ctrl+K Command Palette V7 Token Polish ---- */
+  html[data-ac-v7="true"] .ac-command-palette-backdrop {
+    background: var(--ac-backdrop);
+    backdrop-filter: blur(10px) saturate(135%);
+    -webkit-backdrop-filter: blur(10px) saturate(135%);
+  }
+
+  html[data-ac-v7="true"] .ac-command-palette-container {
+    background: var(--ac-surface);
+    color: var(--ac-ink);
+    border: 1px solid var(--ac-line-soft);
+    border-radius: 16px;
+    box-shadow: var(--ac-shadow-modal);
+  }
+
+  html[data-ac-v7="true"] .ac-command-palette-header,
+  html[data-ac-v7="true"] .ac-command-palette-footer {
+    background: var(--ac-surface-raised);
+    border-color: var(--ac-line-hairline);
+    color: var(--ac-text-secondary);
+  }
+
+  html[data-ac-v7="true"] .ac-command-palette-input {
+    background: var(--ac-surface);
+    color: var(--ac-ink);
+    border: 1px solid var(--ac-control-border);
+    border-radius: 10px;
+  }
+
+  html[data-ac-v7="true"] .ac-command-palette-input:focus {
+    border-color: var(--ac-brand);
+    box-shadow: 0 0 0 3px var(--ac-brand-soft);
+    outline: none;
+  }
+
+  html[data-ac-v7="true"] .ac-palette-section-title {
+    color: var(--ac-text-muted);
+  }
+
+  html[data-ac-v7="true"] .ac-palette-item {
+    color: var(--ac-ink);
+    border-radius: 10px;
+    transition: background-color 120ms ease, transform 100ms ease;
+  }
+
+  html[data-ac-v7="true"] .ac-palette-item:hover,
+  html[data-ac-v7="true"] .ac-palette-item.is-selected {
+    background: var(--ac-brand-soft);
+    color: var(--ac-ink);
+  }
+
+  html[data-ac-v7="true"] .ac-palette-company-name {
+    color: var(--ac-ink);
+  }
+
+  html[data-ac-v7="true"] .ac-palette-meta,
+  html[data-ac-v7="true"] .ac-palette-sector,
+  html[data-ac-v7="true"] .ac-palette-price {
+    color: var(--ac-text-secondary);
+  }
+
+  html[data-ac-v7="true"] .ac-palette-ticker-badge {
+    background: var(--ac-surface-raised);
+    color: var(--ac-brand);
+    border: 1px solid var(--ac-line-hairline);
+    font-family: var(--ac-font-mono);
+  }
+
+  /* ---- Subscription Page & VIP Cards V7 ---- */
+  html[data-ac-v7="true"] #page-subscription .subscription-hero h1,
+  html[data-ac-v7="true"] #page-subscription h2,
+  html[data-ac-v7="true"] #page-subscription h3,
+  html[data-ac-v7="true"] #page-subscription dd,
+  html[data-ac-v7="true"] #page-subscription .subscription-card .text-2xl {
+    color: var(--ac-ink);
+  }
+
+  html[data-ac-v7="true"] #page-subscription p,
+  html[data-ac-v7="true"] #page-subscription dt,
+  html[data-ac-v7="true"] #page-subscription li {
+    color: var(--ac-text-secondary);
+  }
+
+  html[data-ac-v7="true"] #page-subscription .subscription-card {
+    padding: 20px;
+    transition: transform var(--v7-dur-micro) var(--v7-spring), border-color var(--v7-dur-micro) ease, box-shadow var(--v7-dur-slide) var(--v7-spring);
+  }
+
+  html[data-ac-v7="true"] #page-subscription .subscription-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--ac-brand);
+    box-shadow: var(--ac-shadow-elevated);
+  }
+
+  html[data-ac-v7="true"] #page-subscription .subscription-card.popular {
+    border-color: var(--ac-brand);
+    box-shadow: 0 0 0 1px var(--ac-brand), var(--ac-shadow-elevated);
+  }
+
+  /* ---- Global 19-Tab Contrast & Mobile 390x844 Ergonomics ---- */
+  html[data-ac-v7="true"]:not(.is-dark):not([data-theme="dark"]) #landingPage .preview-sample-pill {
+    color: #0B5E48;
+    background: #E2EFE9;
+    border-color: rgba(11, 94, 72, 0.28);
+  }
+
+  html[data-ac-v7="true"] #landingPage #lpCalcSourceNote,
+  html[data-ac-v7="true"] #landingPage .landing-hero-note {
+    color: var(--ac-text-secondary);
+  }
+
+  html[data-ac-v7="true"] #landingPage .mata-x {
+    min-width: 28px;
+    min-height: 28px;
+  }
+
+  html[data-ac-v7="true"] #dashboardScreen #page-dashboard .chip.w,
+  html[data-ac-v7="true"] .chip.w {
+    color: #6B3F00;
+    background: #FEF3C7;
+    border-color: rgba(180, 83, 9, 0.36);
+  }
+
+  html[data-ac-v7="true"].is-dark .chip.w,
+  html[data-ac-v7="true"][data-theme="dark"] .chip.w,
+  html[data-ac-v7="true"].is-dark #dashboardScreen #page-dashboard .chip.w,
+  html[data-ac-v7="true"][data-theme="dark"] #dashboardScreen #page-dashboard .chip.w {
+    color: #FCD34D;
+    background: rgba(245, 158, 11, 0.16);
+    border-color: rgba(252, 211, 77, 0.36);
+  }
+
+  html[data-ac-v7="true"] #msDetailNote {
+    color: var(--ac-text-secondary);
+  }
+
+  html[data-ac-v7="true"] .v7-notice-btn {
+    border: 1px solid var(--ac-line-hairline);
+    background: var(--ac-surface-raised);
+    color: var(--ac-ink);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 36px;
+  }
+
+  html[data-ac-v7="true"] .v7-notice-btn:hover {
+    border-color: var(--ac-brand);
+    color: var(--ac-brand);
+  }
+
+  @media (max-width: 640px) {
+    html[data-ac-v7="true"] #landingPage .mata-wrap {
+      position: static;
+      margin: 0 auto 14px;
+      justify-content: center;
+      flex-direction: row-reverse;
+    }
+
+    html[data-ac-v7="true"] #landingPage .mata-mini {
+      position: static;
+      margin: 0 auto 12px;
+    }
+  }
+
+  @media (max-width: 760px) {
+    html[data-ac-v7="true"] #loginModal input,
+    html[data-ac-v7="true"] #registerModal input,
+    html[data-ac-v7="true"] #selfResetModal input,
+    html[data-ac-v7="true"] .ac-inp,
+    html[data-ac-v7="true"] .ac-command-palette-input {
+      font-size: 16px;
+    }
+
+    html[data-ac-v7="true"] #dashboardScreen .header-shell {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    html[data-ac-v7="true"] #dashboardScreen .app-content {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html[data-ac-v7="true"] .landing-signal-line path,
+    html[data-ac-v7="true"] .landing-signal-dot,
+    html[data-ac-v7="true"] #landingPage .preview-sample-dot {
+      animation: none;
+      stroke-dashoffset: 0;
+    }
+
+    html[data-ac-v7="true"] *,
+    html[data-ac-v7="true"] *::before,
+    html[data-ac-v7="true"] *::after {
+      transition-duration: 0.01ms;
+    }
+  }

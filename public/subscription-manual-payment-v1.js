@@ -92,21 +92,26 @@
     var style = document.createElement('style');
     style.id = 'acManualPaymentStyle';
     style.textContent = [
-      '.ac-manual-buy{width:100%;margin-top:10px;border:0;border-radius:10px;padding:10px 12px;background:#10b981;color:#02150f;font-weight:900;cursor:pointer}',
-      '.ac-manual-buy:hover{filter:brightness(1.06)}',
-      '.ac-pay-backdrop{position:fixed;inset:0;z-index:2147483000;background:rgba(2,6,12,.86);display:flex;align-items:center;justify-content:center;padding:18px}',
-      '.ac-pay-shell{width:min(520px,100%);max-height:min(760px,92vh);overflow:auto;background:#0b1522;border:1px solid rgba(110,231,183,.2);border-radius:18px;box-shadow:0 25px 80px rgba(0,0,0,.45);padding:18px;color:#e5edf7}',
-      '.ac-pay-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}',
-      '.ac-pay-title{font-size:19px;font-weight:900;margin:0}.ac-pay-sub{font-size:12px;color:#94a3b8;margin-top:4px}',
-      '.ac-pay-close{border:1px solid rgba(148,163,184,.2);background:#101b2b;color:#cbd5e1;border-radius:10px;width:36px;height:36px;font-size:20px;cursor:pointer}',
-      '.ac-pay-box{border:1px solid rgba(148,163,184,.15);border-radius:13px;padding:12px;background:rgba(15,23,42,.6);margin-top:10px}',
-      '.ac-pay-row{display:flex;justify-content:space-between;gap:14px;padding:6px 0;font-size:13px}.ac-pay-row span:first-child{color:#94a3b8}.ac-pay-row strong{text-align:right}',
-      '.ac-pay-label{display:block;font-size:11px;font-weight:800;color:#94a3b8;margin:12px 0 5px}',
-      '.ac-pay-input{width:100%;box-sizing:border-box;border:1px solid rgba(148,163,184,.2);border-radius:10px;background:#09111d;color:#e5edf7;padding:10px 11px;outline:none}',
-      '.ac-pay-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.ac-pay-btn{flex:1;min-width:120px;border:1px solid rgba(148,163,184,.2);border-radius:10px;padding:10px 12px;background:#121e2f;color:#e5edf7;font-weight:800;cursor:pointer}.ac-pay-btn.primary{background:#10b981;color:#02150f;border-color:#10b981}.ac-pay-btn.danger{background:#3a1418;border-color:#7f1d1d;color:#fecaca}',
-      '.ac-pay-status{margin-top:12px;border-radius:10px;padding:10px 11px;background:#111c2a;color:#cbd5e1;font-size:12px;line-height:1.5}',
-      '.ac-pay-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#6ee7b7;font-weight:900}',
-      '@media(max-width:560px){.ac-pay-backdrop{padding:8px;align-items:flex-end}.ac-pay-shell{border-radius:18px 18px 0 0;max-height:94vh}}'
+      '.ac-manual-buy{width:100%;margin-top:12px;border:0;border-radius:10px;min-height:40px;padding:10px 12px;background:var(--ac-brand,#13785D);color:var(--ac-on-brand,#FFFFFF);font-weight:800;cursor:pointer;transition:background-color .15s ease,transform .12s cubic-bezier(.22,1,.36,1)}',
+      '.ac-manual-buy:hover{background:var(--ac-brand-hover,#0D634C)}',
+      '.ac-manual-buy:active{transform:scale(.98)}',
+      '.ac-pay-backdrop{position:fixed;inset:0;z-index:2147483000;background:var(--ac-backdrop,rgba(14,20,18,.78));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:18px}',
+      '.ac-pay-shell{width:min(540px,100%);max-height:min(780px,92vh);overflow:auto;background:var(--ac-surface,#141C19);border:1px solid var(--ac-line-soft,rgba(148,163,184,.22));border-radius:18px;box-shadow:var(--ac-shadow-modal,0 25px 80px rgba(0,0,0,.45));padding:20px;color:var(--ac-ink,#E4EBE7)}',
+      '.ac-pay-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}',
+      '.ac-pay-title{font-size:19px;font-weight:800;margin:0;color:var(--ac-ink,#E4EBE7)}.ac-pay-sub{font-size:12px;color:var(--ac-text-secondary,#9AA7A1);margin-top:4px}',
+      '.ac-pay-close{border:1px solid var(--ac-line-hairline,rgba(148,163,184,.24));background:var(--ac-surface-raised,#19231F);color:var(--ac-ink,#E4EBE7);border-radius:10px;width:40px;height:40px;font-size:20px;cursor:pointer}',
+      '.ac-pay-stepper{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}',
+      '.ac-pay-step{font-size:11px;font-weight:700;padding:6px 8px;border-radius:8px;background:var(--ac-surface-raised,#19231F);color:var(--ac-text-muted,#848D88);border:1px solid var(--ac-line-hairline,transparent);text-align:center}',
+      '.ac-pay-step.is-on{background:var(--ac-brand-soft,rgba(72,199,151,.15));color:var(--ac-brand,#48C797);border-color:var(--ac-brand,#48C797)}',
+      '.ac-pay-box{border:1px solid var(--ac-line-hairline,rgba(148,163,184,.18));border-radius:12px;padding:12px;background:var(--ac-surface-raised,#19231F);margin-top:10px}',
+      '.ac-pay-row{display:flex;justify-content:space-between;gap:14px;padding:6px 0;font-size:13px}.ac-pay-row span:first-child{color:var(--ac-text-secondary,#9AA7A1)}.ac-pay-row strong{text-align:right;color:var(--ac-ink,#E4EBE7)}',
+      '.ac-pay-label{display:block;font-size:12px;font-weight:700;color:var(--ac-text-secondary,#9AA7A1);margin:12px 0 5px}',
+      '.ac-pay-input{width:100%;box-sizing:border-box;min-height:42px;border:1px solid var(--ac-control-border,rgba(148,163,184,.26));border-radius:10px;background:var(--ac-canvas,#0E1412);color:var(--ac-ink,#E4EBE7);padding:10px 12px;outline:none;font-size:14px}',
+      '.ac-pay-input:focus{border-color:var(--ac-brand,#48C797);box-shadow:0 0 0 3px var(--ac-brand-soft,rgba(72,199,151,.18))}',
+      '.ac-pay-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.ac-pay-btn{flex:1;min-width:120px;min-height:42px;border:1px solid var(--ac-control-border,rgba(148,163,184,.24));border-radius:10px;padding:10px 12px;background:var(--ac-surface-raised,#19231F);color:var(--ac-ink,#E4EBE7);font-weight:800;cursor:pointer}.ac-pay-btn.primary{background:var(--ac-brand,#13785D);color:var(--ac-on-brand,#FFFFFF);border-color:transparent}.ac-pay-btn.danger{background:var(--ac-negative-soft,#3a1418);border-color:var(--ac-negative,#AD3F52);color:var(--ac-negative,#fecaca)}',
+      '.ac-pay-status{margin-top:12px;border-radius:10px;padding:10px 12px;background:var(--ac-surface-raised,#19231F);border:1px solid var(--ac-line-hairline,transparent);color:var(--ac-text-secondary,#cbd5e1);font-size:12px;line-height:1.5}',
+      '.ac-pay-code{font-family:var(--ac-font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);color:var(--ac-brand,#48C797);font-weight:800}',
+      '@media(max-width:560px){.ac-pay-backdrop{padding:8px;align-items:flex-end}.ac-pay-shell{border-radius:18px 18px 0 0;max-height:94vh}.ac-pay-input{font-size:16px}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -116,14 +121,21 @@
     if (root) root.remove();
   }
 
-  function modal(title, subtitle, bodyHtml) {
+  function modal(title, subtitle, bodyHtml, activeStep) {
     ensureStyle();
     closeModal();
+    var step = activeStep || 1;
+    var stepper = '<div class="ac-pay-stepper" aria-label="Tahap pembayaran">' +
+      '<div class="ac-pay-step ' + (step >= 1 ? 'is-on' : '') + '">1 · Paket &amp; Voucher</div>' +
+      '<div class="ac-pay-step ' + (step >= 2 ? 'is-on' : '') + '">2 · Transfer &amp; Bukti</div>' +
+      '<div class="ac-pay-step ' + (step >= 3 ? 'is-on' : '') + '">3 · Aktivasi Admin</div>' +
+      '</div>';
     var root = document.createElement('div');
     root.id = 'acManualPaymentModal';
     root.className = 'ac-pay-backdrop';
     root.innerHTML = '<section class="ac-pay-shell" role="dialog" aria-modal="true">' +
       '<div class="ac-pay-head"><div><h2 class="ac-pay-title">' + esc(title) + '</h2><div class="ac-pay-sub">' + esc(subtitle || '') + '</div></div><button type="button" class="ac-pay-close" aria-label="Tutup">×</button></div>' +
+      stepper +
       '<div id="acManualPaymentBody">' + bodyHtml + '</div></section>';
     document.body.appendChild(root);
     root.querySelector('.ac-pay-close').addEventListener('click', closeModal);
@@ -351,22 +363,26 @@
   }
 
   function installBuyButtons() {
-    var panel = document.getElementById('acPanelSubscription');
-    if (!panel) return false;
-    var cards = panel.querySelectorAll('.ac-plan');
-    cards.forEach(function (card) {
-      if (card.querySelector('[data-ac-manual-buy]')) return;
-      var code = cardPlanCode(card);
-      if (!code) return;
-      var button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'ac-manual-buy';
-      button.setAttribute('data-ac-manual-buy', code);
-      button.textContent = card.classList.contains('ac-plan-current') ? 'Perpanjang paket' : 'Beli paket';
-      button.addEventListener('click', function () { openCheckout(code); });
-      card.appendChild(button);
+    var panels = document.querySelectorAll('#acPanelLangganan, #acPanelSubscription');
+    if (!panels || !panels.length) return false;
+    var count = 0;
+    panels.forEach(function (panel) {
+      var cards = panel.querySelectorAll('.ac-plan');
+      cards.forEach(function (card) {
+        count += 1;
+        if (card.querySelector('[data-ac-manual-buy]')) return;
+        var code = cardPlanCode(card);
+        if (!code) return;
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'ac-manual-buy';
+        button.setAttribute('data-ac-manual-buy', code);
+        button.textContent = card.classList.contains('ac-plan-current') ? 'Perpanjang paket' : 'Beli paket';
+        button.addEventListener('click', function () { openCheckout(code); });
+        card.appendChild(button);
+      });
     });
-    return cards.length > 0;
+    return count > 0;
   }
 
   function watchAccountCenter() {

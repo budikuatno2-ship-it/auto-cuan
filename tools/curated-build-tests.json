@@ -797,6 +797,7 @@
   "test/v6/whats-new.test.js",
   "test/vercel-readonly-intel-scanner.test.js",
   "test/viewport-runtime.test.js",
+  "test/v7-kloter-4a-shell-landing.test.js",
   "test/volume-breakout-revalidation.test.js",
   "test/vps-api-bridge-tunnel.test.js",
   "test/vps-data-fetcher-async.test.js",
