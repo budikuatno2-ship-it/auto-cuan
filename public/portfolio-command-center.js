@@ -218,12 +218,21 @@
       calculateBudget();
       renderAll();
 
+      // Kloter 3: auto-sync latest EOD close prices (market.sqlite) on page open
+      // without blocking initial render or spamming toasts.
+      setTimeout(function () {
+        loadLocalState();
+        renderAll();
+        if (state.plans && state.plans.length > 0 && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+          refreshAllPrices(false, { silent: true }).catch(function () {});
+        }
+      }, 650);
+
       // Sector Hot is supporting context for this page, not a precondition for
       // it. Deliberately not awaited, and independently time-boxed.
       loadSectorHot();
 
       loadScript('/portfolio-ai-runtime-v2.js?v=20260727-premium-v2').catch(function (error) { var ais = $('aiStatus'); if (ais) ais.textContent = error.message; });
-      setTimeout(function () { loadLocalState(); renderAll(); }, 600);
     } catch (error) {
       if (gateGeneration !== root.__AUTOCUAN_PORTFOLIO_GATE_GENERATION__) return;
       setGateError(error && error.name === 'AbortError' ? 'Pemeriksaan akses terlalu lama. Coba lagi atau login ulang.' : 'Akses portofolio tidak dapat diverifikasi. Coba lagi.');
@@ -482,22 +491,33 @@
     } catch (_) { return null; }
   }
 
-  async function refreshAllPrices(force) {
+  async function refreshAllPrices(force, opts) {
+    var silent = Boolean(opts && opts.silent);
     var symbols = [];
     state.plans.forEach(function (plan) { var t = ticker(plan.ticker); if (t && symbols.indexOf(t) < 0) symbols.push(t); });
-    if (!symbols.length) { toast('Belum ada ticker untuk diperbarui.'); return; }
+    if (!symbols.length) { if (!silent) toast('Belum ada ticker untuk diperbarui.'); return; }
     var buttons = [$('refreshToday'), $('refreshPrices')].filter(Boolean);
-    buttons.forEach(function (button) { button.disabled = true; button.textContent = 'Memuat…'; });
+    if (!silent) buttons.forEach(function (button) { button.disabled = true; button.textContent = 'Memuat…'; });
     try {
       var rows = await Promise.all(symbols.slice(0, 20).map(async function (t) { return [t, await quote(t)]; }));
       var updated = 0;
-      rows.forEach(function (row) { if (row[1] && row[1] > 0) { state.prices[row[0]] = Math.round(row[1]); updated += 1; } });
+      var changed = false;
+      rows.forEach(function (row) {
+        if (row[1] && row[1] > 0) {
+          var nextPrice = Math.round(row[1]);
+          if (state.prices[row[0]] !== nextPrice) changed = true;
+          state.prices[row[0]] = nextPrice;
+          updated += 1;
+        }
+      });
       saveJson(pricesKey(), state.prices); localStorage.setItem(priceTimeKey(), String(Date.now()));
-      renderAll(); if (force) captureSnapshot();
-      var msg = updated > 0 ? (updated + ' harga berhasil diperbarui (' + symbols.slice(0, 3).join(', ') + (symbols.length > 3 ? '...' : '') + ').') : 'Harga sudah terkini.';
-      toast(msg);
+      renderAll(); if (force || changed) captureSnapshot();
+      if (!silent) {
+        var msg = updated > 0 ? (updated + ' harga berhasil diperbarui (' + symbols.slice(0, 3).join(', ') + (symbols.length > 3 ? '...' : '') + ').') : 'Harga sudah terkini.';
+        toast(msg);
+      }
     } finally {
-      buttons.forEach(function (button) { button.disabled = false; button.textContent = button.id === 'refreshToday' ? 'Refresh data' : 'Refresh Harga'; });
+      if (!silent) buttons.forEach(function (button) { button.disabled = false; button.textContent = button.id === 'refreshToday' ? 'Refresh data' : 'Refresh Harga'; });
     }
   }
 

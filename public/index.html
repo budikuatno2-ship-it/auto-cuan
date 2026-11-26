@@ -120,12 +120,12 @@
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
     <link rel="stylesheet" href="/ui-theme.css?v=v6.5.5-k2">
-    <link rel="stylesheet" href="/ac-v2.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/ac-v2.css?v=v6.5.5-k3">
     <link rel="stylesheet" href="/premium-workstation.css?v=v6.5.5-k2">
     <link rel="stylesheet" href="/unified-cockpit.css?v=v6.5.5-k2">
-    <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=v6.5.5-k2">
+    <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=v6.5.5-k3">
     <link rel="stylesheet" href="/spreadsheet-grade.css?v=v6.5.5-k2">
-    <link rel="stylesheet" href="/money-sheet.css?v=20261022-v4">
+    <link rel="stylesheet" href="/money-sheet.css?v=v6.5.5-k3">
     <link rel="stylesheet" href="/landing-experience.css?v=20261003-v4">
 <link rel="stylesheet" href="/number-flow.css?v=20260929-v1">
 <link rel="stylesheet" href="/viewport.css?v=20260929-v1">
@@ -2644,25 +2644,34 @@ html.light #googleCompleteProfileModal input {
                 <button type="button" class="fchip" data-tr-status="sl" onclick="filterTrStatus('sl')">Stop loss</button>
                 <button type="button" class="fchip" data-tr-status="exp" onclick="filterTrStatus('exp')">Kedaluwarsa</button>
             </div>
-            <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
-                <input id="trSearchInputV2" placeholder="Cari ticker…" class="inp" style="height:30px;width:130px;font-family:var(--ac-font-mono);text-transform:uppercase" oninput="onTrSearchInput()">
-                <span class="mut num" id="trShownRowsCount" style="font-size:12px">0 baris</span>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:nowrap">
+                <select id="trStatusFilter" aria-label="Filter status sinyal track record" onchange="renderTrackRecordTable()" class="ac-select text-xs py-1 px-2" style="height:30px;width:auto;min-width:140px;flex-shrink:0">
+                    <option value="all">Status: Semua</option>
+                    <option value="TP2_HIT">TP2 Hit (Maksimal)</option>
+                    <option value="TP1_HIT">TP1 Hit (Target 1)</option>
+                    <option value="SL_HIT">SL Hit</option>
+                    <option value="RUNNING">Running</option>
+                    <option value="WAITING">Menunggu</option>
+                    <option value="EXPIRED">Sinyal Kedaluwarsa</option>
+                </select>
+                <input id="trSearchInput" aria-label="Cari ticker track record" placeholder="Cari ticker…" class="inp" style="height:30px;width:130px;font-family:var(--ac-font-mono);text-transform:uppercase;flex-shrink:0" oninput="onTrSearchInput()">
+                <span class="mut num" id="trShownRowsCount" style="font-size:12px;white-space:nowrap">0 baris</span>
             </div>
         </div>
-        <div class="tw">
-            <table class="tbl" id="trCanvasTable" style="min-width:980px">
+        <div id="trTableWrap" class="tw overflow-x-auto" tabindex="0" role="region" aria-label="Tabel riwayat sinyal track record">
+            <table class="tbl min-w-[960px] table-fixed" id="trCanvasTable" style="min-width:1040px">
                 <thead>
                     <tr>
-                        <th>Dikunci</th>
-                        <th>Ticker</th>
-                        <th>Mode</th>
-                        <th class="r">Entry</th>
-                        <th class="r">SL</th>
-                        <th class="r">TP1</th>
-                        <th class="r">Keluar</th>
-                        <th class="r">Hasil %</th>
-                        <th class="r">Durasi</th>
-                        <th>Status</th>
+                        <th class="w-[76px]" style="width:76px">Dikunci</th>
+                        <th class="w-[84px]" style="width:84px">Ticker</th>
+                        <th class="w-[140px]" style="width:140px">Mode</th>
+                        <th class="r w-[130px]" style="width:135px">Entry</th>
+                        <th class="r w-[85px]" style="width:80px">SL</th>
+                        <th class="r w-[85px]" style="width:80px">TP1</th>
+                        <th class="r w-[85px]" style="width:80px">Keluar</th>
+                        <th class="r w-[90px]" style="width:90px">Hasil %</th>
+                        <th class="r w-[85px]" style="width:85px">Durasi</th>
+                        <th class="w-[180px]" style="width:190px">Status</th>
                     </tr>
                 </thead>
                 <tbody id="trCanvasTableBody">
@@ -2673,128 +2682,24 @@ html.light #googleCompleteProfileModal input {
         <div id="trCanvasEmptyState" class="hidden py-12 text-center text-gray-500 text-xs">
             Tidak ada sinyal yang sesuai dengan filter.
         </div>
+        <div class="ac-metric-strip hidden" id="trackRecordSummaryGrid" aria-hidden="true" style="display:none">
+            <div><span id="trTotalSignals">—</span><p id="trTotalSignalsSub">Rekomendasi tercatat</p></div>
+            <div><span id="trWinRateTp1">—</span><p id="trTp1HitsSub">— sinyal tercapai</p></div>
+            <div><span id="trWinRateTp2">—</span><p id="trTp2HitsSub">— target maksimal</p></div>
+            <div><span id="trSlRate">—</span><p id="trSlHitsSub">— kena Stop Loss</p></div>
+            <div><span id="trBestGain">—</span><p id="trBestGainSub">Sepanjang waktu</p></div>
+        </div>
         <div class="prov">
             <span><b>Penyebut</b> hanya sinyal yang selesai dievaluasi</span>
             <span><b>Aturan Three-Horizon</b> batas pantau 5 / 10 / 30 hari bursa</span>
         </div>
     </section>
 
-    <!-- Legacy & Backtesting Controls in Collapsible Alat Lanjutan -->
-    <details class="adv-tools" style="margin-top:16px">
-        <summary>Alat lanjutan</summary>
+    <!-- Simulasi & Backtesting Strategi inside Collapsible Alat Lanjutan (no duplicate signal table) -->
+    <details class="adv-tools" style="margin-top:16px" ontoggle="if(this.open && typeof triggerBacktestSimulation==='function'){triggerBacktestSimulation();}">
+        <summary>Alat lanjutan: Simulasi &amp; Backtesting Strategi</summary>
         <div class="adv-tools-content space-y-4 pt-2">
-            <!-- View Switcher (Rekap vs Backtesting) -->
-            <div class="flex items-center gap-2 border-b border-[var(--ac-line-hairline,#374151)] pb-2.5">
-                <button id="trViewTabTable" onclick="switchTrackRecordView('table')" class="ac-btn ac-btn-secondary is-active text-xs py-1.5 px-3 inline-flex items-center gap-1.5 font-semibold">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    <span>Rekap Sinyal Realtime</span>
-                </button>
-                <button id="trViewTabBacktest" onclick="switchTrackRecordView('backtest')" class="ac-btn ac-btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5 font-semibold">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693l-1.57-.393m15.6 0a4.5 4.5 0 01-8.8 0m0 0a4.5 4.5 0 01-6.8 0"/></svg>
-                    <span>Simulasi &amp; Backtesting Strategi</span>
-                    <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono">Baru</span>
-                </button>
-            </div>
-
-    <!-- WRAPPER 1: TABEL REKAP SINYAL (DEFAULT) -->
-    <div id="trTableViewPanel" class="space-y-4">
-        <!-- Continuous Audit Metric Strip (§76.7) -->
-        <div class="ac-metric-strip" id="trackRecordSummaryGrid">
-            <div class="ac-metric flex-1">
-                <span class="ac-metric-label">Total Sinyal Tercatat</span>
-                <span class="ac-metric-value" id="trTotalSignals">—</span>
-                <p class="text-[11px] text-gray-500 mt-1" id="trTotalSignalsSub">Rekomendasi tercatat</p>
-            </div>
-            <div class="ac-metric flex-1">
-                <span class="ac-metric-label">Capaian Target TP1</span>
-                <span class="ac-metric-value" id="trWinRateTp1" style="color: var(--ac-gain,#10b981);">—</span>
-                <p class="text-[11px] text-emerald-400/70 mt-1" id="trTp1HitsSub">— sinyal tercapai</p>
-            </div>
-            <div class="ac-metric flex-1">
-                <span class="ac-metric-label">Capaian Target TP2</span>
-                <span class="ac-metric-value" id="trWinRateTp2" style="color: var(--ac-gain,#10b981);">—</span>
-                <p class="text-[11px] text-emerald-400/70 mt-1" id="trTp2HitsSub">— target maksimal</p>
-            </div>
-            <div class="ac-metric flex-1">
-                <span class="ac-metric-label">Kena Stop Loss</span>
-                <span class="ac-metric-value" id="trSlRate" style="color: var(--ac-loss,#ef4444);">—</span>
-                <p class="text-[11px] text-rose-400/70 mt-1" id="trSlHitsSub">— kena Stop Loss</p>
-            </div>
-            <div class="ac-metric flex-1">
-                <span class="ac-metric-label">Gain Maks. Tercatat</span>
-                <span class="ac-metric-value" id="trBestGain" style="color: var(--ac-gain,#10b981);">—</span>
-                <p class="text-[11px] text-emerald-400/70 mt-1" id="trBestGainSub">Sepanjang waktu</p>
-            </div>
-        </div>
-
-        <!-- Category Breakdown Cards -->
-        <div class="space-y-2">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--ac-text-secondary,#9ca3af)]">Ringkasan per Kategori</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="trCategoryGrid">
-                <!-- Rendered by JS -->
-            </div>
-        </div>
-
-        <!-- Filter Bar -->
-        <div class="ac-surface-bounded p-3 space-y-2">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-                <!-- Category Tab Pill Filters -->
-                <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5" id="trCategoryTabs">
-                    <button onclick="filterTrackRecordCategory('all')" class="screener-tab is-active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="all">Semua</button>
-                    <button onclick="filterTrackRecordCategory('daytrade')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="daytrade">Day Trade</button>
-                    <button onclick="filterTrackRecordCategory('swing_konglo')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="swing_konglo">Swing Konglo</button>
-                    <button onclick="filterTrackRecordCategory('swing_nk')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="swing_nk">Swing Non-Konglo</button>
-                    <button onclick="filterTrackRecordCategory('top5')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="top5">Top 5</button>
-                </div>
-
-                <!-- Status & Search Inputs -->
-                <div class="flex items-center gap-2">
-                    <select id="trStatusFilter" aria-label="Filter status sinyal track record" onchange="renderTrackRecordTable()" class="ac-select text-xs py-1.5 px-2.5">
-                        <option value="all">Status: Semua</option>
-                        <option value="TP2_HIT">TP2 Hit (Maksimal)</option>
-                        <option value="TP1_HIT">TP1 Hit (Target 1)</option>
-                        <option value="SL_HIT">SL Hit</option>
-                        <option value="RUNNING">Running</option>
-                        <option value="WAITING">Menunggu</option>
-                        <option value="EXPIRED">Sinyal Kedaluwarsa</option>
-                    </select>
-                    <input id="trSearchInput" aria-label="Cari ticker track record" oninput="renderTrackRecordTable()" placeholder="Cari ticker..." class="ac-input text-xs py-1.5 px-2.5 w-28 sm:w-36">
-                </div>
-            </div>
-        </div>
-
-        <!-- Table of Signals -->
-        <div class="ac-surface-bounded overflow-hidden">
-            <div id="trTableWrap" class="overflow-x-auto overflow-y-auto max-h-[580px] scrollbar-thin focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel riwayat sinyal track record">
-                <table class="w-full text-xs border-collapse min-w-[960px] table-fixed">
-                    <thead class="sticky top-0 bg-[var(--ac-surface,#181d28)] z-20 shadow-sm">
-                        <tr class="border-b border-[var(--ac-line-hairline,#374151)] text-[var(--ac-text-secondary,#9ca3af)] font-medium text-left">
-                            <th class="w-[110px] px-3 py-2.5 sticky left-0 bg-[var(--ac-surface,#181d28)] z-30">Ticker</th>
-                            <th class="w-[95px] px-3 py-2.5">Kategori</th>
-                            <th class="w-[125px] px-3 py-2.5">Waktu Sinyal</th>
-                            <th class="w-[110px] px-3 py-2.5 text-right">Entry</th>
-                            <th class="w-[90px] px-3 py-2.5 text-right">Target 1</th>
-                            <th class="w-[90px] px-3 py-2.5 text-right">Target 2</th>
-                            <th class="w-[90px] px-3 py-2.5 text-right">Stop Loss</th>
-                            <th class="w-[140px] px-3 py-2.5 text-center">Status / Eksekusi</th>
-                            <th class="w-[90px] px-3 py-2.5 text-right">Gain / Loss</th>
-                            <th class="w-[90px] px-3 py-2.5 text-right">Durasi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="trTableBody" class="divide-y divide-[var(--ac-line-hairline,#374151)]/30 text-[var(--text-primary,#d1d5db)]">
-                        <!-- Dynamic rows or skeleton -->
-                    </tbody>
-                </table>
-            </div>
-            <div id="trMobileList" class="tr-mobile-cards p-3"></div>
-            <div id="trEmptyState" class="hidden py-12 text-center text-[var(--ac-text-muted,#6b7280)] text-xs">
-                Tidak ada sinyal yang sesuai dengan filter.
-            </div>
-        </div>
-    </div>
-
-    <!-- WRAPPER 2: SIMULASI & BACKTESTING STRATEGI -->
-    <div id="trBacktestViewPanel" class="hidden space-y-4">
+    <div id="trBacktestViewPanel" class="space-y-4">
         <!-- Interactive Controls Card -->
         <div class="bg-dark-800/60 border border-dark-600/40 rounded-xl p-4 space-y-3">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-dark-600/30 pb-2.5">
@@ -2814,12 +2719,12 @@ html.light #googleCompleteProfileModal input {
             <!-- Filters Grid -->
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                 <div>
-                    <label for="btCategoryFilter" class="block text-[11px] font-medium text-gray-400 mb-1">Kategori Sinyal</label>
+                    <label for="btCategoryFilter" class="block text-[11px] font-medium text-gray-400 mb-1">Kategori Horizon</label>
                     <select id="btCategoryFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
-                        <option value="all">Semua Kategori</option>
-                        <option value="daytrade">Day Trade</option>
-                        <option value="swing_konglo">Swing Konglo</option>
-                        <option value="swing_nk">Swing Non-Konglo</option>
+                        <option value="all">Semua Horizon</option>
+                        <option value="potensi_besok">Potensi Besok (1–5H)</option>
+                        <option value="short_swing">Short Swing (3–10H)</option>
+                        <option value="swing">Swing (7–30H)</option>
                         <option value="top5">Top 5</option>
                     </select>
                 </div>
@@ -4530,7 +4435,7 @@ html.light #googleCompleteProfileModal input {
                                 <div id="msDetailReconciliationNote" style="color:var(--ac-muted)">Rekonsiliasi sumber: KSEI mencatat porsi scripless publik, IDX menetapkan sesuai regulasi bursa.</div>
                             </div>
 
-                            <div id="msDetailNote" style="margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--ac-raised);border:1px solid var(--ac-hair);font-size:12px">Konsentrasi kepemilikan tinggi; peredaran saham di publik terbatas sehingga volatilitas bisa tinggi.</div>
+                            <div id="msDetailNote" style="margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--ac-warn-soft, rgba(217,119,6,0.12));border:1px solid rgba(180,83,9,0.32);color:var(--ac-ink);font-size:12px;font-weight:500">Konsentrasi kepemilikan tinggi; peredaran saham di publik terbatas sehingga volatilitas bisa tinggi.</div>
 
                             <!-- Shareholder Roster (Daftar Pemegang Saham) Langsung Aktif di Pane REQ-38 -->
                             <div style="margin-top:16px;border-top:1px solid var(--ac-hair);padding-top:14px">
@@ -8491,14 +8396,6 @@ function navigateTo(page) {
             if (appMainEl) appMainEl.scrollTop = 0;
             if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, 0);
         } catch (_) {}
-        // REQ-23 & REQ-24: Scroll viewport smoothly to active container
-        if (page === 'portofolio' || page === 'portfolio') {
-            try {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } catch (_) {
-                window.scrollTo({ top: target.offsetTop || 0, behavior: 'smooth' });
-            }
-        }
     }
     // Ticker context is an Analisis-workspace concern only. On Dashboard and the
     // other macro pages this call is skipped entirely, so navigating to the
@@ -18785,9 +18682,9 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/money-sheet-lazy-loader.js?v=20261001-v1"></script>
 <script src="/catatan-admin-runtime.js?v=20261024-v1"></script>
 <script src="/screener-lifecycle-ui.js?v=20260816-v1"></script>
-<script src="/track-record-runtime.js"></script>
+<script src="/track-record-runtime.js?v=v6.5.5-k3"></script>
 <script src="/analysis-tools-registry.js?v=20261003-v1"></script>
-<script src="/track-record-backtest.js"></script>
+<script src="/track-record-backtest.js?v=v6.5.5-k3"></script>
 <script src="/watchlist-runtime.js?v=20261022-v1"></script>
 <script src="/chart-viewer.js?v=20260905-v1"></script>
 <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
@@ -18800,7 +18697,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/bandarmologi-runtime.js?v=v6.5.5-k2"></script>
 <script src="/portfolio-planner-v1.js?v=v6.5.5-k2"></script>
 <script src="/portfolio-command-center-model.js?v=v6.5.5-k2"></script>
-<script src="/portfolio-command-center.js?v=v6.5.5-k2"></script>
+<script src="/portfolio-command-center.js?v=v6.5.5-k3"></script>
 <script src="/portfolio-position-scenarios.js?v=v6.5.5-k2"></script>
 <script src="/account-center-v1.js?v=v6.5.5-k2"></script>
 <script>

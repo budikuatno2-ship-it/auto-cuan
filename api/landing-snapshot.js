@@ -125,6 +125,7 @@ function buildThreeHorizonLanding(threeDoc) {
 
 let _cachedLandingPayload = null;
 let _cachedLandingAt = 0;
+let _cachedLandingSig = null;
 const LANDING_CACHE_TTL_MS = 30 * 1000;
 
 module.exports = async function handler(req, res) {
@@ -138,7 +139,9 @@ module.exports = async function handler(req, res) {
     }
 
     const now = Date.now();
-    if (_cachedLandingPayload && (now - _cachedLandingAt < LANDING_CACHE_TTL_MS)) {
+    const { getSnapshotVersionSig } = require('../lib/snapshot-mtime-guard');
+    const snapSig = getSnapshotVersionSig();
+    if (_cachedLandingPayload && _cachedLandingSig === snapSig && (now - _cachedLandingAt < LANDING_CACHE_TTL_MS)) {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=30');
@@ -157,6 +160,7 @@ module.exports = async function handler(req, res) {
       });
       _cachedLandingPayload = bodyStr;
       _cachedLandingAt = now;
+      _cachedLandingSig = snapSig;
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=30');

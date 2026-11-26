@@ -1,7 +1,7 @@
 {
   "dailyLimitOverride": null,
   "planName": "Supporter",
-  "planExpiresAt": "2026-12-31T23:59:59+07:00",
+  "planExpiresAt": "2026-12-18T23:59:59+07:00",
   "postExpiryDefaultLimit": 1000,
   "preExpiryDefaultLimit": 18080,
   "maxQuota": 18080,

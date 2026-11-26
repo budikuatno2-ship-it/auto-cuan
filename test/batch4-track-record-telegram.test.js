@@ -169,17 +169,19 @@ test('Batch 4: Track Record table header alignment and fixed table layout', () =
   const indexHtml = read('public/index.html');
   const css = read('public/ui-theme.css');
 
-  assert.match(indexHtml, /<table[^>]*class="[^"]*min-w-\[960px\][^"]*table-fixed[^"]*"/);
-  assert.match(indexHtml, /<th[^>]*w-\[110px\][^>]*>Ticker<\/th>/);
-  assert.match(indexHtml, /<th[^>]*w-\[95px\][^>]*>Kategori<\/th>/);
-  assert.match(indexHtml, /<th[^>]*w-\[125px\][^>]*>Waktu Sinyal<\/th>/);
-  assert.match(indexHtml, /<th[^>]*w-\[110px\][^>]*>Entry<\/th>/);
-  assert.match(indexHtml, /<th[^>]*w-\[90px\][^>]*>Target 1<\/th>/);
-  assert.match(indexHtml, /<th[^>]*w-\[90px\][^>]*>Target 2<\/th>/);
-  assert.match(indexHtml, /<th[^>]*w-\[90px\][^>]*>Stop Loss<\/th>/);
-  assert.match(indexHtml, /<th[^>]*w-\[140px\][^>]*>Status \/ Eksekusi<\/th>/);
-  assert.match(indexHtml, /<th[^>]*w-\[90px\][^>]*>Gain \/ Loss<\/th>/);
-  assert.match(indexHtml, /<th[^>]*w-\[90px\][^>]*>Durasi<\/th>/);
+  assert.doesNotMatch(indexHtml, /id="trTableViewPanel"/, 'duplicate legacy Rekap Sinyal Realtime panel must be removed');
+  assert.doesNotMatch(indexHtml, /id="trTableBody"/, 'duplicate legacy trTableBody must be removed');
+  assert.match(indexHtml, /<table[^>]*class="[^"]*min-w-\[960px\][^"]*table-fixed[^"]*"[^>]*id="trCanvasTable"/);
+  assert.match(indexHtml, /<th[^>]*w-\[76px\][^>]*>Dikunci<\/th>/);
+  assert.match(indexHtml, /<th[^>]*w-\[84px\][^>]*>Ticker<\/th>/);
+  assert.match(indexHtml, /<th[^>]*w-\[140px\][^>]*>Mode<\/th>/);
+  assert.match(indexHtml, /<th[^>]*w-\[130px\][^>]*>Entry<\/th>/);
+  assert.match(indexHtml, /<th[^>]*w-\[85px\][^>]*>SL<\/th>/);
+  assert.match(indexHtml, /<th[^>]*w-\[85px\][^>]*>TP1<\/th>/);
+  assert.match(indexHtml, /<th[^>]*w-\[85px\][^>]*>Keluar<\/th>/);
+  assert.match(indexHtml, /<th[^>]*w-\[90px\][^>]*>Hasil %<\/th>/);
+  assert.match(indexHtml, /<th[^>]*w-\[85px\][^>]*>Durasi<\/th>/);
+  assert.match(indexHtml, /<th[^>]*w-\[180px\][^>]*>Status<\/th>/);
 
   assert.match(css, /#trTableWrap table\s*\{[^}]*table-layout:\s*fixed/);
 });

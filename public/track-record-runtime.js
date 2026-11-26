@@ -103,7 +103,7 @@ function trSkeletonHtml() {
 
 async function loadTrackRecord(force) {
     if (_trInFlight) return;
-    var tbody = document.getElementById('trTableBody');
+    var tbody = document.getElementById('trTableBody') || document.getElementById('trCanvasTableBody');
     if (!tbody) return;
 
     if (!force && _trData) {
@@ -483,8 +483,8 @@ function renderTrackRecordTable() {
     var signals = _trData.signals || [];
     var statusFilter = (document.getElementById('trStatusFilter') && document.getElementById('trStatusFilter').value) || 'all';
     var canvasStatus = _trFilterStatus || 'all';
-    var search = (document.getElementById('trSearchInputV2') && document.getElementById('trSearchInputV2').value.trim().toUpperCase()) ||
-                 (document.getElementById('trSearchInput') && document.getElementById('trSearchInput').value.trim().toUpperCase()) || '';
+    var search = (document.getElementById('trSearchInput') && document.getElementById('trSearchInput').value.trim().toUpperCase()) ||
+                 (document.getElementById('trSearchInputV2') && document.getElementById('trSearchInputV2').value.trim().toUpperCase()) || '';
 
     var filtered = signals.filter(function(s) {
         var sourceCat = s.source || s.category || '';
@@ -829,8 +829,10 @@ function switchTrackRecordView(viewName) {
     if (panelBacktest) {
         if (isBacktest) {
             panelBacktest.classList.remove('hidden');
+            var advParent = panelBacktest.closest ? panelBacktest.closest('.adv-tools') : null;
+            if (advParent) advParent.open = true;
             triggerBacktestSimulation();
-        } else {
+        } else if (!(panelBacktest.closest && panelBacktest.closest('.adv-tools'))) {
             panelBacktest.classList.add('hidden');
         }
     }

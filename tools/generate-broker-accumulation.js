@@ -43,6 +43,7 @@ const path = require('node:path');
 
 const bandarmologiService = require('../lib/bandarmologi-service');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
+const arjumSqliteHydrate = require('../lib/arjum-sqlite-hydrate');
 
 const ROOT = path.resolve(__dirname, '..');
 const PROD_DATA_DIR = '/home/ubuntu/auto-cuan/data/arjum-data';
@@ -116,19 +117,25 @@ function isProductionDataDir(dir) {
 }
 
 function listTickersFromSummaries(dataDir, date) {
+  const tickerSet = new Set();
   const summaryRoot = path.join(dataDir, 'broker-summary');
-  if (!fs.existsSync(summaryRoot)) return [];
-  return fs.readdirSync(summaryRoot)
-    .filter((name) => !name.startsWith('.'))
-    .filter((name) => {
+  if (fs.existsSync(summaryRoot)) {
+    for (const name of fs.readdirSync(summaryRoot)) {
+      if (name.startsWith('.')) continue;
       try {
-        return fs.statSync(path.join(summaryRoot, name)).isDirectory();
-      } catch (_) {
-        return false;
-      }
-    })
-    .filter((ticker) => fs.existsSync(path.join(summaryRoot, ticker, date + '.json')))
-    .sort();
+        if (!fs.statSync(path.join(summaryRoot, name)).isDirectory()) continue;
+        if (fs.existsSync(path.join(summaryRoot, name, date + '.json'))) tickerSet.add(name);
+      } catch (_) {}
+    }
+  }
+  const sqliteRows = arjumSqliteHydrate.listRowsForDateFromSqlite(
+    arjumSqliteHydrate.FLOW_TO_TABLE.ALL,
+    date
+  );
+  for (const ticker of sqliteRows.keys()) {
+    tickerSet.add(ticker);
+  }
+  return Array.from(tickerSet).sort();
 }
 
 function readJsonSafe(filePath) {
@@ -205,7 +212,16 @@ async function main(argv = process.argv.slice(2), deps = {}) {
       continue;
     }
 
-    const rawSummary = readJsonSafe(path.join(dataDir, 'broker-summary', ticker, options.date + '.json'));
+    let rawSummary = readJsonSafe(path.join(dataDir, 'broker-summary', ticker, options.date + '.json'));
+    if (!rawSummary) {
+      rawSummary = arjumSqliteHydrate.hydrateFromSqliteIfPresent({
+        ticker,
+        date: options.date,
+        flow: 'all',
+        baseDir: dataDir,
+        hydrateToDisk: Boolean(options.apply)
+      });
+    }
     if (!rawSummary) {
       summary.invalid_summary++;
       continue;

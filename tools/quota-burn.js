@@ -272,8 +272,12 @@ async function main() {
   const now0 = new Date();
   const cfg = quotaState.loadConfig();
   const floor = opts.floor != null ? opts.floor : quotaState.reserveFloorFor(now0, cfg);
-  const snap0 = quotaState.getQuotaSnapshot(now0);
-  const spendable0 = Math.max(0, snap0.remaining - floor);
+  let snap0 = quotaState.getQuotaSnapshot(now0);
+  if (!opts.dryRun && (!snap0.usageKnown || snap0.remaining == null) && typeof quotaState.syncQuotaState === 'function') {
+    try { await quotaState.syncQuotaState(); } catch (_) {}
+    snap0 = quotaState.getQuotaSnapshot(new Date());
+  }
+  const spendable0 = snap0.usageKnown && snap0.remaining != null ? Math.max(0, snap0.remaining - floor) : 0;
   let budget = spendable0;
   if (opts.maxRequests != null) budget = Math.min(budget, opts.maxRequests);
   console.log('[quota-burn] P4 start limit=' + snap0.limit + ' used=' + snap0.used + ' remaining=' + snap0.remaining + ' floor=' + floor + ' spendable=' + spendable0 + ' budget=' + budget + ' dryRun=' + opts.dryRun + ' priorities=' + opts.priorities.join(','));
@@ -284,22 +288,8 @@ async function main() {
     writeProgress({ startedAt: startIso, finishedAt: wibIsoNow(), spent: 0, stopped: 'FORBIDDEN_WINDOW', floor, limit: snap0.limit, usedBefore: snap0.used });
     return { spent: 0, stopped: 'FORBIDDEN_WINDOW' };
   }
-  const gate0 = quotaState.canConsumeQuota(1, opts.jobType, { now: now0, reserveFloor: floor });
-  if (!gate0.ok) {
-    console.log('[quota-burn] SKIP: gate menolak (' + gate0.reason + ').');
-    writeHeartbeat('SCHEDULED_SKIP', 0, 0, startIso, 'gate: ' + gate0.reason);
-    writeProgress({ startedAt: startIso, finishedAt: wibIsoNow(), spent: 0, stopped: gate0.reason, floor, limit: snap0.limit, usedBefore: snap0.used });
-    return { spent: 0, stopped: gate0.reason };
-  }
-  if (budget <= 0 || snap0.remaining <= 50) {
-    const stopReason = snap0.remaining <= 50 ? 'SAFE_BUFFER_50' : 'NO_BUDGET';
-    console.log('[quota-burn] SKIP: remaining=' + snap0.remaining + ' safetyStop=' + stopReason);
-    writeHeartbeat('SCHEDULED_SKIP', 0, 0, startIso, stopReason);
-    writeProgress({ startedAt: startIso, finishedAt: wibIsoNow(), spent: 0, stopped: stopReason, floor, limit: snap0.limit, usedBefore: snap0.used });
-    return { spent: 0, stopped: stopReason };
-  }
 
-  // Kloter 2 guard: 0 paid requests when Jan-Nov 2026 Foreign backfill already complete.
+  // Kloter 2/3 guard: 0 paid requests when Jan-Nov 2026 Foreign backfill already complete.
   try {
     const adminSvc = require('../lib/admin-console-service');
     if (adminSvc && typeof adminSvc.getBackfillForecast === 'function') {
@@ -313,8 +303,27 @@ async function main() {
     }
   } catch (_) {}
 
+  const gate0 = quotaState.canConsumeQuota(1, opts.jobType, { now: now0, reserveFloor: floor });
+  if (!gate0.ok) {
+    console.log('[quota-burn] SKIP: gate menolak (' + gate0.reason + ').');
+    writeHeartbeat('SCHEDULED_SKIP', 0, 0, startIso, 'gate: ' + gate0.reason);
+    writeProgress({ startedAt: startIso, finishedAt: wibIsoNow(), spent: 0, stopped: gate0.reason, floor, limit: snap0.limit, usedBefore: snap0.used });
+    return { spent: 0, stopped: gate0.reason };
+  }
+  if (budget <= 0 || (snap0.usageKnown && snap0.remaining != null && snap0.remaining <= 50)) {
+    const stopReason = (snap0.usageKnown && snap0.remaining != null && snap0.remaining <= 50) ? 'SAFE_BUFFER_50' : 'NO_BUDGET';
+    console.log('[quota-burn] SKIP: remaining=' + snap0.remaining + ' safetyStop=' + stopReason);
+    writeHeartbeat('SCHEDULED_SKIP', 0, 0, startIso, stopReason);
+    writeProgress({ startedAt: startIso, finishedAt: wibIsoNow(), spent: 0, stopped: stopReason, floor, limit: snap0.limit, usedBefore: snap0.used });
+    return { spent: 0, stopped: stopReason };
+  }
+
   let queue = null;
   try { queue = JSON.parse(fs.readFileSync(opts.queue, 'utf8')); } catch (e) {
+    if (opts.dryRun) {
+      console.log('[quota-burn] DRY-RUN SKIP: antrean tidak tersedia di path lokal (' + opts.queue + ').');
+      return { spent: 0, stopped: 'NO_LOCAL_QUEUE_DRY_RUN' };
+    }
     console.log('[quota-burn] FATAL: antrean tidak terbaca: ' + opts.queue);
     writeHeartbeat('ERROR', 1, 0, startIso, 'queue unreadable');
     return { spent: 0, stopped: 'QUEUE_MISSING' };
@@ -405,6 +414,17 @@ async function main() {
       const flow = isF ? 'F' : 'all';
       const fp = path.join(dir, c.ticker, c.date + '.json');
       if (isValidJsonFile(fp)) { skipped += 1; continue; }
+      try {
+        const { hydrateFromSqliteIfPresent } = require('../lib/arjum-sqlite-hydrate');
+        const hydrated = hydrateFromSqliteIfPresent({
+          ticker: c.ticker,
+          date: c.date,
+          flow,
+          baseDir: DATA_ROOT,
+          hydrateToDisk: !opts.dryRun
+        });
+        if (hydrated) { skipped += 1; continue; }
+      } catch (_) {}
       if (opts.dryRun) { spent += 1; batchTickers.push(c.ticker); batchHadBroksum = true; }
       else {
         let res = null;

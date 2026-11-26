@@ -1997,6 +1997,9 @@
 
   root.initAdminConsole = function() {
     verifyAdminAuth();
+    if (typeof root.refreshBackfillForecast === 'function') {
+      root.refreshBackfillForecast();
+    }
   };
 
   // Auto-init on standalone admin page

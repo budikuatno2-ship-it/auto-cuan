@@ -98,6 +98,32 @@ const daytradeFcaLiveTradeProof = require('../lib/daytrade-fca-live-trade-proof'
 const { hotMarketStructureCache, hotSectorCache } = require('../lib/in-memory-ttl-cache');
 let c10FileCache = null;
 try { c10FileCache = require('../lib/c10-json-file-cache'); } catch (_) { c10FileCache = null; }
+
+const WATCHED_SNAPSHOT_PATHS = [];
+const snapshotMtimeGuard = require('../lib/snapshot-mtime-guard');
+let _lastSnapshotSig = null;
+let _lastSnapshotCheckAt = 0;
+
+function invalidateAllRuntimeCaches() {
+  try { hotSectorCache.clear(); } catch (_) {}
+  try { hotMarketStructureCache.clear(); } catch (_) {}
+  try { _webTop5HistoryCache = {}; } catch (_) {}
+  try { _trackRecordActionCache = {}; } catch (_) {}
+}
+
+function syncRuntimeCachesWithDisk(force) {
+  const now = Date.now();
+  if (!force && (now - _lastSnapshotCheckAt) < 2000) return false;
+  _lastSnapshotCheckAt = now;
+  const sig = snapshotMtimeGuard.getSnapshotVersionSig(force);
+  if (_lastSnapshotSig !== null && sig !== _lastSnapshotSig) {
+    invalidateAllRuntimeCaches();
+    _lastSnapshotSig = sig;
+    return true;
+  }
+  if (_lastSnapshotSig === null) _lastSnapshotSig = sig;
+  return false;
+}
 const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
 
 // C4 (22 Oct 2026): the public Bandarmologi endpoint must not let an anonymous
@@ -210,6 +236,7 @@ module.exports = async function handler(req, res) {
   }, TIMEOUT_GUARD_MS);
 
   try {
+    syncRuntimeCachesWithDisk();
     const action = req.query.action || null;
     const groupCode = req.query.group || null;
 
@@ -9368,10 +9395,54 @@ async function buildWebTop5HistoryCollections(rows, limit, priceFetcher) {
 }
 
 var _webTop5HistoryCache = {};
-var WEB_TOP5_HISTORY_CACHE_TTL_MS = 30 * 1000;
+var WEB_TOP5_HISTORY_CACHE_TTL_MS = 60 * 1000;
+var _adminRoleTtlCache = new Map();
+var ADMIN_ROLE_TTL_MS = 30 * 1000;
+
+function getAuthLookupCacheKey(req, supabase) {
+  try {
+    var url = supabase && typeof supabase.supabaseUrl === 'string' ? supabase.supabaseUrl : '';
+    if (!url.startsWith('https://')) return null;
+    var { getSessionFromRequest } = require('../lib/admin-session');
+    var s = getSessionFromRequest(req);
+    if (!s || !s.uid || !s.un) return null;
+    return url + ':' + s.uid + ':' + String(s.un).toLowerCase();
+  } catch (_) {
+    return null;
+  }
+}
+
+async function lookupDashboardAdminAppUserCached(req, supabase) {
+  var key = getAuthLookupCacheKey(req, supabase);
+  if (key) {
+    var hit = _adminRoleTtlCache.get(key);
+    if (hit && (Date.now() - hit.at) < ADMIN_ROLE_TTL_MS) return hit.userData;
+  }
+  var userData = await lookupDashboardAdminAppUser(req, supabase);
+  if (key && userData) {
+    if (_adminRoleTtlCache.size > 200) _adminRoleTtlCache.clear();
+    _adminRoleTtlCache.set(key, { at: Date.now(), userData: userData });
+  }
+  return userData;
+}
+
+async function isDashboardAdminUserCached(req, supabase) {
+  var userData = await lookupDashboardAdminAppUserCached(req, supabase);
+  if (!userData) return false;
+  if (userData.is_blocked || userData.is_approved === false) return false;
+  if (userData.is_admin === true) return true;
+  var role = String(userData.role || userData.user_role || '').trim().toLowerCase();
+  if (role === 'admin' || role === 'owner' || role === 'superadmin') return true;
+  var username = String(userData.username || '').trim().toLowerCase();
+  var userId = String(userData.id || '').trim().toLowerCase();
+  if (username && parseAdminAllowlist(process.env.ADMIN_USERNAMES).indexOf(username) >= 0) return true;
+  if (userId && parseAdminAllowlist(process.env.ADMIN_USER_IDS).indexOf(userId) >= 0) return true;
+  return false;
+}
 
 async function handleWebTop5History(req, res, supabase) {
-  if (!(await isDashboardScreenerLoggedIn(req, supabase))) {
+  var callerData = await lookupDashboardAdminAppUserCached(req, supabase);
+  if (!callerData || callerData.is_blocked || callerData.is_approved === false) {
     return sendDashboardScreenerGate(res, { limit: 0, show_archived: false, data_source: 'redacted_guest_dashboard' });
   }
   try {
@@ -9379,7 +9450,7 @@ async function handleWebTop5History(req, res, supabase) {
     if (!isFinite(limit) || limit <= 0) limit = 100;
     if (limit > 300) limit = 300;
     var showArchived = String(req.query.show_archived || '') === '1';
-    var isAdminCaller = await isDashboardAdminUser(req, supabase);
+    var isAdminCaller = await isDashboardAdminUserCached(req, supabase);
     var cacheKey = (isAdminCaller ? 'adm' : 'usr') + ':' + limit + ':' + (showArchived ? '1' : '0');
     var cached = _webTop5HistoryCache[cacheKey];
     if (cached && (Date.now() - cached.at < WEB_TOP5_HISTORY_CACHE_TTL_MS)) {

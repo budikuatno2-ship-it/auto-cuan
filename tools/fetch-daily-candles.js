@@ -468,10 +468,11 @@ async function runCandlePass(ctx) {
   // the process exit code is non-zero so the VPS wrapper / cron observes a
   // failed firing instead of a silently successful one (the prior behavior
   // only console.warn'd the sync error — FAIL SILENT).
-  summary.ok = !summary.sqlite_sync_failed &&
-    !summary.cross_check_failed &&
-    summary.failed === 0 &&
-    summary.stale_after_fetch === 0;
+  const outcome = classifyFetchOutcome(summary);
+  summary.coverage_ratio = outcome.coverage_ratio;
+  summary.partial_ok = outcome.partial_ok;
+  summary.status = outcome.status;
+  summary.ok = outcome.ok;
   if (require.main === module && !summary.ok) {
     process.exitCode = 3;
   }
@@ -485,6 +486,30 @@ async function runCandlePass(ctx) {
   return summary;
 }
 
+function classifyFetchOutcome(summary = {}) {
+  const ihsgReady = summary.ihsg_ok !== false;
+  const coveredCount = (Number(summary.fetched) || 0) + (Number(summary.cached) || 0);
+  const universe = Number(summary.universe) || 0;
+  const coverageRatio = universe > 0 ? (coveredCount / universe) : 1;
+  const partialCovered = coverageRatio >= 0.75;
+  const partialOk = !summary.sqlite_sync_failed &&
+    !summary.cross_check_failed &&
+    ihsgReady &&
+    partialCovered &&
+    ((Number(summary.failed) || 0) > 0 || (Number(summary.stale_after_fetch) || 0) > 0);
+  const ok = !summary.sqlite_sync_failed &&
+    !summary.cross_check_failed &&
+    ihsgReady &&
+    partialCovered;
+  const status = partialOk ? 'PARTIAL_OK' : (ok ? 'OK' : 'FAILED');
+  return {
+    coverage_ratio: Number(coverageRatio.toFixed(4)),
+    partial_ok: partialOk,
+    status,
+    ok
+  };
+}
+
 if (require.main === module) {
   main().catch(err => { console.error('Fatal:', err && err.message); process.exit(1); });
 }
@@ -496,6 +521,7 @@ module.exports = {
   createCalendarClient,
   resolveTradingDay,
   performDailyCrossCheck,
+  classifyFetchOutcome,
   DEFAULT_CROSSCHECK_TICKERS,
   main
 };
