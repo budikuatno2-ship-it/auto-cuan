@@ -702,17 +702,17 @@
 
     panel.innerHTML = [
       '<div class="space-y-4">',
-      '<div style="margin-bottom:18px"><h2 style="font-size:18px;margin:0 0 4px;font-weight:700">Langganan</h2><p class="ac-muted" style="margin:0">Hak akses akun saat ini.</p></div>',
-      '<div style="border:1px solid rgba(15,116,88,.3);border-radius:12px;padding:18px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;background:var(--accent-subtle)">',
-      '<div style="flex:1;min-width:220px"><div class="ac-section-kicker">Paket aktif</div><div style="font-size:20px;font-weight:700;letter-spacing:-.02em">' + esc(planName(ent && ent.current_plan, 'Pro Trader · Lifetime')) + '</div><div class="ac-muted" style="font-size:13px">' + (ent && ent.lifetime ? 'Tanpa batas waktu' : (ent && ent.expires_at ? 'Berlaku sampai ' + esc(dateId(ent.expires_at, true)) : 'Tanpa batas waktu · akun terverifikasi')) + '</div></div>',
-      '<div style="display:grid;gap:6px;font-size:13px"><span>✓ Screener 3 mode</span><span>✓ Bandarmologi &amp; Broker Hunter</span><span>✓ Asisten AI (kunci sendiri)</span><span>✓ Alert Telegram</span></div>',
+      '<div style="margin-bottom:18px"><h2 style="font-size:18px;margin:0 0 4px;font-weight:700">Langganan &amp; Akses VIP</h2><p class="ac-muted" style="margin:0">Status paket aktif, masa berlaku, katalog upgrade, dan klaim voucher transparan.</p></div>',
+      '<div style="border:1px solid var(--ac-brand, rgba(15,116,88,.3));border-radius:12px;padding:18px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;background:var(--ac-brand-soft, var(--accent-subtle))">',
+      '<div style="flex:1;min-width:220px"><div class="ac-section-kicker">Paket aktif</div><div style="font-size:20px;font-weight:800;letter-spacing:-.02em;margin-top:2px">' + esc(planName(ent && ent.current_plan, 'Pro Trader · Lifetime')) + '</div><div class="ac-muted" style="font-size:13px;margin-top:2px">' + (ent && ent.lifetime ? 'Tanpa batas waktu' : (ent && ent.expires_at ? 'Berlaku sampai ' + esc(dateId(ent.expires_at, true)) : 'Tanpa batas waktu · akun terverifikasi')) + '</div></div>',
+      '<div style="display:grid;gap:6px;font-size:13px"><span>✓ Screener Three-Horizon All-Price</span><span>✓ Bandarmologi &amp; Broker Hunter</span><span>✓ Asisten AI Gemini (BYOK)</span><span>✓ Alert Telegram Real-Time</span></div>',
       '</div>',
       '<div id="acTrialStatus" class="ac-callout" style="display:none"></div>',
 
-      '<div style="margin-top:24px"><h3 style="font-size:15px;margin:0 0 8px;font-weight:700">Katalog paket</h3><div class="ac-plans">' + planCards + '</div></div>',
+      '<div style="margin-top:24px"><h3 style="font-size:15px;margin:0 0 8px;font-weight:700">Katalog Paket VIP</h3><div class="ac-plans">' + planCards + '</div></div>',
 
       '<div style="margin-top:24px;border-top:1px solid var(--border-hairline);padding-top:18px">',
-      '<div class="ac-row"><label for="acVoucherInput">Kode voucher</label><div><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="acVoucherInput" class="ac-inp mono" placeholder="Contoh: CUAN2026" style="max-width:260px;text-transform:uppercase"><button type="button" id="acVoucherQuote" class="ac-btn ac-btn-primary ac-btn-sm" onclick="window.acQuoteVoucher()">Klaim voucher</button></div><div id="acVoucherResult"></div><div class="ac-hint" style="margin-top:8px">Coba “CUAN2026” untuk melihat status voucher.</div></div></div>',
+      '<div class="ac-row"><label for="acVoucherInput">Kode voucher</label><div><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="acVoucherInput" class="ac-inp mono" placeholder="Contoh: AC-XXXXXXXXXXXX" style="max-width:260px;text-transform:uppercase"><button type="button" id="acVoucherQuote" class="ac-btn ac-btn-primary ac-btn-sm" onclick="window.acQuoteVoucher()">Cek &amp; Klaim Voucher</button></div><div id="acVoucherResult"></div><div class="ac-hint" style="margin-top:8px">Masukkan kode voucher promo/diskon atau voucher aktivasi langsung.</div></div></div>',
       '</div>',
 
       currentProfile && currentProfile.is_admin ? adminVoucherHtml() : '',
@@ -720,6 +720,7 @@
     ].join('');
 
     wireAdminVoucherControls();
+    try { window.dispatchEvent(new CustomEvent('autocuan:account-center-opened', { detail: { tab: 'langganan' } })); } catch (_) {}
   }
 
   async function loadTrialStatus() {

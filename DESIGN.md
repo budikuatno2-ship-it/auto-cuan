@@ -1,15 +1,12 @@
-# Auto-Cuan DESIGN.md — FINAL v1.1
+# Auto-Cuan DESIGN.md — V2.0 (Auto-Cuan V7 Financial Intelligence Workstation)
 
-> **Status:** FINAL — frozen design and interaction contract for implementation planning  
+> **Status:** V2.0 ACTIVE — Kloter 4A Design System, Tokens (`tokens-v7.css`), & Motion Contract  
 > **Product:** Auto-Cuan  
-> **Direction:** Financial Intelligence Workstation  
-> **Primary theme:** Light-first  
-> **Frontend architecture:** Existing vanilla HTML/CSS/JavaScript SPA  
-> **Planning baseline audited:** `feat/daytrade-screener-v1` @ `d1375e3ed4ba02d2555265f753b96a629f10e7dc`  
-> **v1.0 frozen:** 2026-10-04  
-> **v1.1 candidate prepared:** 2026-10-04  
-> **Authority:** Canonical source of truth for the Auto-Cuan redesign. When older visual documents or legacy CSS conflict with this document, this document governs the target visual/interaction system. Existing production behavior, security, data semantics, and API contracts remain authoritative until a deliberate migration is approved and regression-tested.  
-> **Important:** This document does **not** authorize repository edits. Repository mutation still requires explicit user approval. Implementation begins only after explicit user approval and a fresh read-only baseline check.
+> **Direction:** Financial Intelligence Workstation (70% precision workstation · 20% editorial finance · 10% fluid motion)  
+> **Primary theme:** Light-first (`#EFF1EC` / `#13785D`) + Night Research Dark (`#0E1412` / `#48C797`)  
+> **Frontend architecture:** Vanilla HTML/CSS (`@layer`, `tokens-v7.css`, `0 !important` tokens) + JavaScript SPA (`motion/mini`, `@floating-ui/dom`, `focus-trap`, `NumberFlow`) + Node.js 22 CommonJS  
+> **Upgrade base:** `v6.5.5-final-release` (`85a872e46040c3c081e4880287918507e86991f3`)  
+> **v1.0 frozen:** 2026-10-04 · **v2.0 V7 Design Lab finalized:** 2026-11-26
 
 ---
 
@@ -443,7 +440,7 @@ Use pale brand-soft background, deep ink text, emerald icon/small edge indicator
 
 ## 11. Global Search & Shared Ticker Context
 
-Global search is a target workstation enhancement: **Cari ticker, halaman, atau aksi…**. `Ctrl/Cmd + K` may be used. Because a full command palette adds new behavior, treat it as **Class C** unless an implementation wave explicitly authorizes it. A simple existing ticker/page search may be visually upgraded without inventing unsupported actions.
+Global search (**Cari ticker, halaman, atau aksi…**, `Ctrl/Cmd + K` & `/`) is an **active production destination** (`public/command-palette.js`), backed by `/cache/ctrlk-search-index.json` (`964` items including 19 workspace menus and all IDX tickers, `< 100ms` local match) and `/api/sector-hot?action=stocks-search`.
 
 Research should share ticker context across applicable destinations. Do not duplicate ticker search bars on every research page.
 
@@ -516,9 +513,9 @@ Use ranked decision rows. Keep safety/excluded items available but collapsed by 
 
 ## 16. Screener
 
-Screener is **table-first**.
+Screener is **table-first** with strict **All-Price (`>= Rp 1`)** IDX coverage (`0` block on stocks `< Rp 50` or FCA).
 
-Primary modes: Konglo, Non-Konglo, Day Trade.
+Primary modes (Three-Horizon): `Potensi Besok (1–5H)`, `Short Swing (3–10H)`, `Swing (7–30H)` (legacy `Konglo/Non-Konglo/Day Trade` retired in V6.5.5+).
 
 Hierarchy: `mode → search → filters → sort/view → active filters → result count/freshness → results`.
 
@@ -1254,7 +1251,7 @@ Rules:
 
 Use for small mutually exclusive local modes such as:
 
-- Konglo / Non-Konglo / Day Trade;
+- Potensi Besok (1–5H) / Short Swing (3–10H) / Swing (7–30H);
 - AI / Chart;
 - Buyers / Sellers on constrained mobile;
 - Roster / Graph.
@@ -1572,8 +1569,8 @@ The redesign must not bypass backend entitlement.
 Default Screener surface:
 
 ```text
-Screener
-[Konglo] [Non-Konglo] [Day Trade]
+Screener (All-Price >= Rp 1)
+[Potensi Besok (1-5H)] [Short Swing (3-10H)] [Swing (7-30H)]
 
 Search | Filters | Sort | View
 Active filters / result count / freshness
@@ -1586,7 +1583,7 @@ Ticker | Setup/Tier | Score | Gate* | Aksi* | Exec | Price | Change | Vol/Avg | 
 
 Raw internal enums such as `WAIT_PULLBACK`, `A_PLUS_SETUP`, `ENTRY_AREA`, or execution buckets must pass through one canonical user-facing label mapper before they enter normal user-facing DOM.
 
-Day Trade may expose a different default column preset, while its complete current data remains available through columns/detail.
+`Potensi Besok (1–5H)` may expose a tailored short-horizon column preset, while its complete current data remains available through columns/detail.
 
 Entry, SL, TP1/TP2, R/R, and lot/size presentation must use the shared plan display selector/formatter rather than route-specific recomputation.
 
@@ -2195,7 +2192,7 @@ It answers: **Where am I in Auto-Cuan?**
 
 Segmented controls or compact local navigation such as:
 
-- Konglo / Non-Konglo / Day Trade;
+- Potensi Besok (1–5H) / Short Swing (3–10H) / Swing (7–30H);
 - AI / Chart;
 - Broker Summary / Akumulasi;
 - Guard / What-if.
@@ -2970,3 +2967,12 @@ Canonical decisions are frozen as follows:
 The design contract is complete enough to begin implementation planning without further visual exploration.
 
 **The workstation remains calm. The market is what moves.**
+
+---
+
+## 109. V7 Design System, Tokens (`tokens-v7.css`), & Living Motion Choreography
+
+1. **Compiled Tokens (`public/tokens-v7.css`):** Built deterministically with `style-dictionary@5.8.0` into `@layer reset, tokens, base, components, utilities, overrides;` with **`0 !important`** under `html[data-ac-v7="true"]` for both **Light** (`#EFF1EC` / `#FCFCFA` / `#13785D`) and **Night Research Dark** (`#0E1412` / `#141C19` / `#48C797`, zero pure `#000000`). All solid action/status surfaces pair with WCAG 2.1 AA `--ac-on-*` foreground tokens (`minRatio >= 4.5:1`).
+2. **Living, Fluid Motion (`public/v7-motion-shell.js`):** Coordinates `motion/mini` (`3.23 KB` gz), WAAPI (`cubic-bezier(0.22, 1, 0.36, 1)`), `number-flow-runtime.js`, `@floating-ui/dom` (`3.99 KB` gz), and `focus-trap` (`5.12 KB` gz) to deliver fluid sliding tab pills, staggered choreographed reveals (`180–260ms`), animated hero SVG signal line, ambient EOD live pulse, frosted glass sticky headers, and tactile hover/press depth — strictly obeying `prefers-reduced-motion: reduce`.
+3. **Auth, Account Center, & Langganan VIP:** Unified Masuk/Daftar modal switcher, anti-zoom `16px` mobile inputs, adaptive Light/Dark contrast, 6-tab Account Center, and transparent 3-step manual payment / voucher checkout (`public/subscription-manual-payment-v1.js`).
+4. **Upstream Attribution (`NOTICE`):** Visible UI attribution & repository `NOTICE` for TradingView Lightweight Charts (Apache-2.0), Apache ECharts (Apache-2.0), Style Dictionary (Apache-2.0), trawangan UX patterns (Apache-2.0), and MIT UI utilities.

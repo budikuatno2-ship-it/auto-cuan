@@ -1,0 +1,40 @@
+Auto-Cuan V7 — Third-Party Upstream Attribution Notice
+====================================================
+
+Auto-Cuan V7 ("Financial Intelligence Workstation") incorporates or bundles the following open-source libraries and UX patterns in compliance with their respective licenses.
+
+1. TradingView Lightweight Charts (Apache License 2.0)
+   Upstream: https://github.com/tradingview/lightweight-charts
+   Product Attribution: "Powered by Lightweight Charts(TM) by TradingView (https://www.tradingview.com/lightweight-charts/)"
+
+2. Apache ECharts (Apache License 2.0)
+   Upstream: https://echarts.apache.org / https://github.com/apache/echarts
+   Copyright: The Apache Software Foundation
+
+3. Style Dictionary (Apache License 2.0 — build-time token pipeline)
+   Upstream: https://github.com/style-dictionary/style-dictionary
+
+4. trawangan UX Patterns (Apache License 2.0)
+   Upstream: https://github.com/KaleksananBarqi/trawangan
+   Created by Kaleksanan Barqi Aji Massani
+   Mandatory NOTICE Part I:
+   "Based on trawangan (https://github.com/KaleksananBarqi/trawangan), Created by Kaleksanan Barqi Aji Massani"
+   (Auto-Cuan V7 strictly excludes pinets / @luxalgo/vela-pinets AGPL-3.0 components.)
+
+5. Motion (motion/mini) — MIT License
+   Upstream: https://github.com/motiondivision/motion
+
+6. Floating UI (@floating-ui/dom) — MIT License
+   Upstream: https://github.com/floating-ui/floating-ui
+
+7. focus-trap — MIT License
+   Upstream: https://github.com/focus-trap/focus-trap
+
+8. NumberFlow (self-hosted vendor runtime) — MIT License
+   Upstream: https://github.com/barvian/number-flow
+
+9. @tanstack/virtual-core — MIT License (Sub-Kloter 4C target)
+   Upstream: https://github.com/TanStack/virtual
+
+10. Cytoscape.js — MIT License (Sub-Kloter 4C target)
+    Upstream: https://github.com/cytoscape/cytoscape.js

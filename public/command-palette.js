@@ -51,7 +51,7 @@
     { page: 'dashboard', label: 'Dashboard', keywords: 'dashboard ringkasan ihsg utama' },
     { page: 'analisis', subTab: 'analisis-chart', label: 'Analisis & Chart', keywords: 'analisis chart workstation candlestick ai' },
     { page: 'screener', label: 'Screener Saham (Three-Horizon)', keywords: 'screener potensi besok short swing' },
-    { page: 'sektor', label: 'Sektor Hot (Konglomerat)', keywords: 'sektor hot konglomerat prajogo djarum salim' },
+    { page: 'sektor', label: 'Sektor Hot & Grup', keywords: 'sektor hot grup konglomerat prajogo djarum salim' },
     { page: 'analisis', subTab: 'bandarmologi', label: 'Bandarmologi & Broksum', keywords: 'bandarmologi broksum broker summary' },
     { page: 'analisis', subTab: 'hunter', label: 'Broker Hunter', keywords: 'broker hunter institusi akumulasi' },
     { page: 'analisis', subTab: 'intel', label: 'Sinyal Intelijen', keywords: 'sinyal intelijen anomali volume' },
@@ -110,7 +110,7 @@
       '      <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
       '        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />' +
       '      </svg>' +
-      '      <input type="text" id="commandPaletteInput" class="ac-command-palette-input" placeholder="' + ph + '" autocomplete="off" spellcheck="false" style="background-color: #1e293b !important; color: #f8fafc !important; border: 1px solid #334155 !important;" />' +
+      '      <input type="text" id="commandPaletteInput" class="ac-command-palette-input" placeholder="' + ph + '" autocomplete="off" spellcheck="false" />' +
       '      <button type="button" id="commandPaletteCloseBtn" class="ac-command-palette-close" aria-label="Tutup pencarian">&times;</button>' +
       '    </div>' +
       '  </div>' +
@@ -120,7 +120,7 @@
       '      <span>Pilih: <strong>ENTER</strong></span>' +
       '      <span>Tutup: <strong>ESC</strong></span>' +
       '    </div>' +
-      '    <div id="commandPaletteResults" class="ac-command-palette-results" role="listbox" style="padding-bottom: 36px !important;"></div>' +
+      '    <div id="commandPaletteResults" class="ac-command-palette-results" role="listbox" style="padding-bottom: 28px;"></div>' +
       '  </div>' +
       '  <div class="ac-command-palette-footer">' +
       '    <span class="text-xs text-gray-400">Tekan <kbd class="px-1.5 py-0.5 rounded bg-dark-700 text-gray-300 font-mono text-[10px]">ESC</kbd> untuk keluar atau klik di luar kotak.</span>' +
@@ -313,8 +313,8 @@
       flatIdx++;
       var boardBadge = item.board ? '<span class="ac-palette-board-badge">' + escapeHtml(item.board) + '</span>' : '';
       var priceDisplay = (item.lastPrice != null && Number.isFinite(Number(item.lastPrice)) && Number(item.lastPrice) > 0)
-        ? '<span class="ac-palette-price font-mono font-bold" style="color: #f8fafc !important;">Rp ' + Number(item.lastPrice).toLocaleString('id-ID') + '</span>'
-        : '<span class="ac-palette-price text-xs text-gray-400">SQLite EOD</span>';
+        ? '<span class="ac-palette-price font-mono font-bold">Rp ' + Number(item.lastPrice).toLocaleString('id-ID') + '</span>'
+        : '<span class="ac-palette-price text-xs">SQLite EOD</span>';
 
       html += '<div class="ac-palette-item ' + (isSelected ? 'is-selected' : '') + '" data-ticker="' + escapeHtml(item.ticker) + '" role="option" aria-selected="' + (isSelected ? 'true' : 'false') + '" onclick="AutoCuanCommandPalette.selectTicker(\'' + escapeHtml(item.ticker) + '\')">' +
         '  <div class="ac-palette-item-left">' +

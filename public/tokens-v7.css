@@ -1,0 +1,109 @@
+/* Auto-Cuan V7 Canonical Tokens — Compiled deterministically via Style Dictionary v5.8.0 (zero important overrides) */
+@layer reset, tokens, base, components, utilities, overrides;
+
+@layer tokens {
+  :root[data-ac-v7='true'],
+  html[data-ac-v7='true'] {
+    --ac-font-ui: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --ac-font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color-scheme: light;
+
+    /* Tonal Surfaces (Light-First Calm Editorial Workstation) */
+    --ac-canvas: #EFF1EC;
+    --ac-surface: #FCFCFA;
+    --ac-surface-raised: #F5F7F3;
+    --ac-surface-hover: #EAEEE8;
+    --ac-surface-glass: rgba(252, 252, 250, 0.84);
+    --ac-bg-shell: #DCE0D8;
+    --ac-backdrop: rgba(16, 26, 22, 0.56);
+
+    /* Ink & Hierarchy */
+    --ac-ink: #1D2724;
+    --ac-text-secondary: #535F5A;
+    --ac-text-muted: #5E6A65;
+
+    /* Borders & Controls */
+    --ac-line-hairline: #DFE4DE;
+    --ac-line-soft: rgba(29, 39, 36, 0.11);
+    --ac-control-border: #848D88;
+
+    /* Brand & Semantic Accents */
+    --ac-brand: #13785D;
+    --ac-brand-hover: #0D634C;
+    --ac-brand-soft: #E3EFE8;
+    --ac-positive: #26734A;
+    --ac-positive-soft: rgba(38, 115, 74, 0.12);
+    --ac-negative: #AD3F52;
+    --ac-negative-soft: rgba(173, 63, 82, 0.12);
+    --ac-warning-text: #8A590D;
+    --ac-warning-soft: rgba(138, 89, 13, 0.12);
+    --ac-info: #315F9A;
+    --ac-info-soft: rgba(49, 95, 154, 0.12);
+    --ac-inv: #1D2724;
+
+    /* Adaptive Foreground Pairings (--ac-on-*, WCAG AA >= 4.5:1) */
+    --ac-on-brand: #FFFFFF;
+    --ac-on-positive: #FFFFFF;
+    --ac-on-negative: #FFFFFF;
+    --ac-on-warning-text: #FFFFFF;
+    --ac-on-info: #FFFFFF;
+    --ac-on-inv: #FFFFFF;
+
+    /* Elevation & Motion Tokens */
+    --ac-shadow-card: 0 1px 2px rgba(29, 39, 36, 0.04), 0 8px 24px -10px rgba(29, 39, 36, 0.08);
+    --ac-shadow-elevated: 0 12px 32px -12px rgba(18, 32, 26, 0.18), 0 2px 6px rgba(18, 32, 26, 0.06);
+    --ac-shadow-modal: 0 24px 64px -16px rgba(14, 24, 20, 0.34);
+    --v7-spring: cubic-bezier(0.22, 1, 0.36, 1);
+    --v7-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+    --v7-dur-micro: 150ms;
+    --v7-dur-slide: 220ms;
+    --v7-dur-reveal: 280ms;
+  }
+
+  :root[data-ac-v7='true'][data-theme='dark'],
+  html[data-ac-v7='true'].is-dark,
+  body.is-dark {
+    color-scheme: dark;
+
+    /* Night Research Dark (Zero pure #000000) */
+    --ac-canvas: #0E1412;
+    --ac-surface: #141C19;
+    --ac-surface-raised: #19231F;
+    --ac-surface-hover: #1F2B27;
+    --ac-surface-glass: rgba(20, 28, 25, 0.84);
+    --ac-bg-shell: #080C0B;
+    --ac-backdrop: rgba(6, 11, 9, 0.78);
+
+    --ac-ink: #E4EBE7;
+    --ac-text-secondary: #B2BDB8;
+    --ac-text-muted: #9AA7A1;
+
+    --ac-line-hairline: #26322D;
+    --ac-line-soft: rgba(228, 235, 231, 0.1);
+    --ac-control-border: #56635D;
+
+    --ac-brand: #48C797;
+    --ac-brand-hover: #63D4A9;
+    --ac-brand-soft: #19352C;
+    --ac-positive: #4FC383;
+    --ac-positive-soft: rgba(79, 195, 131, 0.14);
+    --ac-negative: #F2808F;
+    --ac-negative-soft: rgba(242, 128, 143, 0.14);
+    --ac-warning-text: #EBBA66;
+    --ac-warning-soft: rgba(235, 186, 102, 0.14);
+    --ac-info: #86ADE3;
+    --ac-info-soft: rgba(134, 173, 227, 0.14);
+    --ac-inv: #2F3D38;
+
+    --ac-on-brand: #0A0A0A;
+    --ac-on-positive: #0A0A0A;
+    --ac-on-negative: #0A0A0A;
+    --ac-on-warning-text: #0A0A0A;
+    --ac-on-info: #0A0A0A;
+    --ac-on-inv: #FFFFFF;
+
+    --ac-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.28), 0 10px 28px -12px rgba(0, 0, 0, 0.45);
+    --ac-shadow-elevated: 0 16px 36px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(72, 199, 151, 0.08);
+    --ac-shadow-modal: 0 28px 72px -12px rgba(0, 0, 0, 0.72);
+  }
+}

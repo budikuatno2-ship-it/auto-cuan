@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id" style="background-color:#f3f5f4">
+<html lang="id" data-ac-v7="true" style="background-color:#f3f5f4">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -137,6 +137,8 @@
 <link rel="stylesheet" href="/c10-hardening.css?v=20261101-v1">
 <link rel="stylesheet" href="/account-hardening.css?v=20261001-v1">
 <link rel="stylesheet" href="/ac.css?v=20261104-v3f10">
+<link rel="stylesheet" href="/tokens-v7.css?v=v7-4a">
+<link rel="stylesheet" href="/v7-shell.css?v=v7-4a">
 <script src="/app.js?v=v6.5.4" defer></script>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -405,7 +407,7 @@
                     <small>Belum tersedia</small>
                   </div>
                 </div>
-                <div class="preview-flow-bar" aria-label="Perbandingan akumulasi">
+                <div class="preview-flow-bar" role="progressbar" aria-label="Perbandingan akumulasi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                   <div class="flow-bar-fill" style="width: 0%;"></div>
                 </div>
                 <div class="preview-flow-caption">
@@ -592,7 +594,7 @@
               </div>
               <div style="display:flex;align-items:center;gap:6px">
                 <span id="lpCalcBadge" style="background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:0.5px">SIMULASI INTERAKTIF (data belum tersedia)</span>
-                <span id="lpCalcTickerBadge" style="background:var(--lp-surface-elevated, #1e293b);color:var(--lp-text, #f8fafc);border:1px solid var(--lp-line, #334155);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;font-family:monospace">&mdash;</span>
+                <span id="lpCalcTickerBadge" style="background:var(--ac-surface-sunken, var(--lp-raised));color:var(--ac-ink, var(--lp-text));border:1px solid var(--ac-line-soft, var(--lp-line));font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;font-family:monospace">&mdash;</span>
               </div>
             </div>
             <p style="font-size:13px;color:var(--lp-muted);margin:4px 0 0">Geser modal dan risiko. Jumlah lot dihitung secara dinamis dari trading plan aktual ticker terpilih, lalu dicek terhadap rentang wajar 10 hari.</p>
@@ -901,6 +903,7 @@
         <p>Auto-Cuan adalah platform analisis pasar modal independen. Seluruh konten, data, dan indikator disajikan semata-mata untuk tujuan riset dan edukasi mandiri, bukan merupakan rekomendasi investasi atau ajakan transaksi efek. Data bursa dapat mengalami keterlambatan.</p>
         <div class="footer-bottom-meta">
           <span>&copy; 2026 Auto-Cuan. Seluruh hak cipta dilindungi.</span>
+          <button type="button" class="v7-notice-btn" data-v7-open-notice="1">Lisensi &amp; Atribusi</button>
           <a href="#landingTrust" class="landing-link">Tentang data &amp; risiko &rarr;</a>
         </div>
       </div>
@@ -956,6 +959,10 @@
             </div>
             <button onclick="closeLoginModal()" class="text-gray-400 hover:text-white text-2xl leading-none bg-transparent border-0 cursor-pointer p-1" aria-label="Tutup modal masuk">&times;</button>
         </div>
+        <div class="v7-auth-switcher" role="tablist" aria-label="Pilih mode akses">
+            <button type="button" class="v7-auth-sw-btn is-active" role="tab" aria-selected="true">Masuk</button>
+            <button type="button" class="v7-auth-sw-btn" role="tab" aria-selected="false" onclick="closeLoginModal();openRegisterModal()">Daftar</button>
+        </div>
         <form id="loginForm" class="space-y-3" onsubmit="event.preventDefault();doLogin();return false;">
             <div>
                 <label for="loginUsername" class="block text-xs font-semibold text-gray-300 mb-1">Email atau username</label>
@@ -988,6 +995,10 @@
                 <p class="mt-1 text-xs text-gray-400">Wajib menyertakan Gmail aktif sebagai identitas akun.</p>
             </div>
             <button onclick="closeRegisterModal()" class="text-gray-400 hover:text-white text-2xl leading-none bg-transparent border-0 cursor-pointer p-1" aria-label="Tutup modal daftar">&times;</button>
+        </div>
+        <div class="v7-auth-switcher" role="tablist" aria-label="Pilih mode akses">
+            <button type="button" class="v7-auth-sw-btn" role="tab" aria-selected="false" onclick="closeRegisterModal();openLoginModal()">Masuk</button>
+            <button type="button" class="v7-auth-sw-btn is-active" role="tab" aria-selected="true">Daftar</button>
         </div>
         <div class="steps grid grid-cols-3 gap-1.5 my-3" aria-label="Tahapan">
             <div class="on text-[11px] font-semibold text-emerald-400"><i class="block h-[3px] rounded bg-emerald-500 mb-1"></i>1 · Buat akun</div>
@@ -1588,7 +1599,7 @@ html.light #googleCompleteProfileModal input {
     <!-- Compact Top 5 + Monitor (Three-Horizon: Potensi Besok / Short Swing / Swing) -->
     <section class="sheet rise d3" aria-labelledby="dashRadarTitle">
         <div class="sec-h"><h2 id="dashRadarTitle">Top 5 Radar Hari Ini</h2><p id="dashboardTop5LockNote" class="sec-h-note">Memuat Top 5 final...</p></div>
-        <div class="dash-top5-tabs segx n3" role="tablist" aria-label="Top 5 Radar per horizon"><span class="ind" id="dashTop5Ind"></span><button type="button" id="dashTop5TabPotensi" class="on" role="tab" aria-selected="true" aria-pressed="true" onclick="switchDashTop5('potensi_besok')">Potensi Besok</button><button type="button" id="dashTop5TabShortSwing" role="tab" aria-selected="false" aria-pressed="false" onclick="switchDashTop5('short_swing')">Short Swing</button><button type="button" id="dashTop5TabSwing" role="tab" aria-selected="false" aria-pressed="false" onclick="switchDashTop5('swing')">Swing</button></div>
+        <div class="dash-top5-tabs segx n3" role="tablist" aria-label="Top 5 Radar per horizon"><span class="ind" id="dashTop5Ind"></span><button type="button" id="dashTop5TabPotensi" class="on" role="tab" aria-selected="true" onclick="switchDashTop5('potensi_besok')">Potensi Besok</button><button type="button" id="dashTop5TabShortSwing" role="tab" aria-selected="false" onclick="switchDashTop5('short_swing')">Short Swing</button><button type="button" id="dashTop5TabSwing" role="tab" aria-selected="false" onclick="switchDashTop5('swing')">Swing</button></div>
         <div id="dashboardTop5List" class="dash-top5">
             <div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p></div>
         </div>
@@ -17601,7 +17612,6 @@ function switchDashTop5(mode) {
         var on = k === _dashTop5Mode;
         b.className = on ? 'on' : '';
         b.setAttribute('aria-selected', on ? 'true' : 'false');
-        b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
     var ind = document.getElementById('dashTop5Ind');
     if (ind) ind.className = 'ind k' + (_dashTop5Mode === 'potensi_besok' ? 0 : (_dashTop5Mode === 'short_swing' ? 1 : 2));
@@ -18757,5 +18767,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="/v4-f08-runtime.js?v=v6.5.5-k2"></script>
 <script src="/whats-new-runtime.js?v=v6.5.5-k2"></script>
 <script src="/institutional-ui-ux-engine.js?v=v6.5.5-k2"></script>
+<script src="/vendor/motion-mini.min.js?v=v7-4a" defer></script>
+<script src="/vendor/floating-ui.dom.umd.min.js?v=v7-4a" defer></script>
+<script src="/vendor/focus-trap.umd.min.js?v=v7-4a" defer></script>
+<script src="/v7-motion-shell.js?v=v7-4a" defer></script>
 </body>
 </html>
