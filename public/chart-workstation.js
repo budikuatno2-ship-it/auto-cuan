@@ -1835,7 +1835,19 @@
       [reg.oscChart, chartId + '_osc_container']
     ];
     if (reg.mainChart) {
-      try { reg.mainChart.applyOptions({ width: w, height: host.clientHeight || (reg.dims && reg.dims.main) || 420 }); } catch (_) {}
+      var cardEl = host.closest ? host.closest('.unified-card') : null;
+      var isFs = Boolean(cardEl && cardEl.classList.contains('cw-one-screen'));
+      var canvasHostEl = document.getElementById(chartId + '_canvas_host') || reg.canvasHost;
+      var headerEl = document.getElementById(chartId + '_canvas_header') || reg.headerEl;
+      if (reg.nativeMultiPane && canvasHostEl) {
+        var hdrH = headerEl ? headerEl.offsetHeight : 0;
+        var nextH = isFs ? Math.max(240, (host.clientHeight || reg.totalHeight || 420) - hdrH) : (reg.totalHeight || (reg.dims && reg.dims.main) || 420);
+        if (!isFs) host.style.height = 'auto';
+        canvasHostEl.style.height = nextH + 'px';
+        try { reg.mainChart.applyOptions({ width: w, height: nextH }); } catch (_) {}
+      } else {
+        try { reg.mainChart.applyOptions({ width: w, height: host.clientHeight || (reg.dims && reg.dims.main) || 420 }); } catch (_) {}
+      }
     }
     subs.forEach(function (pair) {
       var ch = pair[0], el = document.getElementById(pair[1]);
@@ -1919,7 +1931,7 @@
     { id: 'drawing', title: 'Drawing Tools', open: false, groupIds: [] },
     { id: 'bandar', title: 'Bandar Metrics', open: false, groupIds: ['bandar_metrics'] }
   ];
-  var DRAWER_TOOLS = [['trendline', 'Trendline'], ['hline', 'Horizontal Line'], ['fib', 'Fibonacci'], ['ruler', 'Ruler / Measure'], ['freehand', 'Freehand']];
+  var DRAWER_TOOLS = [['trendline', 'Garis Tren'], ['hline', 'Garis Datar'], ['ray', 'Sinar (Ray)'], ['box', 'Kotak Zona'], ['fib', 'Fibonacci'], ['ruler', 'Penggaris'], ['freehand', 'Gambar'], ['gesture', 'Gesture Pintar']];
 
   function renderDrawerHtml(chartId) {
     var inst = _workstationInstances[chartId];
@@ -2232,6 +2244,12 @@
     var drawer = document.getElementById(chartId + '_drawer');
     if (drawer) {
       drawer.classList.toggle('hidden');
+      if (!drawer.classList.contains('hidden')) {
+        var gearBtn = document.getElementById(chartId + '_drawer_btn');
+        if (gearBtn && typeof window !== 'undefined' && window.AutoCuanV7Motion && typeof window.AutoCuanV7Motion.positionPopover === 'function') {
+          window.AutoCuanV7Motion.positionPopover(gearBtn, drawer, { placement: 'bottom-start' });
+        }
+      }
     }
   }
 

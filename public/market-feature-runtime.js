@@ -177,15 +177,20 @@ function chartDims(variant, viewportWidth, viewportHeight, mode) {
 function acChartTheme(el) {
     var cs = (typeof getComputedStyle === 'function' && el) ? getComputedStyle(el) : null;
     function t(name, fallback) { var v = cs ? String(cs.getPropertyValue(name) || '').trim() : ''; return v || fallback; }
+    var docEl = (typeof document !== 'undefined') ? document.documentElement : null;
+    var isDark = docEl ? (docEl.classList.contains('is-dark') || docEl.getAttribute('data-theme') === 'dark') : true;
     return {
-        bg: t('--ac-surface', '#0f1319'),
-        panel: t('--ac-surface', '#0b0e14'),
-        text: t('--ac-2', '#9ca3af'),
-        grid: t('--ac-hair', '#1c233320'),
-        border: t('--ac-hair', '#1c2333'),
-        up: t('--ac-pos', '#10b981'),
-        down: t('--ac-neg', '#ef4444'),
-        vol: t('--ac-ctl', '#242d3d'),
+        isDark: isDark,
+        bg: t('--ac-surface', isDark ? '#141C19' : '#FCFCFA'),
+        panel: t('--ac-surface-raised', isDark ? '#19231F' : '#F5F7F3'),
+        ink: t('--ac-ink', isDark ? '#E4EBE7' : '#1D2724'),
+        text: t('--ac-text-secondary', t('--ac-2', isDark ? '#A5B2AC' : '#535F5A')),
+        grid: t('--ac-line-hairline', t('--ac-hair', isDark ? 'rgba(228,235,231,0.08)' : '#E5EAE4')),
+        border: t('--ac-line-hairline', t('--ac-hair', isDark ? '#26322D' : '#DFE4DE')),
+        up: t('--ac-positive', t('--ac-pos', isDark ? '#3DD68C' : '#26734A')),
+        down: t('--ac-negative', t('--ac-neg', isDark ? '#F06A7B' : '#AD3F52')),
+        vol: t('--ac-ctl', isDark ? '#26322D' : '#CBD5CE'),
+        brand: t('--ac-brand', isDark ? '#48C797' : '#13785D'),
         font: t('--ac-font-mono', '')
     };
 }
@@ -193,27 +198,98 @@ function acChartAlpha(color, hexAlpha) {
     return /^#[0-9a-f]{6}$/i.test(color) ? color + hexAlpha : color;
 }
 function acChartLayout(th) {
-    var layout = { background: { color: th.bg }, textColor: th.text };
+    var layout = { background: { color: th.bg }, textColor: th.text, attributionLogo: true };
     if (th.font) layout.fontFamily = th.font;
     return layout;
+}
+function acApplyHeaderThemeColors(headerEl, th) {
+    if (!headerEl || !th) return;
+    headerEl.style.background = th.panel || th.bg;
+    headerEl.style.color = th.ink;
+    headerEl.style.borderBottom = '1px solid ' + th.border;
+    headerEl.style.textShadow = 'none';
+}
+function acAttachV5Shims(chart, allSeriesRef) {
+    if (!chart || chart.__acV5Shimmed) return chart;
+    chart.__acV5Shimmed = true;
+    var LWC = (typeof window !== 'undefined' && window.LightweightCharts) ? window.LightweightCharts : null;
+    var map = {
+        addCandlestickSeries: 'CandlestickSeries',
+        addLineSeries: 'LineSeries',
+        addHistogramSeries: 'HistogramSeries',
+        addAreaSeries: 'AreaSeries',
+        addBarSeries: 'BarSeries',
+        addBaselineSeries: 'BaselineSeries'
+    };
+    Object.keys(map).forEach(function(fn) {
+        var typeKey = map[fn];
+        var orig = typeof chart[fn] === 'function' ? chart[fn].bind(chart) : null;
+        chart[fn] = function(opts, explicitPaneIdx) {
+            var paneIdx = explicitPaneIdx != null ? explicitPaneIdx : (opts && opts.paneIndex != null ? opts.paneIndex : undefined);
+            var sr;
+            if (typeof chart.addSeries === 'function' && LWC && LWC[typeKey]) {
+                sr = paneIdx !== undefined ? chart.addSeries(LWC[typeKey], opts || {}, paneIdx) : chart.addSeries(LWC[typeKey], opts || {});
+            } else if (orig) {
+                sr = orig(opts || {});
+            } else {
+                throw new Error('LightweightCharts series method unavailable: ' + fn);
+            }
+            if (Array.isArray(allSeriesRef) && sr) {
+                allSeriesRef.push({ series: sr, scale: (opts && opts.priceScaleId) || 'right', paneIndex: paneIdx || 0 });
+            }
+            return sr;
+        };
+    });
+    return chart;
+}
+function acSetSeriesMarkers(series, markers) {
+    if (!series) return;
+    var list = Array.isArray(markers) ? markers : [];
+    var LWC = (typeof window !== 'undefined' && window.LightweightCharts) ? window.LightweightCharts : null;
+    try {
+        if (LWC && typeof LWC.createSeriesMarkers === 'function') {
+            if (series.__acMarkersPlugin && typeof series.__acMarkersPlugin.setMarkers === 'function') {
+                series.__acMarkersPlugin.setMarkers(list);
+            } else {
+                series.__acMarkersPlugin = LWC.createSeriesMarkers(series, list);
+            }
+            return;
+        }
+        if (typeof series.setMarkers === 'function') {
+            series.setMarkers(list);
+        }
+    } catch (_) {}
 }
 // A theme switch repaints every live chart in place (no reload).
 if (typeof window !== 'undefined' && !window.__acChartThemeHook) {
     window.__acChartThemeHook = true;
-    window.addEventListener('ac-theme', function() {
+    var repaintAllCharts = function() {
         Object.keys(_chartRegistry).forEach(function(id) {
             var e = _chartRegistry[id];
-            var th = acChartTheme(document.getElementById(id + '_container'));
+            var containerEl = document.getElementById(id + '_container');
+            var th = acChartTheme(containerEl);
+            acApplyHeaderThemeColors(document.getElementById(id + '_canvas_header'), th);
+            if (containerEl) {
+                Array.prototype.forEach.call(containerEl.querySelectorAll('.ac-pane-legend'), function(lg) {
+                    lg.style.background = th.panel;
+                    lg.style.borderColor = th.border;
+                });
+            }
             [e.mainChart, e.volChart, e.rsiChart, e.intensityChart, e.rotationChart, e.bandarChart, e.oscChart, e.macdChart, e.obvChart].forEach(function(ch) {
                 if (!ch) return;
                 try { ch.applyOptions({ layout: acChartLayout(th), grid: { vertLines: { color: th.grid }, horzLines: { color: th.grid } }, rightPriceScale: { borderColor: th.border }, timeScale: { borderColor: th.border } }); } catch (x) {}
             });
+            if (typeof e.refreshHeader === 'function') { try { e.refreshHeader(); } catch (_) {} }
             if (e.candleSeries) {
                 try { e.candleSeries.applyOptions({ upColor: th.up, downColor: th.down, borderUpColor: th.up, borderDownColor: th.down, wickUpColor: th.up, wickDownColor: th.down }); } catch (x) {}
             }
             if (e.lastLine) { try { e.lastLine.applyOptions({ color: e.lastUp ? th.up : th.down }); } catch (x) {} }
         });
-    });
+    };
+    window.addEventListener('ac-theme', repaintAllCharts);
+    if (typeof MutationObserver === 'function' && typeof document !== 'undefined' && document.documentElement) {
+        new MutationObserver(function() { setTimeout(repaintAllCharts, 0); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+    }
 }
 
 // Dispose a chart + its observers and drop it from the registry.
@@ -559,9 +635,13 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     // Shared right-axis badge collision guard across MFR, chart-workstation, and analisis-v2.
     if (typeof window !== 'undefined') {
       var _ragRegistry = window.__acRightAxisBadges = window.__acRightAxisBadges || {};
+      var _ragMeta = window.__acRightAxisMeta = window.__acRightAxisMeta || {};
       window.AutoCuanRightAxisGuard = {
-        reset: function (id, basePrices) {
+        reset: function (id, basePrices, rangeMeta) {
           _ragRegistry[id] = [];
+          _ragMeta[id] = rangeMeta && isFinite(rangeMeta.max - rangeMeta.min) && rangeMeta.max > rangeMeta.min
+            ? { min: Number(rangeMeta.min), max: Number(rangeMeta.max), paneHeight: Number(rangeMeta.paneHeight) || 360 }
+            : null;
           if (Array.isArray(basePrices)) {
             basePrices.forEach(function (bp) {
               if (bp != null && isFinite(Number(bp))) _ragRegistry[id].push({ price: Number(bp) });
@@ -577,6 +657,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
           var minGap = Number(minGapPx) > 0 ? Number(minGapPx) : 22;
           var y = null;
           try { y = (series && typeof series.priceToCoordinate === 'function') ? series.priceToCoordinate(p) : null; } catch (_) { y = null; }
+          var meta = _ragMeta[id];
           for (var i = 0; i < list.length; i++) {
             var item = list[i];
             if (y != null && isFinite(y) && series && typeof series.priceToCoordinate === 'function') {
@@ -585,6 +666,11 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                 if (py != null && isFinite(py) && Math.abs(y - py) < minGap) return false;
                 continue;
               } catch (_) {}
+            }
+            if (meta && meta.max > meta.min) {
+              var estPxGap = (Math.abs(p - item.price) / (meta.max - meta.min)) * meta.paneHeight;
+              if (estPxGap < minGap) return false;
+              continue;
             }
             if (item.price > 0 && (Math.abs(p - item.price) / Math.max(p, item.price)) < 0.008) return false;
           }
@@ -602,31 +688,88 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     container.style.position = 'relative';
     var _th = acChartTheme(container);
 
+    // Precompute active mode, index status, and native multi-pane heights (LWC v5.3.0)
+    var _isIdxTicker = /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30|IDX80|KOMPAS100)$/i.test(String(ticker || ''));
+    var _isIndexChart = ws && typeof ws.isIndexTicker === 'function' ? ws.isIndexTicker(ticker) : /^IHSG$/i.test(String(ticker || ''));
+    var _preMode = (wsState && wsState.activePreset) ? wsState.activePreset : (_activeMode || 'simpel');
+    var _volHeight = Math.max(54, Number(dims && (dims.volume || (dims.subpanes && dims.subpanes.volume) || dims.vol)) || ((options && (options.mode === 'investor' || options.mode === 'pro')) ? 58 : 76));
+    var _rsiH = Math.max((dims.subpanes && dims.subpanes.rsi14) || 80, 62);
+    var _macdH = Math.max((dims.subpanes && dims.subpanes.macd) || 75, 58);
+    var _bandarH = Math.max((dims.subpanes && (dims.subpanes.foreign_flow || dims.subpanes.bandar_foreign)) || 74, 58);
+    var _obvH = Math.max((dims.subpanes && dims.subpanes.obv) || 68, 58);
+    var _intH = 90, _rotH = 90;
+
+    var showEMA9 = wsState ? wsState.isLayerActive('ema9') : (_preMode === 'scalping');
+    var showEMA21 = wsState ? wsState.isLayerActive('ema21') : (_preMode === 'scalping');
+    var showMA20 = wsState ? wsState.isLayerActive('ma20') : true;
+    var showMA50 = wsState ? wsState.isLayerActive('ma50') : true;
+    var showMA100 = wsState ? wsState.isLayerActive('ma100') : true;
+    var showMA200 = _isIndexChart ? true : (wsState ? wsState.isLayerActive('ma200') : true);
+    var showEMA20 = wsState ? wsState.isLayerActive('ema20') : false;
+    var showEMA50 = wsState ? wsState.isLayerActive('ema50') : false;
+    var showBollinger = wsState ? wsState.isLayerActive('bollinger') : false;
+    var showTradingPlan = wsState ? wsState.isLayerActive('trading_plan') : false;
+    var showFib = wsState ? wsState.isLayerActive('fibonacci') : true;
+    var showSR = wsState ? wsState.isLayerActive('sr_levels') : true;
+    var showLPM = wsState ? wsState.isLayerActive('bandar_lpm') : false;
+    var showForeign = wsState ? wsState.isLayerActive('bandar_foreign') : false;
+    var showCMF = wsState ? wsState.isLayerActive('bandar_cmf') : false;
+    var showIntensity = wsState ? wsState.isLayerActive('bandar_intensity') : false;
+    var showRotation = wsState ? wsState.isLayerActive('bandar_rotation') : false;
+    var showTekananBroker = wsState ? wsState.isLayerActive('bandar_tekanan_broker') : false;
+    var showBandarAvgPrice = wsState ? wsState.isLayerActive('bandar_avg_price') : false;
+    if (_isIndexChart) { showTradingPlan = false; showLPM = false; showForeign = false; showCMF = false; showIntensity = false; showRotation = false; }
+    if (_isIndexChart) { showTekananBroker = false; showBandarAvgPrice = false; }
+
+    var _hasCandleForeign = candles.some(function(c) { return c && c.foreign_net_value != null && Number.isFinite(Number(c.foreign_net_value)); });
+    var _hasForeignSeries = (Array.isArray(options && options.foreignFlow) && options.foreignFlow.length > 0) || _hasCandleForeign;
+    var _modeShowForeign = (_preMode === 'investor' || _preMode === 'pro') && !_isIndexChart && _hasForeignSeries;
+    var _effectiveShowForeign = showForeign || _modeShowForeign;
+    var showRSI = (wsState ? wsState.isLayerActive('rsi14') : false) || (_preMode === 'scalping' || _preMode === 'swing' || _preMode === 'pro');
+    var showMACD = (wsState ? wsState.isLayerActive('macd') : false) || (_preMode === 'swing' || _preMode === 'pro');
+    var showOBV = ((_preMode === 'investor' || _preMode === 'pro') || (wsState && wsState.isLayerActive('obv'))) && !_isIndexChart;
+
+    var _useNativePanes = Boolean(LightweightCharts && LightweightCharts.CandlestickSeries && LightweightCharts.HistogramSeries && LightweightCharts.LineSeries);
+    var _paneSpecs = [{ key: 'price', label: 'Harga', height: dims.main }];
+    _paneSpecs.push({ key: 'volume', label: 'Volume', height: _volHeight });
+    if ((showLPM || _effectiveShowForeign || showCMF) && ws && candles.length >= 5) _paneSpecs.push({ key: 'bandar', label: 'Foreign Flow', height: _bandarH });
+    if (showRSI && ws && candles.length >= 16) _paneSpecs.push({ key: 'rsi', label: 'RSI 14', height: _rsiH });
+    if (showMACD && ws && candles.length >= 26) _paneSpecs.push({ key: 'macd', label: 'MACD', height: _macdH });
+    if (showOBV && ws && typeof ws.calculateOBV === 'function' && candles.length >= 5) _paneSpecs.push({ key: 'obv', label: 'OBV', height: _obvH });
+    if (showIntensity && ws && candles.length >= 5) _paneSpecs.push({ key: 'intensity', label: 'Intensity', height: _intH });
+    if (showRotation && ws && candles.length >= 5) _paneSpecs.push({ key: 'rotation', label: 'Rotation', height: _rotH });
+
+    var _totalChartHeight = _useNativePanes
+      ? _paneSpecs.reduce(function(acc, p) { return acc + p.height; }, 0)
+      : dims.main;
+
     // Flow legend header above the canvas host so desktop and mobile legends never
     // collide with green candles or the ▲ max-price label.
     var headerEl = document.createElement('div');
     headerEl.id = chartId + '_canvas_header';
     headerEl.className = 'chart-canvas-floating-header';
-    headerEl.style.cssText = 'position:relative; width:100%; z-index:12; pointer-events:none; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; line-height:1.45; text-shadow:0 1px 2px rgba(0,0,0,0.65); padding:6px 10px; background:rgba(13,17,23,0.92); border-bottom:1px solid rgba(55,65,81,0.35); border-top-left-radius:8px; border-top-right-radius:8px;';
+    headerEl.style.cssText = 'position:relative; width:100%; z-index:12; pointer-events:none; font-family:var(--ac-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace); line-height:1.45; padding:6px 10px; border-top-left-radius:8px; border-top-right-radius:8px;';
+    acApplyHeaderThemeColors(headerEl, _th);
     container.appendChild(headerEl);
 
     var canvasHost = document.createElement('div');
     canvasHost.id = chartId + '_canvas_host';
-    canvasHost.style.cssText = 'position:relative; width:100%; height:' + dims.main + 'px;';
+    canvasHost.setAttribute('data-native-panes', _useNativePanes ? 'true' : 'false');
+    canvasHost.style.cssText = 'position:relative; width:100%; height:' + _totalChartHeight + 'px;';
     container.appendChild(canvasHost);
 
-    // Main chart: candlestick + MA
+    // Main chart: candlestick + MA (+ native multi-pane when LWC v5.3.0)
     var _chartWidth = Math.max(container.clientWidth || (container.parentElement && container.parentElement.clientWidth) || 0, 320);
     var _axisFmt = /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30)$/i.test(String(ticker || '')) ? acNumFmt(2, 2) : acNumFmt(0, 0);
     var chart = LightweightCharts.createChart(canvasHost, {
-        width: _chartWidth, height: dims.main,
+        width: _chartWidth, height: _totalChartHeight,
         layout: acChartLayout(_th),
         grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
         // Indonesian number format on the price axis; stocks trade in whole
         // rupiah, indices keep two decimals.
         localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: function(p) { return _axisFmt.format(p); } },
-        rightPriceScale: { borderColor: _th.border },
+        rightPriceScale: { borderColor: _th.border, minimumWidth: 64 },
         // FINAL POLISH TASK 1: X axis is locked to the last real candle with a
         // small right offset (<= 8 bars) reserved for manual SKENARIO projection.
         timeScale: { borderColor: _th.border, timeVisible: false, tickMarkFormatter: acTickMark, rightOffset: 8, barSpacing: 8, fixLeftEdge: false, lockVisibleTimeRangeOnResize: true },
@@ -645,73 +788,86 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     // Keep every series added to this chart so the price-scale buttons can
     // set one range for all of them (each series otherwise widens autoscale).
     var _allSeries = [];
-    ['addLineSeries', 'addHistogramSeries', 'addAreaSeries', 'addBaselineSeries'].forEach(function(fn) {
-        if (typeof chart[fn] !== 'function') return;
-        var orig = chart[fn].bind(chart);
-        chart[fn] = function(opts) { var sr = orig(opts); _allSeries.push({ series: sr, scale: (opts && opts.priceScaleId) || 'right' }); return sr; };
-    });
+    acAttachV5Shims(chart, _allSeries);
 
     // Axis steps follow the IDX price fraction (1/2/5/10/25) of the last close;
     // indices keep 0,01.
-    var _isIdxTicker = /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30|IDX80|KOMPAS100)$/i.test(String(ticker || ''));
     var _wsTick = window.AutoCuanChartWorkstation;
     var _lastClose = candles && candles.length ? Number(candles[candles.length - 1].close) : 0;
     var _tick = _isIdxTicker ? 0.01 : (_wsTick && typeof _wsTick.getIdxTickSize === 'function' ? _wsTick.getIdxTickSize(_lastClose) : 1);
+    var _cMin = Infinity, _cMax = -Infinity;
+    for (var _ci = 0; _ci < candles.length; _ci++) {
+        if (candles[_ci].low < _cMin) _cMin = candles[_ci].low;
+        if (candles[_ci].high > _cMax) _cMax = candles[_ci].high;
+    }
     var candleSeries = chart.addCandlestickSeries({
         upColor: _th.up, downColor: _th.down,
         borderUpColor: _th.up, borderDownColor: _th.down,
         wickUpColor: _th.up, wickDownColor: _th.down,
         priceFormat: { type: 'price', precision: _isIdxTicker ? 2 : 0, minMove: _tick },
         lastValueVisible: false, priceLineVisible: false
-    });
+    }, 0);
     candleSeries.__acChartId = chartId;
     candleSeries.setData(candles);
     var _mobScale = (typeof window !== 'undefined' && window.innerWidth <= 640) || (container.clientWidth <= 640);
-    try { candleSeries.priceScale().applyOptions({ scaleMargins: { top: _mobScale ? 0.25 : 0.14, bottom: 0.08 } }); } catch (_) {}
+    try { candleSeries.priceScale().applyOptions({ scaleMargins: { top: _mobScale ? 0.22 : 0.12, bottom: 0.08 } }); } catch (_) {}
     var _narrow = (typeof window !== 'undefined' && window.innerWidth < 520) || container.clientWidth < 520;
     var _lp = acLastPrice(candles), _lastLine = null;
-    if (window.AutoCuanRightAxisGuard) window.AutoCuanRightAxisGuard.reset(chartId, _lp ? [_lp.price] : []);
+    if (window.AutoCuanRightAxisGuard) {
+        window.AutoCuanRightAxisGuard.reset(chartId, _lp ? [_lp.price] : [], isFinite(_cMax - _cMin) ? { min: _cMin, max: _cMax, paneHeight: dims.main } : null);
+    }
     var _rag = (typeof window !== 'undefined') ? window.AutoCuanRightAxisGuard : null;
     if (_lp) {
         try { _lastLine = candleSeries.createPriceLine({ price: _lp.price, color: _lp.up ? _th.up : _th.down, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: _narrow ? '' : _lp.title }); } catch (_) {}
     }
 
-    // Separate Volume sub-pane below main price pane (never overlays candlestick right axis)
-    var _volHeight = Math.max(54, Number(dims && (dims.volume || (dims.subpanes && dims.subpanes.volume) || dims.vol)) || ((options && (options.mode === 'investor' || options.mode === 'pro')) ? 58 : 76));
-    var volContainer = document.getElementById(chartId + '_vol_container');
-    if (!volContainer) {
-      volContainer = document.createElement('div');
-      volContainer.id = chartId + '_vol_container';
-      volContainer.style.cssText = 'position:relative; width:100%; height:' + _volHeight + 'px; border-top:1px solid rgba(148,163,184,0.14);';
-      var volLabel = document.createElement('div');
-      volLabel.style.cssText = 'position:absolute;left:8px;top:3px;z-index:3;pointer-events:none;font:600 10px ui-monospace,monospace;color:#94a3b8;';
-      volLabel.textContent = 'Volume';
-      volContainer.appendChild(volLabel);
-      container.appendChild(volContainer);
-    } else {
-      volContainer.style.height = _volHeight + 'px';
-    }
-    var volChart = LightweightCharts.createChart(volContainer, {
-      width: _chartWidth, height: _volHeight,
-      layout: acChartLayout(_th),
-      grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-      localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: acFormatAxisCompact },
-      rightPriceScale: { borderColor: _th.border, minimumWidth: 62 },
-      timeScale: { borderColor: _th.border, visible: false, rightOffset: 8, barSpacing: 8, fixLeftEdge: false, lockVisibleTimeRangeOnResize: true },
-      handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-      handleScale: { axisPressedMouseMove: { time: false, price: false }, mouseWheel: false, pinch: true }
-    });
-    var volumeSeries = volChart.addHistogramSeries({
-      priceFormat: { type: 'volume' }, color: _th.vol,
-      lastValueVisible: false, priceLineVisible: false
-    });
-    try { volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.16, bottom: 0.04 } }); } catch (_) {}
+    // Native Multi-Pane Volume (Pane 1 in LWC v5.3.0) or legacy separate chart fallback
+    var volChart = null;
+    var volumeSeries = null;
     var volData = candles.map(function(c) { return { time: c.time, value: c.volume, color: c.close >= c.open ? acChartAlpha(_th.up, '80') : acChartAlpha(_th.down, '80') }; });
-    volumeSeries.setData(volData);
-    chart.timeScale().subscribeVisibleLogicalRangeChange(function(r) {
-      if (r && volChart && !volChart.__acDead) { try { volChart.timeScale().setVisibleLogicalRange(r); } catch (_) {} }
-    });
+    if (_useNativePanes) {
+        volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
+            priceFormat: { type: 'custom', formatter: acFormatAxisCompact },
+            color: _th.vol, lastValueVisible: false, priceLineVisible: false
+        }, 1);
+        try { volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.18, bottom: 0.04 } }); } catch (_) {}
+        volumeSeries.setData(volData);
+    } else {
+        var volContainer = document.getElementById(chartId + '_vol_container');
+        if (!volContainer) {
+          volContainer = document.createElement('div');
+          volContainer.id = chartId + '_vol_container';
+          volContainer.style.cssText = 'position:relative; width:100%; height:' + _volHeight + 'px; border-top:1px solid rgba(148,163,184,0.14);';
+          var volLabel = document.createElement('div');
+          volLabel.style.cssText = 'position:absolute;left:8px;top:3px;z-index:3;pointer-events:none;font:600 10px ui-monospace,monospace;color:#94a3b8;';
+          volLabel.textContent = 'Volume';
+          volContainer.appendChild(volLabel);
+          container.appendChild(volContainer);
+        } else {
+          volContainer.style.height = _volHeight + 'px';
+        }
+        volChart = LightweightCharts.createChart(volContainer, {
+          width: _chartWidth, height: _volHeight,
+          layout: acChartLayout(_th),
+          grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+          crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+          localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: acFormatAxisCompact },
+          rightPriceScale: { borderColor: _th.border, minimumWidth: 62 },
+          timeScale: { borderColor: _th.border, visible: false, rightOffset: 8, barSpacing: 8, fixLeftEdge: false, lockVisibleTimeRangeOnResize: true },
+          handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+          handleScale: { axisPressedMouseMove: { time: false, price: false }, mouseWheel: false, pinch: true }
+        });
+        acAttachV5Shims(volChart);
+        volumeSeries = volChart.addHistogramSeries({
+          priceFormat: { type: 'custom', formatter: acFormatAxisCompact }, color: _th.vol,
+          lastValueVisible: false, priceLineVisible: false
+        });
+        try { volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.16, bottom: 0.04 } }); } catch (_) {}
+        volumeSeries.setData(volData);
+        chart.timeScale().subscribeVisibleLogicalRangeChange(function(r) {
+          if (r && volChart && !volChart.__acDead) { try { volChart.timeScale().setVisibleLogicalRange(r); } catch (_) {} }
+        });
+    }
 
     // Volume Avg 20 line
     var closes = candles.map(function(c) { return c.close; });
@@ -724,24 +880,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             for (var j = i - period + 1; j <= i; j++) sum += arr[j];
             data.push({ time: candles[i].time, value: Math.round((sum / period) * 100) / 100 });
         }
-        var s = chart.addLineSeries({ color: color, lineWidth: 1, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+        var s = chart.addLineSeries({ color: color, lineWidth: 1, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false }, 0);
         s.setData(data);
         return s;
     }
-
-    var showEMA9 = wsState ? wsState.isLayerActive('ema9') : (_activeMode === 'scalping');
-    var showEMA21 = wsState ? wsState.isLayerActive('ema21') : (_activeMode === 'scalping');
-    var showMA20 = wsState ? wsState.isLayerActive('ma20') : true;
-    var showMA50 = wsState ? wsState.isLayerActive('ma50') : true;
-    var showMA100 = wsState ? wsState.isLayerActive('ma100') : true;
-    var showMA200 = wsState ? wsState.isLayerActive('ma200') : true;
-    var showEMA20 = wsState ? wsState.isLayerActive('ema20') : false;
-    var showEMA50 = wsState ? wsState.isLayerActive('ema50') : false;
-    var showBollinger = wsState ? wsState.isLayerActive('bollinger') : false;
-    var showTradingPlan = wsState ? wsState.isLayerActive('trading_plan') : false;
-    var showFib = wsState ? wsState.isLayerActive('fibonacci') : true;
-    var showSR = wsState ? wsState.isLayerActive('sr_levels') : true;
-
     if (showEMA9 && ws && candles.length >= 9) {
         var ema9Data = ws.calculateEMA(candles, 9);
         var sEma9 = chart.addLineSeries({ color: '#38bdf8', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
@@ -774,18 +916,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         sBbUpper.setData(bb.upper);
         sBbLower.setData(bb.lower);
     }
-
-    var showLPM = wsState ? wsState.isLayerActive('bandar_lpm') : false;
-    var showForeign = wsState ? wsState.isLayerActive('bandar_foreign') : false;
-    var showCMF = wsState ? wsState.isLayerActive('bandar_cmf') : false;
-    var showIntensity = wsState ? wsState.isLayerActive('bandar_intensity') : false;
-    var showRotation = wsState ? wsState.isLayerActive('bandar_rotation') : false;
-    var showTekananBroker = wsState ? wsState.isLayerActive('bandar_tekanan_broker') : false;
-    var showBandarAvgPrice = wsState ? wsState.isLayerActive('bandar_avg_price') : false;
     // Indices have no plan, no signal markers and no broker summary (HANDOFF 5a).
-    var _isIndexChart = ws && typeof ws.isIndexTicker === 'function' ? ws.isIndexTicker(ticker) : /^IHSG$/i.test(String(ticker || ''));
     if (_isIndexChart) { showTradingPlan = false; showLPM = false; showForeign = false; showCMF = false; showIntensity = false; showRotation = false; }
-    if (_isIndexChart) { showTekananBroker = false; showBandarAvgPrice = false; }
 
     // Broker pressure & Bandar average price (honest state handling when daily series is incomplete)
     var brokSeries = (options && options.brokerSummarySeries) || (ws && ws.getBrokerSummarySeries ? ws.getBrokerSummarySeries(ticker) : null);
@@ -939,7 +1071,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         headerEl = document.createElement('div');
         headerEl.id = chartId + '_canvas_header';
         headerEl.className = 'chart-canvas-floating-header';
-        headerEl.style.cssText = 'position:relative; width:100%; z-index:12; pointer-events:none; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; line-height:1.45; text-shadow:0 1px 2px rgba(0,0,0,0.65); padding:6px 10px; background:rgba(13,17,23,0.92); border-bottom:1px solid rgba(55,65,81,0.35);';
+        headerEl.style.cssText = 'position:relative; width:100%; z-index:12; pointer-events:none; font-family:var(--ac-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace); line-height:1.45; padding:6px 10px;';
+        acApplyHeaderThemeColors(headerEl, _th);
         container.insertBefore(headerEl, container.firstChild);
     }
 
@@ -960,57 +1093,57 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var _hdrShown = null, _hdrMobile = null, _hdrEls = null;
     function buildCanvasHeader(isMobile) {
         var _m = headerMemo();
+        var thNow = acChartTheme(container);
         var tf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
         var corrVal = _m.corr, parVal = _m.par, lpmVal = _m.lpm;
         var corrTxt = (corrVal == null || !isFinite(corrVal)) ? '—' : ((corrVal >= 0 ? '+' : '') + corrVal.toFixed(2));
         var parTxt = (parVal == null || !isFinite(parVal)) ? '—' : (parVal.toFixed(1) + '%');
         var lpmTxt = lpmVal ? acNum(lpmVal) : '—';
         var moneyFlowStr = _m.moneyFlow;
-        var prov = '<span class="ac-prov" data-k="prov" style="font-weight:600;color:var(--ac-warn-t, #fbbf24)"></span>';
+        var prov = '<span class="ac-prov" data-k="prov" style="font-weight:600;color:var(--ac-warning-text, var(--ac-warn-t, #d97706))"></span>';
         var eodLabel = (ws && typeof ws.formatEodHeader === 'function')
             ? ws.formatEodHeader(candles && candles.length ? candles[candles.length - 1].time : null,
                 candles && candles.length ? (candles[candles.length - 1].updated_at || candles[candles.length - 1].updatedAt) : null)
             : 'EOD';
-        var eodHtml = '<span class="ac-eod" style="font-weight:600;color:var(--ac-2, #9ca3af)">' + eodLabel + '</span>';
+        var eodHtml = '<span class="ac-eod" style="font-weight:600;color:var(--ac-text-secondary, var(--ac-2, #64748b))">' + eodLabel + '</span>';
         headerEl.style.position = 'relative';
         headerEl.style.top = 'auto';
         headerEl.style.left = 'auto';
         headerEl.style.width = '100%';
         headerEl.style.maxWidth = '100%';
         headerEl.style.padding = isMobile ? '6px 8px' : '6px 10px';
-        headerEl.style.background = 'rgba(13,17,23,0.92)';
-        headerEl.style.borderBottom = '1px solid rgba(55,65,81,0.35)';
+        acApplyHeaderThemeColors(headerEl, thNow);
         headerEl.style.overflow = 'visible';
         // BATCH 1 / BUG 1: exactly 2 compact lines on mobile with zero Vol/Par F/Foreign collision
         if (isMobile) {
             headerEl.style.fontSize = '10px';
             headerEl.innerHTML =
-                '<div class="flex items-center justify-between gap-1 text-[10px] font-bold text-slate-100 flex-nowrap" style="color:#f8fafc;">' +
+                '<div class="flex items-center justify-between gap-1 text-[10px] font-bold flex-nowrap" style="color:var(--ac-ink, ' + thNow.ink + ');">' +
                     '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' + eodHtml + prov +
                     '<span data-k="close"></span>' +
                 '</div>' +
-                '<div class="text-[10px] text-gray-300 font-medium flex flex-nowrap justify-between gap-2">' +
-                    '<span>Vol <b style="color:#f1f5f9;" data-k="vol"></b></span>' +
-                    '<span data-row="bandar" class="inline-flex items-center gap-2"><span>Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span> <span>Par F <b style="color:#fbbf24;">' + parTxt + '</b></span></span>' +
-                    '<span data-row="bandar" class="inline-flex items-center gap-1" style="color:#3b82f6;">Foreign <b style="color:#60a5fa;" data-k="foreign"></b></span>' +
+                '<div class="text-[10px] font-medium flex flex-nowrap justify-between gap-2" style="color:var(--ac-text-secondary, ' + thNow.text + ');">' +
+                    '<span>Vol <b style="color:var(--ac-ink, ' + thNow.ink + ');" data-k="vol"></b></span>' +
+                    '<span data-row="bandar" class="inline-flex items-center gap-2"><span>Corr F <b style="color:var(--ac-info, #315F9A);">' + corrTxt + '</b></span> <span>Par F <b style="color:var(--ac-warning-text, #8A590D);">' + parTxt + '</b></span></span>' +
+                    '<span data-row="bandar" class="inline-flex items-center gap-1" style="color:var(--ac-info, #315F9A);">Foreign <b data-k="foreign"></b></span>' +
                 '</div>';
         } else {
             headerEl.style.fontSize = '11.5px';
             headerEl.innerHTML =
-                '<div class="flex items-center gap-1.5 text-xs font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
+                '<div class="flex items-center gap-1.5 text-xs font-bold flex-wrap" style="color:var(--ac-ink, ' + thNow.ink + ');">' +
                     '<span>' + (ticker || 'SAHAM') + ' · ' + tf + ' · IDX</span>' + eodHtml + prov +
-                    '<span class="text-gray-300">O<span data-k="o"></span></span>' +
-                    '<span class="text-gray-300">H<span style="color:#34d399" data-k="h"></span></span>' +
-                    '<span class="text-gray-300">L<span style="color:#f87171" data-k="l"></span></span>' +
-                    '<span class="text-gray-300">C<span data-k="c"></span></span>' +
+                    '<span style="color:var(--ac-text-secondary, ' + thNow.text + ');">O<span data-k="o" style="color:var(--ac-ink, ' + thNow.ink + ');margin-left:2px"></span></span>' +
+                    '<span style="color:var(--ac-text-secondary, ' + thNow.text + ');">H<span style="color:var(--ac-positive, ' + thNow.up + ');margin-left:2px" data-k="h"></span></span>' +
+                    '<span style="color:var(--ac-text-secondary, ' + thNow.text + ');">L<span style="color:var(--ac-negative, ' + thNow.down + ');margin-left:2px" data-k="l"></span></span>' +
+                    '<span style="color:var(--ac-text-secondary, ' + thNow.text + ');">C<span data-k="c" style="margin-left:2px"></span></span>' +
                     '<span data-k="chg"></span>' +
-                    '<span class="text-gray-400 font-normal">• Vol <b style="color:#f1f5f9;" data-k="vol"></b></span>' +
-                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
-                    '<span class="text-gray-400 font-normal">• Par F <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
+                    '<span style="color:var(--ac-text-secondary, ' + thNow.text + ');font-weight:500;">• Vol <b style="color:var(--ac-ink, ' + thNow.ink + ');" data-k="vol"></b></span>' +
+                    '<span style="color:var(--ac-text-secondary, ' + thNow.text + ');font-weight:500;">• Corr F <b style="color:var(--ac-info, #315F9A);">' + corrTxt + '</b></span>' +
+                    '<span style="color:var(--ac-text-secondary, ' + thNow.text + ');font-weight:500;">• Par F <b style="color:var(--ac-warning-text, #8A590D);">' + parTxt + '</b></span>' +
                 '</div>' +
-                '<div class="text-[11px] font-medium flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5" data-row="bandar">' +
-                    '<span class="inline-flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM · Money Flow <b style="color:#34d399;">' + lpmTxt + '</b> <b style="color:#fb923c;">' + moneyFlowStr + '</b></span>' +
-                    '<span class="inline-flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign Flow <b style="color:#60a5fa;" data-k="foreign"></b></span>' +
+                '<div class="text-[11px] font-medium flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5" data-row="bandar" style="color:var(--ac-text-secondary, ' + thNow.text + ');">' +
+                    '<span class="inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:var(--ac-positive, ' + thNow.up + ');"></span>LPM · Money Flow <b style="color:var(--ac-positive, ' + thNow.up + ');">' + lpmTxt + '</b> <b style="color:var(--ac-warning-text, #8A590D);">' + moneyFlowStr + '</b></span>' +
+                    '<span class="inline-flex items-center gap-1" style="color:var(--ac-info, #315F9A);"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:var(--ac-info, #315F9A);"></span>Foreign Flow <b data-k="foreign"></b></span>' +
                 '</div>';
         }
         // Indices carry no broker summary: drop the LPM / foreign / money-flow rows.
@@ -1030,6 +1163,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         if (c === _hdrShown && _mob === _hdrMobile) return;
         if (_mob !== _hdrMobile || !_hdrEls) buildCanvasHeader(_mob);
         _hdrShown = c; _hdrMobile = _mob;
+        var thLive = acChartTheme(container);
         var _m = headerMemo();
         var cOpen = Number(c.open != null ? c.open : c.close);
         var cHigh = Number(c.high != null ? c.high : c.close);
@@ -1045,7 +1179,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var chg = cClose - prevClose;
         var chgPct = prevClose > 0 ? (chg / prevClose) * 100 : 0;
         var chgSign = chg >= 0 ? '+' : '';
-        var chgColor = chg >= 0 ? '#34d399' : '#f87171';
+        var chgColor = chg >= 0 ? thLive.up : thLive.down;
 
         // BUG-V5-P0-010: candle volume is a RAW SHARE count. One formatter, one
         // unit label, shared with the cockpit card (never "lot" here).
@@ -1076,7 +1210,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         if (_mob) {
             setHdr('close', ' ' + acNum(cClose) + ' (' + chgSign + chgPct.toFixed(1) + '%)', chgColor);
         } else {
-            setHdr('o', acNum(cOpen), cOpen >= prevClose ? '#34d399' : '#f87171');
+            setHdr('o', acNum(cOpen), cOpen >= prevClose ? thLive.up : thLive.down);
             setHdr('h', acNum(cHigh));
             setHdr('l', acNum(cLow));
             setHdr('c', acNum(cClose), chgColor);
@@ -1103,9 +1237,11 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var _onWinResize = function() {
             var reg = _chartRegistry[chartId];
             if (!reg || reg.mainChart !== chart) { window.removeEventListener('resize', _onWinResize); return; }
-            if (container) chart.applyOptions({ width: container.clientWidth });
             if (ws && typeof ws.resizeAllCharts === 'function') {
                 try { ws.resizeAllCharts(chartId); } catch (_) {}
+            } else if (canvasHost || container) {
+                var nextW = (canvasHost || container).clientWidth;
+                if (nextW > 0) chart.applyOptions({ width: nextW });
             }
             _hdrShown = null;
             updateCanvasHeader(_lastCandle);
@@ -1207,15 +1343,29 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     } else if (options && Array.isArray(options.markers) && options.markers.length > 0) {
         markersToApply = options.markers;
     }
-    if (typeof candleSeries.setMarkers === 'function') {
-        try { candleSeries.setMarkers(markersToApply); } catch (mkErr) { /* optional */ }
-    }
+    acSetSeriesMarkers(candleSeries, markersToApply);
 
     chart.timeScale().fitContent();
     var _mainRO = observeChartResize(container, function(w) {
         var d = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0), (typeof window !== 'undefined' ? window.innerHeight : 0), _activeMode);
-        container.style.height = d.main + 'px';
-        chart.applyOptions({ width: w, height: d.main });
+        var card = container.closest ? container.closest('.unified-card') : null;
+        var isFs = Boolean(card && card.classList && card.classList.contains('cw-one-screen'));
+        if (_useNativePanes) {
+            var subSum = 0;
+            for (var pi = 1; pi < _paneSpecs.length; pi++) subSum += _paneSpecs[pi].height;
+            var nextMainH = isFs ? Math.max(240, (container.clientHeight || d.main) - subSum - (headerEl ? headerEl.offsetHeight : 0)) : d.main;
+            var nextTotalH = nextMainH + subSum;
+            if (!isFs) container.style.height = 'auto';
+            if (canvasHost) canvasHost.style.height = nextTotalH + 'px';
+            chart.applyOptions({ width: w, height: nextTotalH });
+            try {
+                var livePanes = typeof chart.panes === 'function' ? chart.panes() : [];
+                if (livePanes[0] && typeof livePanes[0].setHeight === 'function') livePanes[0].setHeight(nextMainH);
+            } catch (_) {}
+        } else {
+            container.style.height = d.main + 'px';
+            chart.applyOptions({ width: w, height: d.main });
+        }
         if (typeof updateShadingBox === 'function') updateShadingBox();
         if (_hiLo) _hiLo.refresh();
     });
@@ -1267,7 +1417,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     setTimeout(updateShadingBox, 150);
     chart.timeScale().subscribeVisibleLogicalRangeChange(updateShadingBox);
 
-    // Subpanels: Intensity & Volume Rotation
+    // Subpanels: Native Multi-Pane (LWC v5.3.0) with legacy separate-chart fallback
     var subpanelsWrapper = document.getElementById(chartId + '_subpanels_wrapper');
     if (!subpanelsWrapper) {
         subpanelsWrapper = document.createElement('div');
@@ -1277,256 +1427,367 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     }
 
     var intensityContainer = document.getElementById(chartId + '_intensity_container');
-    var _intH = 90;
-    if (!intensityContainer) {
-        intensityContainer = document.createElement('div');
-        intensityContainer.id = chartId + '_intensity_container';
-        intensityContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
-        subpanelsWrapper.appendChild(intensityContainer);
-    }
-    intensityContainer.style.height = _intH + 'px';
-
     var rotationContainer = document.getElementById(chartId + '_rotation_container');
-    var _rotH = 90;
-    if (!rotationContainer) {
-        rotationContainer = document.createElement('div');
-        rotationContainer.id = chartId + '_rotation_container';
-        rotationContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
-        subpanelsWrapper.appendChild(rotationContainer);
-    }
-    rotationContainer.style.height = _rotH + 'px';
-
     var intensityChart = null;
     var rotationChart = null;
     var rsiChart = null;
     var macdChart = null;
     var bandarChart = null;
-
-    var _cwWidth = Math.max(container.clientWidth || (container.parentElement && container.parentElement.clientWidth) || 0, 320);
-    var _hasCandleForeign = candles.some(function(c) { return c && c.foreign_net_value != null && Number.isFinite(Number(c.foreign_net_value)); });
-    var _hasForeignSeries = (Array.isArray(options && options.foreignFlow) && options.foreignFlow.length > 0) || _hasCandleForeign;
-    var _modeShowForeign = (_activeMode === 'investor' || _activeMode === 'pro') && !_isIndexChart && _hasForeignSeries;
-    var _effectiveShowForeign = showForeign || _modeShowForeign;
-
-    // FINAL POLISH TASK 1: non-price curves live in their own subpane.
-    var _bandarH = Math.max((dims.subpanes && (dims.subpanes.foreign_flow || dims.subpanes.bandar_foreign)) || 74, 58);
-    if ((showLPM || _effectiveShowForeign || showCMF) && ws && candles.length >= 5) {
-        var bandarContainer = document.getElementById(chartId + '_bandar_container');
-        if (!bandarContainer) {
-            bandarContainer = document.createElement('div');
-            bandarContainer.id = chartId + '_bandar_container';
-            bandarContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
-            subpanelsWrapper.appendChild(bandarContainer);
-        }
-        bandarContainer.style.height = _bandarH + 'px';
-        bandarContainer.style.display = 'block';
-        var _ffSeries = _effectiveShowForeign ? ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow) : [];
-        var _ffLast = _ffSeries.length ? Number(_ffSeries[_ffSeries.length - 1].value) : null;
-        var _bandarLegend = _effectiveShowForeign ? 'FOREIGN FLOW (sub-pane kumulatif)' : 'BANDAR METRICS (sub-pane, bukan harga)';
-        if (_ffLast != null && isFinite(_ffLast)) {
-            _bandarLegend += ' · Foreign kumulatif ' + (ws.formatIndonesianRupiahCompact ? ws.formatIndonesianRupiahCompact(_ffLast) : acFormatAxisCompact(_ffLast));
-        }
-        bandarContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#94a3b8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _bandarLegend + '</div>';
-        bandarChart = LightweightCharts.createChart(bandarContainer, {
-            width: _cwWidth,
-            height: _bandarH - 2,
-            layout: acChartLayout(_th),
-            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: acFormatAxisCompact },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
-            timeScale: { visible: false },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
-            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
-        });
-        if (showLPM) {
-            var sLpm = bandarChart.addLineSeries({ color: '#10b981', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'LPM' });
-            sLpm.setData(ws.calculateLPMSeries(candles));
-        }
-        if (_effectiveShowForeign) {
-            var sForeign = bandarChart.addLineSeries({ color: '#3b82f6', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Foreign Flow', priceScaleId: 'foreign_scale', priceFormat: { type: 'custom', formatter: acFormatAxisCompact } });
-            try { bandarChart.priceScale('foreign_scale').applyOptions({ scaleMargins: { top: 0.22, bottom: 0.12 } }); } catch (_) {}
-            sForeign.setData(_ffSeries);
-        }
-        if (showCMF) {
-            var sCmf = bandarChart.addLineSeries({ color: '#f97316', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Money Flow' });
-            sCmf.setData(ws.calculateCMF(candles, 20));
-        }
-        bandarChart.timeScale().fitContent();
-    } else {
-        var existingBandar = document.getElementById(chartId + '_bandar_container');
-        if (existingBandar) existingBandar.style.display = 'none';
-    }
-
-    // Separate RSI 14 sub-pane (scalping, swing, pro)
-    var showRSI = (wsState ? wsState.isLayerActive('rsi14') : false) || (_activeMode === 'scalping' || _activeMode === 'swing' || _activeMode === 'pro');
-    var showMACD = (wsState ? wsState.isLayerActive('macd') : false) || (_activeMode === 'swing' || _activeMode === 'pro');
     var oscChart = null;
-    var _rsiH = Math.max((dims.subpanes && dims.subpanes.rsi14) || 80, 62);
-    if (showRSI && ws && candles.length >= 16) {
-        var oscContainer = document.getElementById(chartId + '_osc_container');
-        if (!oscContainer) {
-            oscContainer = document.createElement('div');
-            oscContainer.id = chartId + '_osc_container';
-            oscContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
-            subpanelsWrapper.appendChild(oscContainer);
-        }
-        oscContainer.style.height = _rsiH + 'px';
-        oscContainer.style.display = 'block';
-        var _rsiData = ws.calculateRSI(candles, 14);
-        var _rsiLast = _rsiData.length ? Number(_rsiData[_rsiData.length - 1].value) : null;
-        var _rsiLegend = 'OSILATOR RSI 14 (sub-pane)';
-        if (_rsiLast != null && isFinite(_rsiLast)) _rsiLegend += ' · RSI14 ' + _rsiLast.toFixed(2) + ' (30/70)';
-        oscContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#fb923c; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _rsiLegend + '</div>';
-        oscChart = LightweightCharts.createChart(oscContainer, {
-            width: _cwWidth,
-            height: _rsiH - 2,
-            layout: acChartLayout(_th),
-            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
-            timeScale: { visible: false },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
-            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
-        });
-        var rsiSeries = oscChart.addLineSeries({ color: '#f97316', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'RSI 14' });
-        rsiSeries.setData(_rsiData);
-        var guide70 = oscChart.addLineSeries({ color: 'rgba(239,68,68,0.4)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: '70' });
-        var guide30 = oscChart.addLineSeries({ color: 'rgba(16,185,129,0.4)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: '30' });
-        var guideTimes = _rsiData.map(function(p) { return p.time; });
-        guide70.setData(guideTimes.map(function(t) { return { time: t, value: 70 }; }));
-        guide30.setData(guideTimes.map(function(t) { return { time: t, value: 30 }; }));
-        oscChart.timeScale().fitContent();
-    } else {
-        var existingOsc = document.getElementById(chartId + '_osc_container');
-        if (existingOsc) existingOsc.style.display = 'none';
-    }
-
-    // Separate MACD (12, 26, 9) sub-pane (swing, pro)
-    var _macdH = Math.max((dims.subpanes && dims.subpanes.macd) || 75, 58);
-    if (showMACD && ws && candles.length >= 26) {
-        var macdContainer = document.getElementById(chartId + '_macd_container');
-        if (!macdContainer) {
-            macdContainer = document.createElement('div');
-            macdContainer.id = chartId + '_macd_container';
-            macdContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
-            subpanelsWrapper.appendChild(macdContainer);
-        }
-        macdContainer.style.height = _macdH + 'px';
-        macdContainer.style.display = 'block';
-        var macdCalc = ws.calculateMACD(candles, 12, 26, 9);
-        var _macdLast = macdCalc && macdCalc.macd && macdCalc.macd.length ? Number(macdCalc.macd[macdCalc.macd.length - 1].value) : null;
-        var _sigLast = macdCalc && macdCalc.signal && macdCalc.signal.length ? Number(macdCalc.signal[macdCalc.signal.length - 1].value) : null;
-        var _macdLegend = 'MACD (12, 26, 9)';
-        if (_macdLast != null && isFinite(_macdLast)) _macdLegend += ' · MACD ' + _macdLast.toFixed(2) + ' / Signal ' + (_sigLast != null && isFinite(_sigLast) ? _sigLast.toFixed(2) : '—');
-        macdContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#38bdf8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _macdLegend + '</div>';
-        macdChart = LightweightCharts.createChart(macdContainer, {
-            width: _cwWidth,
-            height: _macdH - 2,
-            layout: acChartLayout(_th),
-            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
-            timeScale: { visible: false },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
-            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
-        });
-        if (Array.isArray(macdCalc && macdCalc.histogram) && macdCalc.histogram.length) {
-            var macdHist = macdChart.addHistogramSeries({ crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
-            macdHist.setData(macdCalc.histogram.map(function(h) {
-                return { time: h.time, value: h.value, color: h.value >= 0 ? 'rgba(16,185,129,0.5)' : 'rgba(239,68,68,0.5)' };
-            }));
-        }
-        var macdLine = macdChart.addLineSeries({ color: '#38bdf8', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'MACD' });
-        var signalLine = macdChart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: 'Signal' });
-        macdLine.setData(macdCalc.macd);
-        signalLine.setData(macdCalc.signal);
-        macdChart.timeScale().fitContent();
-    } else {
-        var existingMacd = document.getElementById(chartId + '_macd_container');
-        if (existingMacd) existingMacd.style.display = 'none';
-    }
-
-    var showOBV = ((_activeMode === 'investor' || _activeMode === 'pro') || (wsState && wsState.isLayerActive('obv'))) && !_isIndexChart;
     var obvChart = null;
-    var _obvH = Math.max((dims.subpanes && dims.subpanes.obv) || 68, 58);
-    if (showOBV && ws && typeof ws.calculateOBV === 'function' && candles.length >= 5) {
-        var obvContainer = document.getElementById(chartId + '_obv_container');
-        if (!obvContainer) {
-            obvContainer = document.createElement('div');
-            obvContainer.id = chartId + '_obv_container';
-            obvContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
-            subpanelsWrapper.appendChild(obvContainer);
-        }
-        obvContainer.style.height = _obvH + 'px';
-        obvContainer.style.display = 'block';
-        var _obvSeriesData = ws.calculateOBV(candles);
-        var _obvLast = _obvSeriesData.length ? Number(_obvSeriesData[_obvSeriesData.length - 1].value) : null;
-        var _obvLegend = 'OBV (On-Balance Volume)';
-        if (_obvLast != null && isFinite(_obvLast)) {
-            _obvLegend += ' · ' + acFormatAxisCompact(_obvLast);
-        }
-        obvContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#a78bfa; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _obvLegend + '</div>';
-        obvChart = LightweightCharts.createChart(obvContainer, {
-            width: _cwWidth,
-            height: _obvH - 2,
-            layout: acChartLayout(_th),
-            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: acFormatAxisCompact },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
-            timeScale: { visible: false },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
-            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
-        });
-        var sObv = obvChart.addLineSeries({ color: '#a78bfa', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'OBV', priceFormat: { type: 'custom', formatter: acFormatAxisCompact } });
-        sObv.setData(_obvSeriesData);
-        obvChart.timeScale().fitContent();
-    } else {
-        var existingObv = document.getElementById(chartId + '_obv_container');
-        if (existingObv) existingObv.style.display = 'none';
+    var _cwWidth = Math.max(container.clientWidth || (container.parentElement && container.parentElement.clientWidth) || 0, 320);
+
+    function acAppendNativePaneLegend(paneTopPx, labelText, colorHex) {
+        if (!canvasHost || typeof document === 'undefined') return;
+        var chip = document.createElement('div');
+        chip.className = 'ac-pane-legend';
+        chip.style.top = (paneTopPx + 4) + 'px';
+        if (colorHex) chip.style.setProperty('--ac-pane-accent', colorHex);
+        chip.textContent = labelText;
+        canvasHost.appendChild(chip);
     }
 
-    if (showIntensity && ws && candles.length >= 5) {
-        intensityContainer.style.display = 'block';
-        intensityContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#c084fc; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">INTENSITY (Aktivitas Bandar)</div>';
-        intensityChart = LightweightCharts.createChart(intensityContainer, {
-            width: _cwWidth,
-            height: _intH - 2,
-            layout: acChartLayout(_th),
-            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
-            timeScale: { visible: false },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
-            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
-        });
-        var intSeries = intensityChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
-        intSeries.setData(ws.calculateIntensityHistogram(candles));
-        intensityChart.timeScale().fitContent();
-    } else {
-        intensityContainer.style.display = 'none';
-    }
+    if (_useNativePanes) {
+        subpanelsWrapper.style.display = 'none';
+        var _paneIdx = 2;
+        var _paneLegends = [{ paneIndex: 1, label: 'VOLUME', color: '#64748b' }];
 
-    if (showRotation && ws && candles.length >= 5) {
-        rotationContainer.style.display = 'block';
-        rotationContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#34d399; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">VOLUME ROTATION (Akumulasi / Distribusi / Transisi)</div>';
-        rotationChart = LightweightCharts.createChart(rotationContainer, {
-            width: _cwWidth,
-            height: _rotH - 2,
-            layout: acChartLayout(_th),
-            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
-            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
-            timeScale: { visible: false },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
-            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+        if ((showLPM || _effectiveShowForeign || showCMF) && ws && candles.length >= 5) {
+            var _ffSeries = _effectiveShowForeign ? ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow) : [];
+            var _ffLast = _ffSeries.length ? Number(_ffSeries[_ffSeries.length - 1].value) : null;
+            var _bandarLegend = _effectiveShowForeign ? 'FOREIGN FLOW (kumulatif)' : 'BANDAR METRICS';
+            if (_ffLast != null && isFinite(_ffLast)) {
+                _bandarLegend += ' \u00b7 ' + (ws.formatIndonesianRupiahCompact ? ws.formatIndonesianRupiahCompact(_ffLast) : acFormatAxisCompact(_ffLast));
+            }
+            if (showLPM) {
+                var sLpmN = chart.addSeries(LightweightCharts.LineSeries, { color: '#10b981', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'LPM' }, _paneIdx);
+                sLpmN.setData(ws.calculateLPMSeries(candles));
+                _allSeries.push(sLpmN);
+            }
+            if (_effectiveShowForeign) {
+                var sForeignN = chart.addSeries(LightweightCharts.LineSeries, { color: '#3b82f6', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Foreign Flow', priceScaleId: 'foreign_scale', priceFormat: { type: 'custom', formatter: acFormatAxisCompact } }, _paneIdx);
+                try { sForeignN.priceScale().applyOptions({ scaleMargins: { top: 0.22, bottom: 0.12 } }); } catch (_) {}
+                sForeignN.setData(_ffSeries);
+                _allSeries.push(sForeignN);
+            }
+            if (showCMF) {
+                var sCmfN = chart.addSeries(LightweightCharts.LineSeries, { color: '#f97316', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Money Flow' }, _paneIdx);
+                sCmfN.setData(ws.calculateCMF(candles, 20));
+                _allSeries.push(sCmfN);
+            }
+            _paneLegends.push({ paneIndex: _paneIdx, label: _bandarLegend, color: '#3b82f6' });
+            _paneIdx++;
+        }
+
+        if (showRSI && ws && candles.length >= 16) {
+            var _rsiDataN = ws.calculateRSI(candles, 14);
+            var _rsiLastN = _rsiDataN.length ? Number(_rsiDataN[_rsiDataN.length - 1].value) : null;
+            var _rsiLegendN = 'RSI 14 (Wilder)';
+            if (_rsiLastN != null && isFinite(_rsiLastN)) _rsiLegendN += ' \u00b7 ' + _rsiLastN.toFixed(2) + ' (30/70)';
+            var rsiSeriesN = chart.addSeries(LightweightCharts.LineSeries, { color: '#f97316', lineWidth: 1.75, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'RSI 14' }, _paneIdx);
+            rsiSeriesN.setData(_rsiDataN);
+            var guide70N = chart.addSeries(LightweightCharts.LineSeries, { color: 'rgba(239,68,68,0.42)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false }, _paneIdx);
+            var guide30N = chart.addSeries(LightweightCharts.LineSeries, { color: 'rgba(16,185,129,0.42)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false }, _paneIdx);
+            var guideTimesN = _rsiDataN.map(function(p) { return p.time; });
+            guide70N.setData(guideTimesN.map(function(t) { return { time: t, value: 70 }; }));
+            guide30N.setData(guideTimesN.map(function(t) { return { time: t, value: 30 }; }));
+            _allSeries.push(rsiSeriesN, guide70N, guide30N);
+            _paneLegends.push({ paneIndex: _paneIdx, label: _rsiLegendN, color: '#ea580c' });
+            _paneIdx++;
+        }
+
+        if (showMACD && ws && candles.length >= 26) {
+            var macdCalcN = ws.calculateMACD(candles, 12, 26, 9);
+            var _macdLastN = macdCalcN && macdCalcN.macd && macdCalcN.macd.length ? Number(macdCalcN.macd[macdCalcN.macd.length - 1].value) : null;
+            var _sigLastN = macdCalcN && macdCalcN.signal && macdCalcN.signal.length ? Number(macdCalcN.signal[macdCalcN.signal.length - 1].value) : null;
+            var _macdLegendN = 'MACD (12, 26, 9)';
+            if (_macdLastN != null && isFinite(_macdLastN)) _macdLegendN += ' \u00b7 ' + _macdLastN.toFixed(2) + ' / ' + (_sigLastN != null && isFinite(_sigLastN) ? _sigLastN.toFixed(2) : '\u2014');
+            if (Array.isArray(macdCalcN && macdCalcN.histogram) && macdCalcN.histogram.length) {
+                var macdHistN = chart.addSeries(LightweightCharts.HistogramSeries, { crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false }, _paneIdx);
+                macdHistN.setData(macdCalcN.histogram.map(function(h) {
+                    return { time: h.time, value: h.value, color: h.value >= 0 ? 'rgba(16,185,129,0.52)' : 'rgba(239,68,68,0.52)' };
+                }));
+                _allSeries.push(macdHistN);
+            }
+            var macdLineN = chart.addSeries(LightweightCharts.LineSeries, { color: '#0284c7', lineWidth: 1.6, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'MACD' }, _paneIdx);
+            var signalLineN = chart.addSeries(LightweightCharts.LineSeries, { color: '#f59e0b', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: 'Signal' }, _paneIdx);
+            macdLineN.setData(macdCalcN.macd);
+            signalLineN.setData(macdCalcN.signal);
+            _allSeries.push(macdLineN, signalLineN);
+            _paneLegends.push({ paneIndex: _paneIdx, label: _macdLegendN, color: '#0284c7' });
+            _paneIdx++;
+        }
+
+        if (showOBV && ws && typeof ws.calculateOBV === 'function' && candles.length >= 5) {
+            var _obvDataN = ws.calculateOBV(candles);
+            var _obvLastN = _obvDataN.length ? Number(_obvDataN[_obvDataN.length - 1].value) : null;
+            var _obvLegendN = 'OBV (On-Balance Volume)' + (_obvLastN != null && isFinite(_obvLastN) ? ' \u00b7 ' + acFormatAxisCompact(_obvLastN) : '');
+            var sObvN = chart.addSeries(LightweightCharts.LineSeries, { color: '#7c3aed', lineWidth: 1.6, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'OBV', priceFormat: { type: 'custom', formatter: acFormatAxisCompact } }, _paneIdx);
+            sObvN.setData(_obvDataN);
+            _allSeries.push(sObvN);
+            _paneLegends.push({ paneIndex: _paneIdx, label: _obvLegendN, color: '#7c3aed' });
+            _paneIdx++;
+        }
+
+        if (showIntensity && ws && candles.length >= 5) {
+            var intSeriesN = chart.addSeries(LightweightCharts.HistogramSeries, { priceFormat: { type: 'custom', formatter: acFormatAxisCompact }, lastValueVisible: false, priceLineVisible: false }, _paneIdx);
+            intSeriesN.setData(ws.calculateIntensityHistogram(candles));
+            _allSeries.push(intSeriesN);
+            _paneLegends.push({ paneIndex: _paneIdx, label: 'INTENSITY (Aktivitas Bandar)', color: '#a855f7' });
+            _paneIdx++;
+        }
+
+        if (showRotation && ws && candles.length >= 5) {
+            var rotSeriesN = chart.addSeries(LightweightCharts.HistogramSeries, { priceFormat: { type: 'custom', formatter: acFormatAxisCompact }, lastValueVisible: false, priceLineVisible: false }, _paneIdx);
+            rotSeriesN.setData(ws.calculateVolumeRotation(candles));
+            _allSeries.push(rotSeriesN);
+            _paneLegends.push({ paneIndex: _paneIdx, label: 'VOLUME ROTATION', color: '#10b981' });
+            _paneIdx++;
+        }
+
+        var _livePanes = typeof chart.panes === 'function' ? chart.panes() : [];
+        var _cumTop = 0;
+        var _paneTopMap = {};
+        for (var _pi = 0; _pi < _paneSpecs.length; _pi++) {
+            _paneTopMap[_pi] = _cumTop;
+            var _sp = _paneSpecs[_pi];
+            if (_livePanes[_pi] && typeof _livePanes[_pi].setHeight === 'function') {
+                try { _livePanes[_pi].setHeight(_sp.height); } catch (_) {}
+            }
+            _cumTop += _sp.height;
+        }
+        _paneLegends.forEach(function(lg) {
+            if (_paneTopMap[lg.paneIndex] != null) acAppendNativePaneLegend(_paneTopMap[lg.paneIndex], lg.label, lg.color);
         });
-        var rotSeries = rotationChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
-        rotSeries.setData(ws.calculateVolumeRotation(candles));
-        rotationChart.timeScale().fitContent();
     } else {
-        rotationContainer.style.display = 'none';
+        subpanelsWrapper.style.display = 'block';
+        if (!intensityContainer) {
+            intensityContainer = document.createElement('div');
+            intensityContainer.id = chartId + '_intensity_container';
+            intensityContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
+            subpanelsWrapper.appendChild(intensityContainer);
+        }
+        intensityContainer.style.height = _intH + 'px';
+
+        if (!rotationContainer) {
+            rotationContainer = document.createElement('div');
+            rotationContainer.id = chartId + '_rotation_container';
+            rotationContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
+            subpanelsWrapper.appendChild(rotationContainer);
+        }
+        rotationContainer.style.height = _rotH + 'px';
+
+        if ((showLPM || _effectiveShowForeign || showCMF) && ws && candles.length >= 5) {
+            var bandarContainer = document.getElementById(chartId + '_bandar_container');
+            if (!bandarContainer) {
+                bandarContainer = document.createElement('div');
+                bandarContainer.id = chartId + '_bandar_container';
+                bandarContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
+                subpanelsWrapper.appendChild(bandarContainer);
+            }
+            bandarContainer.style.height = _bandarH + 'px';
+            bandarContainer.style.display = 'block';
+            var _ffSeries = _effectiveShowForeign ? ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow) : [];
+            var _ffLast = _ffSeries.length ? Number(_ffSeries[_ffSeries.length - 1].value) : null;
+            var _bandarLegend = _effectiveShowForeign ? 'FOREIGN FLOW (sub-pane kumulatif)' : 'BANDAR METRICS (sub-pane, bukan harga)';
+            if (_ffLast != null && isFinite(_ffLast)) {
+                _bandarLegend += ' \u00b7 Foreign kumulatif ' + (ws.formatIndonesianRupiahCompact ? ws.formatIndonesianRupiahCompact(_ffLast) : acFormatAxisCompact(_ffLast));
+            }
+            bandarContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#94a3b8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _bandarLegend + '</div>';
+            bandarChart = LightweightCharts.createChart(bandarContainer, {
+                width: _cwWidth,
+                height: _bandarH - 2,
+                layout: acChartLayout(_th),
+                grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+                localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: acFormatAxisCompact },
+                rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
+                timeScale: { visible: false },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+            });
+            acAttachV5Shims(bandarChart);
+            if (showLPM) {
+                var sLpm = bandarChart.addLineSeries({ color: '#10b981', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'LPM' });
+                sLpm.setData(ws.calculateLPMSeries(candles));
+            }
+            if (_effectiveShowForeign) {
+                var sForeign = bandarChart.addLineSeries({ color: '#3b82f6', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Foreign Flow', priceScaleId: 'foreign_scale', priceFormat: { type: 'custom', formatter: acFormatAxisCompact } });
+                try { bandarChart.priceScale('foreign_scale').applyOptions({ scaleMargins: { top: 0.22, bottom: 0.12 } }); } catch (_) {}
+                sForeign.setData(_ffSeries);
+            }
+            if (showCMF) {
+                var sCmf = bandarChart.addLineSeries({ color: '#f97316', lineWidth: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'Money Flow' });
+                sCmf.setData(ws.calculateCMF(candles, 20));
+            }
+            bandarChart.timeScale().fitContent();
+        } else {
+            var existingBandar = document.getElementById(chartId + '_bandar_container');
+            if (existingBandar) existingBandar.style.display = 'none';
+        }
+
+        if (showRSI && ws && candles.length >= 16) {
+            var oscContainer = document.getElementById(chartId + '_osc_container');
+            if (!oscContainer) {
+                oscContainer = document.createElement('div');
+                oscContainer.id = chartId + '_osc_container';
+                oscContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
+                subpanelsWrapper.appendChild(oscContainer);
+            }
+            oscContainer.style.height = _rsiH + 'px';
+            oscContainer.style.display = 'block';
+            var _rsiData = ws.calculateRSI(candles, 14);
+            var _rsiLast = _rsiData.length ? Number(_rsiData[_rsiData.length - 1].value) : null;
+            var _rsiLegend = 'OSILATOR RSI 14 (sub-pane)';
+            if (_rsiLast != null && isFinite(_rsiLast)) _rsiLegend += ' \u00b7 RSI14 ' + _rsiLast.toFixed(2) + ' (30/70)';
+            oscContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#fb923c; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _rsiLegend + '</div>';
+            oscChart = LightweightCharts.createChart(oscContainer, {
+                width: _cwWidth,
+                height: _rsiH - 2,
+                layout: acChartLayout(_th),
+                grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+                rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
+                timeScale: { visible: false },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+            });
+            acAttachV5Shims(oscChart);
+            var rsiSeries = oscChart.addLineSeries({ color: '#f97316', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'RSI 14' });
+            rsiSeries.setData(_rsiData);
+            var guide70 = oscChart.addLineSeries({ color: 'rgba(239,68,68,0.4)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: '70' });
+            var guide30 = oscChart.addLineSeries({ color: 'rgba(16,185,129,0.4)', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: '30' });
+            var guideTimes = _rsiData.map(function(p) { return p.time; });
+            guide70.setData(guideTimes.map(function(t) { return { time: t, value: 70 }; }));
+            guide30.setData(guideTimes.map(function(t) { return { time: t, value: 30 }; }));
+            oscChart.timeScale().fitContent();
+        } else {
+            var existingOsc = document.getElementById(chartId + '_osc_container');
+            if (existingOsc) existingOsc.style.display = 'none';
+        }
+
+        if (showMACD && ws && candles.length >= 26) {
+            var macdContainer = document.getElementById(chartId + '_macd_container');
+            if (!macdContainer) {
+                macdContainer = document.createElement('div');
+                macdContainer.id = chartId + '_macd_container';
+                macdContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
+                subpanelsWrapper.appendChild(macdContainer);
+            }
+            macdContainer.style.height = _macdH + 'px';
+            macdContainer.style.display = 'block';
+            var macdCalc = ws.calculateMACD(candles, 12, 26, 9);
+            var _macdLast = macdCalc && macdCalc.macd && macdCalc.macd.length ? Number(macdCalc.macd[macdCalc.macd.length - 1].value) : null;
+            var _sigLast = macdCalc && macdCalc.signal && macdCalc.signal.length ? Number(macdCalc.signal[macdCalc.signal.length - 1].value) : null;
+            var _macdLegend = 'MACD (12, 26, 9)';
+            if (_macdLast != null && isFinite(_macdLast)) _macdLegend += ' \u00b7 MACD ' + _macdLast.toFixed(2) + ' / Signal ' + (_sigLast != null && isFinite(_sigLast) ? _sigLast.toFixed(2) : '\u2014');
+            macdContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#38bdf8; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _macdLegend + '</div>';
+            macdChart = LightweightCharts.createChart(macdContainer, {
+                width: _cwWidth,
+                height: _macdH - 2,
+                layout: acChartLayout(_th),
+                grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+                rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
+                timeScale: { visible: false },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+            });
+            acAttachV5Shims(macdChart);
+            if (Array.isArray(macdCalc && macdCalc.histogram) && macdCalc.histogram.length) {
+                var macdHist = macdChart.addHistogramSeries({ crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+                macdHist.setData(macdCalc.histogram.map(function(h) {
+                    return { time: h.time, value: h.value, color: h.value >= 0 ? 'rgba(16,185,129,0.5)' : 'rgba(239,68,68,0.5)' };
+                }));
+            }
+            var macdLine = macdChart.addLineSeries({ color: '#38bdf8', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'MACD' });
+            var signalLine = macdChart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false, title: 'Signal' });
+            macdLine.setData(macdCalc.macd);
+            signalLine.setData(macdCalc.signal);
+            macdChart.timeScale().fitContent();
+        } else {
+            var existingMacd = document.getElementById(chartId + '_macd_container');
+            if (existingMacd) existingMacd.style.display = 'none';
+        }
+
+        if (showOBV && ws && typeof ws.calculateOBV === 'function' && candles.length >= 5) {
+            var obvContainer = document.getElementById(chartId + '_obv_container');
+            if (!obvContainer) {
+                obvContainer = document.createElement('div');
+                obvContainer.id = chartId + '_obv_container';
+                obvContainer.className = 'relative w-full rounded-lg border border-dark-700/60 bg-[#0b0e14]';
+                subpanelsWrapper.appendChild(obvContainer);
+            }
+            obvContainer.style.height = _obvH + 'px';
+            obvContainer.style.display = 'block';
+            var _obvSeriesData = ws.calculateOBV(candles);
+            var _obvLast = _obvSeriesData.length ? Number(_obvSeriesData[_obvSeriesData.length - 1].value) : null;
+            var _obvLegend = 'OBV (On-Balance Volume)' + (_obvLast != null && isFinite(_obvLast) ? ' \u00b7 ' + acFormatAxisCompact(_obvLast) : '');
+            obvContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#a78bfa; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + _obvLegend + '</div>';
+            obvChart = LightweightCharts.createChart(obvContainer, {
+                width: _cwWidth,
+                height: _obvH - 2,
+                layout: acChartLayout(_th),
+                grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+                localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: acFormatAxisCompact },
+                rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
+                timeScale: { visible: false },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+            });
+            acAttachV5Shims(obvChart);
+            var sObv = obvChart.addLineSeries({ color: '#a78bfa', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true, title: 'OBV', priceFormat: { type: 'custom', formatter: acFormatAxisCompact } });
+            sObv.setData(_obvSeriesData);
+            obvChart.timeScale().fitContent();
+        } else {
+            var existingObv = document.getElementById(chartId + '_obv_container');
+            if (existingObv) existingObv.style.display = 'none';
+        }
+
+        if (showIntensity && ws && candles.length >= 5) {
+            intensityContainer.style.display = 'block';
+            intensityContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#c084fc; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">INTENSITY (Aktivitas Bandar)</div>';
+            intensityChart = LightweightCharts.createChart(intensityContainer, {
+                width: _cwWidth,
+                height: _intH - 2,
+                layout: acChartLayout(_th),
+                grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+                rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
+                timeScale: { visible: false },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+            });
+            acAttachV5Shims(intensityChart);
+            var intSeries = intensityChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+            intSeries.setData(ws.calculateIntensityHistogram(candles));
+            intensityChart.timeScale().fitContent();
+        } else {
+            intensityContainer.style.display = 'none';
+        }
+
+        if (showRotation && ws && candles.length >= 5) {
+            rotationContainer.style.display = 'block';
+            rotationContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#34d399; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">VOLUME ROTATION (Akumulasi / Distribusi / Transisi)</div>';
+            rotationChart = LightweightCharts.createChart(rotationContainer, {
+                width: _cwWidth,
+                height: _rotH - 2,
+                layout: acChartLayout(_th),
+                grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+                rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.22, bottom: 0.12 } },
+                timeScale: { visible: false },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+            });
+            acAttachV5Shims(rotationChart);
+            var rotSeries = rotationChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+            rotSeries.setData(ws.calculateVolumeRotation(candles));
+            rotationChart.timeScale().fitContent();
+        } else {
+            rotationContainer.style.display = 'none';
+        }
     }
 
     chart.timeScale().subscribeVisibleLogicalRangeChange(function(range) {
@@ -1725,6 +1986,14 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         try { var _hlFmt = _isIdxTicker ? acNumFmt(2, 2) : acNumFmt(0, 0); _hiLo = acAttachHiLo(chart, candleSeries, candles, canvasHost, function(v) { return _hlFmt.format(Number(v)); }); } catch (_) {}
     }
 
+    // TradingView Lightweight Charts v5.3.0 mandatory attribution footer
+    var _lwcVer = (LightweightCharts && typeof LightweightCharts.version === 'function') ? LightweightCharts.version() : '5.3.0';
+    var attrEl = document.createElement('div');
+    attrEl.id = chartId + '_lwc_attribution';
+    attrEl.className = 'ac-chart-lwc-attribution';
+    attrEl.innerHTML = '<span>Powered by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener noreferrer">TradingView Lightweight Charts\u2122 v' + _lwcVer + '</a> (Apache 2.0) &amp; IDX OHLC Snap</span>';
+    container.appendChild(attrEl);
+
     // Register instances + metadata for the exporter (scoped, no global loose vars).
     var _latest = (candles && candles.length) ? candles[candles.length - 1] : null;
     _chartRegistry[chartId] = {
@@ -1747,11 +2016,21 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         lastVolume: _latest ? _latest.volume : null,
         fibQuote: fibQuote,
         dims: dims,
+        nativeMultiPane: _useNativePanes,
+        lwcVersion: _lwcVer,
+        paneSpecs: _paneSpecs,
+        paneCount: (_useNativePanes && typeof chart.panes === 'function') ? chart.panes().length : 1,
+        pricePaneHeight: dims.main,
+        totalHeight: _totalChartHeight,
+        candles: candles,
+        headerEl: headerEl,
+        canvasHost: canvasHost,
         observers: _observers,
         lastLine: _lastLine,
         lastUp: _lp ? _lp.up : true,
         hiLo: _hiLo,
         defaultRange: _defaultRange,
+        refreshHeader: function() { _hdrShown = null; if (_lastCandle) updateCanvasHeader(_lastCandle); },
         // Today's bar from the live cache: series.update() instead of a new
         // setData, last-price tag, legend and high/low follow.
         updateBar: function(bar) {
