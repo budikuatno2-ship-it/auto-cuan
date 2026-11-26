@@ -9,7 +9,7 @@
   var doc = root.document;
   var reduced = root.matchMedia ? root.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false, addEventListener: function () {} };
   var state = {
-    version: 'v7-4a',
+    version: 'v7-4d',
     active: true,
     engine: 'css-spring+waapi',
     reducedMotion: Boolean(reduced && reduced.matches),
@@ -94,12 +94,18 @@
     [
       ['#landingPage .landing-preview-tabs', '.preview-tab.active, .preview-tab[aria-selected="true"]'],
       ['#landingPage .landing-preview-subtabs', '.preview-tab.active, .preview-tab[aria-selected="true"]'],
+      ['#landingPage .v7-landing-horizon-tabs', 'button.active, button.on, button[aria-selected="true"]'],
+      ['#loginModal .v7-auth-switcher', 'button.is-active, button[aria-selected="true"]'],
+      ['#registerModal .v7-auth-switcher', 'button.is-active, button[aria-selected="true"]'],
+      ['#selfResetModal .v7-auth-switcher', 'button.is-active, button[aria-selected="true"]'],
       ['#page-dashboard .dash-top5-tabs', 'button.on'],
       ['#page-dashboard .dash-hist-bar .segx', 'button.on'],
       ['#threeHorizonTabs', 'button.on'],
       ['#page-sektor .segx', 'button.on'],
       ['#rankingPresetSeg', 'button.on'],
-      ['#chart-workstation .cw-seg', 'button.on']
+      ['#chart-workstation .cw-seg', 'button.on'],
+      ['#page-catatan-admin .segx', 'button.on'],
+      ['#adminNavTabs', 'button.tbtn.on']
     ].forEach(function (pair) {
       syncSlidingIndicator(pair[0], pair[1]);
     });
@@ -149,14 +155,30 @@
       root.AutoCuanCommandPalette.__v7Wrapped = true;
     }
 
-    ['openLoginModal', 'openRegisterModal', 'openSelfResetModal'].forEach(function (fnName) {
+    ['openLoginModal', 'openRegisterModal', 'openSelfResetModal', 'openAuthChoiceModal'].forEach(function (fnName) {
       var orig = root[fnName];
       if (typeof orig !== 'function' || orig.__v7Wrapped) return;
       var wrapped = function () {
         orig.apply(this, arguments);
-        var id = fnName === 'openLoginModal' ? 'loginModal' : (fnName === 'openRegisterModal' ? 'registerModal' : 'selfResetModal');
-        var card = doc.querySelector('#' + id + ' > div');
-        if (card) animateEl(card, { opacity: [0.45, 1], transform: ['scale(0.97) translateY(8px)', 'scale(1) translateY(0)'] }, { duration: 0.22, easing: [0.22, 1, 0.36, 1] });
+        var id = fnName === 'openLoginModal'
+          ? 'loginModal'
+          : (fnName === 'openRegisterModal' ? 'registerModal' : (fnName === 'openSelfResetModal' ? 'selfResetModal' : 'authChoiceModal'));
+        var modalEl = doc.getElementById(id);
+        var card = doc.querySelector('#' + id + ' .v7-auth-card, #' + id + ' > div');
+        if (card) animateEl(card, { opacity: [0.65, 1], transform: ['translateY(8px)', 'translateY(0)'] }, { duration: 0.22, easing: [0.22, 1, 0.36, 1] });
+        if (modalEl) activateFocusTrap(modalEl);
+        setTimeout(refreshAllIndicators, 24);
+      };
+      wrapped.__v7Wrapped = true;
+      root[fnName] = wrapped;
+    });
+
+    ['closeLoginModal', 'closeRegisterModal', 'closeSelfResetModal', 'closeAuthChoiceModal'].forEach(function (fnName) {
+      var orig = root[fnName];
+      if (typeof orig !== 'function' || orig.__v7Wrapped) return;
+      var wrapped = function () {
+        deactivateFocusTrap();
+        return orig.apply(this, arguments);
       };
       wrapped.__v7Wrapped = true;
       root[fnName] = wrapped;
@@ -245,12 +267,29 @@
     });
 
     doc.addEventListener('click', function (e) {
-      if (e.target.closest && e.target.closest('.landing-preview-tabs, .landing-preview-subtabs, .dash-top5-tabs, .segx, #chart-workstation .cw-seg')) {
+      if (e.target.closest && e.target.closest('.landing-preview-tabs, .landing-preview-subtabs, .v7-landing-horizon-tabs, .v7-auth-switcher, .dash-top5-tabs, .segx, #chart-workstation .cw-seg, #adminNavTabs')) {
         setTimeout(refreshAllIndicators, 20);
       }
       if (e.target.closest && e.target.closest('[data-v7-open-notice]')) {
         e.preventDefault();
         openAttributionModal();
+      }
+    });
+
+    doc.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      var checks = [
+        ['loginModal', 'closeLoginModal'],
+        ['registerModal', 'closeRegisterModal'],
+        ['selfResetModal', 'closeSelfResetModal'],
+        ['authChoiceModal', 'closeAuthChoiceModal']
+      ];
+      for (var i = 0; i < checks.length; i++) {
+        var el = doc.getElementById(checks[i][0]);
+        if (el && !el.classList.contains('hidden') && typeof root[checks[i][1]] === 'function') {
+          root[checks[i][1]]();
+          break;
+        }
       }
     });
 

@@ -133,6 +133,7 @@
       var activeSubEl = document.querySelector('[data-c3sub].active');
       var initHorizon = (activeSubEl && activeSubEl.getAttribute('data-c3sub')) || 'short_swing';
       renderLandingHorizon(snap, initHorizon);
+      if (typeof window.acRenderV7HeroLedger === 'function') window.acRenderV7HeroLedger(snap, initHorizon);
 
       if (pill) { pill.innerHTML = 'SNAPSHOT EOD &middot; DATA BURSA RIIL ' + String(snap.trade_date || ''); pill.setAttribute('aria-label', 'Snapshot EOD riil'); }
       var foot = document.querySelector('.preview-provenance-desc');
@@ -151,10 +152,12 @@
     } catch (err) {
       if (pill) { pill.textContent = 'SNAPSHOT EOD BELUM TERSEDIA'; }
       blankLandingPreview();
+      if (typeof window.acRenderV7HeroLedger === 'function') window.acRenderV7HeroLedger(null, null, true);
     }
   }
   window.acRenderLandingHorizon = function (horizonKey) {
     if (window.__acLandingSnapshot) renderLandingHorizon(window.__acLandingSnapshot, horizonKey);
+    if (typeof window.acRenderV7HeroLedger === 'function') window.acRenderV7HeroLedger(window.__acLandingSnapshot || null, horizonKey);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadV3F07Snapshot);
   else loadV3F07Snapshot();

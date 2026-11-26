@@ -881,12 +881,11 @@
       var tr = doc.createElement('tr');
       tr.setAttribute('data-ticker', row.ticker);
       tr.setAttribute('tabindex', '0');
-      tr.setAttribute('role', 'button');
+      tr.setAttribute('role', 'row');
       tr.setAttribute('aria-label', 'Pilih saham ' + row.ticker);
       var isSel = selectedTicker === row.ticker;
       tr.className = isSel ? 'sel is-selected' : '';
       tr.setAttribute('aria-selected', isSel ? 'true' : 'false');
-      tr.setAttribute('aria-pressed', isSel ? 'true' : 'false');
       if (isSel && selfCtx) selfCtx.lastSelectedRowEl = tr;
 
       tr.onclick = function () {
@@ -912,12 +911,12 @@
       var d = sanitizePublicLabel(formatDate(rawD) || '-');
 
       tr.innerHTML =
-        '<td class="tk mono">' + esc(row.ticker) + '</td>' +
-        '<td class="mut">' + esc(row.company_name || row.name || ('PT ' + row.ticker + ' Tbk')) + '</td>' +
-        '<td class="' + ffC + '" style="font-weight:600">' + ffS + '</td>' +
-        '<td><span class="pill-st" style="font-weight:500"><span class="' + hD + '"></span>' + esc(sanitizePublicLabel(hS)) + '</span></td>' +
-        '<td>' + esc(st) + '</td>' +
-        '<td class="mut num">' + esc(d) + '</td>';
+        '<td role="gridcell" class="tk mono">' + esc(row.ticker) + '</td>' +
+        '<td role="gridcell" class="mut">' + esc(row.company_name || row.name || ('PT ' + row.ticker + ' Tbk')) + '</td>' +
+        '<td role="gridcell" class="' + ffC + '" style="font-weight:600">' + ffS + '</td>' +
+        '<td role="gridcell"><span class="pill-st" style="font-weight:500"><span class="' + hD + '"></span>' + esc(sanitizePublicLabel(hS)) + '</span></td>' +
+        '<td role="gridcell">' + esc(st) + '</td>' +
+        '<td role="gridcell" class="mut num">' + esc(d) + '</td>';
       return tr;
     }
 

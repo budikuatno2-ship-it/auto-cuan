@@ -571,7 +571,12 @@
       gesture: 'Gesture Pintar'
     };
     function renderToolbar() {
-      var html = '';
+      var isOpen = toolbar.classList.contains('is-open');
+      var html = '<button type="button" class="ac-draw-mobile-toggle" data-action="toggle-drawer" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + id + '_draw_rack">' +
+        '<span>Alat Gambar (' + TOOLS.length + ')</span>' +
+        '<span class="ac-draw-toggle-chevron" aria-hidden="true">' + (isOpen ? '&#9652;' : '&#9662;') + '</span>' +
+        '</button>';
+      html += '<div id="' + id + '_draw_rack" class="ac-draw-tools-rack">';
       TOOLS.forEach(function (t) {
         var on = state.tool === t ? ' aria-pressed="true"' : ' aria-pressed="false"';
         var cls = 'ac-draw-btn' + (state.tool === t ? ' on' : '');
@@ -587,6 +592,7 @@
         ' aria-label="Magnet OHLC BEI (tahan Shift untuk lepas)" title="Magnet OHLC 15px + Fraksi BEI (tahan Shift untuk bypass)">Magnet OHLC</button>';
       html += '<button type="button" class="ac-draw-btn" data-action="delete" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border-radius:6px;line-height:1.2;white-space:nowrap;" aria-label="Hapus gambar terpilih" title="Hapus (Delete)">Hapus</button>';
       html += '<button type="button" class="ac-draw-btn" data-action="clear" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border-radius:6px;line-height:1.2;white-space:nowrap;" aria-label="Hapus semua gambar" title="Hapus semua">Bersihkan</button>';
+      html += '</div>';
       toolbar.innerHTML = html;
     }
     renderToolbar();
@@ -936,7 +942,10 @@
       if (!btn) return;
       var tool = btn.getAttribute('data-tool');
       var action = btn.getAttribute('data-action');
-      if (tool) {
+      if (action === 'toggle-drawer') {
+        toolbar.classList.toggle('is-open');
+        renderToolbar();
+      } else if (tool) {
         state.tool = state.tool === tool ? null : tool;
         state.draft = null;
         renderToolbar();
