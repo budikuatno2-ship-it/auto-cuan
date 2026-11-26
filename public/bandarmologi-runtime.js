@@ -4570,12 +4570,33 @@
     return html;
   }
 
+  function buildCanvasCytoscapePayload() {
+    var nodes = Object.keys(CANVAS_INSIDER_NODES).map(function (k) {
+      var n = CANVAS_INSIDER_NODES[k];
+      return {
+        id: k,
+        label: n.label,
+        name: n.label + (n.sub ? ' · ' + n.sub : ''),
+        t: n.t
+      };
+    });
+    var edges = CANVAS_INSIDER_EDGES.map(function (e) {
+      return { source: e[0], target: e[1], label: e[2] || '' };
+    });
+    return { nodes: nodes, edges: edges };
+  }
+
   function selectInsiderNode(key) {
     if (!key) key = 'BBCA';
     insiderSelectedNode = key;
     var wrap = byId('insiderGraphSvgWrap');
     if (wrap) {
-      wrap.innerHTML = renderCanvasInsiderGraph(key);
+      if (root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.mountInsiderCytoscape === 'function') {
+        wrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ac-muted);font-size:12px">Memuat graf relasi interaktif…</div>';
+        root.AutoCuanV7Riset.mountInsiderCytoscape(wrap, buildCanvasCytoscapePayload(), key, selectInsiderNode);
+      } else {
+        wrap.innerHTML = renderCanvasInsiderGraph(key);
+      }
     }
     var panel = byId('insiderDetailPanel');
     if (panel) {
@@ -4664,58 +4685,58 @@
     html += '      </table>';
     html += '    </div>';
     html += '  </section>';
-    html += '  <aside class="sheet rise d3" id="insiderOwnershipSummaryCard" data-v4-card="ownership-summary" data-testid="insider-ownership-summary" style="flex:1 1 320px;min-width:300px">';
-    html += '    <div class="sec-h" style="padding:14px 18px;border-bottom:1px solid var(--ac-hair, #1e293b);display:flex;justify-content:space-between;align-items:center">';
+  html += '  <aside class="sheet rise d3" id="insiderOwnershipSummaryCard" data-v4-card="ownership-summary" data-testid="insider-ownership-summary" style="flex:1 1 320px;min-width:300px">';
+    html += '    <div class="sec-h" style="padding:14px 18px;border-bottom:1px solid var(--ac-line-hairline);display:flex;justify-content:space-between;align-items:center">';
     html += '      <div style="display:flex;align-items:center;gap:8px">';
     html += '        <span style="font-size:16px">🏛️</span>';
-    html += '        <h2 style="font-size:14px;font-weight:700;color:var(--ac-ink,#f8fafc);margin:0">Struktur Kepemilikan <span id="ownershipCardTicker" style="color:#10b981">' + escapeHtml(ticker) + '</span></h2>';
+    html += '        <h2 style="font-size:14px;font-weight:700;color:var(--ac-ink);margin:0">Struktur Kepemilikan <span id="ownershipCardTicker" style="color:var(--ac-pos)">' + escapeHtml(ticker) + '</span></h2>';
     html += '      </div>';
-    html += '      <span class="chip i" style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.3)">KSEI · 30 Sep 2026</span>';
+    html += '      <span class="chip i" style="font-size:10px;padding:2px 8px;border-radius:999px">KSEI · 30 Okt 2026</span>';
     html += '    </div>';
     html += '    <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">';
     html += '      <div>';
-    html += '        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:6px">';
-    html += '          <span style="color:#fbbf24">Pengendali: 54,94%</span>';
-    html += '          <span style="color:#38bdf8">Free Float: 41,82%</span>';
-    html += '          <span style="color:#94a3b8">Lainnya: 3,24%</span>';
+    html += '        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:6px;color:var(--ac-text-secondary)">';
+    html += '          <span style="color:var(--ac-warn)">Pengendali: 54,94%</span>';
+    html += '          <span style="color:var(--ac-info)">Free Float: 41,82%</span>';
+    html += '          <span style="color:var(--ac-muted)">Lainnya: 3,24%</span>';
     html += '        </div>';
-    html += '        <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:#0f172a;border:1px solid #334155">';
-    html += '          <div style="width:54.94%;background:linear-gradient(90deg,#f59e0b,#fbbf24)" title="Pengendali (PT Dwimuria Investama Andalan): 54.94%"></div>';
+    html += '        <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--ac-surface);border:1px solid var(--ac-line-hairline)">';
+    html += '          <div style="width:54.94%;background:linear-gradient(90deg,#d97706,#f59e0b)" title="Pengendali (PT Dwimuria Investama Andalan): 54.94%"></div>';
     html += '          <div style="width:41.82%;background:linear-gradient(90deg,#0284c7,#38bdf8)" title="Free Float / Publik: 41.82%"></div>';
     html += '          <div style="width:3.24%;background:#64748b" title="Investor Lain: 3.24%"></div>';
     html += '        </div>';
     html += '      </div>';
     html += '      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-    html += '        <div style="background:#090d16;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">';
-    html += '          <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase">Pemegang Pengendali</div>';
-    html += '          <div style="font-size:12px;font-weight:700;color:#f8fafc;margin-top:2px">PT Dwimuria Inv.</div>';
-    html += '          <div style="font-size:13px;font-weight:800;color:#fbbf24;margin-top:2px">54,94%</div>';
-    html += '          <div style="font-size:10px;color:#64748b">67,73 M lembar</div>';
+    html += '        <div style="background:var(--ac-surface);padding:10px 12px;border-radius:8px;border:1px solid var(--ac-line-hairline)">';
+    html += '          <div style="font-size:10px;color:var(--ac-muted);font-weight:600;text-transform:uppercase">Pemegang Pengendali</div>';
+    html += '          <div style="font-size:12px;font-weight:700;color:var(--ac-ink);margin-top:2px">PT Dwimuria Inv.</div>';
+    html += '          <div style="font-size:13px;font-weight:800;color:var(--ac-warn);margin-top:2px">54,94%</div>';
+    html += '          <div style="font-size:10px;color:var(--ac-muted)">67,73 M lembar</div>';
     html += '        </div>';
-    html += '        <div style="background:#090d16;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">';
-    html += '          <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase">Free Float / Publik</div>';
-    html += '          <div style="font-size:12px;font-weight:700;color:#f8fafc;margin-top:2px">Masyarakat Non-Warkat</div>';
-    html += '          <div style="font-size:13px;font-weight:800;color:#38bdf8;margin-top:2px">41,82%</div>';
-    html += '          <div style="font-size:10px;color:#64748b">51,53 M lembar</div>';
+    html += '        <div style="background:var(--ac-surface);padding:10px 12px;border-radius:8px;border:1px solid var(--ac-line-hairline)">';
+    html += '          <div style="font-size:10px;color:var(--ac-muted);font-weight:600;text-transform:uppercase">Free Float / Publik</div>';
+    html += '          <div style="font-size:12px;font-weight:700;color:var(--ac-ink);margin-top:2px">Masyarakat Non-Warkat</div>';
+    html += '          <div style="font-size:13px;font-weight:800;color:var(--ac-info);margin-top:2px">41,82%</div>';
+    html += '          <div style="font-size:10px;color:var(--ac-muted)">51,53 M lembar</div>';
     html += '        </div>';
-    html += '        <div style="background:#090d16;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">';
-    html += '          <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase">Status Likuiditas</div>';
-    html += '          <div style="font-size:12px;font-weight:700;color:#10b981;margin-top:2px">🟢 Sangat Sehat</div>';
-    html += '          <div style="font-size:10px;color:#64748b;margin-top:2px">> 7,5% batas minimum BEI</div>';
+    html += '        <div style="background:var(--ac-surface);padding:10px 12px;border-radius:8px;border:1px solid var(--ac-line-hairline)">';
+    html += '          <div style="font-size:10px;color:var(--ac-muted);font-weight:600;text-transform:uppercase">Status Likuiditas</div>';
+    html += '          <div style="font-size:12px;font-weight:700;color:var(--ac-pos);margin-top:2px">Sangat Sehat</div>';
+    html += '          <div style="font-size:10px;color:var(--ac-muted);margin-top:2px">&gt; 7,5% batas minimum BEI</div>';
     html += '        </div>';
-    html += '        <div style="background:#090d16;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">';
-    html += '          <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase">Total Saham Tercatat</div>';
-    html += '          <div style="font-size:12px;font-weight:700;color:#f8fafc;margin-top:2px">123,28 Miliar</div>';
-    html += '          <div style="font-size:10px;color:#64748b;margin-top:2px">Modal Disetor Penuh</div>';
+    html += '        <div style="background:var(--ac-surface);padding:10px 12px;border-radius:8px;border:1px solid var(--ac-line-hairline)">';
+    html += '          <div style="font-size:10px;color:var(--ac-muted);font-weight:600;text-transform:uppercase">Total Saham Tercatat</div>';
+    html += '          <div style="font-size:12px;font-weight:700;color:var(--ac-ink);margin-top:2px">123,28 Miliar</div>';
+    html += '          <div style="font-size:10px;color:var(--ac-muted);margin-top:2px">Modal Disetor Penuh</div>';
     html += '        </div>';
     html += '      </div>';
-    html += '      <div style="background:#090d16;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);font-size:11px">';
-    html += '        <div style="color:#94a3b8;font-weight:600;margin-bottom:6px">Pemegang Saham Signifikan (>1%):</div>';
-    html += '        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)"><span style="color:#e2e8f0">Anthoni Salim</span><span style="font-family:monospace;font-weight:600;color:#34d399">1,15% (1,42 M lbr)</span></div>';
-    html += '        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)"><span style="color:#e2e8f0">PT Tricipta Mandhala Gumilang</span><span style="font-family:monospace;font-weight:600;color:#34d399">1,07% (1,31 M lbr)</span></div>';
-    html += '        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#e2e8f0">PT Caturguwiratna Sumapala</span><span style="font-family:monospace;font-weight:600;color:#34d399">1,02% (1,26 M lbr)</span></div>';
+    html += '      <div style="background:var(--ac-surface);padding:10px 12px;border-radius:8px;border:1px solid var(--ac-line-hairline);font-size:11px">';
+    html += '        <div style="color:var(--ac-muted);font-weight:600;margin-bottom:6px">Pemegang Saham Signifikan (&gt;1%):</div>';
+    html += '        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--ac-line-hairline)"><span style="color:var(--ac-ink)">Anthoni Salim</span><span style="font-family:monospace;font-weight:600;color:var(--ac-pos)">1,15% (1,42 M lbr)</span></div>';
+    html += '        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--ac-line-hairline)"><span style="color:var(--ac-ink)">PT Tricipta Mandhala Gumilang</span><span style="font-family:monospace;font-weight:600;color:var(--ac-pos)">1,07% (1,31 M lbr)</span></div>';
+    html += '        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--ac-ink)">PT Caturguwiratna Sumapala</span><span style="font-family:monospace;font-weight:600;color:var(--ac-pos)">1,02% (1,26 M lbr)</span></div>';
     html += '      </div>';
-    html += '      <div style="font-size:10px;color:#64748b;line-height:1.4">💡 <em>Data terintegrasi langsung dengan kustodian sentral KSEI C-BEST per 30 September 2026. Bebas dari manipulasi AI / data sintetik.</em></div>';
+    html += '      <div style="font-size:10px;color:var(--ac-muted);line-height:1.4">Data terintegrasi dari kustodian sentral KSEI C-BEST per 30 Okt 2026.</div>';
     html += '    </div>';
     html += '  </aside>';
     html += '</div>';
@@ -4773,6 +4794,10 @@
     container.innerHTML = html;
     setInsiderMobileView(insiderMobileView);
     loadRosterForTicker(ticker);
+    var initWrap = byId('insiderGraphSvgWrap');
+    if (initWrap && root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.mountInsiderCytoscape === 'function') {
+      root.AutoCuanV7Riset.mountInsiderCytoscape(initWrap, buildCanvasCytoscapePayload(), insiderSelectedNode || 'BBCA', selectInsiderNode);
+    }
   }
 
   function handleInsiderSearchInput(query) {
@@ -4864,7 +4889,11 @@
 
     var wrap = byId('insiderGraphSvgWrap');
     if (wrap) {
-      wrap.innerHTML = renderInsiderNetworkSvg(graph, activeInsiderNetworkSelectedTicker);
+      if (root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.mountInsiderCytoscape === 'function' && graph && Array.isArray(graph.nodes) && graph.nodes.length) {
+        root.AutoCuanV7Riset.mountInsiderCytoscape(wrap, graph, activeInsiderNetworkSelectedTicker || (graph.nodes[0] && graph.nodes[0].id), selectInsiderEmitenNode);
+      } else {
+        wrap.innerHTML = renderInsiderNetworkSvg(graph, activeInsiderNetworkSelectedTicker);
+      }
     }
 
     var panel = byId('insiderDetailPanel');
@@ -4882,7 +4911,11 @@
         }
         var w = byId('insiderGraphSvgWrap');
         if (w) {
-          w.innerHTML = renderInsiderNetworkSvg(remoteGraph, activeInsiderNetworkSelectedTicker);
+          if (root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.mountInsiderCytoscape === 'function') {
+            root.AutoCuanV7Riset.mountInsiderCytoscape(w, remoteGraph, activeInsiderNetworkSelectedTicker || (remoteGraph.nodes[0] && remoteGraph.nodes[0].id), selectInsiderEmitenNode);
+          } else {
+            w.innerHTML = renderInsiderNetworkSvg(remoteGraph, activeInsiderNetworkSelectedTicker);
+          }
         }
         var p = byId('insiderDetailPanel');
         if (p) {
@@ -4896,7 +4929,11 @@
     activeInsiderNetworkSelectedTicker = ticker;
     var wrap = byId('insiderGraphSvgWrap');
     if (wrap && currentInsiderNetworkGraph) {
-      wrap.innerHTML = renderInsiderNetworkSvg(currentInsiderNetworkGraph, activeInsiderNetworkSelectedTicker);
+      if (root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.mountInsiderCytoscape === 'function') {
+        root.AutoCuanV7Riset.mountInsiderCytoscape(wrap, currentInsiderNetworkGraph, activeInsiderNetworkSelectedTicker, selectInsiderEmitenNode);
+      } else {
+        wrap.innerHTML = renderInsiderNetworkSvg(currentInsiderNetworkGraph, activeInsiderNetworkSelectedTicker);
+      }
     }
     var panel = byId('insiderDetailPanel');
     if (panel && currentInsiderNetworkGraph) {
@@ -5907,6 +5944,13 @@
     }
 
     container.innerHTML = html;
+    if (hunterData && root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.mountBrokerHunterCytoscape === 'function') {
+      root.AutoCuanV7Riset.mountBrokerHunterCytoscape(container, hunterData, hunterBroker, function (t) {
+        if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.selectHunterStock === 'function') {
+          root.BandarmologiRuntime.selectHunterStock(t);
+        }
+      });
+    }
   }
 
   function setHunterBroker(code) {
@@ -6313,6 +6357,13 @@
     html += '</details>';
 
     container.innerHTML = html;
+    if (hunterData && root.AutoCuanV7Riset && typeof root.AutoCuanV7Riset.mountBrokerHunterCytoscape === 'function') {
+      root.AutoCuanV7Riset.mountBrokerHunterCytoscape(container, hunterData, hunterBroker, function (t) {
+        if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.selectHunterStock === 'function') {
+          root.BandarmologiRuntime.selectHunterStock(t);
+        }
+      });
+    }
   }
 
   root.BandarmologiRuntime = {

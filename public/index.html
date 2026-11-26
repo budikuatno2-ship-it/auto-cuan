@@ -4343,11 +4343,11 @@ html.light #googleCompleteProfileModal input {
                         <span id="financialUnavailableTitle"></span>
                         <span id="financialUnavailableDesc"></span>
                     </div>
-                    <div id="financialStatementModeGroup">
-                        <button type="button" class="ac-fin-tab-btn is-active" data-statement-mode="income" aria-selected="true" tabindex="0">Laba Rugi</button>
-                        <button type="button" class="ac-fin-tab-btn" data-statement-mode="balance" aria-selected="false" tabindex="-1">Neraca</button>
-                        <button type="button" class="ac-fin-tab-btn" data-statement-mode="cashflow" aria-selected="false" tabindex="-1">Arus Kas</button>
-                        <button type="button" class="ac-fin-tab-btn" data-statement-mode="ratios" aria-selected="false" tabindex="-1">Rasio</button>
+                    <div id="financialStatementModeGroup" role="tablist">
+                        <button type="button" role="tab" class="ac-fin-tab-btn is-active" data-statement-mode="income" aria-selected="true" tabindex="0">Laba Rugi</button>
+                        <button type="button" role="tab" class="ac-fin-tab-btn" data-statement-mode="balance" aria-selected="false" tabindex="-1">Neraca</button>
+                        <button type="button" role="tab" class="ac-fin-tab-btn" data-statement-mode="cashflow" aria-selected="false" tabindex="-1">Arus Kas</button>
+                        <button type="button" role="tab" class="ac-fin-tab-btn" data-statement-mode="ratios" aria-selected="false" tabindex="-1">Rasio</button>
                     </div>
                     <div id="financialPeriodModeGroup">
                         <button type="button" class="ac-fin-period-btn is-active" data-period-mode="quarterly" aria-pressed="true">Kuartalan</button>
@@ -14629,6 +14629,9 @@ function renderSektorGroups(groups) {
         });
         grid.innerHTML = gHtml;
     }
+    if (window.AutoCuanV7Riset && typeof window.AutoCuanV7Riset.renderSektorHotEChart === 'function') {
+        window.AutoCuanV7Riset.renderSektorHotEChart(groups);
+    }
 }
 
 function filterSektorGroups() {
@@ -15472,6 +15475,9 @@ function renderScreenerTable(results) {
         html += '</tr>';
     });
     setScreenerResultRows(tbody, html);
+    if (window.AutoCuanV7Riset && typeof window.AutoCuanV7Riset.enhanceScreenerVirtual === 'function' && filtered.length > 25) {
+        window.AutoCuanV7Riset.enhanceScreenerVirtual(tbody);
+    }
     if ((window.AutoCuanScreenerV2 && typeof window.AutoCuanScreenerV2.isDocked === 'function' ? window.AutoCuanScreenerV2.isDocked() : window.innerWidth >= 1280) && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
         var firstTr = tbody.querySelector('tr[data-ticker]');
         if (firstTr && window.AutoCuanScreener) {
@@ -16261,6 +16267,9 @@ function renderNkScreenerTable(results) {
         html += '</tr>';
     });
     setScreenerResultRows(tbody, html);
+    if (window.AutoCuanV7Riset && typeof window.AutoCuanV7Riset.enhanceScreenerVirtual === 'function' && filtered.length > 25) {
+        window.AutoCuanV7Riset.enhanceScreenerVirtual(tbody);
+    }
     if ((window.AutoCuanScreenerV2 && typeof window.AutoCuanScreenerV2.isDocked === 'function' ? window.AutoCuanScreenerV2.isDocked() : window.innerWidth >= 1280) && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
         var firstTr = tbody.querySelector('tr[data-ticker]');
         if (firstTr && window.AutoCuanScreener) {
@@ -18771,5 +18780,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="/vendor/floating-ui.dom.umd.min.js?v=v7-4a" defer></script>
 <script src="/vendor/focus-trap.umd.min.js?v=v7-4a" defer></script>
 <script src="/v7-motion-shell.js?v=v7-4a" defer></script>
+<script src="/v7-lazy-vendor.js?v=v7-4c" defer></script>
+<script src="/v7-riset-screener.js?v=v7-4c" defer></script>
 </body>
 </html>

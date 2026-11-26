@@ -96,6 +96,9 @@
       ['#landingPage .landing-preview-subtabs', '.preview-tab.active, .preview-tab[aria-selected="true"]'],
       ['#page-dashboard .dash-top5-tabs', 'button.on'],
       ['#page-dashboard .dash-hist-bar .segx', 'button.on'],
+      ['#threeHorizonTabs', 'button.on'],
+      ['#page-sektor .segx', 'button.on'],
+      ['#rankingPresetSeg', 'button.on'],
       ['#chart-workstation .cw-seg', 'button.on']
     ].forEach(function (pair) {
       syncSlidingIndicator(pair[0], pair[1]);
@@ -198,9 +201,9 @@
       '</div>',
       '<ul style="margin:14px 0;padding-left:18px;font-size:12.5px;line-height:1.65;color:var(--ac-text-secondary)">',
       '<li><strong>TradingView Lightweight Charts™ v5.3.0</strong> (Apache-2.0): <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener noreferrer" style="color:var(--ac-brand)">tradingview.com/lightweight-charts</a></li>',
-      '<li><strong>Apache ECharts</strong> (Apache-2.0): The Apache Software Foundation</li>',
+      '<li><strong>Apache ECharts v6.1.0</strong> (Apache-2.0): The Apache Software Foundation</li>',
       '<li><strong>trawangan UX Patterns</strong> (Apache-2.0): Based on trawangan (Created by Kaleksanan Barqi Aji Massani)</li>',
-      '<li><strong>Style Dictionary</strong> (Apache-2.0), <strong>Motion</strong>, <strong>Floating UI</strong>, <strong>focus-trap</strong>, <strong>NumberFlow</strong> (MIT)</li>',
+      '<li><strong>Style Dictionary v5.8.0</strong> (Apache-2.0), <strong>@tanstack/virtual-core v3.19.13</strong>, <strong>Cytoscape.js v3.35.0</strong>, <strong>Motion</strong>, <strong>Floating UI</strong>, <strong>focus-trap</strong>, <strong>NumberFlow</strong> (MIT)</li>',
       '</ul>',
       '<p style="margin:0;font-size:11.5px;color:var(--ac-text-muted)">Salinan lengkap tersedia di berkas <code>NOTICE</code> root repositori.</p>',
       '</div>'
