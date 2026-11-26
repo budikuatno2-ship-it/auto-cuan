@@ -798,6 +798,7 @@
   "test/vercel-readonly-intel-scanner.test.js",
   "test/viewport-runtime.test.js",
   "test/v7-kloter-4a-shell-landing.test.js",
+  "test/v7-kloter-4b-chart-workstation.test.js",
   "test/volume-breakout-revalidation.test.js",
   "test/vps-api-bridge-tunnel.test.js",
   "test/vps-data-fetcher-async.test.js",

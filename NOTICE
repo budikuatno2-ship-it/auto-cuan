@@ -3,7 +3,7 @@ Auto-Cuan V7 — Third-Party Upstream Attribution Notice
 
 Auto-Cuan V7 ("Financial Intelligence Workstation") incorporates or bundles the following open-source libraries and UX patterns in compliance with their respective licenses.
 
-1. TradingView Lightweight Charts (Apache License 2.0)
+1. TradingView Lightweight Charts v5.3.0 (Apache License 2.0)
    Upstream: https://github.com/tradingview/lightweight-charts
    Product Attribution: "Powered by Lightweight Charts(TM) by TradingView (https://www.tradingview.com/lightweight-charts/)"
 
@@ -19,6 +19,10 @@ Auto-Cuan V7 ("Financial Intelligence Workstation") incorporates or bundles the 
    Created by Kaleksanan Barqi Aji Massani
    Mandatory NOTICE Part I:
    "Based on trawangan (https://github.com/KaleksananBarqi/trawangan), Created by Kaleksanan Barqi Aji Massani"
+   Ported selective UX patterns in public/chart-drawing-tools.js:
+   - chartPriceScaleInputGuard (isOutsideDataArea)
+   - priceSnapService (OHLC wick magnet, adapted strictly to IDX/BEI tick fractions)
+   - gestureDrawingRecognizer (shape recognition + scribble-to-erase)
    (Auto-Cuan V7 strictly excludes pinets / @luxalgo/vela-pinets AGPL-3.0 components.)
 
 5. Motion (motion/mini) — MIT License

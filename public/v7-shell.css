@@ -185,7 +185,7 @@
   html[data-ac-v7="true"] #dashboardScreen #page-dashboard .v7-seg-track > button.on,
   html[data-ac-v7="true"] #dashboardScreen .v7-seg-track > button.on {
     --ac-ink: var(--ac-on-brand);
-    background: transparent;
+    background: var(--ac-brand);
     color: var(--ac-on-brand);
   }
 
@@ -589,5 +589,166 @@
     html[data-ac-v7="true"] *::before,
     html[data-ac-v7="true"] *::after {
       transition-duration: 0.01ms;
+    }
+  }
+
+  /* ---- Kloter 4B: Chart Workstation Dual-Theme & Native Multi-Pane V7 ---- */
+  html[data-ac-v7="true"].is-dark,
+  html[data-ac-v7="true"].is-dark body,
+  html[data-ac-v7="true"][data-theme="dark"],
+  html[data-ac-v7="true"][data-theme="dark"] body {
+    --ac-canvas: #0E1412;
+    --ac-surface: #141C19;
+    --ac-surface-raised: #19231F;
+    --ac-ink: #E4EBE7;
+    --ac-text-secondary: #B2BDB8;
+    --ac-line-hairline: #26322D;
+    --ac-brand: #48C797;
+    --ac-on-brand: #0A0A0A;
+    --ac-positive: #4FC383;
+    --ac-negative: #F2808F;
+    background-color: #0E1412;
+    color: #E4EBE7;
+  }
+
+  html[data-ac-v7="true"].is-dark #landingPage .text-positive,
+  html[data-ac-v7="true"][data-theme="dark"] #landingPage .text-positive {
+    color: var(--ac-positive, #4FC383);
+  }
+
+  html[data-ac-v7="true"] #chart-workstation,
+  html[data-ac-v7="true"] #chart-workstation .unified-card {
+    background: var(--ac-surface);
+    border-color: var(--ac-line-hairline);
+    color: var(--ac-ink);
+  }
+
+  html[data-ac-v7="true"] .cw-toolbar {
+    background: var(--ac-surface-raised);
+    border-bottom: 1px solid var(--ac-line-hairline);
+    color: var(--ac-ink);
+  }
+
+  html[data-ac-v7="true"] .cw-seg {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--ac-surface-sunken, var(--ac-surface));
+    border: 1px solid var(--ac-line-hairline);
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  html[data-ac-v7="true"] .cw-seg button,
+  html[data-ac-v7="true"] .cw-btn,
+  html[data-ac-v7="true"] .ac-draw-btn {
+    position: relative;
+    z-index: 1;
+    font-family: var(--ac-font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ac-text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: color var(--v7-dur-micro) ease, background var(--v7-dur-micro) ease, border-color var(--v7-dur-micro) ease;
+  }
+
+  html[data-ac-v7="true"] #appContent #page-analisis #chart-workstation .cw-seg button.on {
+    background: var(--ac-brand);
+    color: var(--ac-on-brand);
+    border-color: var(--ac-brand);
+    box-shadow: var(--ac-shadow-xs, 0 1px 2px rgba(15, 23, 42, 0.08));
+  }
+
+  html[data-ac-v7="true"] .cw-seg button.on,
+  html[data-ac-v7="true"] .ac-draw-btn.on,
+  html[data-ac-v7="true"] .ac-draw-btn[aria-pressed="true"] {
+    color: var(--ac-on-brand);
+    background: var(--ac-brand);
+    border-color: var(--ac-brand);
+    box-shadow: var(--ac-shadow-xs, 0 1px 2px rgba(15, 23, 42, 0.08));
+  }
+
+  html[data-ac-v7="true"] .cw-drawer {
+    background: var(--ac-surface-raised);
+    color: var(--ac-ink);
+    border-color: var(--ac-line-hairline);
+  }
+
+  html[data-ac-v7="true"] .cw-drawer h3,
+  html[data-ac-v7="true"] .cw-drawer summary,
+  html[data-ac-v7="true"] .cw-drawer label {
+    color: var(--ac-ink);
+  }
+
+  html[data-ac-v7="true"] .ac-pane-legend {
+    position: absolute;
+    left: 8px;
+    z-index: 6;
+    pointer-events: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-family: var(--ac-font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--ac-ink);
+    background: var(--ac-surface-raised);
+    border: 1px solid var(--ac-line-hairline);
+    border-left: 3px solid var(--ac-pane-accent, var(--ac-brand));
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+  }
+
+  html[data-ac-v7="true"] .ac-chart-lwc-attribution {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 10px;
+    font-family: var(--ac-font-sans);
+    font-size: 11px;
+    color: var(--ac-text-secondary);
+    background: var(--ac-surface-raised);
+    border-top: 1px solid var(--ac-line-hairline);
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+  }
+
+  html[data-ac-v7="true"] .ac-chart-lwc-attribution a {
+    color: var(--ac-brand);
+    font-weight: 600;
+    text-decoration: underline;
+  }
+
+  @media (max-width: 760px) {
+    html[data-ac-v7="true"] .cw-toolbar {
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px;
+    }
+
+    html[data-ac-v7="true"] .cw-seg button,
+    html[data-ac-v7="true"] .cw-btn,
+    html[data-ac-v7="true"] .ac-draw-btn {
+      min-height: 44px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    html[data-ac-v7="true"] #chart-workstation,
+    html[data-ac-v7="true"] #chart-workstation .unified-card,
+    html[data-ac-v7="true"] .ac-draw-toolbar {
+      max-width: 100%;
+      overflow-x: auto;
     }
   }

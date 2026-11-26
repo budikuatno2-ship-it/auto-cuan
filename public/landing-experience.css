@@ -540,8 +540,8 @@ html:not(.light) #landingPage .preview-sample-pill {
   font-variant-numeric: tabular-nums;
 }
 
-#landingPage .text-positive { color: #16a34a !important; }
-#landingPage .text-negative { color: #dc2626 !important; }
+#landingPage .text-positive { color: var(--ac-positive, #146E42); }
+#landingPage .text-negative { color: var(--ac-negative, #B91C1C); }
 
 #landingPage .preview-flow-stats {
   display: grid;

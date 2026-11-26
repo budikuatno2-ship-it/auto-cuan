@@ -841,23 +841,33 @@
         handleScroll: false,
         handleScale: false
       });
+      var addPaneLine = function (opts) {
+        return (typeof paneChart.addSeries === 'function' && root.LightweightCharts && root.LightweightCharts.LineSeries)
+          ? paneChart.addSeries(root.LightweightCharts.LineSeries, opts)
+          : paneChart.addLineSeries(opts);
+      };
+      var addPaneHist = function (opts) {
+        return (typeof paneChart.addSeries === 'function' && root.LightweightCharts && root.LightweightCharts.HistogramSeries)
+          ? paneChart.addSeries(root.LightweightCharts.HistogramSeries, opts)
+          : paneChart.addHistogramSeries(opts);
+      };
       if (kind === 'rsi') {
-        var rsiSeries = paneChart.addLineSeries({ color: '#f97316', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: true });
+        var rsiSeries = addPaneLine({ color: '#f97316', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: true });
         rsiSeries.setData(series.points);
         [70, 30].forEach(function (lvl) {
           rsiSeries.createPriceLine({ price: lvl, color: 'rgba(148,163,184,0.4)', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
         });
       } else if (kind === 'macd') {
-        var histSeries = paneChart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false });
+        var histSeries = addPaneHist({ priceLineVisible: false, lastValueVisible: false });
         histSeries.setData(series.points.map(function (p) {
           return { time: p.time, value: p.histogram, color: (p.histogram >= 0 ? 'rgba(16,185,129,0.5)' : 'rgba(239,68,68,0.5)') };
         }));
-        var macdSeries = paneChart.addLineSeries({ color: '#38bdf8', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
+        var macdSeries = addPaneLine({ color: '#38bdf8', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
         macdSeries.setData(series.points.map(function (p) { return { time: p.time, value: p.macd }; }));
-        var sigSeries = paneChart.addLineSeries({ color: '#f59e0b', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+        var sigSeries = addPaneLine({ color: '#f59e0b', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
         sigSeries.setData(series.points.filter(function (p) { return p.signal != null; }).map(function (p) { return { time: p.time, value: p.signal }; }));
       } else if (kind === 'obv') {
-        var obvSeries = paneChart.addLineSeries({ color: '#a855f7', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: true });
+        var obvSeries = addPaneLine({ color: '#a855f7', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: true });
         obvSeries.setData(series.points);
       }
       paneChart.timeScale().fitContent();

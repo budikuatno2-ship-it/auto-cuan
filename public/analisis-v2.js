@@ -723,11 +723,14 @@
     };
 
     var add = function (opts, data) {
-      var s = e.mainChart.addLineSeries(Object.assign({
+      var srOpts = Object.assign({
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false
-      }, opts));
+      }, opts);
+      var s = (typeof e.mainChart.addSeries === 'function' && root.LightweightCharts && root.LightweightCharts.LineSeries)
+        ? e.mainChart.addSeries(root.LightweightCharts.LineSeries, srOpts, 0)
+        : e.mainChart.addLineSeries(srOpts);
       s.setData(data);
       overlay.series.push(s);
       return s;
@@ -761,7 +764,15 @@
     if (!days.length) return;
     var t0 = ix.last.t, qm = days.length;
     var path = function (target) { return [{ time: t0, value: ix.c0 }].concat(days.map(function (t, q) { var f = Math.sqrt((q + 1) / qm); return { time: t, value: ix.c0 * Math.exp(Math.log(target / ix.c0) * f) }; })); };
-    var add = function (opts, data) { var s = e.mainChart.addLineSeries(Object.assign({ priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, opts)); s.setData(data); overlay.series.push(s); return s; };
+    var add = function (opts, data) {
+      var srOpts = Object.assign({ priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, opts);
+      var s = (typeof e.mainChart.addSeries === 'function' && root.LightweightCharts && root.LightweightCharts.LineSeries)
+        ? e.mainChart.addSeries(root.LightweightCharts.LineSeries, srOpts, 0)
+        : e.mainChart.addLineSeries(srOpts);
+      s.setData(data);
+      overlay.series.push(s);
+      return s;
+    };
     add({ color: info, lineWidth: 1, lineStyle: 2 }, path(ix.p90));
     add({ color: info, lineWidth: 1, lineStyle: 2 }, path(ix.p10));
     var upMain = ix.bias === 'up', dnMain = ix.bias === 'down';

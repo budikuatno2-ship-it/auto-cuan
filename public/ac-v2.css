@@ -702,7 +702,7 @@ html.cw-one-screen-open .mm, html.cw-one-screen-open #acBottomBar { display: non
 }
 .ac-draw-toolbar .ac-draw-btn:hover { background: var(--ac-hover) !important; }
 .ac-draw-toolbar .ac-draw-btn.on,
-.ac-draw-toolbar .ac-draw-btn[aria-pressed="true"] { background: var(--ac-brand) !important; color: #ffffff !important; border-color: var(--ac-brand) !important; }
+.ac-draw-toolbar .ac-draw-btn[aria-pressed="true"] { background: var(--ac-brand) !important; color: var(--ac-on-brand, #ffffff) !important; border-color: var(--ac-brand) !important; }
 @media (max-width: 640px) {
   .ac-draw-toolbar { position: static !important; top: auto !important; bottom: auto !important; flex-wrap: wrap !important; overflow-x: visible !important; padding: 6px 8px !important; gap: 4px !important; }
   .ac-draw-toolbar .ac-draw-btn { font-size: 11px !important; padding: 5px 8px !important; min-height: 36px; }
